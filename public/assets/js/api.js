@@ -168,6 +168,17 @@ export async function getVersion() {
   return response.json();
 }
 
+export async function installUpdate(downloadUrl) {
+  const response = await fetch("/api/update/install", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ downloadUrl })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Update konnte nicht installiert werden.");
+  return data;
+}
+
 export async function getLatestRelease(repo) {
   const response = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
     headers: { accept: "application/vnd.github+json" }

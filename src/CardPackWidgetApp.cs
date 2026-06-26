@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -18,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
         public const string ReleaseDate = "2026-06-26";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -28,14 +29,41 @@ namespace CardPackWidgetApp
         [STAThread]
         private static void Main()
         {
-            ServicePointManager.Expect100Continue = false;
-            ServicePointManager.SecurityProtocol =
-                (SecurityProtocolType)3072 | // TLS 1.2 for Twitch Helix and OAuth APIs
-                (SecurityProtocolType)768 |
-                SecurityProtocolType.Tls;
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+            AppDomain.CurrentDomain.UnhandledException += delegate (object sender, UnhandledExceptionEventArgs e)
+            {
+                LogCrash(e.ExceptionObject as Exception);
+            };
+            Application.ThreadException += delegate (object sender, System.Threading.ThreadExceptionEventArgs e)
+            {
+                LogCrash(e.Exception);
+            };
+            try
+            {
+                ServicePointManager.Expect100Continue = false;
+                ServicePointManager.SecurityProtocol =
+                    (SecurityProtocolType)3072 | // TLS 1.2 for Twitch Helix and OAuth APIs
+                    (SecurityProtocolType)768 |
+                    SecurityProtocolType.Tls;
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new MainForm());
+            }
+            catch (Exception ex)
+            {
+                LogCrash(ex);
+            }
+        }
+
+        private static void LogCrash(Exception ex)
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash.log");
+                File.AppendAllText(path, DateTime.UtcNow.ToString("o") + " " + (ex == null ? "(unknown)" : ex.ToString()) + Environment.NewLine + Environment.NewLine, Encoding.UTF8);
+            }
+            catch
+            {
+            }
         }
     }
 
@@ -138,23 +166,107 @@ namespace CardPackWidgetApp
             eventLog.Add(category, level, message);
         }
 
+        private void InstallUpdate(string downloadUrl)
+        {
+            string tempRoot = Path.Combine(Path.GetTempPath(), "StreamerCardWidget-update-" + Guid.NewGuid().ToString("N"));
+            string zipPath = tempRoot + ".zip";
+            string stagingDir = tempRoot;
+            Directory.CreateDirectory(stagingDir);
+
+            using (var client = new WebClient())
+            {
+                client.Headers["User-Agent"] = "StreamerCardWidget-Updater";
+                client.DownloadFile(downloadUrl, zipPath);
+            }
+
+            ZipFile.ExtractToDirectory(zipPath, stagingDir);
+            try { File.Delete(zipPath); } catch { }
+
+            // Some release zips wrap their contents in a single top-level folder. If the exe
+            // isn't directly in stagingDir, look one level down so the copy step below works
+            // regardless of how the archive was packed.
+            string exeSourceDir = stagingDir;
+            if (!File.Exists(Path.Combine(stagingDir, "CardPackWidget.exe")))
+            {
+                foreach (string dir in Directory.GetDirectories(stagingDir))
+                {
+                    if (File.Exists(Path.Combine(dir, "CardPackWidget.exe")))
+                    {
+                        exeSourceDir = dir;
+                        break;
+                    }
+                }
+            }
+            if (!File.Exists(Path.Combine(exeSourceDir, "CardPackWidget.exe")))
+            {
+                throw new InvalidOperationException("Im Release wurde keine CardPackWidget.exe gefunden.");
+            }
+
+            string installDir = rootDir.TrimEnd('\\');
+            string batchPath = tempRoot + ".bat";
+            string batchContent =
+                "@echo off\r\n" +
+                "timeout /t 2 /nobreak >nul\r\n" +
+                "robocopy \"" + exeSourceDir + "\" \"" + installDir + "\" /E /XD data /R:5 /W:1\r\n" +
+                "start \"\" /D \"" + installDir + "\" \"" + Path.Combine(installDir, "CardPackWidget.exe") + "\"\r\n" +
+                "rmdir /s /q \"" + stagingDir + "\"\r\n" +
+                "del \"%~f0\"\r\n";
+            File.WriteAllText(batchPath, batchContent, Encoding.ASCII);
+
+            Log("update", "info", "Update wird installiert, App startet neu...");
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = "/c \"" + batchPath + "\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
+
+            Task.Run(delegate
+            {
+                Thread.Sleep(400);
+                // Environment.Exit alone skips Form.FormClosing -> Stop(), so the TCP listener
+                // can still hold port 5377 for a moment after the process starts tearing down.
+                // The relaunched instance would then race the OS into "port already in use" and
+                // show a blocking error dialog instead of starting. Releasing the listener here,
+                // before exiting, makes the handover deterministic.
+                try { Stop(); } catch { }
+                Environment.Exit(0);
+            });
+        }
+
         public int Start(int preferredPort)
         {
             EnsureDataFiles();
-            try
+            // After a self-update relaunch, the previous process's listening socket can take a
+            // moment to fully release the port even though the process itself has already
+            // exited (Windows can hold it briefly). Rather than guessing a fixed delay in the
+            // updater's batch script (or risking a dual-listener via SO_REUSEADDR), retry the
+            // bind here a few times - this is the side that actually knows whether it succeeded.
+            int attempts = 0;
+            Exception lastError = null;
+            while (attempts < 10)
             {
-                listener = new TcpListener(IPAddress.Loopback, preferredPort);
-                listener.Start();
-                port = preferredPort;
-                running = true;
-                Task.Factory.StartNew(AcceptLoop, TaskCreationOptions.LongRunning);
-                twitchBridge.Start();
-                return port;
+                try
+                {
+                    listener = new TcpListener(IPAddress.Loopback, preferredPort);
+                    listener.Start();
+                    port = preferredPort;
+                    running = true;
+                    Task.Factory.StartNew(AcceptLoop, TaskCreationOptions.LongRunning);
+                    twitchBridge.Start();
+                    return port;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    attempts++;
+                    Thread.Sleep(500);
+                }
             }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Port " + preferredPort + " ist belegt. Bitte die alte Card-Pack-App schließen und erneut starten.", ex);
-            }
+            throw new InvalidOperationException("Port " + preferredPort + " ist belegt. Bitte die alte Card-Pack-App schließen und erneut starten.", lastError);
         }
 
         public void Stop()
@@ -324,6 +436,28 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (request.Method == "POST" && request.Path == "/api/update/install")
+            {
+                try
+                {
+                    Dictionary<string, object> body = ParseObject(request.Body);
+                    string downloadUrl = GetString(body, "downloadUrl", "");
+                    if (String.IsNullOrWhiteSpace(downloadUrl)) throw new InvalidOperationException("Keine Download-URL angegeben.");
+                    InstallUpdate(downloadUrl);
+                    SendJson(stream, 200, "{\"ok\":true}");
+                }
+                catch (Exception ex)
+                {
+                    Log("update", "error", "Update-Installation fehlgeschlagen: " + ex.Message);
+                    SendJson(stream, 400, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", false },
+                        { "error", ex.Message }
+                    }));
+                }
+                return;
+            }
+
             if (request.Method == "GET" && request.Path == "/api/logs")
             {
                 SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
@@ -351,7 +485,7 @@ namespace CardPackWidgetApp
 
             if (request.Method == "GET" && request.Path == "/api/settings")
             {
-                SendText(stream, 200, "application/json; charset=utf-8", ReadFile(SettingsPath(), "{}"), "no-store");
+                SendJson(stream, 200, json.Serialize(ReadSettingsObject()));
                 return;
             }
 
@@ -374,10 +508,8 @@ namespace CardPackWidgetApp
             if (request.Method == "POST" && request.Path == "/api/settings")
             {
                 Dictionary<string, object> incoming = ParseObject(request.Body);
-                PreserveTwitchSecrets(incoming, ReadSettingsObject());
-                string payload = WithMetadata(json.Serialize(incoming));
-                File.WriteAllText(SettingsPath(), payload, Encoding.UTF8);
-                Broadcast("settings", "{\"updatedAt\":\"" + EscapeJson(DateTime.UtcNow.ToString("o")) + "\"}");
+                WriteSettingsObject(incoming);
+                string payload = json.Serialize(ReadSettingsObject());
                 SendJson(stream, 200, "{\"ok\":true,\"settings\":" + payload + "}");
                 return;
             }
@@ -385,7 +517,7 @@ namespace CardPackWidgetApp
             if (request.Method == "POST" && request.Path == "/api/reset-settings")
             {
                 File.Copy(DefaultSettingsPath(), SettingsPath(), true);
-                string settings = ReadFile(SettingsPath(), "{}");
+                string settings = json.Serialize(ReadSettingsObject());
                 Broadcast("settings", "{\"reset\":true}");
                 SendJson(stream, 200, "{\"ok\":true,\"settings\":" + settings + "}");
                 return;
@@ -611,14 +743,32 @@ namespace CardPackWidgetApp
                 if (File.Exists(defaultCollections)) File.Copy(defaultCollections, CollectionsPath(), true);
                 else File.WriteAllText(CollectionsPath(), "{}\n", Encoding.UTF8);
             }
+            MigrateTwitchAndObsConfig();
         }
 
-        private string WithMetadata(string rawJson)
+        // Twitch/OBS settings used to live inline inside settings.json. They now live in
+        // their own files (twitch.json, obs.json) so that app updates - which only ever
+        // replace public/+the exe, never data/ - can never clobber a connected account, and
+        // so settings.json resets/imports can't accidentally wipe credentials either.
+        private void MigrateTwitchAndObsConfig()
         {
-            Dictionary<string, object> obj = ParseObject(rawJson);
-            obj["version"] = 1;
-            obj["updatedAt"] = DateTime.UtcNow.ToString("o");
-            return json.Serialize(obj);
+            if (!File.Exists(SettingsPath())) return;
+            Dictionary<string, object> settings = ParseObject(ReadFile(SettingsPath(), "{}"));
+            bool changed = false;
+
+            if (!File.Exists(TwitchConfigPath()) && settings.ContainsKey("twitch") && settings["twitch"] is Dictionary<string, object>)
+            {
+                File.WriteAllText(TwitchConfigPath(), json.Serialize(settings["twitch"]), Encoding.UTF8);
+            }
+            if (settings.Remove("twitch")) changed = true;
+
+            if (!File.Exists(ObsConfigPath()) && settings.ContainsKey("obs") && settings["obs"] is Dictionary<string, object>)
+            {
+                File.WriteAllText(ObsConfigPath(), json.Serialize(settings["obs"]), Encoding.UTF8);
+            }
+            if (settings.Remove("obs")) changed = true;
+
+            if (changed) File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
         }
 
         private void UpdateCollection(string bodyJson)
@@ -713,7 +863,10 @@ namespace CardPackWidgetApp
 
         internal Dictionary<string, object> ReadSettingsObject()
         {
-            return ParseObject(ReadFile(SettingsPath(), "{}"));
+            Dictionary<string, object> settings = ParseObject(ReadFile(SettingsPath(), "{}"));
+            settings["twitch"] = ParseObject(ReadFile(TwitchConfigPath(), "{}"));
+            settings["obs"] = ParseObject(ReadFile(ObsConfigPath(), "{}"));
+            return settings;
         }
 
         internal void WriteSettingsObject(Dictionary<string, object> settings)
@@ -723,7 +876,22 @@ namespace CardPackWidgetApp
 
         internal void WriteSettingsObject(Dictionary<string, object> settings, bool preserveTwitchSecrets)
         {
-            if (preserveTwitchSecrets) PreserveTwitchSecrets(settings, ReadSettingsObject());
+            // Twitch/OBS now live in their own files (see MigrateTwitchAndObsConfig), so they
+            // are written separately and kept out of settings.json entirely. preserveTwitchSecrets
+            // still applies to the dedicated twitch.json write: a settings.json save (e.g. a
+            // fresh /api/settings POST without a "twitch" key) must not blank out the saved token.
+            if (settings.ContainsKey("twitch") && settings["twitch"] is Dictionary<string, object>)
+            {
+                Dictionary<string, object> twitch = (Dictionary<string, object>)settings["twitch"];
+                if (preserveTwitchSecrets) PreserveTwitchSecrets(twitch, ParseObject(ReadFile(TwitchConfigPath(), "{}")));
+                File.WriteAllText(TwitchConfigPath(), json.Serialize(twitch), Encoding.UTF8);
+            }
+            if (settings.ContainsKey("obs") && settings["obs"] is Dictionary<string, object>)
+            {
+                File.WriteAllText(ObsConfigPath(), json.Serialize(settings["obs"]), Encoding.UTF8);
+            }
+            settings.Remove("twitch");
+            settings.Remove("obs");
             settings["version"] = 1;
             settings["updatedAt"] = DateTime.UtcNow.ToString("o");
             File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
@@ -735,11 +903,9 @@ namespace CardPackWidgetApp
             get { return json; }
         }
 
-        private static void PreserveTwitchSecrets(Dictionary<string, object> incoming, Dictionary<string, object> current)
+        private static void PreserveTwitchSecrets(Dictionary<string, object> incomingTwitch, Dictionary<string, object> currentTwitch)
         {
-            if (incoming == null || current == null) return;
-            Dictionary<string, object> incomingTwitch = EnsureObject(incoming, "twitch");
-            Dictionary<string, object> currentTwitch = EnsureObject(current, "twitch");
+            if (incomingTwitch == null || currentTwitch == null) return;
             string[] keys = { "accessToken", "login", "displayName", "broadcasterId", "expiresAt" };
             foreach (string key in keys)
             {
@@ -751,15 +917,6 @@ namespace CardPackWidgetApp
                     incomingTwitch[key] = currentTwitch[key];
                 }
             }
-        }
-
-        private static Dictionary<string, object> EnsureObject(Dictionary<string, object> parent, string key)
-        {
-            if (!parent.ContainsKey(key) || !(parent[key] is Dictionary<string, object>))
-            {
-                parent[key] = new Dictionary<string, object>();
-            }
-            return (Dictionary<string, object>)parent[key];
         }
 
         private static string GetString(Dictionary<string, object> data, string key, string fallback)
@@ -793,6 +950,16 @@ namespace CardPackWidgetApp
         private string CollectionsPath()
         {
             return Path.Combine(dataDir, "collections.json");
+        }
+
+        private string TwitchConfigPath()
+        {
+            return Path.Combine(dataDir, "twitch.json");
+        }
+
+        private string ObsConfigPath()
+        {
+            return Path.Combine(dataDir, "obs.json");
         }
 
         private string LogPath()

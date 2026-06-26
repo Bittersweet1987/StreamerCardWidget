@@ -7,6 +7,7 @@ import {
   getCollections,
   getFonts,
   getLatestRelease,
+  installUpdate,
   getLogs,
   getSettings,
   getTwitchRewards,
@@ -71,6 +72,17 @@ const I18N = {
   "update-status-error": { de: "Update-Prüfung fehlgeschlagen:", en: "Update check failed:" },
   "btn-check-update": { de: "Nach Updates suchen", en: "Check for updates" },
   "btn-open-release": { de: "Release öffnen", en: "Open release" },
+  "btn-install-update": { de: "Installieren", en: "Install" },
+  "confirm-install-update": {
+    de: "Update jetzt installieren? Die App startet dabei neu. Deine Einstellungen, Sammlungen und die Twitch/OBS-Verbindung bleiben erhalten.",
+    en: "Install the update now? The app will restart. Your settings, collections and Twitch/OBS connection are kept."
+  },
+  "update-status-installing": { de: "Installiere Update, App startet neu...", en: "Installing update, app is restarting..." },
+  "update-status-install-failed": { de: "Installation fehlgeschlagen:", en: "Installation failed:" },
+  "error-no-update-asset": {
+    de: "Im Release wurde keine herunterladbare Datei (.zip) gefunden.",
+    en: "No downloadable file (.zip) was found in the release."
+  },
   "banner-update-available": { de: "Neue Version verfügbar:", en: "New version available:" },
   "label-language": { de: "Sprache", en: "Language" },
   "label-theme-mode": { de: "Modus", en: "Mode" },
@@ -358,6 +370,8 @@ async function hydrateUpdateTab() {
   $("#update-current-date").textContent = appVersionInfo.releaseDate;
 }
 
+let pendingUpdateAssetUrl = null;
+
 async function checkForUpdate({ silent = false } = {}) {
   if (!appVersionInfo) appVersionInfo = await getVersion();
   if (!silent) setStatus("#update-status", t("update-status-checking"), "neutral");
@@ -365,20 +379,39 @@ async function checkForUpdate({ silent = false } = {}) {
     const release = await getLatestRelease(appVersionInfo.repo);
     const latestVersion = String(release.tag_name || "").replace(/^v/i, "");
     const link = $("#update-download-link");
+    const installButton = $("#install-update");
+    const asset = (release.assets || []).find((item) => (item.name || "").toLowerCase().endsWith(".zip"));
+    pendingUpdateAssetUrl = asset?.browser_download_url || null;
     if (compareVersions(latestVersion, appVersionInfo.version) > 0) {
       setStatus("#update-status", `${t("update-status-available")} v${latestVersion}`, "warn");
       if (link) {
         link.href = release.html_url || "#";
         link.hidden = false;
       }
+      if (installButton) installButton.hidden = !pendingUpdateAssetUrl;
       showUpdateBanner(latestVersion, release.html_url);
     } else {
       setStatus("#update-status", t("update-status-current"), "ok");
       if (link) link.hidden = true;
+      if (installButton) installButton.hidden = true;
       hideUpdateBanner();
     }
   } catch (error) {
     if (!silent) setStatus("#update-status", `${t("update-status-error")} ${error.message}`, "error");
+  }
+}
+
+async function installPendingUpdate() {
+  if (!pendingUpdateAssetUrl) {
+    setStatus("#update-status", t("error-no-update-asset"), "error");
+    return;
+  }
+  if (!window.confirm(t("confirm-install-update"))) return;
+  setStatus("#update-status", t("update-status-installing"), "neutral");
+  try {
+    await installUpdate(pendingUpdateAssetUrl);
+  } catch (error) {
+    setStatus("#update-status", `${t("update-status-install-failed")} ${error.message}`, "error");
   }
 }
 
@@ -396,6 +429,7 @@ function hideUpdateBanner() {
 
 function bindUpdateTab() {
   $("#check-update").addEventListener("click", () => checkForUpdate());
+  $("#install-update").addEventListener("click", installPendingUpdate);
 }
 
 let logEntries = [];
