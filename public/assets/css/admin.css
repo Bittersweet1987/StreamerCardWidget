@@ -760,6 +760,16 @@ input[type="range"] {
   white-space: normal;
 }
 
+.assignment-tile.is-locked {
+  opacity: .45;
+  cursor: not-allowed;
+  background: #f2eef8;
+}
+
+.assignment-tile.is-locked .tcg-card {
+  filter: grayscale(1);
+}
+
 .file-field {
   min-height: 94px;
   padding: 12px;

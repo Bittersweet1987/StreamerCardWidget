@@ -136,6 +136,7 @@
               </div>
               <div class="button-row">
                 <button class="ghost-button" id="remove-booster-image" type="button" data-i18n="btn-remove-booster-image">Booster-Bild entfernen</button>
+                <button class="danger-button" id="delete-booster" type="button" data-i18n="btn-delete-booster">Booster löschen</button>
               </div>
               <div class="assigned-heading">
                 <strong data-i18n="label-assigned-cards">Zugewiesene Karten</strong>
@@ -272,6 +273,23 @@
               <input id="card-borders" type="checkbox">
               <span data-i18n="label-card-borders">Kartenrahmen anzeigen</span>
             </label>
+          </section>
+
+          <section class="tool-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="rarity-colors-eyebrow">Karten</p>
+                <h2 data-i18n="rarity-colors-title">Rahmenfarben je Rarität</h2>
+              </div>
+              <button class="ghost-button" id="reset-rarity-colors" type="button" data-i18n="btn-reset-rarity-colors">Auf Standard zurücksetzen</button>
+            </div>
+            <div class="form-grid">
+              <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-color-common" type="color" data-rarity-color="common"></label>
+              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="rarity-color-uncommon" type="color" data-rarity-color="uncommon"></label>
+              <label data-i18n="rarity-rare">Selten<input id="rarity-color-rare" type="color" data-rarity-color="rare"></label>
+              <label data-i18n="rarity-epic">Episch<input id="rarity-color-epic" type="color" data-rarity-color="epic"></label>
+              <label data-i18n="rarity-legendary">Legendär<input id="rarity-color-legendary" type="color" data-rarity-color="legendary"></label>
+            </div>
           </section>
 
           <section class="tool-panel sound-panel">

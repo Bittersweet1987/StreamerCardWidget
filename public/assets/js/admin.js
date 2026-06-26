@@ -26,11 +26,13 @@ import {
   cardMarkup,
   cardsForBooster,
   createId,
+  DEFAULT_RARITY_COLORS,
   escapeHtml,
   normalizeSettings,
   RARITIES,
   rarityWeight,
-  readFileAsDataUrl
+  readFileAsDataUrl,
+  setRarityColors
 } from "./render.js";
 
 let settings;
@@ -133,6 +135,10 @@ const I18N = {
   "rarity-rare": { de: "Selten", en: "Rare" },
   "rarity-epic": { de: "Episch", en: "Epic" },
   "rarity-legendary": { de: "Legendär", en: "Legendary" },
+  "rarity-colors-eyebrow": { de: "Karten", en: "Cards" },
+  "rarity-colors-title": { de: "Rahmenfarben je Rarität", en: "Border colors per rarity" },
+  "btn-reset-rarity-colors": { de: "Auf Standard zurücksetzen", en: "Reset to defaults" },
+  "notice-rarity-colors-reset": { de: "Rahmenfarben zurückgesetzt.", en: "Border colors reset." },
   "booster-eyebrow": { de: "Packs", en: "Packs" },
   "booster-title": { de: "Booster verwalten", en: "Manage boosters" },
   "btn-add-booster": { de: "Booster hinzufügen", en: "Add booster" },
@@ -144,7 +150,15 @@ const I18N = {
   "label-booster-accent": { de: "Akzentfarbe", en: "Accent color" },
   "label-booster-image": { de: "Booster-Bild", en: "Booster image" },
   "btn-remove-booster-image": { de: "Booster-Bild entfernen", en: "Remove booster image" },
+  "btn-delete-booster": { de: "Booster löschen", en: "Delete booster" },
+  "confirm-delete-booster": {
+    de: "Booster wirklich löschen? Zugewiesene Karten werden frei für andere Booster.",
+    en: "Really delete this booster? Assigned cards become available for other boosters again."
+  },
+  "error-delete-last-booster": { de: "Der letzte Booster kann nicht gelöscht werden.", en: "The last booster can't be deleted." },
+  "notice-booster-deleted": { de: "Booster gelöscht.", en: "Booster deleted." },
   "label-assigned-cards": { de: "Zugewiesene Karten", en: "Assigned cards" },
+  "hint-card-taken": { de: "Bereits zugewiesen zu", en: "Already assigned to" },
   "warn-max-cards": { de: "Maximal 9 Karten pro Booster.", en: "Maximum 9 cards per booster." },
   "twitch-title": { de: "Verbindung", en: "Connection" },
   "status-not-connected": { de: "Nicht verbunden", en: "Not connected" },
@@ -978,17 +992,30 @@ function renderBoosterList() {
   `).join("");
 }
 
+function ownerBoosterByCardId() {
+  const owner = new Map();
+  for (const booster of settings.boosters) {
+    for (const cardId of booster.cardIds || []) owner.set(cardId, booster);
+  }
+  return owner;
+}
+
 function renderBoosterCards() {
   const booster = selectedBooster();
   const assigned = new Set(booster.cardIds || []);
+  const owner = ownerBoosterByCardId();
   $("#assigned-count").textContent = `${assigned.size}/9`;
-  $("#assigned-cards").innerHTML = settings.deck.cards.map((card) => `
-    <label class="assignment-tile">
-      <input type="checkbox" data-card-assignment="${card.id}" ${assigned.has(card.id) ? "checked" : ""}>
-      ${cardMarkup(card, { compact: true })}
-      <span>${escapeHtml(card.title)}</span>
-    </label>
-  `).join("");
+  $("#assigned-cards").innerHTML = settings.deck.cards.map((card) => {
+    const takenBy = owner.get(card.id);
+    const lockedByOther = takenBy && takenBy.id !== booster.id;
+    return `
+      <label class="assignment-tile${lockedByOther ? " is-locked" : ""}" ${lockedByOther ? `title="${escapeHtml(t("hint-card-taken"))} ${escapeHtml(takenBy.title || "")}"` : ""}>
+        <input type="checkbox" data-card-assignment="${card.id}" ${assigned.has(card.id) ? "checked" : ""} ${lockedByOther ? "disabled" : ""}>
+        ${cardMarkup(card, { compact: true })}
+        <span>${escapeHtml(card.title)}</span>
+      </label>
+    `;
+  }).join("");
 }
 
 function renderBoosters() {
@@ -1022,6 +1049,24 @@ function bindBooster() {
     selectedBoosterId = button.dataset.boosterId;
     hydrateBooster();
     renderOverview();
+  });
+  $("#delete-booster").addEventListener("click", () => {
+    if (settings.boosters.length <= 1) {
+      showNotice(t("error-delete-last-booster"), "error");
+      return;
+    }
+    const booster = selectedBooster();
+    if (!booster) return;
+    if (!window.confirm(t("confirm-delete-booster"))) return;
+    settings.boosters = settings.boosters.filter((item) => item.id !== booster.id);
+    for (const card of settings.deck.cards) {
+      if (card.boosterIds) card.boosterIds = card.boosterIds.filter((id) => id !== booster.id);
+    }
+    selectedBoosterId = settings.boosters[0]?.id;
+    hydrateBooster();
+    renderOverview();
+    scheduleAutoSave();
+    showNotice(t("notice-booster-deleted"));
   });
   $("#assigned-cards").addEventListener("change", (event) => {
     if (!event.target.matches("[data-card-assignment]")) return;
@@ -1253,6 +1298,10 @@ function hydrateDesign() {
   updateSoundRow("reveal");
   $("#show-collection").checked = settings.style.showCollection !== false;
   $("#card-borders").checked = settings.style.cardBorders !== false;
+  for (const rarity of RARITIES) {
+    const input = $(`#rarity-color-${rarity.id}`);
+    if (input) input.value = settings.rarityColors?.[rarity.id] || DEFAULT_RARITY_COLORS[rarity.id];
+  }
   $("#reveal-seconds").value = settings.behavior.revealSeconds ?? 3.2;
   $("#cooldown-seconds").value = settings.behavior.cooldownSeconds ?? 0.8;
   $("#backs-before-reveal").value = settings.behavior.cardBacksBeforeReveal ?? 2;
@@ -1320,6 +1369,26 @@ function bindDesign() {
   $("#theme-mode").addEventListener("input", (event) => {
     settings.style.themeMode = event.target.value;
     refreshSettingsPreview();
+  });
+  $$("[data-rarity-color]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      settings.rarityColors ||= {};
+      settings.rarityColors[event.target.dataset.rarityColor] = event.target.value;
+      setRarityColors(settings.rarityColors);
+      renderCards();
+      hydrateBooster();
+      refreshSettingsPreview();
+    });
+  });
+  $("#reset-rarity-colors").addEventListener("click", () => {
+    settings.rarityColors = { ...DEFAULT_RARITY_COLORS };
+    setRarityColors(settings.rarityColors);
+    hydrateDesign();
+    renderCards();
+    hydrateBooster();
+    refreshSettingsPreview();
+    scheduleAutoSave();
+    showNotice(t("notice-rarity-colors-reset"));
   });
   $("#language").addEventListener("input", (event) => {
     settings.language = event.target.value;

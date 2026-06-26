@@ -25,7 +25,7 @@ select {
   width: min(320px, 28vw);
   aspect-ratio: 5 / 7;
   overflow: hidden;
-  border: 10px solid #fff;
+  border: 10px solid var(--rarity-border, #fff);
   border-radius: 22px;
   color: var(--card-accent, var(--accent));
   background:
@@ -33,6 +33,20 @@ select {
     linear-gradient(155deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .96) 64%),
     linear-gradient(135deg, var(--card-accent, #ff78bb), #ffffff);
   box-shadow: 0 22px 55px rgba(43, 33, 79, .28);
+}
+
+.tcg-card[data-rarity="legendary"] {
+  border-color: var(--rarity-border, #d4af37);
+  animation: legendary-shimmer 2.6s ease-in-out infinite;
+}
+
+@keyframes legendary-shimmer {
+  0%, 100% {
+    box-shadow: 0 22px 55px rgba(43, 33, 79, .28), 0 0 0 0 rgba(212, 175, 55, .55);
+  }
+  50% {
+    box-shadow: 0 22px 55px rgba(43, 33, 79, .28), 0 0 18px 4px rgba(255, 221, 130, .85);
+  }
 }
 
 .tcg-card::before {
@@ -118,7 +132,9 @@ select {
   left: 7%;
   z-index: 2;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   min-width: 0;
 }
@@ -127,19 +143,22 @@ select {
   --title-len: 10;
   display: block;
   min-width: 0;
-  max-width: 78%;
+  max-width: 96%;
   padding: 7px 13px;
   border-radius: 999px;
   color: var(--card-accent, var(--accent));
   background: rgba(255, 255, 255, .92);
   box-shadow: 0 8px 20px rgba(84, 49, 121, .13);
-  /* Shrink as the title gets longer so the full text always fits the pill
-     instead of being clipped; very long titles wrap rather than overflow. */
-  font-size: clamp(.5rem, calc(1.05rem - max(var(--title-len) - 8, 0) * .032rem), 1.05rem);
+  /* Shrink as the title gets longer so the full text always fits on a single
+     line in the pill instead of wrapping or being clipped. The footer wraps
+     the stars badge onto its own line first if space is tight (see above),
+     so the title itself almost always has the full card width to work with. */
+  font-size: clamp(.4rem, calc(1.05rem - max(var(--title-len) - 4, 0) * .055rem), 1.05rem);
   font-weight: 800;
   line-height: 1.15;
-  overflow-wrap: break-word;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
   text-align: center;
 }
 
@@ -151,7 +170,7 @@ select {
 .is-compact-card .card-title {
   max-width: 100%;
   padding: 2px 4px;
-  font-size: clamp(.26rem, calc(.42rem - max(var(--title-len) - 8, 0) * .013rem), .42rem);
+  font-size: clamp(.22rem, calc(.42rem - max(var(--title-len) - 4, 0) * .02rem), .42rem);
 }
 
 .stars {

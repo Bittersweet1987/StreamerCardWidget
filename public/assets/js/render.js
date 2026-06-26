@@ -35,6 +35,25 @@ export const RARITIES = [
   { id: "legendary", label: "Legendär", weight: 4 }
 ];
 
+export const DEFAULT_RARITY_COLORS = {
+  common: "#ffffff",
+  uncommon: "#2dd4c4",
+  rare: "#3b82f6",
+  epic: "#3b1f63",
+  legendary: "#d4af37"
+};
+
+let activeRarityColors = { ...DEFAULT_RARITY_COLORS };
+
+export function setRarityColors(colors) {
+  activeRarityColors = { ...DEFAULT_RARITY_COLORS, ...(colors || {}) };
+}
+
+export function rarityColor(id) {
+  const normalized = String(id || "").toLowerCase();
+  return activeRarityColors[normalized] || DEFAULT_RARITY_COLORS.common;
+}
+
 export function rarityById(id) {
   const normalized = String(id || "").toLowerCase();
   return RARITIES.find((rarity) => rarity.id === normalized || rarity.label.toLowerCase() === normalized) || RARITIES[0];
@@ -82,6 +101,11 @@ export function normalizeSettings(settings) {
   settings.deck.cards ||= [];
   settings.boosters ||= [];
   settings.rarities ||= RARITIES;
+  settings.rarityColors ||= {};
+  for (const rarity of RARITIES) {
+    settings.rarityColors[rarity.id] ||= DEFAULT_RARITY_COLORS[rarity.id];
+  }
+  setRarityColors(settings.rarityColors);
   settings.obs ||= {
     enabled: false,
     host: "127.0.0.1",
@@ -164,17 +188,19 @@ export function cardMarkup(card, options = {}) {
   const accent = card?.accent || "#ff78bb";
   const title = card?.title || "Mystery";
   const rarity = card?.rarity || "Common";
+  const borderColor = rarityColor(card?.rarity);
+  const rarityAttr = String(card?.rarity || "common").toLowerCase();
 
   if (options.hidden) {
     return `
-      <article class="tcg-card${hidden}${compact}" style="--card-accent:${accent}">
+      <article class="tcg-card${hidden}${compact}" data-rarity="${escapeHtml(rarityAttr)}" style="--card-accent:${accent};--rarity-border:${escapeHtml(borderColor)}">
         <div class="card-back-mark">?</div>
       </article>
     `;
   }
 
   return `
-    <article class="tcg-card${compact}" style="--card-accent:${accent}">
+    <article class="tcg-card${compact}" data-rarity="${escapeHtml(rarityAttr)}" style="--card-accent:${accent};--rarity-border:${escapeHtml(borderColor)}">
       <div class="corner top">${escapeHtml(card?.stars || 1)}</div>
       <div class="card-art">${image}</div>
       <footer class="card-footer">
