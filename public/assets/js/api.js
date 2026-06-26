@@ -139,6 +139,29 @@ export function currentOriginUrl(pathname) {
   return url.toString();
 }
 
+export async function getLogs() {
+  const response = await fetch("/api/logs", { cache: "no-store" });
+  if (!response.ok) throw new Error("Logs konnten nicht geladen werden.");
+  return response.json();
+}
+
+export async function addLog(category, level, message) {
+  try {
+    await fetch("/api/logs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ category, level, message })
+    });
+  } catch {
+  }
+}
+
+export async function clearLogs() {
+  const response = await fetch("/api/logs/clear", { method: "POST" });
+  if (!response.ok) throw new Error("Logs konnten nicht gelöscht werden.");
+  return response.json();
+}
+
 export async function getVersion() {
   const response = await fetch("/api/version", { cache: "no-store" });
   if (!response.ok) throw new Error("Versionsinfo konnte nicht geladen werden.");

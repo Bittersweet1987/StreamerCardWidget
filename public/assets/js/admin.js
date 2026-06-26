@@ -1,10 +1,13 @@
 import {
+  addLog,
+  clearLogs,
   currentOriginUrl,
   deleteTwitchReward,
   disconnectTwitch,
   getCollections,
   getFonts,
   getLatestRelease,
+  getLogs,
   getSettings,
   getTwitchRewards,
   getTwitchStatus,
@@ -48,6 +51,15 @@ const I18N = {
   "nav-users": { de: "User", en: "Users" },
   "nav-design": { de: "Einstellungen", en: "Settings" },
   "nav-update": { de: "Update", en: "Update" },
+  "nav-log": { de: "Log", en: "Log" },
+  "log-eyebrow": { de: "Verlauf", en: "History" },
+  "log-title": { de: "Ereignis-Log", en: "Event log" },
+  "placeholder-log-search": { de: "Log durchsuchen...", en: "Search log..." },
+  "btn-export-logs": { de: "Exportieren", en: "Export" },
+  "btn-clear-logs": { de: "Log löschen", en: "Clear log" },
+  "hint-log-empty": { de: "Noch keine Ereignisse aufgezeichnet.", en: "No events recorded yet." },
+  "hint-no-log-found": { de: "Keine Einträge gefunden für", en: "No entries found for" },
+  "notice-log-cleared": { de: "Log gelöscht.", en: "Log cleared." },
   "update-eyebrow": { de: "Wartung", en: "Maintenance" },
   "update-title": { de: "Update", en: "Update" },
   "update-current-label": { de: "Installierte Version", en: "Installed version" },
@@ -386,6 +398,62 @@ function bindUpdateTab() {
   $("#check-update").addEventListener("click", () => checkForUpdate());
 }
 
+let logEntries = [];
+
+async function loadLogs() {
+  const result = await getLogs();
+  logEntries = result.logs || [];
+}
+
+function formatLogTimestamp(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(settings?.language === "en" ? "en-US" : "de-DE");
+}
+
+function renderLogs() {
+  const list = $("#log-list");
+  if (!list) return;
+  const filter = ($("#log-search")?.value || "").trim().toLowerCase();
+  $("#log-empty-hint").hidden = logEntries.length > 0;
+  const filtered = filter
+    ? logEntries.filter((entry) => `${entry.category} ${entry.level} ${entry.message}`.toLowerCase().includes(filter))
+    : logEntries;
+  if (!filtered.length) {
+    list.innerHTML = filter ? `<p class="hint">${t("hint-no-log-found")} „${escapeHtml(filter)}“.</p>` : "";
+    return;
+  }
+  list.innerHTML = filtered.slice().reverse().map((entry) => `
+    <div class="log-row" data-level="${escapeHtml(entry.level || "info")}">
+      <time>${escapeHtml(formatLogTimestamp(entry.timestamp))}</time>
+      <span class="log-category">${escapeHtml(entry.category || "")}</span>
+      <span class="log-level">${escapeHtml(entry.level || "")}</span>
+      <span class="log-message">${escapeHtml(entry.message || "")}</span>
+    </div>
+  `).join("");
+}
+
+function exportLogs() {
+  const lines = logEntries.map((entry) => `${entry.timestamp}\t${entry.category}\t${entry.level}\t${entry.message}`);
+  const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `streamer-card-widget-log-${new Date().toISOString().slice(0, 10)}.txt`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function bindLogTab() {
+  $("#log-search").addEventListener("input", renderLogs);
+  $("#export-logs").addEventListener("click", exportLogs);
+  $("#clear-logs").addEventListener("click", async () => {
+    await clearLogs();
+    logEntries = [];
+    renderLogs();
+    showNotice(t("notice-log-cleared"));
+  });
+}
+
 function bindTabs() {
   $$(".nav-button").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -394,6 +462,10 @@ function bindTabs() {
       if (button.dataset.tab === "users") {
         await loadUsers();
         renderUsers();
+      }
+      if (button.dataset.tab === "log") {
+        await loadLogs();
+        renderLogs();
       }
     });
   });
@@ -622,6 +694,8 @@ function obsRequest(ws, requestType, requestData = {}, timeoutMs = 4000) {
     });
 }
 
+let lastObsConnected = null;
+
 async function testObsConnection() {
   setStatus("#obs-status", t("status-testing-obs"), "neutral");
   let ws;
@@ -632,9 +706,13 @@ async function testObsConnection() {
     settings.obs ||= {};
     settings.obs.enabled = true;
     await saveSettings(settings);
+    if (lastObsConnected !== true) addLog("obs", "info", "OBS verbunden.");
+    lastObsConnected = true;
   } catch (error) {
     setStatus("#obs-status", `${t("error-obs-not-connected")} ${error.message}`, "error");
     setPill("#obs-pill", t("pill-obs-default"), false);
+    if (lastObsConnected !== false) addLog("obs", "error", `OBS-Verbindung fehlgeschlagen: ${error.message}`);
+    lastObsConnected = false;
   } finally {
     try { ws?.close(); } catch {}
   }
@@ -1360,6 +1438,7 @@ async function init() {
     bindDesign();
     bindUsers();
     bindUpdateTab();
+    bindLogTab();
     renderAll();
     await loadUsers();
     renderUsers();

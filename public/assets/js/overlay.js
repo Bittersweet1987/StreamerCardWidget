@@ -1,4 +1,4 @@
-import { connectEventStream, getCollections, getSettings, persistCollectionSnapshot } from "./api.js";
+import { addLog, connectEventStream, getCollections, getSettings, persistCollectionSnapshot } from "./api.js";
 import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, weightedBoosterPick, weightedPick } from "./render.js";
 
 const stage = document.querySelector("#stage");
@@ -177,6 +177,7 @@ async function runOpening(request = {}) {
   if (settings.behavior?.persistCollections !== false) {
     await persistCollectionSnapshot(collection, booster.id, "");
   }
+  addLog("draw", "info", `${user} hat "${card.title || card.id}" aus "${booster.title || booster.id}" gezogen.`);
 
   const scene = document.createElement("section");
   scene.className = "opening-scene";

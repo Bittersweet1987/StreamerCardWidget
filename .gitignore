@@ -1,5 +1,6 @@
 data/settings.json
 data/collections.json
+data/app-log.json
 logs/
 node_modules/
 

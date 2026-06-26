@@ -22,6 +22,7 @@
           <button class="nav-button" data-tab="cards" data-i18n="nav-cards">Karten</button>
           <button class="nav-button" data-tab="booster" data-i18n="nav-booster">Booster</button>
           <button class="nav-button" data-tab="users" data-i18n="nav-users">User</button>
+          <button class="nav-button" data-tab="log" data-i18n="nav-log">Log</button>
           <button class="nav-button" data-tab="design" data-i18n="nav-design">Einstellungen</button>
           <button class="nav-button" data-tab="update" data-i18n="nav-update">Update</button>
         </nav>
@@ -225,6 +226,22 @@
           </div>
           <p class="hint" id="user-empty-hint" hidden data-i18n="hint-users-empty">Noch keine Sammlungen vorhanden. Sobald Nutzer Karten ziehen, erscheinen sie hier.</p>
           <div class="user-list" id="user-list"></div>
+        </section>
+
+        <section class="tab-panel" data-panel="log">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="log-eyebrow">Verlauf</p>
+              <h2 data-i18n="log-title">Ereignis-Log</h2>
+            </div>
+            <input id="log-search" type="search" placeholder="Log durchsuchen..." data-i18n-placeholder="placeholder-log-search">
+          </div>
+          <div class="button-row">
+            <button class="secondary-button" id="export-logs" type="button" data-i18n="btn-export-logs">Exportieren</button>
+            <button class="danger-button" id="clear-logs" type="button" data-i18n="btn-clear-logs">Log löschen</button>
+          </div>
+          <p class="hint" id="log-empty-hint" hidden data-i18n="hint-log-empty">Noch keine Ereignisse aufgezeichnet.</p>
+          <div class="log-list" id="log-list"></div>
         </section>
 
         <section class="tab-panel" data-panel="design">

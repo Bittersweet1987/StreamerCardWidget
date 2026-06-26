@@ -18,7 +18,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
         public const string ReleaseDate = "2026-06-26";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -114,6 +114,7 @@ namespace CardPackWidgetApp
         private readonly List<SseClient> clients;
         private readonly object clientsLock;
         private readonly TwitchBridge twitchBridge;
+        private readonly EventLog eventLog;
         private TcpListener listener;
         private bool running;
         private int port;
@@ -129,6 +130,12 @@ namespace CardPackWidgetApp
             clients = new List<SseClient>();
             clientsLock = new object();
             twitchBridge = new TwitchBridge(this);
+            eventLog = new EventLog(Path.Combine(dataDir, "app-log.json"), json);
+        }
+
+        public void Log(string category, string level, string message)
+        {
+            eventLog.Add(category, level, message);
         }
 
         public int Start(int preferredPort)
@@ -317,6 +324,31 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (request.Method == "GET" && request.Path == "/api/logs")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "logs", eventLog.GetAll() }
+                }));
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/logs")
+            {
+                Dictionary<string, object> body = ParseObject(request.Body);
+                eventLog.Add(GetString(body, "category", "app"), GetString(body, "level", "info"), GetString(body, "message", ""));
+                SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/logs/clear")
+            {
+                eventLog.Clear();
+                SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
             if (request.Method == "GET" && request.Path == "/api/settings")
             {
                 SendText(stream, 200, "application/json; charset=utf-8", ReadFile(SettingsPath(), "{}"), "no-store");
@@ -407,6 +439,7 @@ namespace CardPackWidgetApp
                 }
                 catch (Exception ex)
                 {
+                    Log("twitch", "error", "Twitch-Verbindung fehlgeschlagen: " + ex.Message);
                     SendJson(stream, 400, json.Serialize(new Dictionary<string, object>
                     {
                         { "ok", false },
@@ -762,6 +795,11 @@ namespace CardPackWidgetApp
             return Path.Combine(dataDir, "collections.json");
         }
 
+        private string LogPath()
+        {
+            return Path.Combine(dataDir, "app-log.json");
+        }
+
         private string DefaultSettingsPath()
         {
             return Path.Combine(defaultsDir, "settings.json");
@@ -901,12 +939,14 @@ namespace CardPackWidgetApp
             twitch["expiresAt"] = DateTime.UtcNow.AddSeconds(GetInt(validation, "expires_in", 0)).ToString("o");
             server.WriteSettingsObject(settings);
             Start();
+            server.Log("twitch", "info", "Twitch verbunden als " + login + ".");
             return Status();
         }
 
         public void Disconnect()
         {
             Stop();
+            server.Log("twitch", "info", "Twitch-Verbindung getrennt.");
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> twitch = EnsureObject(settings, "twitch");
             twitch.Remove("accessToken");
@@ -1074,12 +1114,17 @@ namespace CardPackWidgetApp
                 }
                 catch (Exception ex)
                 {
+                    string message = ex.GetBaseException().Message;
                     lock (stateLock)
                     {
                         eventSubConnected = false;
-                        lastError = ex.GetBaseException().Message;
+                        lastError = message;
                     }
-                    if (!token.IsCancellationRequested) Thread.Sleep(5000);
+                    if (!token.IsCancellationRequested)
+                    {
+                        server.Log("twitch", "error", "EventSub-Verbindung verloren: " + message);
+                        Thread.Sleep(5000);
+                    }
                 }
             }
         }
@@ -1115,6 +1160,7 @@ namespace CardPackWidgetApp
                 string sessionId = GetString(Obj(payload, "session"), "id", "");
                 CreateEventSubSubscription(sessionId);
                 lock (stateLock) eventSubConnected = true;
+                server.Log("twitch", "info", "EventSub verbunden.");
                 return;
             }
 
@@ -1135,7 +1181,12 @@ namespace CardPackWidgetApp
             // packs at once. Resolving it here and broadcasting the concrete boosterId keeps
             // every listener in sync with a single random draw, weighted by booster score.
             string boosterId = PickRandomBoosterId();
-            if (String.IsNullOrWhiteSpace(boosterId)) return;
+            if (String.IsNullOrWhiteSpace(boosterId))
+            {
+                server.Log("draw", "error", user + " hat \"" + rewardTitle + "\" eingeloest, aber kein Booster war verfuegbar.");
+                return;
+            }
+            server.Log("draw", "info", user + " hat \"" + rewardTitle + "\" eingeloest.");
 
             var drawEvent = new Dictionary<string, object>
             {
@@ -1455,6 +1506,85 @@ namespace CardPackWidgetApp
                     "Token ist gueltig, aber fuer Channelpoints fehlen Scopes: " +
                     String.Join(", ", missing.ToArray()) +
                     ". Bitte einen Token mit diesen Rechten generieren.");
+            }
+        }
+    }
+
+    public sealed class EventLog
+    {
+        private const int MaxEntries = 1000;
+        private readonly string path;
+        private readonly JavaScriptSerializer json;
+        private readonly object entriesLock = new object();
+        private List<Dictionary<string, object>> entries = new List<Dictionary<string, object>>();
+
+        public EventLog(string path, JavaScriptSerializer json)
+        {
+            this.path = path;
+            this.json = json;
+            Load();
+        }
+
+        private void Load()
+        {
+            try
+            {
+                if (!File.Exists(path)) return;
+                object parsed = json.DeserializeObject(File.ReadAllText(path, Encoding.UTF8));
+                if (parsed is object[])
+                {
+                    var loaded = new List<Dictionary<string, object>>();
+                    foreach (object item in (object[])parsed)
+                    {
+                        if (item is Dictionary<string, object>) loaded.Add((Dictionary<string, object>)item);
+                    }
+                    lock (entriesLock) entries = loaded;
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        public void Add(string category, string level, string message)
+        {
+            var entry = new Dictionary<string, object>
+            {
+                { "timestamp", DateTime.UtcNow.ToString("o") },
+                { "category", category },
+                { "level", level },
+                { "message", message }
+            };
+            lock (entriesLock)
+            {
+                entries.Add(entry);
+                while (entries.Count > MaxEntries) entries.RemoveAt(0);
+                Persist();
+            }
+        }
+
+        public object[] GetAll()
+        {
+            lock (entriesLock) return entries.ToArray();
+        }
+
+        public void Clear()
+        {
+            lock (entriesLock)
+            {
+                entries.Clear();
+                Persist();
+            }
+        }
+
+        private void Persist()
+        {
+            try
+            {
+                File.WriteAllText(path, json.Serialize(entries), Encoding.UTF8);
+            }
+            catch
+            {
             }
         }
     }
