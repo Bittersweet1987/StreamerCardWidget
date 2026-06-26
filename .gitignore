@@ -1,0 +1,10 @@
+data/settings.json
+data/collections.json
+logs/
+node_modules/
+
+# Local test sandbox and build output - both contain live data/tokens and are
+# regenerated from src/+public/, not meant to be version controlled.
+CardPackWidget-TestApp/
+dist/
+CardPackWidget-Windows.zip

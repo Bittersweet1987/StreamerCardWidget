@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Twitch verbunden</title>
+    <style>
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+        color: #241f33;
+        background: #f5f3f8;
+        font-family: Inter, Segoe UI, Arial, sans-serif;
+      }
+      main {
+        width: min(520px, calc(100vw - 36px));
+        padding: 26px;
+        border: 1px solid #e4deec;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 18px 42px rgba(55, 43, 84, .08);
+      }
+      h1 { margin: 0 0 8px; }
+      p { margin: 0; color: #5f596e; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 id="title">Twitch-Anmeldung läuft...</h1>
+      <p id="message">Die App speichert gleich den OAuth-Zugriff lokal.</p>
+    </main>
+    <script>
+      const params = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
+      const token = params.get("access_token");
+      const expiresIn = Number(params.get("expires_in") || 0);
+      const tokenType = params.get("token_type") || "bearer";
+      const title = document.querySelector("#title");
+      const message = document.querySelector("#message");
+
+      async function run() {
+        if (!token) throw new Error("Twitch hat kein OAuth Access Token zurückgegeben.");
+        const response = await fetch("/api/twitch/token", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ accessToken: token, expiresIn, tokenType })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Token konnte nicht gespeichert werden.");
+        title.textContent = "Twitch-Anmeldung abgeschlossen";
+        message.textContent = "Der OAuth-Zugriff wurde lokal gespeichert. Du kannst dieses Fenster schließen.";
+        try {
+          window.opener?.postMessage({ type: "cardpack:twitch-connected" }, location.origin);
+        } catch {
+        }
+        setTimeout(() => window.close(), 1200);
+      }
+
+      run().catch((error) => {
+        title.textContent = "Verbindung fehlgeschlagen";
+        message.textContent = error.message;
+      });
+    </script>
+  </body>
+</html>
