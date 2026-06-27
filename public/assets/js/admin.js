@@ -73,7 +73,7 @@ const I18N = {
   "update-status-available": { de: "Update verfügbar:", en: "Update available:" },
   "update-status-error": { de: "Update-Prüfung fehlgeschlagen:", en: "Update check failed:" },
   "btn-check-update": { de: "Nach Updates suchen", en: "Check for updates" },
-  "btn-open-release": { de: "Release öffnen", en: "Open release" },
+  "btn-goto-update": { de: "Zum Update", en: "Go to update" },
   "btn-install-update": { de: "Installieren", en: "Install" },
   "confirm-install-update": {
     de: "Update jetzt installieren? Die App startet dabei neu. Deine Einstellungen, Sammlungen und die Twitch/OBS-Verbindung bleiben erhalten.",
@@ -393,21 +393,15 @@ async function checkForUpdate({ silent = false } = {}) {
   try {
     const release = await getLatestRelease(appVersionInfo.repo);
     const latestVersion = String(release.tag_name || "").replace(/^v/i, "");
-    const link = $("#update-download-link");
     const installButton = $("#install-update");
     const asset = (release.assets || []).find((item) => (item.name || "").toLowerCase().endsWith(".zip"));
     pendingUpdateAssetUrl = asset?.browser_download_url || null;
     if (compareVersions(latestVersion, appVersionInfo.version) > 0) {
       setStatus("#update-status", `${t("update-status-available")} v${latestVersion}`, "warn");
-      if (link) {
-        link.href = release.html_url || "#";
-        link.hidden = false;
-      }
       if (installButton) installButton.hidden = !pendingUpdateAssetUrl;
-      showUpdateBanner(latestVersion, release.html_url);
+      showUpdateBanner(latestVersion);
     } else {
       setStatus("#update-status", t("update-status-current"), "ok");
-      if (link) link.hidden = true;
       if (installButton) installButton.hidden = true;
       hideUpdateBanner();
     }
@@ -430,10 +424,10 @@ async function installPendingUpdate() {
   }
 }
 
-function showUpdateBanner(latestVersion, url) {
+function showUpdateBanner(latestVersion) {
   const banner = $("#update-banner");
   if (!banner) return;
-  banner.innerHTML = `${t("banner-update-available")} v${latestVersion}${url ? ` — <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${t("btn-open-release")}</a>` : ""}`;
+  banner.innerHTML = `${t("banner-update-available")} v${latestVersion} — <a href="#" data-action="goto-update">${t("btn-goto-update")}</a>`;
   banner.hidden = false;
 }
 
@@ -445,6 +439,15 @@ function hideUpdateBanner() {
 function bindUpdateTab() {
   $("#check-update").addEventListener("click", () => checkForUpdate());
   $("#install-update").addEventListener("click", installPendingUpdate);
+  const banner = $("#update-banner");
+  if (banner) {
+    banner.addEventListener("click", (event) => {
+      const link = event.target.closest("[data-action='goto-update']");
+      if (!link) return;
+      event.preventDefault();
+      $(".nav-button[data-tab='update']")?.click();
+    });
+  }
 }
 
 let logEntries = [];
