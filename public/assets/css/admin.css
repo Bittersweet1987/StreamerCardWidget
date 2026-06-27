@@ -13,6 +13,14 @@ body {
     radial-gradient(circle at 78% 12%, rgba(255, 120, 187, .18), transparent 30%),
     radial-gradient(circle at 14% 86%, rgba(99, 223, 194, .2), transparent 28%),
     #f5f3f8;
+  /* The configured font is for widget content only (cards, boosters, redeemer name).
+     The app UI itself stays on a fixed, predictable font. */
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+/* Cards and boosters shown inside the admin UI still reflect the chosen widget font. */
+.tcg-card,
+.booster-pack {
   font-family: var(--font);
 }
 
@@ -822,6 +830,34 @@ input[type="range"] {
 
 .settings-preview .tcg-card {
   width: 150px;
+}
+
+.preview-card-picker {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+  font-weight: 700;
+  color: #6f6885;
+}
+
+.info-box {
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border: 1px solid #d9c8ef;
+  border-left: 4px solid #9147ff;
+  border-radius: 8px;
+  background: rgba(145, 71, 255, .07);
+  color: #463a5e;
+  font-size: .92rem;
+  line-height: 1.45;
+}
+
+body[data-theme="dark"] .info-box {
+  border-color: #4d415f;
+  border-left-color: #9147ff;
+  background: rgba(145, 71, 255, .14);
+  color: #e8e2f5;
 }
 
 #font-preview {

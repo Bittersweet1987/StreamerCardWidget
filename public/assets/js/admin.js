@@ -39,6 +39,7 @@ import {
 let settings;
 let selectedCardId;
 let selectedBoosterId;
+let previewCardId;
 let availableRewards = [];
 let availableFonts = [];
 let autoSaveTimer;
@@ -123,7 +124,6 @@ const I18N = {
   "aria-select-card": { de: "Karte auswählen", en: "Select card" },
   "label-card-title": { de: "Titel", en: "Title" },
   "label-card-rarity": { de: "Rarität", en: "Rarity" },
-  "label-card-stars": { de: "Sterne", en: "Stars" },
   "label-card-accent": { de: "Akzent", en: "Accent" },
   "label-card-enabled": { de: "Aktiv", en: "Active" },
   "label-card-image": { de: "Bild", en: "Image" },
@@ -228,6 +228,12 @@ const I18N = {
   },
   "label-obs-check": { de: "OBS WebSocket Verbindung prüfen", en: "Check OBS WebSocket connection" },
   "label-obs-password": { de: "Passwort", en: "Password" },
+  "btn-obs-info": { de: "Hilfe anzeigen", en: "Show help" },
+  "btn-obs-info-hide": { de: "Hilfe ausblenden", en: "Hide help" },
+  "obs-info-text": {
+    de: "Öffne in OBS das Menü „Werkzeuge“ → „WebSocket-Servereinstellungen“. Aktiviere dort „WebSocket-Server aktivieren“. Den Port (Standard 4455) und das Passwort findest du über „Verbindungsinformationen anzeigen“. Trage Host (meist 127.0.0.1), Port und Passwort dann hier ein.",
+    en: "In OBS open the “Tools” menu → “WebSocket Server Settings”. Enable “Enable WebSocket server”. You'll find the port (default 4455) and password via “Show Connect Info”. Then enter host (usually 127.0.0.1), port and password here."
+  },
   "label-obs-scene": { de: "Szenenname", en: "Scene name" },
   "label-obs-source": { de: "Quellenname", en: "Source name" },
   "btn-test-obs": { de: "OBS testen", en: "Test OBS" },
@@ -255,8 +261,10 @@ const I18N = {
   "label-show-collection": { de: "Sammlungsleiste anzeigen", en: "Show collection bar" },
   "label-card-borders": { de: "Kartenrahmen anzeigen", en: "Show card borders" },
   "label-name-position": { de: "Position Einlöser-Name", en: "Redeemer name position" },
-  "option-name-bottom": { de: "Unterhalb", en: "Below" },
-  "option-name-top": { de: "Oberhalb", en: "Above" },
+  "option-name-bottom": { de: "Unten", en: "Bottom" },
+  "option-name-middle": { de: "Mitte", en: "Middle" },
+  "option-name-top": { de: "Oben", en: "Top" },
+  "label-preview-card": { de: "Vorschaukarte", en: "Preview card" },
   "label-reveal-seconds": { de: "Karte sichtbar in Sekunden", en: "Card visible (seconds)" },
   "label-cooldown-seconds": { de: "Cooldown in Sekunden", en: "Cooldown (seconds)" },
   "label-backs-before-reveal": { de: "Verdeckte Karten vor Reveal", en: "Face-down cards before reveal" },
@@ -929,7 +937,6 @@ function renderCards() {
             `).join("")}</select></label>
           </div>
           <div class="inline-fields">
-            <label>${t("label-card-stars")}<input data-field="stars" type="number" min="1" max="5" step="1" value="${card.stars || 1}"></label>
             <label>${t("label-card-accent")}<input data-field="accent" type="color" value="${escapeHtml(card.accent || "#ff78bb")}"></label>
           </div>
           <div class="card-actions">
@@ -957,7 +964,6 @@ function updateCard(cardId, field, value, inputType) {
   const card = settings.deck.cards.find((item) => item.id === cardId);
   if (!card) return;
   if (inputType === "checkbox") card[field] = Boolean(value);
-  else if (["stars"].includes(field)) card[field] = Number(value);
   else card[field] = value;
   const editor = $(`.card-editor[data-card-id="${cardId}"]`);
   if (editor) editor.querySelector(".select-card").innerHTML = cardMarkup(card, { compact: true });
@@ -1437,7 +1443,7 @@ function hydrateDesign() {
   updateSoundRow("reveal");
   $("#show-collection").checked = settings.style.showCollection !== false;
   $("#card-borders").checked = settings.style.cardBorders !== false;
-  $("#name-position").value = settings.style.namePosition === "top" ? "top" : "bottom";
+  $("#name-position").value = ["bottom", "middle", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
   for (const rarity of RARITIES) {
     const input = $(`#rarity-color-${rarity.id}`);
     if (input) input.value = settings.rarityColors?.[rarity.id] || DEFAULT_RARITY_COLORS[rarity.id];
@@ -1480,9 +1486,26 @@ function renderFontSelect() {
   }
 }
 
+function previewCard() {
+  const cards = settings.deck?.cards || [];
+  return cards.find((card) => card.id === previewCardId) || selectedCard() || cards[0];
+}
+
+function renderPreviewCardSelect() {
+  const select = $("#preview-card-select");
+  if (!select) return;
+  const cards = settings.deck?.cards || [];
+  const current = previewCard();
+  previewCardId = current?.id;
+  select.innerHTML = cards
+    .map((card) => `<option value="${escapeHtml(card.id)}" ${card.id === previewCardId ? "selected" : ""}>${escapeHtml(card.title || card.id)}</option>`)
+    .join("");
+}
+
 function refreshSettingsPreview() {
-  const card = selectedCard();
-  if ($("#settings-preview-card")) $("#settings-preview-card").innerHTML = card ? cardMarkup(card, { compact: true }) : "";
+  renderPreviewCardSelect();
+  const card = previewCard();
+  if ($("#settings-preview-card")) $("#settings-preview-card").innerHTML = card ? cardMarkup(card) : "";
   if ($("#font-preview")) {
     $("#font-preview").style.fontFamily = settings.style?.fontFamily || "inherit";
     $("#font-preview").textContent = settings.language === "en" ? "Pack Preview 123" : "Pack Vorschau 123 ÄÖÜ";
@@ -1509,6 +1532,10 @@ function bindDesign() {
   }
   $("#theme-mode").addEventListener("input", (event) => {
     settings.style.themeMode = event.target.value;
+    refreshSettingsPreview();
+  });
+  $("#preview-card-select").addEventListener("change", (event) => {
+    previewCardId = event.target.value;
     refreshSettingsPreview();
   });
   $$("[data-rarity-color]").forEach((input) => {
@@ -1578,6 +1605,13 @@ function bindDesign() {
   }
   $("#test-obs").addEventListener("click", testObsConnection);
   $("#setup-obs").addEventListener("click", setupObsOverlay);
+  $("#obs-info-toggle").addEventListener("click", () => {
+    const box = $("#obs-info");
+    const toggle = $("#obs-info-toggle");
+    const show = box.hidden;
+    box.hidden = !show;
+    toggle.textContent = show ? t("btn-obs-info-hide") : t("btn-obs-info");
+  });
   $("#sound-open").addEventListener("change", async (event) => {
     if (!event.target.files?.[0]) return;
     settings.sounds ||= {};

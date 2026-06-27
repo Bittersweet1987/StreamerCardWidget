@@ -108,7 +108,7 @@ export function normalizeSettings(settings) {
   settings.twitch.clientId ||= "klgyxuiixy0mfo7ze7goubj5j16g7u";
   settings.style ||= {};
   settings.style.themeMode ||= "light";
-  settings.style.namePosition = settings.style.namePosition === "top" ? "top" : "bottom";
+  settings.style.namePosition = ["bottom", "middle", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
   settings.sounds ||= {};
   settings.sounds.open ||= "";
   settings.sounds.reveal ||= "";
@@ -195,9 +195,26 @@ export function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-export function cardStars(stars = 1, rarity = "") {
-  const count = clamp(stars, 1, 5);
-  const holoAttr = String(rarity).toLowerCase() === "holo" ? ' data-holo="true"' : "";
+// Star count is fixed per rarity (not per card). Holo is special: always exactly one
+// (iridescent) star, never 2-5.
+export const RARITY_STARS = {
+  common: 1,
+  uncommon: 2,
+  rare: 3,
+  epic: 4,
+  legendary: 5,
+  holo: 1
+};
+
+export function rarityStars(rarity) {
+  const id = String(rarity || "common").toLowerCase();
+  return RARITY_STARS[id] || 1;
+}
+
+export function cardStars(rarity = "common") {
+  const id = String(rarity).toLowerCase();
+  const count = rarityStars(id);
+  const holoAttr = id === "holo" ? ' data-holo="true"' : "";
   return Array.from({ length: count }, () => `<span${holoAttr}></span>`).join("");
 }
 
@@ -222,16 +239,17 @@ export function cardMarkup(card, options = {}) {
   }
 
   const holoOverlay = rarityAttr === "holo" ? `<div class="holo-glitter"></div>` : "";
+  const starCount = rarityStars(rarityAttr);
 
   return `
     <article class="tcg-card${compact}" data-rarity="${escapeHtml(rarityAttr)}" style="--card-accent:${accent};--rarity-border:${escapeHtml(borderColor)}">
-      <div class="corner top">${escapeHtml(card?.stars || 1)}</div>
+      <div class="corner top">${escapeHtml(starCount)}</div>
       <div class="card-art">${image}</div>
       <footer class="card-footer">
         <span class="card-title" style="--title-len:${title.length}">${escapeHtml(title)}</span>
-        <span class="stars" aria-label="${escapeHtml(rarity)}">${cardStars(card?.stars || 1, rarityAttr)}</span>
+        <span class="stars" aria-label="${escapeHtml(rarity)}">${cardStars(rarityAttr)}</span>
       </footer>
-      <div class="corner bottom">${escapeHtml(card?.stars || 1)}</div>
+      <div class="corner bottom">${escapeHtml(starCount)}</div>
       ${holoOverlay}
     </article>
   `;

@@ -1,0 +1,361 @@
+@import url("/assets/css/components.css");
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--font);
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.status {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(36, 31, 51, .78);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.opening-scene {
+  position: absolute;
+  top: var(--screen-y);
+  left: var(--screen-x);
+  width: 820px;
+  height: 820px;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(calc(var(--widget-scale) * .92));
+  transform-origin: center;
+  transition: opacity .32s ease, transform .36s cubic-bezier(.2, .8, .22, 1);
+}
+
+.opening-scene.phase-enter {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(var(--widget-scale));
+}
+
+.opening-rig {
+  position: absolute;
+  top: 124px;
+  left: 50%;
+  width: 340px;
+  height: 500px;
+  transform: translateX(-50%) translateY(28px) rotate(-2deg);
+  transform-origin: center bottom;
+  animation: rig-in .52s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+.opening-rig.is-anticipating {
+  animation: pack-anticipate .24s ease;
+}
+
+@keyframes pack-anticipate {
+  0%, 100% { transform: translateX(-50%) translateY(28px) rotate(-2deg); }
+  35% { transform: translateX(-50%) translateY(20px) rotate(-6deg); }
+  70% { transform: translateX(-50%) translateY(24px) rotate(3deg); }
+}
+
+.pack-shadow {
+  position: absolute;
+  inset: 84px 12px 34px;
+  z-index: 1;
+  border-radius: 34px;
+  background: rgba(47, 28, 88, .18);
+  filter: blur(28px);
+  transform: translateY(24px);
+  transition: transform 2.35s ease, opacity .5s ease;
+}
+
+.card-wrap,
+.pack-top,
+.pack-bottom {
+  position: absolute;
+  left: 50%;
+}
+
+.card-wrap {
+  top: 96px;
+  z-index: 5;
+  opacity: 1;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 30px 48px rgba(45, 27, 91, .26));
+}
+
+.card-wrap .tcg-card {
+  width: 238px;
+}
+
+.pack-top,
+.pack-bottom {
+  width: 324px;
+  overflow: hidden;
+  transform: translateX(-50%);
+}
+
+.opening-pack-face {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 324px;
+  height: 426px;
+  overflow: hidden;
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--pack-accent) 22%, white), var(--pack-accent)),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.22) 0 24px, rgba(255,255,255,.08) 24px 48px);
+  box-shadow: inset 0 0 0 8px rgba(255,255,255,.86);
+}
+
+.opening-pack-face::before,
+.opening-pack-face::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  height: 18px;
+  background:
+    linear-gradient(135deg, #fff 25%, transparent 25%) 0 0 / 18px 18px,
+    linear-gradient(225deg, #fff 25%, transparent 25%) 0 0 / 18px 18px;
+}
+
+.opening-pack-face::before {
+  top: 0;
+}
+
+.opening-pack-face::after {
+  bottom: 0;
+  transform: rotate(180deg);
+}
+
+.opening-pack-face .pack-body {
+  position: absolute;
+  inset: 0;
+}
+
+.opening-pack-face .pack-body img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.opening-pack-face .fallback-booster {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: #fff;
+  font-size: 54px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.opening-pack-face .pack-label {
+  position: absolute;
+  right: 24px;
+  bottom: 96px;
+  left: 24px;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  color: #fff;
+  text-shadow: 0 4px 14px rgba(42, 25, 82, .26);
+}
+
+.opening-pack-face .pack-label strong {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.opening-pack-face .pack-label span {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.pack-top {
+  top: 42px;
+  z-index: 12;
+  height: 118px;
+  transition: opacity .2s ease .72s, transform .98s cubic-bezier(.18, .78, .18, 1);
+}
+
+.pack-bottom {
+  top: 132px;
+  z-index: 11;
+  height: 336px;
+  transition: opacity .42s ease 1.88s, transform 2.35s cubic-bezier(.18, .86, .2, 1);
+}
+
+.pack-bottom .opening-pack-face {
+  top: -90px;
+}
+
+.phase-tear .pack-top {
+  opacity: 0;
+  transform: translateX(-106%) translateY(-176px) rotate(-31deg);
+}
+
+.phase-slide .pack-bottom {
+  opacity: 0;
+  transform: translateX(-50%) translateY(386px) rotate(4deg);
+}
+
+.phase-slide .pack-shadow {
+  opacity: 0;
+  transform: translateY(330px) scale(.82);
+}
+
+.collection-row {
+  position: absolute;
+  right: 0;
+  bottom: 82px;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(24px);
+}
+
+.phase-reveal .collection-row {
+  visibility: visible;
+  animation: row-in .5s ease .12s forwards;
+}
+
+.collection-label {
+  align-self: center;
+  max-width: 150px;
+  overflow: hidden;
+  padding: 8px 13px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 10px 24px rgba(60, 34, 100, .22);
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collection-slot {
+  position: relative;
+  width: 58px;
+}
+
+.collection-slot .tcg-card {
+  width: 58px;
+  border-width: 3px;
+  border-radius: 8px;
+}
+
+.count-bubble {
+  position: absolute;
+  right: -8px;
+  top: -9px;
+  z-index: 4;
+  min-width: 26px;
+  height: 22px;
+  padding: 2px 6px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 8px 16px rgba(36, 31, 51, .24);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 16px;
+  text-align: center;
+}
+
+.draw-copy {
+  position: absolute;
+  right: 0;
+  bottom: 28px;
+  left: 0;
+  z-index: 32;
+  display: flex;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .32s ease .18s, transform .32s ease .18s;
+}
+
+.draw-copy span {
+  display: block;
+  max-width: 420px;
+  overflow: hidden;
+  padding: 9px 18px;
+  border: 3px solid rgba(255, 255, 255, .8);
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #6a55ff);
+  box-shadow: 0 14px 30px rgba(53, 34, 107, .22);
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 5px rgba(85, 36, 101, .2);
+  white-space: nowrap;
+}
+
+.phase-enter .draw-copy {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.opening-scene.name-top .draw-copy {
+  top: 18px;
+  bottom: auto;
+  transform: translateY(-10px);
+}
+
+.opening-scene.name-top.phase-enter .draw-copy {
+  transform: translateY(0);
+}
+
+.phase-exit {
+  animation: scene-out .66s ease forwards;
+}
+
+@keyframes rig-in {
+  to { transform: translateX(-50%) translateY(0) rotate(0deg); }
+}
+
+@keyframes row-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scene-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -54%) scale(calc(var(--widget-scale) * .94));
+  }
+}
+
+@media (max-width: 900px) {
+  .opening-scene {
+    width: 560px;
+    height: 740px;
+  }
+
+  .opening-rig {
+    scale: .84;
+  }
+
+  .collection-slot,
+  .collection-slot .tcg-card {
+    width: 42px;
+  }
+}

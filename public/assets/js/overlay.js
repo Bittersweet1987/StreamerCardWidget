@@ -180,7 +180,8 @@ async function runOpening(request = {}) {
   addLog("draw", "info", `${user} hat "${card.title || card.id}" aus "${booster.title || booster.id}" gezogen.`);
 
   const scene = document.createElement("section");
-  scene.className = `opening-scene name-${settings.style?.namePosition === "top" ? "top" : "bottom"}`;
+  const namePos = ["bottom", "middle", "top"].includes(settings.style?.namePosition) ? settings.style.namePosition : "bottom";
+  scene.className = `opening-scene name-${namePos}`;
   scene.innerHTML = `
     <div class="draw-copy"><span>${escapeForOverlay(user)}</span></div>
     <div class="opening-rig" style="--pack-accent:${booster.accent || "#ff78bb"}">

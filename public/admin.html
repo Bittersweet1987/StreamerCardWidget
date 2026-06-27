@@ -207,6 +207,10 @@
                 <p class="eyebrow">OBS</p>
                 <h2>WebSocket</h2>
               </div>
+              <button class="ghost-button" id="obs-info-toggle" type="button" data-i18n="btn-obs-info">Hilfe anzeigen</button>
+            </div>
+            <div class="info-box" id="obs-info" hidden>
+              <p data-i18n="obs-info-text">Öffne in OBS das Menü „Werkzeuge“ → „WebSocket-Servereinstellungen“. Aktiviere dort „WebSocket-Server aktivieren“. Den Port (Standard 4455) und das Passwort findest du über „Verbindungsinformationen anzeigen“. Trage Host (meist 127.0.0.1), Port und Passwort dann hier ein.</p>
             </div>
             <div class="status-line" id="obs-status" data-i18n="status-not-tested">Nicht getestet</div>
             <label class="switch-row">
@@ -266,10 +270,10 @@
             <div class="form-grid">
               <label data-i18n="label-font">Schrift<select id="font-family"></select></label>
               <label data-i18n="label-accent">Akzent<input id="style-accent" type="color"></label>
-              <label data-i18n="label-volume">Lautstärke<input id="volume" type="range" min="0" max="100"></label>
             </div>
             <div class="settings-preview">
               <p class="eyebrow" data-i18n="label-preview-eyebrow">Vorschau</p>
+              <label class="preview-card-picker" data-i18n="label-preview-card">Vorschaukarte<select id="preview-card-select"></select></label>
               <div id="settings-preview-card"></div>
               <p id="font-preview">Pack Preview 123 ÄÖÜ</p>
             </div>
@@ -283,8 +287,9 @@
             </label>
             <div class="form-grid">
               <label data-i18n="label-name-position">Position Einlöser-Name<select id="name-position">
-                <option value="bottom" data-i18n="option-name-bottom">Unterhalb</option>
-                <option value="top" data-i18n="option-name-top">Oberhalb</option>
+                <option value="bottom" data-i18n="option-name-bottom">Unten</option>
+                <option value="middle" data-i18n="option-name-middle">Mitte</option>
+                <option value="top" data-i18n="option-name-top">Oben</option>
               </select></label>
             </div>
           </section>
@@ -332,6 +337,9 @@
                 <p class="eyebrow">Audio</p>
                 <h2>Sounds</h2>
               </div>
+            </div>
+            <div class="form-grid">
+              <label data-i18n="label-volume">Lautstärke<input id="volume" type="range" min="0" max="100"></label>
             </div>
             <div class="sound-row" data-sound="open">
               <div class="sound-row-info">

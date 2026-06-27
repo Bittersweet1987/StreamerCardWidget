@@ -315,8 +315,20 @@ body {
   transform: translateY(0);
 }
 
+/* Middle: in the free space between the card animation and the collection row. */
+.opening-scene.name-middle .draw-copy {
+  top: auto;
+  bottom: 138px;
+  transform: translateY(10px);
+}
+
+.opening-scene.name-middle.phase-enter .draw-copy {
+  transform: translateY(0);
+}
+
+/* Top: above the card animation. */
 .opening-scene.name-top .draw-copy {
-  top: 18px;
+  top: 14px;
   bottom: auto;
   transform: translateY(-10px);
 }
