@@ -703,9 +703,25 @@ input[type="range"] {
 }
 
 .user-card-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.user-card-booster-group {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 8px;
+}
+
+.user-card-booster-title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: #8a7fa6;
 }
 
 .user-card-row {

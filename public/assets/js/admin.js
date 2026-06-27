@@ -135,6 +135,7 @@ const I18N = {
   "rarity-rare": { de: "Selten", en: "Rare" },
   "rarity-epic": { de: "Episch", en: "Epic" },
   "rarity-legendary": { de: "Legendär", en: "Legendary" },
+  "rarity-holo": { de: "Holo", en: "Holo" },
   "rarity-colors-eyebrow": { de: "Karten", en: "Cards" },
   "rarity-colors-title": { de: "Rahmenfarben je Rarität", en: "Border colors per rarity" },
   "btn-reset-rarity-colors": { de: "Auf Standard zurücksetzen", en: "Reset to defaults" },
@@ -1126,6 +1127,10 @@ function cardTitle(cardId) {
   return settings.deck?.cards?.find((card) => card.id === cardId)?.title || cardId;
 }
 
+function boosterTitle(boosterId) {
+  return settings.boosters?.find((booster) => booster.id === boosterId)?.title || boosterId;
+}
+
 function buildUserIndex() {
   const index = new Map();
   for (const [boosterId, collection] of Object.entries(collections || {})) {
@@ -1163,15 +1168,30 @@ function renderUsers() {
   }
   list.innerHTML = users.map((user) => {
     const total = user.entries.reduce((sum, entry) => sum + entry.count, 0);
-    const rows = user.entries.length
-      ? user.entries.map((entry) => `
-          <div class="user-card-row" data-booster="${escapeHtml(entry.boosterId)}" data-card="${escapeHtml(entry.cardId)}">
-            <span>${escapeHtml(cardTitle(entry.cardId))}</span>
-            <input type="number" min="0" step="1" value="${entry.count}"
-              data-action="edit-count" data-user="${escapeHtml(user.key)}"
-              data-booster="${escapeHtml(entry.boosterId)}" data-card="${escapeHtml(entry.cardId)}">
-          </div>
-        `).join("")
+    const groups = new Map();
+    for (const entry of user.entries) {
+      if (!groups.has(entry.boosterId)) groups.set(entry.boosterId, []);
+      groups.get(entry.boosterId).push(entry);
+    }
+    const sortedGroups = [...groups.entries()].sort((a, b) => boosterTitle(a[0]).localeCompare(boosterTitle(b[0])));
+    const rows = sortedGroups.length
+      ? sortedGroups.map(([boosterId, entries]) => {
+          const sortedEntries = [...entries].sort((a, b) => cardTitle(a.cardId).localeCompare(cardTitle(b.cardId)));
+          const entryRows = sortedEntries.map((entry) => `
+            <div class="user-card-row" data-booster="${escapeHtml(entry.boosterId)}" data-card="${escapeHtml(entry.cardId)}">
+              <span>${escapeHtml(cardTitle(entry.cardId))}</span>
+              <input type="number" min="0" step="1" value="${entry.count}"
+                data-action="edit-count" data-user="${escapeHtml(user.key)}"
+                data-booster="${escapeHtml(entry.boosterId)}" data-card="${escapeHtml(entry.cardId)}">
+            </div>
+          `).join("");
+          return `
+            <div class="user-card-booster-group">
+              <p class="user-card-booster-title">${escapeHtml(boosterTitle(boosterId))}</p>
+              ${entryRows}
+            </div>
+          `;
+        }).join("")
       : `<p class="hint">${t("hint-no-cards-drawn")}</p>`;
     return `
       <div class="user-card" data-user="${escapeHtml(user.key)}">

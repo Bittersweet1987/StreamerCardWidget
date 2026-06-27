@@ -32,7 +32,8 @@ export const RARITIES = [
   { id: "uncommon", label: "Ungewöhnlich", weight: 60 },
   { id: "rare", label: "Selten", weight: 30 },
   { id: "epic", label: "Episch", weight: 12 },
-  { id: "legendary", label: "Legendär", weight: 4 }
+  { id: "legendary", label: "Legendär", weight: 4 },
+  { id: "holo", label: "Holo", weight: 1 }
 ];
 
 export const DEFAULT_RARITY_COLORS = {
@@ -40,7 +41,8 @@ export const DEFAULT_RARITY_COLORS = {
   uncommon: "#2dd4c4",
   rare: "#3b82f6",
   epic: "#3b1f63",
-  legendary: "#d4af37"
+  legendary: "#d4af37",
+  holo: "#c9aef9"
 };
 
 let activeRarityColors = { ...DEFAULT_RARITY_COLORS };
@@ -174,9 +176,10 @@ export function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-export function cardStars(stars = 1) {
+export function cardStars(stars = 1, rarity = "") {
   const count = clamp(stars, 1, 5);
-  return Array.from({ length: count }, () => "<span></span>").join("");
+  const holoAttr = String(rarity).toLowerCase() === "holo" ? ' data-holo="true"' : "";
+  return Array.from({ length: count }, () => `<span${holoAttr}></span>`).join("");
 }
 
 export function cardMarkup(card, options = {}) {
@@ -199,15 +202,18 @@ export function cardMarkup(card, options = {}) {
     `;
   }
 
+  const holoOverlay = rarityAttr === "holo" ? `<div class="holo-glitter"></div>` : "";
+
   return `
     <article class="tcg-card${compact}" data-rarity="${escapeHtml(rarityAttr)}" style="--card-accent:${accent};--rarity-border:${escapeHtml(borderColor)}">
       <div class="corner top">${escapeHtml(card?.stars || 1)}</div>
       <div class="card-art">${image}</div>
       <footer class="card-footer">
         <span class="card-title" style="--title-len:${title.length}">${escapeHtml(title)}</span>
-        <span class="stars" aria-label="${escapeHtml(rarity)}">${cardStars(card?.stars || 1)}</span>
+        <span class="stars" aria-label="${escapeHtml(rarity)}">${cardStars(card?.stars || 1, rarityAttr)}</span>
       </footer>
       <div class="corner bottom">${escapeHtml(card?.stars || 1)}</div>
+      ${holoOverlay}
     </article>
   `;
 }
