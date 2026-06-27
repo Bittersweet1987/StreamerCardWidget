@@ -11,6 +11,7 @@ node_modules/
 CardPackWidget-TestApp/
 dist/
 CardPackWidget-Windows.zip
+CardPackWidget-Windows/
 UpdateTest-v1.0.0/
 UpdateTest-*/
 InstallTest-*/
