@@ -109,6 +109,17 @@ export async function syncTwitchReward(payload) {
   return data;
 }
 
+export async function syncShowcaseReward(payload) {
+  const response = await fetch("/api/twitch/showcase-reward", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Showcase-Belohnung konnte nicht gespeichert werden.");
+  return data;
+}
+
 export async function deleteTwitchReward(payload) {
   const response = await fetch("/api/twitch/reward", {
     method: "DELETE",

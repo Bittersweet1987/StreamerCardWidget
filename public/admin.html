@@ -378,6 +378,36 @@
               <label data-i18n="label-backs-before-reveal">Verdeckte Karten vor Reveal<input id="backs-before-reveal" type="number" min="0" max="8" step="1"></label>
             </div>
           </section>
+
+          <section class="tool-panel showcase-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="showcase-eyebrow">Sammlung</p>
+                <h2 data-i18n="showcase-title">Sammlungs-Showcase</h2>
+              </div>
+              <button class="ghost-button" id="showcase-info-toggle" type="button" data-i18n="btn-showcase-info">Hilfe anzeigen</button>
+            </div>
+            <div class="info-box" id="showcase-info" hidden>
+              <p data-i18n="showcase-info-text">Löst ein Zuschauer die Belohnung „Sammlung zeigen“ über Kanalpunkte ein, sliden im OBS-Overlay nacheinander alle aktiven Booster mit den Karten dieses Zuschauers durch (gezogen = sichtbar, noch nicht gezogen = unbekannt). Richte dafür einmal die separate OBS-Quelle ein. Den globalen Cooldown legst du direkt an der Belohnung fest.</p>
+            </div>
+            <label class="switch-row">
+              <input id="showcase-enabled" type="checkbox">
+              <span data-i18n="label-showcase-enabled">Sammlungs-Showcase aktivieren</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-showcase-reward-title">Reward-Titel<input id="showcase-reward-title" type="text"></label>
+              <label data-i18n="label-showcase-reward-cost">Kosten<input id="showcase-reward-cost" type="number" min="1" step="1"></label>
+              <label data-i18n="label-showcase-cooldown">Globaler Cooldown (Sek.)<input id="showcase-cooldown" type="number" min="0" step="1"></label>
+              <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="showcase-bg-color" type="color"></label>
+              <label data-i18n="label-showcase-seconds">Sekunden pro Booster<input id="showcase-seconds" type="number" min="2" step="1"></label>
+              <label data-i18n="label-showcase-source">OBS-Quellenname<input id="showcase-source-name" type="text"></label>
+            </div>
+            <div class="button-row">
+              <button class="primary-button" id="showcase-sync-reward" type="button" data-i18n="btn-showcase-sync">Belohnung speichern / aktualisieren</button>
+              <button class="secondary-button" id="showcase-setup-obs" type="button" data-i18n="btn-showcase-setup-obs">Sammlungs-Quelle in OBS einrichten</button>
+            </div>
+            <div class="status-line" id="showcase-status" hidden></div>
+          </section>
         </section>
 
         <section class="tab-panel" data-panel="update">

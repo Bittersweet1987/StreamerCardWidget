@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.6";
+        public const string Version = "1.4.7";
         public const string ReleaseDate = "2026-06-27";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -685,6 +685,28 @@ namespace CardPackWidgetApp
                 try
                 {
                     Dictionary<string, object> settings = twitchBridge.SyncReward(request.Body);
+                    SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", true },
+                        { "settings", settings }
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    SendJson(stream, 400, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", false },
+                        { "error", ex.Message }
+                    }));
+                }
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/twitch/showcase-reward")
+            {
+                try
+                {
+                    Dictionary<string, object> settings = twitchBridge.SyncShowcaseReward(request.Body);
                     SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
                     {
                         { "ok", true },
@@ -1529,6 +1551,23 @@ namespace CardPackWidgetApp
             string rewardTitle = GetString(Obj(ev, "reward"), "title", "");
             string user = GetString(ev, "user_name", GetString(ev, "user_login", "Viewer"));
             string login = GetString(ev, "user_login", user);
+
+            // Collection showcase reward: not a pack opening - tell the collection overlay to
+            // slide through every active booster for this viewer.
+            if (IsShowcaseReward(rewardId, rewardTitle))
+            {
+                server.Log("draw", "info", user + " hat die Sammlung angefordert.");
+                var showEvent = new Dictionary<string, object>
+                {
+                    { "eventId", GetString(ev, "id", DateTime.UtcNow.Ticks.ToString()) },
+                    { "user", user },
+                    { "userLogin", login },
+                    { "source", "twitch" }
+                };
+                server.Broadcast("showcollection", server.Serializer.Serialize(showEvent));
+                return;
+            }
+
             if (!IsTrackedReward(rewardId, rewardTitle)) return;
 
             // The booster must be picked exactly once per redemption, here on the server.
@@ -1633,6 +1672,81 @@ namespace CardPackWidgetApp
                 { "transport", new Dictionary<string, object> { { "method", "websocket" }, { "session_id", sessionId } } }
             };
             TwitchJson("POST", "https://api.twitch.tv/helix/eventsub/subscriptions", GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), body);
+        }
+
+        private bool IsShowcaseReward(string rewardId, string rewardTitle)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> showcase = Obj(settings, "showcase");
+            if (showcase.Count == 0) return false;
+            object enabledObj;
+            if (showcase.TryGetValue("enabled", out enabledObj) && enabledObj is bool && !(bool)enabledObj) return false;
+            if (StringArrayContains(showcase, "rewardIds", rewardId)) return true;
+            string name = GetString(showcase, "rewardName", "");
+            return !String.IsNullOrWhiteSpace(name) && Normalize(name) == Normalize(rewardTitle);
+        }
+
+        public Dictionary<string, object> SyncShowcaseReward(string bodyJson)
+        {
+            Dictionary<string, object> body = ParseObject(bodyJson);
+            Dictionary<string, object> twitch = RequireTwitch();
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> showcase = Obj(settings, "showcase");
+            if (showcase.Count == 0) { showcase = new Dictionary<string, object>(); settings["showcase"] = showcase; }
+
+            string title = GetString(body, "title", GetString(showcase, "rewardName", "Sammlung zeigen"));
+            int cost = Math.Max(1, GetInt(body, "cost", 500));
+            string backgroundColor = GetString(body, "backgroundColor", "");
+            int globalCooldown = Math.Max(0, GetInt(body, "globalCooldown", 0));
+            bool explicitRewardId = body.ContainsKey("rewardId");
+            string rewardId = GetString(body, "rewardId", "");
+            object[] existingIds = showcase.ContainsKey("rewardIds") && showcase["rewardIds"] is object[] ? (object[])showcase["rewardIds"] : new object[0];
+            if (!explicitRewardId && String.IsNullOrWhiteSpace(rewardId)) rewardId = existingIds.Length > 0 ? Convert.ToString(existingIds[0]) : "";
+
+            var payload = new Dictionary<string, object>
+            {
+                { "title", title },
+                { "cost", cost },
+                { "is_enabled", true },
+                { "is_user_input_required", false },
+                { "is_global_cooldown_enabled", globalCooldown > 0 },
+                { "global_cooldown_seconds", globalCooldown > 0 ? globalCooldown : 1 }
+            };
+            if (!String.IsNullOrWhiteSpace(backgroundColor)) payload["background_color"] = backgroundColor.ToUpperInvariant();
+
+            string baseUrl = "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" +
+                Uri.EscapeDataString(GetString(twitch, "broadcasterId", ""));
+            Dictionary<string, object> result;
+            if (String.IsNullOrWhiteSpace(rewardId))
+            {
+                result = TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+            }
+            else
+            {
+                try
+                {
+                    result = TwitchJson("PATCH", baseUrl + "&id=" + Uri.EscapeDataString(rewardId), GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    if (ex.Message.IndexOf("was not found", StringComparison.OrdinalIgnoreCase) < 0) throw;
+                    result = TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                }
+            }
+
+            object[] rewards = result.ContainsKey("data") && result["data"] is object[] ? (object[])result["data"] : new object[0];
+            Dictionary<string, object> reward = rewards.Length > 0 && rewards[0] is Dictionary<string, object>
+                ? (Dictionary<string, object>)rewards[0]
+                : new Dictionary<string, object>();
+            string savedId = GetString(reward, "id", rewardId);
+
+            showcase["rewardIds"] = new object[] { savedId };
+            showcase["rewardName"] = title;
+            showcase["rewardCost"] = cost;
+            showcase["rewardBackgroundColor"] = backgroundColor;
+            showcase["rewardGlobalCooldown"] = globalCooldown;
+            server.WriteSettingsObject(settings);
+            return settings;
         }
 
         private bool IsTrackedReward(string rewardId, string rewardTitle)
