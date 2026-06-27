@@ -355,17 +355,16 @@ function selectedBooster() {
 }
 
 function blankCard() {
-  const boosterId = selectedBoosterId || settings.boosters?.[0]?.id || "default";
+  // New cards start with no booster assignment - the user assigns them manually.
   return {
     id: createId("card"),
     title: "Neue Karte",
     subtitle: "Stream Card",
     rarity: "common",
-    stars: 1,
     accent: "#ff78bb",
     enabled: true,
     image: "",
-    boosterIds: [boosterId]
+    boosterIds: []
   };
 }
 
@@ -982,11 +981,9 @@ async function handleCardListClick(event) {
   }
   if (action === "duplicate") {
     const original = settings.deck.cards.find((card) => card.id === cardId);
-    const copy = { ...original, id: createId("card"), title: `${original.title} Kopie` };
+    // A copy loses the booster association - it must be assigned manually like a new card.
+    const copy = { ...original, id: createId("card"), title: `${original.title} Kopie`, boosterIds: [] };
     settings.deck.cards.push(copy);
-    for (const booster of settings.boosters) {
-      if ((original.boosterIds || []).includes(booster.id) && booster.cardIds.length < 9) booster.cardIds.push(copy.id);
-    }
     selectedCardId = copy.id;
     renderCards();
   }
@@ -1663,8 +1660,6 @@ function bindGlobalActions() {
   $("#add-card").addEventListener("click", () => {
     const card = blankCard();
     settings.deck.cards.push(card);
-    const booster = selectedBooster();
-    if (booster && booster.cardIds.length < 9) booster.cardIds.push(card.id);
     selectedCardId = card.id;
     renderCards();
   });

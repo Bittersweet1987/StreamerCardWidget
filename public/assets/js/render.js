@@ -168,14 +168,15 @@ export function normalizeSettings(settings) {
     booster.cardIds = (booster.cardIds || []).slice(0, 9);
   }
 
-  const firstBoosterId = settings.boosters[0]?.id || "default";
   for (const card of settings.deck.cards) {
     card.id ||= createId("card");
     card.rarity = rarityById(card.rarity).id;
+    // Derive booster membership from booster.cardIds when not already set. Cards with no
+    // assignment stay unassigned (no forced fallback to the first booster) so newly created
+    // or duplicated cards remain unattached until the user assigns them.
     card.boosterIds ||= settings.boosters
       .filter((booster) => booster.cardIds.includes(card.id))
       .map((booster) => booster.id);
-    if (!card.boosterIds.length) card.boosterIds = [firstBoosterId];
   }
   settings.twitch ||= {};
   return settings;

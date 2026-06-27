@@ -220,7 +220,7 @@ body {
 .collection-row {
   position: absolute;
   right: 0;
-  bottom: 82px;
+  bottom: 125px;
   left: 0;
   z-index: 30;
   display: flex;
@@ -281,10 +281,11 @@ body {
   text-align: center;
 }
 
+/* Bottom (default): just below the collection row, close to the card. */
 .draw-copy {
   position: absolute;
   right: 0;
-  bottom: 28px;
+  bottom: 78px;
   left: 0;
   z-index: 32;
   display: flex;
@@ -315,10 +316,14 @@ body {
   transform: translateY(0);
 }
 
-/* Middle: in the free space between the card animation and the collection row. */
+/* Middle: centered in the gap between the card and the (lowered) collection row. */
+.opening-scene.name-middle .collection-row {
+  bottom: 92px;
+}
+
 .opening-scene.name-middle .draw-copy {
   top: auto;
-  bottom: 138px;
+  bottom: 212px;
   transform: translateY(10px);
 }
 
@@ -326,9 +331,9 @@ body {
   transform: translateY(0);
 }
 
-/* Top: above the card animation. */
+/* Top: just above the card animation. */
 .opening-scene.name-top .draw-copy {
-  top: 14px;
+  top: 165px;
   bottom: auto;
   transform: translateY(-10px);
 }

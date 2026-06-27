@@ -188,9 +188,9 @@ select {
   left: 7%;
   z-index: 2;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 8px;
   min-width: 0;
 }
@@ -198,8 +198,11 @@ select {
 .card-title {
   --title-len: 10;
   display: block;
+  /* Fill the footer from the (image) left edge up to just before the star badge.
+     The font-size still auto-shrinks with title length so the text always fits. */
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 96%;
+  max-width: none;
   padding: 7px 13px;
   border-radius: 999px;
   color: var(--card-accent, var(--accent));
@@ -230,6 +233,7 @@ select {
 }
 
 .stars {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -246,26 +250,28 @@ select {
 }
 
 .stars span[data-holo="true"] {
-  width: 12px;
+  width: 14px;
   background:
     radial-gradient(circle at 38% 30%, rgba(255, 255, 255, .96) 0 16%, rgba(255, 255, 255, 0) 42%),
     conic-gradient(
       from 0deg,
-      rgba(255, 255, 255, .85),
-      rgba(255, 170, 215, .92) 14%,
-      rgba(165, 220, 255, .92) 30%,
-      rgba(150, 255, 225, .92) 45%,
-      rgba(255, 240, 150, .92) 60%,
-      rgba(255, 205, 110, .92) 72%,
-      rgba(225, 150, 255, .92) 86%,
-      rgba(255, 255, 255, .85)
+      rgba(255, 255, 255, .9),
+      rgba(255, 150, 205, .95) 14%,
+      rgba(150, 215, 255, .95) 30%,
+      rgba(140, 255, 220, .95) 45%,
+      rgba(255, 238, 140, .95) 60%,
+      rgba(255, 200, 100, .95) 72%,
+      rgba(215, 140, 255, .95) 86%,
+      rgba(255, 255, 255, .9)
     );
-  animation: holo-star-spin 4s linear infinite;
-}
-
-@keyframes holo-star-spin {
-  0% { filter: saturate(1.4) brightness(1.08) hue-rotate(0deg) drop-shadow(0 0 1.4px rgba(190, 160, 240, .95)); }
-  100% { filter: saturate(1.4) brightness(1.08) hue-rotate(360deg) drop-shadow(0 0 1.4px rgba(190, 160, 240, .95)); }
+  /* Crisp lavender rim around the star shape. drop-shadow follows the clip-path outline
+     (box-shadow would be clipped away), stacked in several directions to form a solid edge. */
+  filter:
+    saturate(1.45) brightness(1.06)
+    drop-shadow(0.8px 0 0 #b39ae8) drop-shadow(-0.8px 0 0 #b39ae8)
+    drop-shadow(0 0.8px 0 #b39ae8) drop-shadow(0 -0.8px 0 #b39ae8)
+    drop-shadow(0.6px 0.6px 0 #b39ae8) drop-shadow(-0.6px 0.6px 0 #b39ae8)
+    drop-shadow(0.6px -0.6px 0 #b39ae8) drop-shadow(-0.6px -0.6px 0 #b39ae8);
 }
 
 .is-compact-card .stars {
