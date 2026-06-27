@@ -184,6 +184,16 @@
                 <label data-i18n="label-reward-cost">Kosten<input id="reward-cost" type="number" min="1" step="1"></label>
               </div>
               <label data-i18n="label-reward-prompt">Beschreibung<input id="reward-prompt" type="text"></label>
+              <div class="form-grid">
+                <label data-i18n="label-reward-bg-color">Hintergrundfarbe<input id="reward-bg-color" type="color" value="#9147ff"></label>
+                <label data-i18n="label-reward-cooldown">Globaler Cooldown (Sek.)<input id="reward-cooldown" type="number" min="0" step="1" value="0"></label>
+                <label data-i18n="label-reward-max-stream">Max pro Stream<input id="reward-max-stream" type="number" min="0" step="1" value="0"></label>
+                <label data-i18n="label-reward-max-user">Max pro Nutzer/Stream<input id="reward-max-user" type="number" min="0" step="1" value="0"></label>
+              </div>
+              <div class="button-row">
+                <label class="switch-row compact-switch"><input id="reward-enabled" type="checkbox" checked><span data-i18n="label-reward-enabled">Aktiviert</span></label>
+                <label class="switch-row compact-switch"><input id="reward-paused" type="checkbox"><span data-i18n="label-reward-paused">Pausiert</span></label>
+              </div>
               <div class="button-row">
                 <button class="primary-button" id="sync-reward" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
                 <button class="danger-button" id="delete-reward" type="button" data-i18n="btn-delete-reward">Löschen</button>
@@ -290,6 +300,25 @@
               <label data-i18n="rarity-epic">Episch<input id="rarity-color-epic" type="color" data-rarity-color="epic"></label>
               <label data-i18n="rarity-legendary">Legendär<input id="rarity-color-legendary" type="color" data-rarity-color="legendary"></label>
               <label data-i18n="rarity-holo">Holo<input id="rarity-color-holo" type="color" data-rarity-color="holo"></label>
+            </div>
+          </section>
+
+          <section class="tool-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="rarity-weights-eyebrow">Karten</p>
+                <h2 data-i18n="rarity-weights-title">Gewichtung je Rarität</h2>
+              </div>
+              <button class="ghost-button" id="reset-rarity-weights" type="button" data-i18n="btn-reset-rarity-weights">Auf Standard zurücksetzen</button>
+            </div>
+            <p class="hint" data-i18n="rarity-weights-hint">Höhere Werte werden häufiger gezogen.</p>
+            <div class="form-grid">
+              <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-weight-common" type="number" min="0" step="1" data-rarity-weight="common"></label>
+              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="rarity-weight-uncommon" type="number" min="0" step="1" data-rarity-weight="uncommon"></label>
+              <label data-i18n="rarity-rare">Selten<input id="rarity-weight-rare" type="number" min="0" step="1" data-rarity-weight="rare"></label>
+              <label data-i18n="rarity-epic">Episch<input id="rarity-weight-epic" type="number" min="0" step="1" data-rarity-weight="epic"></label>
+              <label data-i18n="rarity-legendary">Legendär<input id="rarity-weight-legendary" type="number" min="0" step="1" data-rarity-weight="legendary"></label>
+              <label data-i18n="rarity-holo">Holo<input id="rarity-weight-holo" type="number" min="0" step="1" data-rarity-weight="holo"></label>
             </div>
           </section>
 

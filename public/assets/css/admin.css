@@ -724,6 +724,22 @@ input[type="range"] {
   color: #8a7fa6;
 }
 
+.user-card-booster-title.is-orphan {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: #c2545f;
+  text-transform: none;
+}
+
+.user-card-booster-title.is-orphan select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e4deec;
+  font-size: .82rem;
+}
+
 .user-card-row {
   display: flex;
   align-items: center;

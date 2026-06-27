@@ -27,12 +27,13 @@ import {
   cardsForBooster,
   createId,
   DEFAULT_RARITY_COLORS,
+  DEFAULT_RARITY_WEIGHTS,
   escapeHtml,
   normalizeSettings,
   RARITIES,
-  rarityWeight,
   readFileAsDataUrl,
-  setRarityColors
+  setRarityColors,
+  setRarityWeights
 } from "./render.js";
 
 let settings;
@@ -122,7 +123,6 @@ const I18N = {
   "aria-select-card": { de: "Karte auswählen", en: "Select card" },
   "label-card-title": { de: "Titel", en: "Title" },
   "label-card-rarity": { de: "Rarität", en: "Rarity" },
-  "label-card-weight": { de: "Gewichtung", en: "Weight" },
   "label-card-stars": { de: "Sterne", en: "Stars" },
   "label-card-accent": { de: "Akzent", en: "Accent" },
   "label-card-enabled": { de: "Aktiv", en: "Active" },
@@ -140,6 +140,11 @@ const I18N = {
   "rarity-colors-title": { de: "Rahmenfarben je Rarität", en: "Border colors per rarity" },
   "btn-reset-rarity-colors": { de: "Auf Standard zurücksetzen", en: "Reset to defaults" },
   "notice-rarity-colors-reset": { de: "Rahmenfarben zurückgesetzt.", en: "Border colors reset." },
+  "rarity-weights-eyebrow": { de: "Karten", en: "Cards" },
+  "rarity-weights-title": { de: "Gewichtung je Rarität", en: "Weight per rarity" },
+  "rarity-weights-hint": { de: "Höhere Werte werden häufiger gezogen.", en: "Higher values are drawn more often." },
+  "btn-reset-rarity-weights": { de: "Auf Standard zurücksetzen", en: "Reset to defaults" },
+  "notice-rarity-weights-reset": { de: "Gewichtung zurückgesetzt.", en: "Weights reset." },
   "booster-eyebrow": { de: "Packs", en: "Packs" },
   "booster-title": { de: "Booster verwalten", en: "Manage boosters" },
   "btn-add-booster": { de: "Booster hinzufügen", en: "Add booster" },
@@ -187,6 +192,12 @@ const I18N = {
   "label-reward-title": { de: "Reward-Titel", en: "Reward title" },
   "label-reward-cost": { de: "Kosten", en: "Cost" },
   "label-reward-prompt": { de: "Beschreibung", en: "Description" },
+  "label-reward-bg-color": { de: "Hintergrundfarbe", en: "Background color" },
+  "label-reward-cooldown": { de: "Globaler Cooldown (Sek.)", en: "Global cooldown (sec.)" },
+  "label-reward-max-stream": { de: "Max pro Stream", en: "Max per stream" },
+  "label-reward-max-user": { de: "Max pro Nutzer/Stream", en: "Max per user/stream" },
+  "label-reward-enabled": { de: "Aktiviert", en: "Enabled" },
+  "label-reward-paused": { de: "Pausiert", en: "Paused" },
   "btn-sync-reward": { de: "Speichern / aktualisieren", en: "Save / update" },
   "btn-delete-reward": { de: "Löschen", en: "Delete" },
   "hint-reward-assign": {
@@ -233,6 +244,9 @@ const I18N = {
   "unit-cards": { de: "Karten", en: "cards" },
   "btn-delete-user": { de: "Nutzer löschen", en: "Delete user" },
   "notice-user-deleted": { de: "Nutzer gelöscht.", en: "User deleted." },
+  "label-unknown-booster": { de: "Unbekannter Booster", en: "Unknown booster" },
+  "option-assign-booster": { de: "Booster zuordnen…", en: "Assign booster…" },
+  "notice-group-reassigned": { de: "Karten dem Booster zugeordnet.", en: "Cards reassigned to booster." },
   "design-look-title": { de: "Farben und Anzeige", en: "Colors and display" },
   "label-font": { de: "Schrift", en: "Font" },
   "label-accent": { de: "Akzent", en: "Accent" },
@@ -615,7 +629,13 @@ async function loadTwitchRewards() {
       id: String(reward.id || ""),
       title: String(reward.title || reward.name || reward.id || ""),
       cost: Number(reward.cost || 1),
-      prompt: String(reward.prompt || "")
+      prompt: String(reward.prompt || ""),
+      backgroundColor: String(reward.background_color || "#9147ff"),
+      isEnabled: reward.is_enabled !== false,
+      isPaused: reward.is_paused === true,
+      maxPerStream: reward.max_per_stream_setting?.is_enabled ? Number(reward.max_per_stream_setting?.max_per_stream || 0) : 0,
+      maxPerUserPerStream: reward.max_per_user_per_stream_setting?.is_enabled ? Number(reward.max_per_user_per_stream_setting?.max_per_user_per_stream || 0) : 0,
+      globalCooldown: reward.global_cooldown_setting?.is_enabled ? Number(reward.global_cooldown_setting?.global_cooldown_seconds || 0) : 0
     }));
     renderRewardSelect();
     setStatus("#twitch-status", `${availableRewards.length} ${t("status-rewards-loaded")}`, "ok");
@@ -635,7 +655,13 @@ async function handleRewardSync() {
       rewardId,
       title: $("#reward-title").value || booster.title || "Kartenpack",
       cost: Number($("#reward-cost").value || 1),
-      prompt: $("#reward-prompt").value || ""
+      prompt: $("#reward-prompt").value || "",
+      backgroundColor: $("#reward-bg-color").value || "#9147ff",
+      isEnabled: $("#reward-enabled").checked,
+      isPaused: $("#reward-paused").checked,
+      maxPerStream: Math.max(0, Number($("#reward-max-stream").value || 0)),
+      maxPerUserPerStream: Math.max(0, Number($("#reward-max-user").value || 0)),
+      globalCooldown: Math.max(0, Number($("#reward-cooldown").value || 0))
     });
     settings = normalizeSettings(result.settings || await getSettings());
     selectedBoosterId = booster.id;
@@ -666,10 +692,17 @@ async function handleRewardDelete() {
 }
 
 function clearRewardForm() {
+  const booster = selectedBooster();
   $("#reward-select").value = "";
-  $("#reward-title").value = selectedBooster()?.title || "Kartenpack";
-  $("#reward-cost").value = selectedBooster()?.rewardCost || 1;
+  $("#reward-title").value = booster?.title || "Kartenpack";
+  $("#reward-cost").value = booster?.rewardCost || 1;
   $("#reward-prompt").value = "";
+  $("#reward-bg-color").value = booster?.rewardBackgroundColor || "#9147ff";
+  $("#reward-enabled").checked = true;
+  $("#reward-paused").checked = false;
+  $("#reward-max-stream").value = booster?.rewardMaxPerStream || 0;
+  $("#reward-max-user").value = booster?.rewardMaxPerUserPerStream || 0;
+  $("#reward-cooldown").value = booster?.rewardGlobalCooldown || 0;
 }
 
 async function sha256Base64(value) {
@@ -891,11 +924,10 @@ function renderCards() {
           <div class="inline-fields">
             <label>${t("label-card-title")}<input data-field="title" type="text" value="${escapeHtml(card.title || "")}"></label>
             <label>${t("label-card-rarity")}<select data-field="rarity">${RARITIES.map((rarity) => `
-              <option value="${rarity.id}" ${rarity.id === card.rarity ? "selected" : ""}>${t(`rarity-${rarity.id}`)} (${rarity.weight})</option>
+              <option value="${rarity.id}" ${rarity.id === card.rarity ? "selected" : ""}>${t(`rarity-${rarity.id}`)}</option>
             `).join("")}</select></label>
           </div>
           <div class="inline-fields">
-            <label>${t("label-card-weight")}<input type="text" value="${rarityWeight(card)}" readonly></label>
             <label>${t("label-card-stars")}<input data-field="stars" type="number" min="1" max="5" step="1" value="${card.stars || 1}"></label>
             <label>${t("label-card-accent")}<input data-field="accent" type="color" value="${escapeHtml(card.accent || "#ff78bb")}"></label>
           </div>
@@ -1130,6 +1162,15 @@ function cardTitle(cardId) {
   return settings.deck?.cards?.find((card) => card.id === cardId)?.title || cardId;
 }
 
+function boosterExists(boosterId) {
+  return Boolean(settings.boosters?.some((booster) => booster.id === boosterId));
+}
+
+function boosterGroupLabel(boosterId) {
+  if (boosterExists(boosterId)) return boosterTitle(boosterId);
+  return t("label-unknown-booster");
+}
+
 function boosterTitle(boosterId) {
   return settings.boosters?.find((booster) => booster.id === boosterId)?.title || boosterId;
 }
@@ -1176,7 +1217,7 @@ function renderUsers() {
       if (!groups.has(entry.boosterId)) groups.set(entry.boosterId, []);
       groups.get(entry.boosterId).push(entry);
     }
-    const sortedGroups = [...groups.entries()].sort((a, b) => boosterTitle(a[0]).localeCompare(boosterTitle(b[0])));
+    const sortedGroups = [...groups.entries()].sort((a, b) => boosterGroupLabel(a[0]).localeCompare(boosterGroupLabel(b[0])));
     const rows = sortedGroups.length
       ? sortedGroups.map(([boosterId, entries]) => {
           const sortedEntries = [...entries].sort((a, b) => cardTitle(a.cardId).localeCompare(cardTitle(b.cardId)));
@@ -1188,9 +1229,18 @@ function renderUsers() {
                 data-booster="${escapeHtml(entry.boosterId)}" data-card="${escapeHtml(entry.cardId)}">
             </div>
           `).join("");
+          const titleHtml = boosterExists(boosterId)
+            ? `<p class="user-card-booster-title">${escapeHtml(boosterTitle(boosterId))}</p>`
+            : `<div class="user-card-booster-title is-orphan">
+                 <span>${t("label-unknown-booster")}</span>
+                 <select data-action="reassign-group" data-old-booster="${escapeHtml(boosterId)}">
+                   <option value="">${t("option-assign-booster")}</option>
+                   ${(settings.boosters || []).map((b) => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.title)}</option>`).join("")}
+                 </select>
+               </div>`;
           return `
             <div class="user-card-booster-group">
-              <p class="user-card-booster-title">${escapeHtml(boosterTitle(boosterId))}</p>
+              ${titleHtml}
               ${entryRows}
             </div>
           `;
@@ -1233,7 +1283,35 @@ async function handleUserListClick(event) {
   showNotice(t("notice-user-deleted"));
 }
 
+async function reassignOrphanGroup(oldBoosterId, newBoosterId) {
+  const source = collections[oldBoosterId];
+  if (!source || !newBoosterId || oldBoosterId === newBoosterId) return;
+  collections[newBoosterId] ||= { version: source.version || 1, boosterId: newBoosterId, users: {} };
+  const target = collections[newBoosterId];
+  target.users ||= {};
+  for (const [userKey, userData] of Object.entries(source.users || {})) {
+    target.users[userKey] ||= { displayName: userData?.displayName || userKey, cards: {} };
+    target.users[userKey].displayName = userData?.displayName || target.users[userKey].displayName;
+    target.users[userKey].cards ||= {};
+    for (const [cardId, count] of Object.entries(userData?.cards || {})) {
+      target.users[userKey].cards[cardId] = (Number(target.users[userKey].cards[cardId]) || 0) + (Number(count) || 0);
+    }
+  }
+  source.users = {};
+  await persistCollectionSnapshot(target, newBoosterId, "");
+  await persistCollectionSnapshot(source, oldBoosterId, "");
+  renderUsers();
+  showNotice(t("notice-group-reassigned"));
+}
+
 async function handleUserListChange(event) {
+  const reassign = event.target.closest("[data-action='reassign-group']");
+  if (reassign) {
+    event.stopPropagation();
+    const newBoosterId = reassign.value;
+    if (newBoosterId) await reassignOrphanGroup(reassign.dataset.oldBooster, newBoosterId);
+    return;
+  }
   const input = event.target.closest("[data-action='edit-count']");
   if (!input) return;
   event.stopPropagation();
@@ -1270,6 +1348,12 @@ function hydrateTrigger() {
   $("#reward-title").value = booster?.rewardNames?.[0] || booster?.title || "Kartenpack";
   $("#reward-cost").value = booster?.rewardCost || 1;
   $("#reward-prompt").value = booster?.rewardPrompt || "";
+  $("#reward-bg-color").value = booster?.rewardBackgroundColor || "#9147ff";
+  $("#reward-enabled").checked = booster?.rewardEnabled !== false;
+  $("#reward-paused").checked = booster?.rewardPaused === true;
+  $("#reward-max-stream").value = booster?.rewardMaxPerStream || 0;
+  $("#reward-max-user").value = booster?.rewardMaxPerUserPerStream || 0;
+  $("#reward-cooldown").value = booster?.rewardGlobalCooldown || 0;
   renderRewardSelect();
   $("#reward-select").value = booster?.rewardIds?.[0] || "";
 }
@@ -1291,19 +1375,52 @@ function bindTrigger() {
   $("#reward-prompt").addEventListener("input", (event) => {
     selectedBooster().rewardPrompt = event.target.value;
   });
+  $("#reward-bg-color").addEventListener("input", (event) => {
+    selectedBooster().rewardBackgroundColor = event.target.value;
+  });
+  $("#reward-enabled").addEventListener("change", (event) => {
+    selectedBooster().rewardEnabled = event.target.checked;
+  });
+  $("#reward-paused").addEventListener("change", (event) => {
+    selectedBooster().rewardPaused = event.target.checked;
+  });
+  $("#reward-max-stream").addEventListener("input", (event) => {
+    selectedBooster().rewardMaxPerStream = Math.max(0, Number(event.target.value || 0));
+  });
+  $("#reward-max-user").addEventListener("input", (event) => {
+    selectedBooster().rewardMaxPerUserPerStream = Math.max(0, Number(event.target.value || 0));
+  });
+  $("#reward-cooldown").addEventListener("input", (event) => {
+    selectedBooster().rewardGlobalCooldown = Math.max(0, Number(event.target.value || 0));
+  });
   $("#reward-select").addEventListener("change", (event) => {
-    const option = event.target.selectedOptions[0];
-    if (!option?.value) {
+    const value = event.target.value;
+    if (!value) {
       clearRewardForm();
       return;
     }
-    $("#reward-title").value = option.dataset.title || option.textContent.trim();
-    $("#reward-cost").value = option.dataset.cost || 1;
-    $("#reward-prompt").value = option.dataset.prompt || "";
-    selectedBooster().rewardIds = [option.value];
-    selectedBooster().rewardNames = [option.dataset.title || option.textContent.trim()];
-    selectedBooster().rewardCost = Number(option.dataset.cost || 1);
-    selectedBooster().rewardPrompt = option.dataset.prompt || "";
+    const reward = availableRewards.find((item) => item.id === value);
+    if (!reward) return;
+    $("#reward-title").value = reward.title;
+    $("#reward-cost").value = reward.cost;
+    $("#reward-prompt").value = reward.prompt;
+    $("#reward-bg-color").value = reward.backgroundColor || "#9147ff";
+    $("#reward-enabled").checked = reward.isEnabled !== false;
+    $("#reward-paused").checked = reward.isPaused === true;
+    $("#reward-max-stream").value = reward.maxPerStream || 0;
+    $("#reward-max-user").value = reward.maxPerUserPerStream || 0;
+    $("#reward-cooldown").value = reward.globalCooldown || 0;
+    const booster = selectedBooster();
+    booster.rewardIds = [reward.id];
+    booster.rewardNames = [reward.title];
+    booster.rewardCost = reward.cost;
+    booster.rewardPrompt = reward.prompt;
+    booster.rewardBackgroundColor = reward.backgroundColor;
+    booster.rewardEnabled = reward.isEnabled !== false;
+    booster.rewardPaused = reward.isPaused === true;
+    booster.rewardMaxPerStream = reward.maxPerStream || 0;
+    booster.rewardMaxPerUserPerStream = reward.maxPerUserPerStream || 0;
+    booster.rewardGlobalCooldown = reward.globalCooldown || 0;
     showNotice(t("notice-reward-applied"));
   });
 }
@@ -1324,6 +1441,8 @@ function hydrateDesign() {
   for (const rarity of RARITIES) {
     const input = $(`#rarity-color-${rarity.id}`);
     if (input) input.value = settings.rarityColors?.[rarity.id] || DEFAULT_RARITY_COLORS[rarity.id];
+    const weightInput = $(`#rarity-weight-${rarity.id}`);
+    if (weightInput) weightInput.value = settings.rarityWeights?.[rarity.id] ?? DEFAULT_RARITY_WEIGHTS[rarity.id];
   }
   $("#reveal-seconds").value = settings.behavior.revealSeconds ?? 3.2;
   $("#cooldown-seconds").value = settings.behavior.cooldownSeconds ?? 0.8;
@@ -1412,6 +1531,22 @@ function bindDesign() {
     refreshSettingsPreview();
     scheduleAutoSave();
     showNotice(t("notice-rarity-colors-reset"));
+  });
+  $$("[data-rarity-weight]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      settings.rarityWeights ||= {};
+      const value = Number(event.target.value);
+      settings.rarityWeights[event.target.dataset.rarityWeight] = Number.isFinite(value) && value > 0 ? value : 0;
+      setRarityWeights(settings.rarityWeights);
+      scheduleAutoSave();
+    });
+  });
+  $("#reset-rarity-weights").addEventListener("click", () => {
+    settings.rarityWeights = { ...DEFAULT_RARITY_WEIGHTS };
+    setRarityWeights(settings.rarityWeights);
+    hydrateDesign();
+    scheduleAutoSave();
+    showNotice(t("notice-rarity-weights-reset"));
   });
   $("#language").addEventListener("input", (event) => {
     settings.language = event.target.value;

@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.1";
+        public const string Version = "1.4.2";
         public const string ReleaseDate = "2026-06-27";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1243,19 +1243,33 @@ namespace CardPackWidgetApp
             string title = GetString(body, "title", GetString(booster, "title", "Kartenpack"));
             int cost = Math.Max(1, GetInt(body, "cost", 1));
             string prompt = GetString(body, "prompt", "");
+            string backgroundColor = GetString(body, "backgroundColor", "");
+            bool isEnabled = GetBool(body, "isEnabled", true);
+            bool isPaused = GetBool(body, "isPaused", false);
+            int maxPerStream = Math.Max(0, GetInt(body, "maxPerStream", 0));
+            int maxPerUserPerStream = Math.Max(0, GetInt(body, "maxPerUserPerStream", 0));
+            int globalCooldown = Math.Max(0, GetInt(body, "globalCooldown", 0));
             bool explicitRewardId = body.ContainsKey("rewardId");
             string rewardId = GetString(body, "rewardId", "");
             object[] existingIds = booster.ContainsKey("rewardIds") && booster["rewardIds"] is object[] ? (object[])booster["rewardIds"] : new object[0];
             if (!explicitRewardId && String.IsNullOrWhiteSpace(rewardId)) rewardId = existingIds.Length > 0 ? Convert.ToString(existingIds[0]) : "";
 
+            // Twitch requires the max/cooldown values to be >= 1 even when their setting is disabled.
             var payload = new Dictionary<string, object>
             {
                 { "title", title },
                 { "cost", cost },
                 { "prompt", prompt },
-                { "is_enabled", true },
-                { "is_user_input_required", false }
+                { "is_enabled", isEnabled },
+                { "is_user_input_required", false },
+                { "is_max_per_stream_enabled", maxPerStream > 0 },
+                { "max_per_stream", maxPerStream > 0 ? maxPerStream : 1 },
+                { "is_max_per_user_per_stream_enabled", maxPerUserPerStream > 0 },
+                { "max_per_user_per_stream", maxPerUserPerStream > 0 ? maxPerUserPerStream : 1 },
+                { "is_global_cooldown_enabled", globalCooldown > 0 },
+                { "global_cooldown_seconds", globalCooldown > 0 ? globalCooldown : 1 }
             };
+            if (!String.IsNullOrWhiteSpace(backgroundColor)) payload["background_color"] = backgroundColor.ToUpperInvariant();
 
             string baseUrl = "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" +
                 Uri.EscapeDataString(GetString(twitch, "broadcasterId", ""));
@@ -1268,6 +1282,8 @@ namespace CardPackWidgetApp
             {
                 try
                 {
+                    // is_paused is only accepted on update (PATCH), never on create.
+                    payload["is_paused"] = isPaused;
                     result = TwitchJson("PATCH", baseUrl + "&id=" + Uri.EscapeDataString(rewardId), GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
                 }
                 catch (InvalidOperationException ex)
@@ -1275,6 +1291,7 @@ namespace CardPackWidgetApp
                     // Reward was deleted on Twitch's side (e.g. manually in the dashboard) but we still
                     // had it tracked locally. Re-create it instead of failing the whole sync.
                     if (ex.Message.IndexOf("was not found", StringComparison.OrdinalIgnoreCase) < 0) throw;
+                    payload.Remove("is_paused");
                     result = TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
                 }
             }
@@ -1289,6 +1306,12 @@ namespace CardPackWidgetApp
             booster["rewardNames"] = new object[] { title };
             booster["rewardCost"] = cost;
             booster["rewardPrompt"] = prompt;
+            booster["rewardBackgroundColor"] = backgroundColor;
+            booster["rewardEnabled"] = isEnabled;
+            booster["rewardPaused"] = isPaused;
+            booster["rewardMaxPerStream"] = maxPerStream;
+            booster["rewardMaxPerUserPerStream"] = maxPerUserPerStream;
+            booster["rewardGlobalCooldown"] = globalCooldown;
             server.WriteSettingsObject(settings);
             RestartQuietly();
             return settings;
@@ -1682,6 +1705,13 @@ namespace CardPackWidgetApp
             if (!data.ContainsKey(key) || data[key] == null) return fallback;
             int value;
             return Int32.TryParse(Convert.ToString(data[key]), out value) ? value : fallback;
+        }
+
+        private static bool GetBool(Dictionary<string, object> data, string key, bool fallback)
+        {
+            if (!data.ContainsKey(key) || data[key] == null) return fallback;
+            bool value;
+            return Boolean.TryParse(Convert.ToString(data[key]), out value) ? value : fallback;
         }
 
         private static string Normalize(string value)

@@ -45,7 +45,13 @@ export const DEFAULT_RARITY_COLORS = {
   holo: "#c9aef9"
 };
 
+export const DEFAULT_RARITY_WEIGHTS = RARITIES.reduce((acc, rarity) => {
+  acc[rarity.id] = rarity.weight;
+  return acc;
+}, {});
+
 let activeRarityColors = { ...DEFAULT_RARITY_COLORS };
+let activeRarityWeights = { ...DEFAULT_RARITY_WEIGHTS };
 
 export function setRarityColors(colors) {
   activeRarityColors = { ...DEFAULT_RARITY_COLORS, ...(colors || {}) };
@@ -56,13 +62,19 @@ export function rarityColor(id) {
   return activeRarityColors[normalized] || DEFAULT_RARITY_COLORS.common;
 }
 
+export function setRarityWeights(weights) {
+  activeRarityWeights = { ...DEFAULT_RARITY_WEIGHTS, ...(weights || {}) };
+}
+
 export function rarityById(id) {
   const normalized = String(id || "").toLowerCase();
   return RARITIES.find((rarity) => rarity.id === normalized || rarity.label.toLowerCase() === normalized) || RARITIES[0];
 }
 
 export function rarityWeight(card) {
-  return rarityById(card?.rarity).weight;
+  const id = rarityById(card?.rarity).id;
+  const value = Number(activeRarityWeights[id]);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_RARITY_WEIGHTS[id];
 }
 
 export function weightedPick(cards) {
@@ -108,6 +120,12 @@ export function normalizeSettings(settings) {
     settings.rarityColors[rarity.id] ||= DEFAULT_RARITY_COLORS[rarity.id];
   }
   setRarityColors(settings.rarityColors);
+  settings.rarityWeights ||= {};
+  for (const rarity of RARITIES) {
+    const value = Number(settings.rarityWeights[rarity.id]);
+    settings.rarityWeights[rarity.id] = Number.isFinite(value) && value > 0 ? value : DEFAULT_RARITY_WEIGHTS[rarity.id];
+  }
+  setRarityWeights(settings.rarityWeights);
   settings.obs ||= {
     enabled: false,
     host: "127.0.0.1",
