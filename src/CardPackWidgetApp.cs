@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.3.0";
+        public const string Version = "1.3.1";
         public const string ReleaseDate = "2026-06-26";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -39,6 +39,7 @@ namespace CardPackWidgetApp
             };
             try
             {
+                WaitForPidArgumentIfPresent();
                 ServicePointManager.Expect100Continue = false;
                 ServicePointManager.SecurityProtocol =
                     (SecurityProtocolType)3072 | // TLS 1.2 for Twitch Helix and OAuth APIs
@@ -51,6 +52,28 @@ namespace CardPackWidgetApp
             catch (Exception ex)
             {
                 LogCrash(ex);
+            }
+        }
+
+        // Self-update relaunches the app with --wait-for-pid=<old PID>. Blocking here, before
+        // anything else runs (no window, no port bind yet), guarantees the previous instance has
+        // fully released port 5377 before this one ever tries to claim it - a real synchronization
+        // primitive instead of a guessed delay or a polling loop racing against OS cleanup timing.
+        private static void WaitForPidArgumentIfPresent()
+        {
+            foreach (string arg in Environment.GetCommandLineArgs())
+            {
+                if (!arg.StartsWith("--wait-for-pid=", StringComparison.OrdinalIgnoreCase)) continue;
+                int pid;
+                if (!Int32.TryParse(arg.Substring("--wait-for-pid=".Length), out pid)) continue;
+                try
+                {
+                    Process.GetProcessById(pid).WaitForExit(15000);
+                }
+                catch
+                {
+                    // Already gone - nothing to wait for.
+                }
             }
         }
 
@@ -203,51 +226,101 @@ namespace CardPackWidgetApp
             }
 
             string installDir = rootDir.TrimEnd('\\');
-            string batchPath = tempRoot + ".bat";
-            string batchContent =
-                "@echo off\r\n" +
-                "timeout /t 2 /nobreak >nul\r\n" +
-                "robocopy \"" + exeSourceDir + "\" \"" + installDir + "\" /E /XD data /R:5 /W:1\r\n" +
-                "start \"\" /D \"" + installDir + "\" \"" + Path.Combine(installDir, "CardPackWidget.exe") + "\"\r\n" +
-                "rmdir /s /q \"" + stagingDir + "\"\r\n" +
-                "del \"%~f0\"\r\n";
-            File.WriteAllText(batchPath, batchContent, Encoding.ASCII);
+            string exePath = Path.Combine(installDir, "CardPackWidget.exe");
+            int currentPid = Process.GetCurrentProcess().Id;
+
+            // No batch script, no guessing how long shutdown takes. Instead: write a marker
+            // describing the downloaded update, then relaunch this same (still-old) exe with
+            // --wait-for-pid=<our PID>. That new process blocks on Process.WaitForExit for us
+            // - a real OS-level guarantee, not a timing race - before it does anything, including
+            // ever trying to bind the port. Once we exit and it wakes up, CardPackServer.Start()
+            // (see ApplyPendingUpdateIfAny) notices the marker, copies the new files in, and
+            // relaunches once more into the actual updated exe. Only that final instance binds
+            // the port, and by then both earlier processes are long gone - no two-instance race.
+            Dictionary<string, object> marker = new Dictionary<string, object>
+            {
+                { "exeSourceDir", exeSourceDir },
+                { "stagingDir", stagingDir }
+            };
+            File.WriteAllText(Path.Combine(dataDir, "update-pending.json"), json.Serialize(marker), Encoding.UTF8);
 
             Log("update", "info", "Update wird installiert, App startet neu...");
 
             Process.Start(new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = "/c \"" + batchPath + "\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden
+                FileName = exePath,
+                Arguments = "--wait-for-pid=" + currentPid,
+                UseShellExecute = true,
+                WorkingDirectory = installDir
             });
 
             Task.Run(delegate
             {
-                Thread.Sleep(400);
-                // Environment.Exit alone skips Form.FormClosing -> Stop(), so the TCP listener
-                // can still hold port 5377 for a moment after the process starts tearing down.
-                // The relaunched instance would then race the OS into "port already in use" and
-                // show a blocking error dialog instead of starting. Releasing the listener here,
-                // before exiting, makes the handover deterministic.
+                Thread.Sleep(200);
                 try { Stop(); } catch { }
                 Environment.Exit(0);
             });
         }
 
+        private void ApplyPendingUpdateIfAny()
+        {
+            string markerPath = Path.Combine(dataDir, "update-pending.json");
+            if (!File.Exists(markerPath)) return;
+            try
+            {
+                Dictionary<string, object> marker = ParseObject(ReadFile(markerPath, "{}"));
+                string exeSourceDir = GetString(marker, "exeSourceDir", "");
+                string stagingDir = GetString(marker, "stagingDir", "");
+                string installDir = rootDir.TrimEnd('\\');
+
+                if (Directory.Exists(exeSourceDir))
+                {
+                    CopyDirectoryRecursive(exeSourceDir, installDir);
+                }
+
+                try { File.Delete(markerPath); } catch { }
+                try { if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true); } catch { }
+
+                Log("update", "info", "Update installiert, starte aktualisierte Version...");
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = Path.Combine(installDir, "CardPackWidget.exe"),
+                    UseShellExecute = true,
+                    WorkingDirectory = installDir
+                });
+                Environment.Exit(0);
+            }
+            catch (Exception ex)
+            {
+                // Don't let a broken update marker block every future startup - drop it and
+                // keep running on whatever files are already on disk.
+                try { File.Delete(markerPath); } catch { }
+                Log("update", "error", "Update konnte nicht angewendet werden: " + ex.Message);
+            }
+        }
+
+        private static void CopyDirectoryRecursive(string sourceDir, string destDir)
+        {
+            Directory.CreateDirectory(destDir);
+            foreach (string file in Directory.GetFiles(sourceDir))
+            {
+                File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true);
+            }
+            foreach (string dir in Directory.GetDirectories(sourceDir))
+            {
+                CopyDirectoryRecursive(dir, Path.Combine(destDir, Path.GetFileName(dir)));
+            }
+        }
+
         public int Start(int preferredPort)
         {
             EnsureDataFiles();
-            // After a self-update relaunch, the previous process's listening socket can take a
-            // moment to fully release the port even though the process itself has already
-            // exited (Windows can hold it briefly). Rather than guessing a fixed delay in the
-            // updater's batch script (or risking a dual-listener via SO_REUSEADDR), retry the
-            // bind here a few times - this is the side that actually knows whether it succeeded.
+            ApplyPendingUpdateIfAny();
+            // Defensive margin only - the actual self-update handover no longer relies on this.
+            // A normal "the old window is still closing" moment could still want a brief retry.
             int attempts = 0;
             Exception lastError = null;
-            while (attempts < 10)
+            while (attempts < 20)
             {
                 try
                 {

@@ -10,3 +10,5 @@ CardPackWidget-TestApp/
 dist/
 CardPackWidget-Windows.zip
 UpdateTest-v1.0.0/
+UpdateTest-*/
+InstallTest-*/
