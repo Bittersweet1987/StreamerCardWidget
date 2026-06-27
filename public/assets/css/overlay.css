@@ -56,6 +56,16 @@ body {
   animation: rig-in .52s cubic-bezier(.16, 1, .3, 1) forwards;
 }
 
+.opening-rig.is-anticipating {
+  animation: pack-anticipate .24s ease;
+}
+
+@keyframes pack-anticipate {
+  0%, 100% { transform: translateX(-50%) translateY(28px) rotate(-2deg); }
+  35% { transform: translateX(-50%) translateY(20px) rotate(-6deg); }
+  70% { transform: translateX(-50%) translateY(24px) rotate(3deg); }
+}
+
 .pack-shadow {
   position: absolute;
   inset: 84px 12px 34px;
@@ -302,6 +312,16 @@ body {
 
 .phase-enter .draw-copy {
   opacity: 1;
+  transform: translateY(0);
+}
+
+.opening-scene.name-top .draw-copy {
+  top: 18px;
+  bottom: auto;
+  transform: translateY(-10px);
+}
+
+.opening-scene.name-top.phase-enter .draw-copy {
   transform: translateY(0);
 }
 

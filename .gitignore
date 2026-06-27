@@ -1,5 +1,7 @@
 data/settings.json
 data/collections.json
+data/cards.json
+data/boosters.json
 data/app-log.json
 logs/
 node_modules/

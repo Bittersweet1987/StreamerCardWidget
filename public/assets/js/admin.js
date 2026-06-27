@@ -250,12 +250,13 @@ const I18N = {
   "design-look-title": { de: "Farben und Anzeige", en: "Colors and display" },
   "label-font": { de: "Schrift", en: "Font" },
   "label-accent": { de: "Akzent", en: "Accent" },
-  "label-text-color": { de: "Text", en: "Text" },
-  "label-secondary-color": { de: "Sekundär", en: "Secondary" },
   "label-volume": { de: "Lautstärke", en: "Volume" },
   "label-preview-eyebrow": { de: "Vorschau", en: "Preview" },
   "label-show-collection": { de: "Sammlungsleiste anzeigen", en: "Show collection bar" },
   "label-card-borders": { de: "Kartenrahmen anzeigen", en: "Show card borders" },
+  "label-name-position": { de: "Position Einlöser-Name", en: "Redeemer name position" },
+  "option-name-bottom": { de: "Unterhalb", en: "Below" },
+  "option-name-top": { de: "Oberhalb", en: "Above" },
   "label-reveal-seconds": { de: "Karte sichtbar in Sekunden", en: "Card visible (seconds)" },
   "label-cooldown-seconds": { de: "Cooldown in Sekunden", en: "Cooldown (seconds)" },
   "label-backs-before-reveal": { de: "Verdeckte Karten vor Reveal", en: "Face-down cards before reveal" },
@@ -1431,13 +1432,12 @@ function hydrateDesign() {
   $("#theme-mode").value = settings.style.themeMode || "light";
   $("#language").value = settings.language || "de";
   $("#style-accent").value = settings.style.accentColor || "#ff78bb";
-  $("#style-text").value = settings.style.textColor || "#ffffff";
-  $("#style-secondary").value = settings.style.secondaryColor || "#ffffff";
   $("#volume").value = settings.style.volume ?? 65;
   updateSoundRow("open");
   updateSoundRow("reveal");
   $("#show-collection").checked = settings.style.showCollection !== false;
   $("#card-borders").checked = settings.style.cardBorders !== false;
+  $("#name-position").value = settings.style.namePosition === "top" ? "top" : "bottom";
   for (const rarity of RARITIES) {
     const input = $(`#rarity-color-${rarity.id}`);
     if (input) input.value = settings.rarityColors?.[rarity.id] || DEFAULT_RARITY_COLORS[rarity.id];
@@ -1494,11 +1494,10 @@ function bindDesign() {
   const styleFields = {
     "#font-family": "fontFamily",
     "#style-accent": "accentColor",
-    "#style-text": "textColor",
-    "#style-secondary": "secondaryColor",
     "#volume": "volume",
     "#show-collection": "showCollection",
-    "#card-borders": "cardBorders"
+    "#card-borders": "cardBorders",
+    "#name-position": "namePosition"
   };
   for (const [selector, field] of Object.entries(styleFields)) {
     $(selector).addEventListener("input", (event) => {

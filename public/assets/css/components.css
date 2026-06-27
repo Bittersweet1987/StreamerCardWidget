@@ -1,7 +1,5 @@
 :root {
   --accent: #ff78bb;
-  --secondary: #ffffff;
-  --text: #ffffff;
   --panel-text: #2f2945;
   --font: Inter, Arial, sans-serif;
   --screen-x: 50vw;
@@ -42,10 +40,12 @@ select {
 
 @keyframes legendary-shimmer {
   0%, 100% {
-    box-shadow: 0 22px 55px rgba(43, 33, 79, .28), 0 0 0 0 rgba(212, 175, 55, .55);
+    box-shadow: 0 22px 55px rgba(43, 33, 79, .28),
+      0 0 0 0 color-mix(in srgb, var(--rarity-border, #d4af37) 60%, transparent);
   }
   50% {
-    box-shadow: 0 22px 55px rgba(43, 33, 79, .28), 0 0 18px 4px rgba(255, 221, 130, .85);
+    box-shadow: 0 22px 55px rgba(43, 33, 79, .28),
+      0 0 18px 4px color-mix(in srgb, var(--rarity-border, #d4af37) 88%, white 20%);
   }
 }
 

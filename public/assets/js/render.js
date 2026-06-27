@@ -108,6 +108,7 @@ export function normalizeSettings(settings) {
   settings.twitch.clientId ||= "klgyxuiixy0mfo7ze7goubj5j16g7u";
   settings.style ||= {};
   settings.style.themeMode ||= "light";
+  settings.style.namePosition = settings.style.namePosition === "top" ? "top" : "bottom";
   settings.sounds ||= {};
   settings.sounds.open ||= "";
   settings.sounds.reveal ||= "";
@@ -267,8 +268,6 @@ export function applyTheme(settings) {
   const root = document.documentElement;
   if (document.body) document.body.dataset.theme = style.themeMode || "light";
   root.style.setProperty("--accent", style.accentColor || "#ff78bb");
-  root.style.setProperty("--secondary", style.secondaryColor || "#ffffff");
-  root.style.setProperty("--text", style.textColor || "#ffffff");
   root.style.setProperty("--panel-text", style.panelTextColor || "#2f2945");
   root.style.setProperty("--font", style.fontFamily || "Inter, Arial, sans-serif");
   root.style.setProperty("--screen-x", `${clamp(style.screenX ?? 50, 0, 100)}vw`);

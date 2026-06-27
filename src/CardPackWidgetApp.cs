@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.2";
+        public const string Version = "1.4.3";
         public const string ReleaseDate = "2026-06-27";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -583,6 +583,11 @@ namespace CardPackWidgetApp
             if (request.Method == "POST" && request.Path == "/api/reset-settings")
             {
                 File.Copy(DefaultSettingsPath(), SettingsPath(), true);
+                // Drop the externalized card/booster files so they get re-derived from the fresh
+                // defaults; otherwise the old split-out content would override the reset on read.
+                try { if (File.Exists(CardsPath())) File.Delete(CardsPath()); } catch { }
+                try { if (File.Exists(BoostersPath())) File.Delete(BoostersPath()); } catch { }
+                MigrateCardsAndBoosters();
                 string settings = json.Serialize(ReadSettingsObject());
                 Broadcast("settings", "{\"reset\":true}");
                 SendJson(stream, 200, "{\"ok\":true,\"settings\":" + settings + "}");
@@ -810,6 +815,7 @@ namespace CardPackWidgetApp
                 else File.WriteAllText(CollectionsPath(), "{}\n", Encoding.UTF8);
             }
             MigrateTwitchAndObsConfig();
+            MigrateCardsAndBoosters();
         }
 
         // Twitch/OBS settings used to live inline inside settings.json. They now live in
@@ -833,6 +839,40 @@ namespace CardPackWidgetApp
                 File.WriteAllText(ObsConfigPath(), json.Serialize(settings["obs"]), Encoding.UTF8);
             }
             if (settings.Remove("obs")) changed = true;
+
+            if (changed) File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
+        }
+
+        // Boosters and cards used to live inline in settings.json. They now live in their own
+        // files so that app updates and newly added rarities can never overwrite content the
+        // user has already created (only public/+exe are replaced on update, never data/).
+        private void MigrateCardsAndBoosters()
+        {
+            if (!File.Exists(SettingsPath())) return;
+            Dictionary<string, object> settings = ParseObject(ReadFile(SettingsPath(), "{}"));
+            bool changed = false;
+
+            // Inline data in settings.json is the authoritative source during migration: if it is
+            // still present, write it out (overwriting any stale/empty external file) and only then
+            // strip it from settings.json. Once migrated, settings.json has no inline copy, so the
+            // existing external file (the user's live data) is left untouched.
+            if (settings.ContainsKey("boosters") && settings["boosters"] is object[])
+            {
+                File.WriteAllText(BoostersPath(), json.Serialize(settings["boosters"]), Encoding.UTF8);
+                settings.Remove("boosters");
+                changed = true;
+            }
+
+            if (settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>)
+            {
+                Dictionary<string, object> deck = (Dictionary<string, object>)settings["deck"];
+                if (deck.ContainsKey("cards") && deck["cards"] is object[])
+                {
+                    File.WriteAllText(CardsPath(), json.Serialize(deck["cards"]), Encoding.UTF8);
+                    deck.Remove("cards");
+                    changed = true;
+                }
+            }
 
             if (changed) File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
         }
@@ -927,11 +967,37 @@ namespace CardPackWidgetApp
             return new Dictionary<string, object>();
         }
 
+        private object[] ParseArray(string text)
+        {
+            if (String.IsNullOrWhiteSpace(text)) return new object[0];
+            try
+            {
+                object parsed = json.DeserializeObject(text);
+                if (parsed is object[]) return (object[])parsed;
+            }
+            catch
+            {
+            }
+            return new object[0];
+        }
+
         internal Dictionary<string, object> ReadSettingsObject()
         {
             Dictionary<string, object> settings = ParseObject(ReadFile(SettingsPath(), "{}"));
             settings["twitch"] = ParseObject(ReadFile(TwitchConfigPath(), "{}"));
             settings["obs"] = ParseObject(ReadFile(ObsConfigPath(), "{}"));
+            if (File.Exists(BoostersPath()))
+            {
+                settings["boosters"] = ParseArray(ReadFile(BoostersPath(), "[]"));
+            }
+            if (File.Exists(CardsPath()))
+            {
+                Dictionary<string, object> deck = settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>
+                    ? (Dictionary<string, object>)settings["deck"]
+                    : new Dictionary<string, object>();
+                deck["cards"] = ParseArray(ReadFile(CardsPath(), "[]"));
+                settings["deck"] = deck;
+            }
             return settings;
         }
 
@@ -956,11 +1022,36 @@ namespace CardPackWidgetApp
             {
                 File.WriteAllText(ObsConfigPath(), json.Serialize(settings["obs"]), Encoding.UTF8);
             }
-            settings.Remove("twitch");
-            settings.Remove("obs");
-            settings["version"] = 1;
-            settings["updatedAt"] = DateTime.UtcNow.ToString("o");
-            File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
+            // Boosters and cards live in their own files so updates / new rarities never
+            // overwrite user-created content (same rationale as twitch.json/obs.json).
+            if (settings.ContainsKey("boosters") && settings["boosters"] is object[])
+            {
+                File.WriteAllText(BoostersPath(), json.Serialize(settings["boosters"]), Encoding.UTF8);
+            }
+            if (settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>)
+            {
+                Dictionary<string, object> deck = (Dictionary<string, object>)settings["deck"];
+                if (deck.ContainsKey("cards") && deck["cards"] is object[])
+                {
+                    File.WriteAllText(CardsPath(), json.Serialize(deck["cards"]), Encoding.UTF8);
+                }
+            }
+
+            // Serialize settings.json from a shallow copy so the externalized sections are kept out
+            // of settings.json without mutating the caller's dict (callers may return it to the client).
+            Dictionary<string, object> toStore = new Dictionary<string, object>(settings);
+            toStore.Remove("twitch");
+            toStore.Remove("obs");
+            toStore.Remove("boosters");
+            if (toStore.ContainsKey("deck") && toStore["deck"] is Dictionary<string, object>)
+            {
+                Dictionary<string, object> deckCopy = new Dictionary<string, object>((Dictionary<string, object>)toStore["deck"]);
+                deckCopy.Remove("cards");
+                toStore["deck"] = deckCopy;
+            }
+            toStore["version"] = 1;
+            toStore["updatedAt"] = DateTime.UtcNow.ToString("o");
+            File.WriteAllText(SettingsPath(), json.Serialize(toStore), Encoding.UTF8);
             Broadcast("settings", "{\"updatedAt\":\"" + EscapeJson(DateTime.UtcNow.ToString("o")) + "\"}");
         }
 
@@ -1016,6 +1107,16 @@ namespace CardPackWidgetApp
         private string CollectionsPath()
         {
             return Path.Combine(dataDir, "collections.json");
+        }
+
+        private string CardsPath()
+        {
+            return Path.Combine(dataDir, "cards.json");
+        }
+
+        private string BoostersPath()
+        {
+            return Path.Combine(dataDir, "boosters.json");
         }
 
         private string TwitchConfigPath()

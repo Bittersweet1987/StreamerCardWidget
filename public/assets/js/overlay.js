@@ -180,7 +180,7 @@ async function runOpening(request = {}) {
   addLog("draw", "info", `${user} hat "${card.title || card.id}" aus "${booster.title || booster.id}" gezogen.`);
 
   const scene = document.createElement("section");
-  scene.className = "opening-scene";
+  scene.className = `opening-scene name-${settings.style?.namePosition === "top" ? "top" : "bottom"}`;
   scene.innerHTML = `
     <div class="draw-copy"><span>${escapeForOverlay(user)}</span></div>
     <div class="opening-rig" style="--pack-accent:${booster.accent || "#ff78bb"}">
@@ -196,6 +196,16 @@ async function runOpening(request = {}) {
   requestAnimationFrame(() => scene.classList.add("phase-enter"));
   playSound("open");
   await delay(520);
+  // Build anticipation: wobble the still-closed pack once per configured face-down card
+  // before it tears open. More backs = longer build-up; 0 = tear open immediately.
+  const backs = Math.max(0, Math.min(8, Math.round(Number(settings.behavior?.cardBacksBeforeReveal ?? 2))));
+  const rig = scene.querySelector(".opening-rig");
+  for (let i = 0; i < backs; i++) {
+    rig?.classList.add("is-anticipating");
+    await delay(240);
+    rig?.classList.remove("is-anticipating");
+    await delay(90);
+  }
   scene.classList.add("phase-tear");
   await delay(1050);
   scene.classList.add("phase-slide");
