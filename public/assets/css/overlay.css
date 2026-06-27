@@ -281,11 +281,11 @@ body {
   text-align: center;
 }
 
-/* Bottom (default): just below the collection row, close to the card. */
+/* Bottom (default): below the collection row, with a clear gap to the collection. */
 .draw-copy {
   position: absolute;
   right: 0;
-  bottom: 78px;
+  bottom: 48px;
   left: 0;
   z-index: 32;
   display: flex;
@@ -331,9 +331,9 @@ body {
   transform: translateY(0);
 }
 
-/* Top: just above the card animation. */
+/* Top: just above the pack/card, with only a small gap. */
 .opening-scene.name-top .draw-copy {
-  top: 165px;
+  top: 72px;
   bottom: auto;
   transform: translateY(-10px);
 }

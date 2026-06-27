@@ -190,19 +190,19 @@ select {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
   min-width: 0;
 }
 
 .card-title {
   --title-len: 10;
-  display: block;
-  /* Fill the footer from the (image) left edge up to just before the star badge.
-     The font-size still auto-shrinks with title length so the text always fits. */
-  flex: 1 1 auto;
+  /* Auto-width pill, centered as a group with the star badge so the title always reads
+     centered under the image (the star count never shifts it off-center). Font-size still
+     auto-shrinks with title length. */
+  flex: 0 1 auto;
   min-width: 0;
-  max-width: none;
+  max-width: 72%;
   padding: 7px 13px;
   border-radius: 999px;
   color: var(--card-accent, var(--accent));
@@ -243,10 +243,13 @@ select {
 }
 
 .stars span {
-  width: 9px;
+  flex: 0 0 auto;
+  width: 11px;
   aspect-ratio: 1;
   clip-path: polygon(50% 0, 61% 34%, 98% 34%, 68% 55%, 79% 90%, 50% 68%, 21% 90%, 32% 55%, 2% 34%, 39% 34%);
   background: var(--card-accent, var(--accent));
+  /* Dark edge so even white/light accent stars (e.g. common) stay visible on the white badge. */
+  filter: drop-shadow(0 0 .5px rgba(48, 33, 74, .9)) drop-shadow(0 .5px .4px rgba(48, 33, 74, .55));
 }
 
 .stars span[data-holo="true"] {
@@ -267,11 +270,11 @@ select {
   /* Crisp lavender rim around the star shape. drop-shadow follows the clip-path outline
      (box-shadow would be clipped away), stacked in several directions to form a solid edge. */
   filter:
-    saturate(1.45) brightness(1.06)
-    drop-shadow(0.8px 0 0 #b39ae8) drop-shadow(-0.8px 0 0 #b39ae8)
-    drop-shadow(0 0.8px 0 #b39ae8) drop-shadow(0 -0.8px 0 #b39ae8)
-    drop-shadow(0.6px 0.6px 0 #b39ae8) drop-shadow(-0.6px 0.6px 0 #b39ae8)
-    drop-shadow(0.6px -0.6px 0 #b39ae8) drop-shadow(-0.6px -0.6px 0 #b39ae8);
+    saturate(1.5) brightness(1.04)
+    drop-shadow(0.9px 0 0 #9a7fd0) drop-shadow(-0.9px 0 0 #9a7fd0)
+    drop-shadow(0 0.9px 0 #9a7fd0) drop-shadow(0 -0.9px 0 #9a7fd0)
+    drop-shadow(0.7px 0.7px 0 #9a7fd0) drop-shadow(-0.7px 0.7px 0 #9a7fd0)
+    drop-shadow(0.7px -0.7px 0 #9a7fd0) drop-shadow(-0.7px -0.7px 0 #9a7fd0);
 }
 
 .is-compact-card .stars {
