@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.0";
+        public const string Version = "1.4.1";
         public const string ReleaseDate = "2026-06-27";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -39,7 +39,7 @@ namespace CardPackWidgetApp
             };
             try
             {
-                WaitForPidArgumentIfPresent();
+                if (TryApplyUpdate()) return;
                 ServicePointManager.Expect100Continue = false;
                 ServicePointManager.SecurityProtocol =
                     (SecurityProtocolType)3072 | // TLS 1.2 for Twitch Helix and OAuth APIs
@@ -55,25 +55,74 @@ namespace CardPackWidgetApp
             }
         }
 
-        // Self-update relaunches the app with --wait-for-pid=<old PID>. Blocking here, before
-        // anything else runs (no window, no port bind yet), guarantees the previous instance has
-        // fully released port 5377 before this one ever tries to claim it - a real synchronization
-        // primitive instead of a guessed delay or a polling loop racing against OS cleanup timing.
-        private static void WaitForPidArgumentIfPresent()
+        // Self-update relaunches the freshly extracted exe (running from the temp staging dir,
+        // NOT the install dir) in this "--apply-update" mode. Because this updater instance does
+        // NOT run out of the install dir's CardPackWidget.exe, it can overwrite that exe once the
+        // old instance has exited - a running exe can never overwrite itself, which is exactly the
+        // "file is in use" failure the old in-place relaunch hit. We copy the new files in, launch
+        // the now-updated install-dir exe, and exit without ever showing a window or binding a port.
+        private static bool TryApplyUpdate()
         {
+            bool apply = false;
+            int waitPid = 0;
+            string installDir = null;
+            string sourceDir = null;
             foreach (string arg in Environment.GetCommandLineArgs())
             {
-                if (!arg.StartsWith("--wait-for-pid=", StringComparison.OrdinalIgnoreCase)) continue;
-                int pid;
-                if (!Int32.TryParse(arg.Substring("--wait-for-pid=".Length), out pid)) continue;
-                try
+                if (arg.Equals("--apply-update", StringComparison.OrdinalIgnoreCase)) apply = true;
+                else if (arg.StartsWith("--wait-for-pid=", StringComparison.OrdinalIgnoreCase))
                 {
-                    Process.GetProcessById(pid).WaitForExit(15000);
+                    int pid;
+                    if (Int32.TryParse(arg.Substring("--wait-for-pid=".Length), out pid)) waitPid = pid;
                 }
-                catch
+                else if (arg.StartsWith("--install-dir=", StringComparison.OrdinalIgnoreCase))
+                    installDir = arg.Substring("--install-dir=".Length).Trim('"');
+                else if (arg.StartsWith("--source-dir=", StringComparison.OrdinalIgnoreCase))
+                    sourceDir = arg.Substring("--source-dir=".Length).Trim('"');
+            }
+            if (!apply || String.IsNullOrEmpty(installDir) || String.IsNullOrEmpty(sourceDir)) return false;
+
+            try
+            {
+                if (waitPid != 0)
                 {
-                    // Already gone - nothing to wait for.
+                    try { Process.GetProcessById(waitPid).WaitForExit(15000); } catch { }
                 }
+                installDir = installDir.TrimEnd('\\');
+                // The old instance's exe handle may linger briefly after exit; retry the copy so a
+                // momentary lock on CardPackWidget.exe doesn't abort the whole update.
+                Exception lastError = null;
+                for (int attempt = 0; attempt < 20; attempt++)
+                {
+                    try { CopyDirectoryRecursive(sourceDir, installDir); lastError = null; break; }
+                    catch (Exception ex) { lastError = ex; Thread.Sleep(500); }
+                }
+                if (lastError != null) throw lastError;
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = Path.Combine(installDir, "CardPackWidget.exe"),
+                    UseShellExecute = true,
+                    WorkingDirectory = installDir
+                });
+            }
+            catch (Exception ex)
+            {
+                LogCrash(ex);
+            }
+            return true;
+        }
+
+        private static void CopyDirectoryRecursive(string sourceDir, string destDir)
+        {
+            Directory.CreateDirectory(destDir);
+            foreach (string file in Directory.GetFiles(sourceDir))
+            {
+                File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true);
+            }
+            foreach (string dir in Directory.GetDirectories(sourceDir))
+            {
+                CopyDirectoryRecursive(dir, Path.Combine(destDir, Path.GetFileName(dir)));
             }
         }
 
@@ -226,32 +275,27 @@ namespace CardPackWidgetApp
             }
 
             string installDir = rootDir.TrimEnd('\\');
-            string exePath = Path.Combine(installDir, "CardPackWidget.exe");
             int currentPid = Process.GetCurrentProcess().Id;
 
-            // No batch script, no guessing how long shutdown takes. Instead: write a marker
-            // describing the downloaded update, then relaunch this same (still-old) exe with
-            // --wait-for-pid=<our PID>. That new process blocks on Process.WaitForExit for us
-            // - a real OS-level guarantee, not a timing race - before it does anything, including
-            // ever trying to bind the port. Once we exit and it wakes up, CardPackServer.Start()
-            // (see ApplyPendingUpdateIfAny) notices the marker, copies the new files in, and
-            // relaunches once more into the actual updated exe. Only that final instance binds
-            // the port, and by then both earlier processes are long gone - no two-instance race.
-            Dictionary<string, object> marker = new Dictionary<string, object>
-            {
-                { "exeSourceDir", exeSourceDir },
-                { "stagingDir", stagingDir }
-            };
-            File.WriteAllText(Path.Combine(dataDir, "update-pending.json"), json.Serialize(marker), Encoding.UTF8);
+            // Relaunch the freshly extracted exe FROM the staging dir (not the install dir) in
+            // --apply-update mode. Running from staging is what lets it overwrite the install-dir
+            // exe - a process can never overwrite the exe it is itself running from, which is the
+            // "file is in use" error the previous in-place relaunch always hit. The updater waits
+            // for this (old) instance to exit, copies the new files into installDir, then starts
+            // the updated install-dir exe. Only that final instance shows a window and binds the
+            // port; by then both earlier processes are gone, so there is no two-instance race.
+            string updaterExe = Path.Combine(exeSourceDir, "CardPackWidget.exe");
 
             Log("update", "info", "Update wird installiert, App startet neu...");
 
             Process.Start(new ProcessStartInfo
             {
-                FileName = exePath,
-                Arguments = "--wait-for-pid=" + currentPid,
+                FileName = updaterExe,
+                Arguments = "--apply-update --wait-for-pid=" + currentPid
+                    + " --install-dir=\"" + installDir + "\""
+                    + " --source-dir=\"" + exeSourceDir + "\"",
                 UseShellExecute = true,
-                WorkingDirectory = installDir
+                WorkingDirectory = exeSourceDir
             });
 
             Task.Run(delegate
@@ -262,60 +306,9 @@ namespace CardPackWidgetApp
             });
         }
 
-        private void ApplyPendingUpdateIfAny()
-        {
-            string markerPath = Path.Combine(dataDir, "update-pending.json");
-            if (!File.Exists(markerPath)) return;
-            try
-            {
-                Dictionary<string, object> marker = ParseObject(ReadFile(markerPath, "{}"));
-                string exeSourceDir = GetString(marker, "exeSourceDir", "");
-                string stagingDir = GetString(marker, "stagingDir", "");
-                string installDir = rootDir.TrimEnd('\\');
-
-                if (Directory.Exists(exeSourceDir))
-                {
-                    CopyDirectoryRecursive(exeSourceDir, installDir);
-                }
-
-                try { File.Delete(markerPath); } catch { }
-                try { if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true); } catch { }
-
-                Log("update", "info", "Update installiert, starte aktualisierte Version...");
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = Path.Combine(installDir, "CardPackWidget.exe"),
-                    UseShellExecute = true,
-                    WorkingDirectory = installDir
-                });
-                Environment.Exit(0);
-            }
-            catch (Exception ex)
-            {
-                // Don't let a broken update marker block every future startup - drop it and
-                // keep running on whatever files are already on disk.
-                try { File.Delete(markerPath); } catch { }
-                Log("update", "error", "Update konnte nicht angewendet werden: " + ex.Message);
-            }
-        }
-
-        private static void CopyDirectoryRecursive(string sourceDir, string destDir)
-        {
-            Directory.CreateDirectory(destDir);
-            foreach (string file in Directory.GetFiles(sourceDir))
-            {
-                File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true);
-            }
-            foreach (string dir in Directory.GetDirectories(sourceDir))
-            {
-                CopyDirectoryRecursive(dir, Path.Combine(destDir, Path.GetFileName(dir)));
-            }
-        }
-
         public int Start(int preferredPort)
         {
             EnsureDataFiles();
-            ApplyPendingUpdateIfAny();
             // Defensive margin only - the actual self-update handover no longer relies on this.
             // A normal "the old window is still closing" moment could still want a brief retry.
             int attempts = 0;
