@@ -216,6 +216,10 @@
                 <input id="reward-enabled" type="checkbox">
                 <span data-i18n="label-reward-enabled">Aktiviert</span>
               </label>
+              <label class="switch-row compact-switch">
+                <input id="reward-paused" type="checkbox">
+                <span data-i18n="label-reward-paused">Pausiert</span>
+              </label>
               <div class="form-grid">
                 <label data-i18n="label-reward-title">Reward-Titel<input id="reward-title" type="text"></label>
                 <label data-i18n="label-reward-cost">Kosten<input id="reward-cost" type="number" min="1" step="1"></label>
@@ -223,12 +227,8 @@
                 <label data-i18n="label-reward-bg-color">Hintergrundfarbe<input id="reward-bg-color" type="color"></label>
                 <label data-i18n="label-reward-max-stream">Max pro Stream<input id="reward-max-stream" type="number" min="0" step="1"></label>
                 <label data-i18n="label-reward-max-user">Max pro Nutzer/Stream<input id="reward-max-user" type="number" min="0" step="1"></label>
+                <label class="full-row" data-i18n="label-reward-prompt">Beschreibung<input id="reward-prompt" type="text"></label>
               </div>
-              <label data-i18n="label-reward-prompt">Beschreibung<input id="reward-prompt" type="text"></label>
-              <label class="switch-row compact-switch">
-                <input id="reward-paused" type="checkbox">
-                <span data-i18n="label-reward-paused">Pausiert</span>
-              </label>
               <div class="button-row">
                 <button class="primary-button" id="sync-reward" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
                 <button class="danger-button" id="delete-reward" type="button" data-i18n="btn-delete-reward">Löschen</button>
