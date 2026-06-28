@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.12";
+        public const string Version = "1.4.13";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1441,6 +1441,15 @@ namespace CardPackWidgetApp
                 { "prompt", prompt },
                 { "is_enabled", isEnabled },
                 { "is_user_input_required", false },
+                // The app fulfills every redemption itself the instant it arrives, so it must
+                // never sit in Twitch's manual review queue. Twitch's web chat renders an
+                // interactive Fulfill/Refund control inline for unfulfilled redemptions - a
+                // newer UI element that OBS's bundled (older) Chromium can fail to render,
+                // crashing the whole chat dock with "There was an error displaying chat."
+                // Skipping the queue means the redemption is auto-fulfilled and chat only ever
+                // shows the plain "user redeemed X" line, which is what other tools (e.g.
+                // StreamerBot) already do by default - matching why their rewards never hit this.
+                { "should_redemptions_skip_request_queue", true },
                 { "is_max_per_stream_enabled", maxPerStream > 0 },
                 { "max_per_stream", maxPerStream > 0 ? maxPerStream : 1 },
                 { "is_max_per_user_per_stream_enabled", maxPerUserPerStream > 0 },
@@ -1792,6 +1801,9 @@ namespace CardPackWidgetApp
                 { "prompt", prompt },
                 { "is_enabled", isEnabled },
                 { "is_user_input_required", false },
+                // See SyncReward for why this must always be true (auto-fulfilled redemptions
+                // avoid the inline Fulfill/Refund UI that crashes OBS's Twitch chat dock).
+                { "should_redemptions_skip_request_queue", true },
                 { "is_global_cooldown_enabled", globalCooldown > 0 },
                 { "global_cooldown_seconds", globalCooldown > 0 ? globalCooldown : 1 }
             };

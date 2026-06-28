@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260628-cprewamp3">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260628-navrewamp1">
   </head>
   <body>
     <div class="admin-shell">
@@ -19,12 +19,13 @@
         <nav class="nav" aria-label="Einstellungen">
           <button class="nav-button is-active" data-tab="overview" data-i18n="nav-overview">Übersicht</button>
           <button class="nav-button" data-tab="trigger" data-i18n="nav-trigger">Verbindung</button>
+          <button class="nav-button" data-tab="channelpoints" data-i18n="nav-channelpoints">Kanalpunkte</button>
+          <button class="nav-button" data-tab="design" data-i18n="nav-design">Einstellungen</button>
           <button class="nav-button" data-tab="cards" data-i18n="nav-cards">Karten</button>
           <button class="nav-button" data-tab="booster" data-i18n="nav-booster">Booster</button>
           <button class="nav-button" data-tab="users" data-i18n="nav-users">User</button>
-          <button class="nav-button" data-tab="log" data-i18n="nav-log">Log</button>
-          <button class="nav-button" data-tab="design" data-i18n="nav-design">Einstellungen</button>
           <button class="nav-button" data-tab="update" data-i18n="nav-update">Update</button>
+          <button class="nav-button" data-tab="log" data-i18n="nav-log">Log</button>
         </nav>
         <div class="sidebar-settings">
           <label data-i18n="label-language">Sprache<select id="language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
@@ -93,63 +94,6 @@
           </div>
         </section>
 
-        <section class="tab-panel" data-panel="cards">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow" data-i18n="cards-eyebrow">Deck</p>
-              <h2 data-i18n="cards-title">Karten verwalten</h2>
-            </div>
-            <button class="primary-button" id="add-card" type="button" data-i18n="btn-add-card">Karte hinzufügen</button>
-          </div>
-          <div class="cards-layout">
-            <div class="card-list" id="card-list"></div>
-            <aside class="tool-panel sticky-preview">
-              <p class="eyebrow" data-i18n="cards-live-preview">Live Vorschau</p>
-              <div id="selected-card-preview"></div>
-            </aside>
-          </div>
-        </section>
-
-        <section class="tab-panel" data-panel="booster">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow" data-i18n="booster-eyebrow">Packs</p>
-              <h2 data-i18n="booster-title">Booster verwalten</h2>
-            </div>
-            <button class="primary-button" id="add-booster" type="button" data-i18n="btn-add-booster">Booster hinzufügen</button>
-          </div>
-          <div class="booster-layout">
-            <div class="booster-list" id="booster-list"></div>
-            <section class="tool-panel">
-              <div class="section-heading">
-                <div>
-                  <p class="eyebrow" data-i18n="booster-pack-eyebrow">Pack</p>
-                  <h2 data-i18n="booster-design-title">Booster gestalten</h2>
-                </div>
-              </div>
-              <div class="form-grid">
-                <label data-i18n="label-booster-title">Titel<input id="booster-title" type="text"></label>
-                <label data-i18n="label-booster-subtitle">Untertitel<input id="booster-subtitle" type="text"></label>
-                <label data-i18n="label-booster-score">Booster-Score<input id="booster-score" type="number" min="1" step="1"></label>
-                <label data-i18n="label-booster-accent">Akzentfarbe<input id="booster-accent" type="color"></label>
-                <label class="file-field" data-i18n="label-booster-image">Booster-Bild<input id="booster-image" type="file" accept="image/*"></label>
-              </div>
-              <div class="button-row">
-                <button class="ghost-button" id="remove-booster-image" type="button" data-i18n="btn-remove-booster-image">Booster-Bild entfernen</button>
-                <button class="danger-button" id="delete-booster" type="button" data-i18n="btn-delete-booster">Booster löschen</button>
-              </div>
-              <div class="assigned-heading">
-                <strong data-i18n="label-assigned-cards">Zugewiesene Karten</strong>
-                <span id="assigned-count">0/9</span>
-              </div>
-              <div class="assigned-cards" id="assigned-cards"></div>
-            </section>
-            <section class="tool-panel preview-center">
-              <div id="booster-preview"></div>
-            </section>
-          </div>
-        </section>
-
         <section class="tab-panel" data-panel="trigger">
           <div class="connection-layout">
             <section class="tool-panel">
@@ -188,7 +132,8 @@
                 <label>Port<input id="obs-port" type="number" min="1"></label>
                 <label data-i18n="label-obs-password">Passwort<input id="obs-password" type="password"></label>
                 <label class="full-row" data-i18n="label-obs-scene">Szenenname<input id="obs-scene-name" type="text"></label>
-                <label class="full-row" data-i18n="label-obs-source">Quellenname<input id="obs-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-obs-source">Quellenname Booster<input id="obs-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-obs-collection-source">Quellenname Kartensammlung<input id="obs-collection-source-name" type="text"></label>
               </div>
               <div class="button-row">
                 <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
@@ -196,7 +141,9 @@
               </div>
             </section>
           </div>
+        </section>
 
+        <section class="tab-panel" data-panel="channelpoints">
           <section class="tool-panel channel-points-panel">
             <div class="section-heading">
               <div>
@@ -245,7 +192,7 @@
                 <button class="ghost-button" id="showcase-info-toggle" type="button" data-i18n="btn-showcase-info">Hilfe anzeigen</button>
               </div>
               <div class="info-box" id="showcase-info" hidden>
-                <p data-i18n="showcase-info-text">Löst ein Zuschauer die Belohnung „Sammlung zeigen“ über Kanalpunkte ein, sliden im OBS-Overlay nacheinander alle aktiven Booster mit den Karten dieses Zuschauers durch (gezogen = sichtbar, noch nicht gezogen = unbekannt). Richte dafür einmal die separate OBS-Quelle ein. Den globalen Cooldown legst du direkt an der Belohnung fest.</p>
+                <p data-i18n="showcase-info-text">Löst ein Zuschauer die Belohnung „Sammlung zeigen“ über Kanalpunkte ein, sliden im OBS-Overlay nacheinander alle aktiven Booster mit den Karten dieses Zuschauers durch (gezogen = sichtbar, noch nicht gezogen = unbekannt). Die OBS-Quelle dafür richtest du unter „Verbindung“ ein. Den globalen Cooldown legst du direkt an der Belohnung fest.</p>
               </div>
               <label class="switch-row">
                 <input id="showcase-enabled" type="checkbox">
@@ -261,7 +208,6 @@
                 <label data-i18n="label-showcase-cooldown">Globaler Cooldown (Sek.)<input id="showcase-cooldown" type="number" min="0" step="1"></label>
                 <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="showcase-bg-color" type="color"></label>
                 <label data-i18n="label-showcase-seconds">Sekunden pro Booster<input id="showcase-seconds" type="number" min="2" step="1"></label>
-                <label data-i18n="label-showcase-source">OBS-Quellenname<input id="showcase-source-name" type="text"></label>
                 <label class="full-row" data-i18n="label-reward-prompt">Beschreibung<input id="showcase-prompt" type="text"></label>
               </div>
               <div class="button-row">
@@ -284,34 +230,6 @@
             </div>
             <div class="status-line" id="obs-sources-status" hidden></div>
           </section>
-        </section>
-
-        <section class="tab-panel" data-panel="users">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow" data-i18n="users-eyebrow">Sammlung</p>
-              <h2 data-i18n="users-title">Nutzer verwalten</h2>
-            </div>
-            <input id="user-search" type="search" placeholder="Nutzer suchen..." data-i18n-placeholder="placeholder-user-search">
-          </div>
-          <p class="hint" id="user-empty-hint" hidden data-i18n="hint-users-empty">Noch keine Sammlungen vorhanden. Sobald Nutzer Karten ziehen, erscheinen sie hier.</p>
-          <div class="user-list" id="user-list"></div>
-        </section>
-
-        <section class="tab-panel" data-panel="log">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow" data-i18n="log-eyebrow">Verlauf</p>
-              <h2 data-i18n="log-title">Ereignis-Log</h2>
-            </div>
-            <input id="log-search" type="search" placeholder="Log durchsuchen..." data-i18n-placeholder="placeholder-log-search">
-          </div>
-          <div class="button-row">
-            <button class="secondary-button" id="export-logs" type="button" data-i18n="btn-export-logs">Exportieren</button>
-            <button class="danger-button" id="clear-logs" type="button" data-i18n="btn-clear-logs">Log löschen</button>
-          </div>
-          <p class="hint" id="log-empty-hint" hidden data-i18n="hint-log-empty">Noch keine Ereignisse aufgezeichnet.</p>
-          <div class="log-list" id="log-list"></div>
         </section>
 
         <section class="tab-panel" data-panel="design">
@@ -435,6 +353,75 @@
           </section>
         </section>
 
+        <section class="tab-panel" data-panel="cards">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="cards-eyebrow">Deck</p>
+              <h2 data-i18n="cards-title">Karten verwalten</h2>
+            </div>
+            <button class="primary-button" id="add-card" type="button" data-i18n="btn-add-card">Karte hinzufügen</button>
+          </div>
+          <div class="cards-layout">
+            <div class="card-list" id="card-list"></div>
+            <aside class="tool-panel sticky-preview">
+              <p class="eyebrow" data-i18n="cards-live-preview">Live Vorschau</p>
+              <div id="selected-card-preview"></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="booster">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="booster-eyebrow">Packs</p>
+              <h2 data-i18n="booster-title">Booster verwalten</h2>
+            </div>
+            <button class="primary-button" id="add-booster" type="button" data-i18n="btn-add-booster">Booster hinzufügen</button>
+          </div>
+          <div class="booster-layout">
+            <div class="booster-list" id="booster-list"></div>
+            <section class="tool-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="booster-pack-eyebrow">Pack</p>
+                  <h2 data-i18n="booster-design-title">Booster gestalten</h2>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label data-i18n="label-booster-title">Titel<input id="booster-title" type="text"></label>
+                <label data-i18n="label-booster-subtitle">Untertitel<input id="booster-subtitle" type="text"></label>
+                <label data-i18n="label-booster-score">Booster-Score<input id="booster-score" type="number" min="1" step="1"></label>
+                <label data-i18n="label-booster-accent">Akzentfarbe<input id="booster-accent" type="color"></label>
+                <label class="file-field" data-i18n="label-booster-image">Booster-Bild<input id="booster-image" type="file" accept="image/*"></label>
+              </div>
+              <div class="button-row">
+                <button class="ghost-button" id="remove-booster-image" type="button" data-i18n="btn-remove-booster-image">Booster-Bild entfernen</button>
+                <button class="danger-button" id="delete-booster" type="button" data-i18n="btn-delete-booster">Booster löschen</button>
+              </div>
+              <div class="assigned-heading">
+                <strong data-i18n="label-assigned-cards">Zugewiesene Karten</strong>
+                <span id="assigned-count">0/9</span>
+              </div>
+              <div class="assigned-cards" id="assigned-cards"></div>
+            </section>
+            <section class="tool-panel preview-center">
+              <div id="booster-preview"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="users">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="users-eyebrow">Sammlung</p>
+              <h2 data-i18n="users-title">Nutzer verwalten</h2>
+            </div>
+            <input id="user-search" type="search" placeholder="Nutzer suchen..." data-i18n-placeholder="placeholder-user-search">
+          </div>
+          <p class="hint" id="user-empty-hint" hidden data-i18n="hint-users-empty">Noch keine Sammlungen vorhanden. Sobald Nutzer Karten ziehen, erscheinen sie hier.</p>
+          <div class="user-list" id="user-list"></div>
+        </section>
+
         <section class="tab-panel" data-panel="update">
           <section class="tool-panel">
             <div class="section-heading">
@@ -454,9 +441,25 @@
             </div>
           </section>
         </section>
+
+        <section class="tab-panel" data-panel="log">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="log-eyebrow">Verlauf</p>
+              <h2 data-i18n="log-title">Ereignis-Log</h2>
+            </div>
+            <input id="log-search" type="search" placeholder="Log durchsuchen..." data-i18n-placeholder="placeholder-log-search">
+          </div>
+          <div class="button-row">
+            <button class="secondary-button" id="export-logs" type="button" data-i18n="btn-export-logs">Exportieren</button>
+            <button class="danger-button" id="clear-logs" type="button" data-i18n="btn-clear-logs">Log löschen</button>
+          </div>
+          <p class="hint" id="log-empty-hint" hidden data-i18n="hint-log-empty">Noch keine Ereignisse aufgezeichnet.</p>
+          <div class="log-list" id="log-list"></div>
+        </section>
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260628-cprewamp3"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260628-navrewamp1"></script>
   </body>
 </html>

@@ -50,6 +50,7 @@ const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redempti
 const I18N = {
   "nav-overview": { de: "Übersicht", en: "Overview" },
   "nav-trigger": { de: "Verbindung", en: "Connection" },
+  "nav-channelpoints": { de: "Kanalpunkte", en: "Channel points" },
   "nav-cards": { de: "Karten", en: "Cards" },
   "nav-booster": { de: "Booster", en: "Boosters" },
   "nav-users": { de: "User", en: "Users" },
@@ -224,7 +225,8 @@ const I18N = {
     en: "In OBS open the “Tools” menu → “WebSocket Server Settings”. Enable “Enable WebSocket server”. You'll find the port (default 4455) and password via “Show Connect Info”. Then enter host (usually 127.0.0.1), port and password here."
   },
   "label-obs-scene": { de: "Szenenname", en: "Scene name" },
-  "label-obs-source": { de: "Quellenname", en: "Source name" },
+  "label-obs-source": { de: "Quellenname Booster", en: "Source name booster" },
+  "label-obs-collection-source": { de: "Quellenname Kartensammlung", en: "Source name card collection" },
   "btn-test-obs": { de: "OBS testen", en: "Test OBS" },
   "btn-setup-obs": { de: "OBS Szene aktualisieren", en: "Update OBS scene" },
   "users-eyebrow": { de: "Sammlung", en: "Collection" },
@@ -270,7 +272,6 @@ const I18N = {
   "label-showcase-cooldown": { de: "Globaler Cooldown (Sek.)", en: "Global cooldown (sec.)" },
   "label-showcase-bg-color": { de: "Hintergrundfarbe", en: "Background color" },
   "label-showcase-seconds": { de: "Sekunden pro Booster", en: "Seconds per booster" },
-  "label-showcase-source": { de: "OBS-Quellenname", en: "OBS source name" },
   "status-showcase-saving": { de: "Showcase-Belohnung wird gespeichert...", en: "Saving showcase reward..." },
   "notice-showcase-saved": { de: "Showcase-Belohnung gespeichert.", en: "Showcase reward saved." },
   "obs-sources-title": { de: "Szenen und Quellen", en: "Scenes and sources" },
@@ -1003,8 +1004,7 @@ async function handleShowcaseDelete() {
 
 function bindShowcase() {
   const fields = {
-    "#showcase-seconds": ["secondsPerBooster", "number"],
-    "#showcase-source-name": ["sourceName"]
+    "#showcase-seconds": ["secondsPerBooster", "number"]
   };
   for (const [selector, [field, type]] of Object.entries(fields)) {
     $(selector).addEventListener("input", (event) => {
@@ -1479,7 +1479,6 @@ function hydrateTrigger() {
   $("#showcase-cooldown").value = showcase.rewardGlobalCooldown || 0;
   $("#showcase-bg-color").value = showcase.rewardBackgroundColor || "#9147ff";
   $("#showcase-seconds").value = showcase.secondsPerBooster || 12;
-  $("#showcase-source-name").value = showcase.sourceName || "Streamer Card Sammlung";
 }
 
 function bindTrigger() {
@@ -1517,6 +1516,7 @@ function hydrateDesign() {
   $("#obs-password").value = settings.obs?.password || "";
   $("#obs-scene-name").value = settings.obs?.sceneName || "Streamer Card Overlay";
   $("#obs-source-name").value = settings.obs?.sourceName || "Streamer Card Widget";
+  $("#obs-collection-source-name").value = settings.showcase?.sourceName || "Streamer Card Sammlung";
   refreshSettingsPreview();
 }
 
@@ -1661,6 +1661,10 @@ function bindDesign() {
       settings.obs[field] = type === "checkbox" ? event.target.checked : type === "number" ? Number(event.target.value) : event.target.value;
     });
   }
+  $("#obs-collection-source-name").addEventListener("input", (event) => {
+    settings.showcase ||= {};
+    settings.showcase.sourceName = event.target.value;
+  });
   $("#test-obs").addEventListener("click", testObsConnection);
   $("#setup-obs").addEventListener("click", setupObsOverlay);
   $("#setup-all-obs-sources").addEventListener("click", setupAllObsSources);
