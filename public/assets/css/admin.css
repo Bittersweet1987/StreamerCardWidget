@@ -489,16 +489,6 @@ input[type="range"] {
   margin-top: 18px;
 }
 
-.reward-list-eyebrow {
-  margin-top: 14px;
-}
-
-.reward-entry-list {
-  display: grid;
-  gap: 16px;
-  margin-bottom: 22px;
-}
-
 .reward-entry {
   border: 1px solid #e4deec;
   border-radius: 8px;
@@ -506,17 +496,12 @@ input[type="range"] {
   background: rgba(255, 255, 255, .6);
 }
 
-.reward-entry .section-heading {
-  margin-bottom: 12px;
+.reward-entry + .reward-entry {
+  margin-top: 16px;
 }
 
-.reward-entry-badge {
-  margin: 0;
-  flex-shrink: 0;
-  border: none;
-  padding: 4px 10px;
-  font-size: .72rem;
-  white-space: nowrap;
+.reward-entry .section-heading {
+  margin-bottom: 12px;
 }
 
 .showcase-entry {

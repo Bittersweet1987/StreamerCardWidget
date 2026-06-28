@@ -150,6 +150,22 @@ export function normalizeSettings(settings) {
   settings.showcase.rewardBackgroundColor ||= "#9147ff";
   settings.showcase.rewardGlobalCooldown = Number(settings.showcase.rewardGlobalCooldown || 0);
 
+  // Single global "open a pack" reward, decoupled from any one booster: PickRandomBoosterId()
+  // (server-side) always draws from ALL eligible boosters regardless of which reward triggered
+  // it, so a reward stored per-booster never actually scoped the draw - one shared reward is
+  // both simpler and matches how the draw actually behaves.
+  settings.draw ||= {};
+  settings.draw.rewardName ||= "Kartenpack";
+  settings.draw.rewardCost = Number(settings.draw.rewardCost || 1);
+  settings.draw.rewardPrompt ||= "";
+  settings.draw.rewardIds ||= [];
+  settings.draw.rewardBackgroundColor ||= "#9147ff";
+  settings.draw.rewardGlobalCooldown = Number(settings.draw.rewardGlobalCooldown || 0);
+  settings.draw.rewardMaxPerStream = Number(settings.draw.rewardMaxPerStream || 0);
+  settings.draw.rewardMaxPerUserPerStream = Number(settings.draw.rewardMaxPerUserPerStream || 0);
+  settings.draw.rewardEnabled = settings.draw.rewardEnabled !== false;
+  settings.draw.rewardPaused = settings.draw.rewardPaused === true;
+
   if (!settings.boosters.length) {
     const legacy = settings.booster || {};
     settings.boosters = [{

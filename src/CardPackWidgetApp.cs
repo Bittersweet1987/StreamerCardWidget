@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.8";
+        public const string Version = "1.4.9";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -838,6 +838,7 @@ namespace CardPackWidgetApp
             }
             MigrateTwitchAndObsConfig();
             MigrateCardsAndBoosters();
+            MigrateBoosterRewardToDraw();
         }
 
         // Twitch/OBS settings used to live inline inside settings.json. They now live in
@@ -897,6 +898,64 @@ namespace CardPackWidgetApp
             }
 
             if (changed) File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
+        }
+
+        // The "open a pack" reward used to be stored per-booster (each booster could carry its
+        // own Twitch reward). Since PickRandomBoosterId() always draws from ALL eligible
+        // boosters regardless of which reward triggered it, a reward scoped to one booster
+        // never actually scoped the draw to it - so whichever reward was already linked is
+        // carried forward into a single global settings.draw, and the now-unused fields are
+        // stripped from boosters.json.
+        private void MigrateBoosterRewardToDraw()
+        {
+            if (!File.Exists(SettingsPath())) return;
+            Dictionary<string, object> settings = ParseObject(ReadFile(SettingsPath(), "{}"));
+            if (settings.ContainsKey("draw")) return;
+            if (!File.Exists(BoostersPath())) return;
+            object[] boosters = ParseArray(ReadFile(BoostersPath(), "[]"));
+            if (boosters.Length == 0) return;
+
+            Dictionary<string, object> source = null;
+            foreach (object item in boosters)
+            {
+                Dictionary<string, object> booster = item as Dictionary<string, object>;
+                if (booster == null) continue;
+                if (booster.ContainsKey("rewardIds") && booster["rewardIds"] is object[] && ((object[])booster["rewardIds"]).Length > 0)
+                {
+                    source = booster;
+                    break;
+                }
+            }
+
+            var draw = new Dictionary<string, object>();
+            if (source != null)
+            {
+                draw["rewardIds"] = source["rewardIds"];
+                string name = GetString(source, "title", "Kartenpack");
+                if (source.ContainsKey("rewardNames") && source["rewardNames"] is object[] && ((object[])source["rewardNames"]).Length > 0)
+                {
+                    name = Convert.ToString(((object[])source["rewardNames"])[0]);
+                }
+                draw["rewardName"] = name;
+                foreach (string key in new[] { "rewardCost", "rewardPrompt", "rewardBackgroundColor", "rewardEnabled", "rewardPaused", "rewardMaxPerStream", "rewardMaxPerUserPerStream", "rewardGlobalCooldown" })
+                {
+                    if (source.ContainsKey(key)) draw[key] = source[key];
+                }
+            }
+            settings["draw"] = draw;
+            File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
+
+            bool boostersChanged = false;
+            foreach (object item in boosters)
+            {
+                Dictionary<string, object> booster = item as Dictionary<string, object>;
+                if (booster == null) continue;
+                foreach (string key in new[] { "rewardIds", "rewardNames", "rewardCost", "rewardPrompt", "rewardBackgroundColor", "rewardGlobalCooldown", "rewardMaxPerStream", "rewardMaxPerUserPerStream", "rewardEnabled", "rewardPaused" })
+                {
+                    if (booster.Remove(key)) boostersChanged = true;
+                }
+            }
+            if (boostersChanged) File.WriteAllText(BoostersPath(), json.Serialize(boosters), Encoding.UTF8);
         }
 
         private void UpdateCollection(string bodyJson)
@@ -1335,35 +1394,32 @@ namespace CardPackWidgetApp
         private static HashSet<string> TrackedRewardIds(Dictionary<string, object> settings)
         {
             var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            object boostersObj;
-            if (settings.TryGetValue("boosters", out boostersObj) && boostersObj is object[])
+            foreach (string key in new[] { "draw", "showcase" })
             {
-                foreach (object item in (object[])boostersObj)
+                Dictionary<string, object> holder = Obj(settings, key);
+                if (!holder.ContainsKey("rewardIds") || !(holder["rewardIds"] is object[])) continue;
+                foreach (object id in (object[])holder["rewardIds"])
                 {
-                    Dictionary<string, object> booster = item as Dictionary<string, object>;
-                    if (booster == null || !booster.ContainsKey("rewardIds") || !(booster["rewardIds"] is object[])) continue;
-                    foreach (object id in (object[])booster["rewardIds"])
-                    {
-                        string text = Convert.ToString(id);
-                        if (!String.IsNullOrWhiteSpace(text)) ids.Add(text);
-                    }
+                    string text = Convert.ToString(id);
+                    if (!String.IsNullOrWhiteSpace(text)) ids.Add(text);
                 }
             }
             return ids;
         }
 
+        // The reward for opening a pack is a single global reward, not one per booster:
+        // PickRandomBoosterId() always draws from ALL eligible boosters regardless of which
+        // reward triggered it, so a reward stored per-booster never actually scoped the draw
+        // to that booster - it is stored under settings["draw"] instead.
         public Dictionary<string, object> SyncReward(string bodyJson)
         {
             Dictionary<string, object> body = ParseObject(bodyJson);
             Dictionary<string, object> twitch = RequireTwitch();
-            string boosterId = GetString(body, "boosterId", "");
-            if (String.IsNullOrWhiteSpace(boosterId)) throw new InvalidOperationException("Booster fehlt.");
-
             Dictionary<string, object> settings = server.ReadSettingsObject();
-            Dictionary<string, object> booster = FindBooster(settings, boosterId);
-            if (booster == null) throw new InvalidOperationException("Booster wurde nicht gefunden.");
+            Dictionary<string, object> draw = Obj(settings, "draw");
+            if (draw.Count == 0) { draw = new Dictionary<string, object>(); settings["draw"] = draw; }
 
-            string title = GetString(body, "title", GetString(booster, "title", "Kartenpack"));
+            string title = GetString(body, "title", GetString(draw, "rewardName", "Kartenpack"));
             int cost = Math.Max(1, GetInt(body, "cost", 1));
             string prompt = GetString(body, "prompt", "");
             string backgroundColor = GetString(body, "backgroundColor", "");
@@ -1374,7 +1430,7 @@ namespace CardPackWidgetApp
             int globalCooldown = Math.Max(0, GetInt(body, "globalCooldown", 0));
             bool explicitRewardId = body.ContainsKey("rewardId");
             string rewardId = GetString(body, "rewardId", "");
-            object[] existingIds = booster.ContainsKey("rewardIds") && booster["rewardIds"] is object[] ? (object[])booster["rewardIds"] : new object[0];
+            object[] existingIds = draw.ContainsKey("rewardIds") && draw["rewardIds"] is object[] ? (object[])draw["rewardIds"] : new object[0];
             if (!explicitRewardId && String.IsNullOrWhiteSpace(rewardId)) rewardId = existingIds.Length > 0 ? Convert.ToString(existingIds[0]) : "";
 
             // Twitch requires the max/cooldown values to be >= 1 even when their setting is disabled.
@@ -1425,16 +1481,16 @@ namespace CardPackWidgetApp
                 : new Dictionary<string, object>();
 
             string savedId = GetString(reward, "id", rewardId);
-            booster["rewardIds"] = new object[] { savedId };
-            booster["rewardNames"] = new object[] { title };
-            booster["rewardCost"] = cost;
-            booster["rewardPrompt"] = prompt;
-            booster["rewardBackgroundColor"] = backgroundColor;
-            booster["rewardEnabled"] = isEnabled;
-            booster["rewardPaused"] = isPaused;
-            booster["rewardMaxPerStream"] = maxPerStream;
-            booster["rewardMaxPerUserPerStream"] = maxPerUserPerStream;
-            booster["rewardGlobalCooldown"] = globalCooldown;
+            draw["rewardIds"] = new object[] { savedId };
+            draw["rewardName"] = title;
+            draw["rewardCost"] = cost;
+            draw["rewardPrompt"] = prompt;
+            draw["rewardBackgroundColor"] = backgroundColor;
+            draw["rewardEnabled"] = isEnabled;
+            draw["rewardPaused"] = isPaused;
+            draw["rewardMaxPerStream"] = maxPerStream;
+            draw["rewardMaxPerUserPerStream"] = maxPerUserPerStream;
+            draw["rewardGlobalCooldown"] = globalCooldown;
             server.WriteSettingsObject(settings);
             RestartQuietly();
             return settings;
@@ -1453,25 +1509,23 @@ namespace CardPackWidgetApp
             TwitchRaw("DELETE", url, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), null);
 
             Dictionary<string, object> settings = server.ReadSettingsObject();
-            object boostersObj;
-            if (settings.TryGetValue("boosters", out boostersObj) && boostersObj is object[])
-            {
-                foreach (object item in (object[])boostersObj)
-                {
-                    Dictionary<string, object> booster = item as Dictionary<string, object>;
-                    if (booster == null) continue;
-                    object[] ids = booster.ContainsKey("rewardIds") && booster["rewardIds"] is object[] ? (object[])booster["rewardIds"] : new object[0];
-                    var keptIds = new List<object>();
-                    foreach (object id in ids)
-                    {
-                        if (!String.Equals(Convert.ToString(id), rewardId, StringComparison.OrdinalIgnoreCase)) keptIds.Add(id);
-                    }
-                    booster["rewardIds"] = keptIds.ToArray();
-                }
-            }
+            RemoveRewardId(Obj(settings, "draw"), rewardId);
+            RemoveRewardId(Obj(settings, "showcase"), rewardId);
             server.WriteSettingsObject(settings);
             RestartQuietly();
             return settings;
+        }
+
+        private static void RemoveRewardId(Dictionary<string, object> holder, string rewardId)
+        {
+            if (holder == null) return;
+            object[] ids = holder.ContainsKey("rewardIds") && holder["rewardIds"] is object[] ? (object[])holder["rewardIds"] : new object[0];
+            var kept = new List<object>();
+            foreach (object id in ids)
+            {
+                if (!String.Equals(Convert.ToString(id), rewardId, StringComparison.OrdinalIgnoreCase)) kept.Add(id);
+            }
+            holder["rewardIds"] = kept.ToArray();
         }
 
         private void EventSubLoop(CancellationToken token)
@@ -1752,19 +1806,11 @@ namespace CardPackWidgetApp
         private bool IsTrackedReward(string rewardId, string rewardTitle)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
-            object boostersObj;
-            if (!settings.TryGetValue("boosters", out boostersObj) || !(boostersObj is object[])) return false;
-            string normalizedTitle = Normalize(rewardTitle);
-            foreach (object item in (object[])boostersObj)
-            {
-                Dictionary<string, object> booster = item as Dictionary<string, object>;
-                if (booster == null) continue;
-                if (StringArrayContains(booster, "rewardIds", rewardId) || StringArrayContains(booster, "rewardNames", normalizedTitle, true))
-                {
-                    return true;
-                }
-            }
-            return false;
+            Dictionary<string, object> draw = Obj(settings, "draw");
+            if (draw.Count == 0) return false;
+            if (StringArrayContains(draw, "rewardIds", rewardId)) return true;
+            string name = GetString(draw, "rewardName", "");
+            return !String.IsNullOrWhiteSpace(name) && Normalize(name) == Normalize(rewardTitle);
         }
 
         private void RestartQuietly()
@@ -1853,18 +1899,6 @@ namespace CardPackWidgetApp
             return String.IsNullOrWhiteSpace(message)
                 ? "Twitch API Fehler: " + body
                 : "Twitch API Fehler: " + message;
-        }
-
-        private Dictionary<string, object> FindBooster(Dictionary<string, object> settings, string boosterId)
-        {
-            object boostersObj;
-            if (!settings.TryGetValue("boosters", out boostersObj) || !(boostersObj is object[])) return null;
-            foreach (object item in (object[])boostersObj)
-            {
-                Dictionary<string, object> booster = item as Dictionary<string, object>;
-                if (booster != null && GetString(booster, "id", "") == boosterId) return booster;
-            }
-            return null;
         }
 
         private static bool StringArrayContains(Dictionary<string, object> data, string key, string value, bool normalized = false)
