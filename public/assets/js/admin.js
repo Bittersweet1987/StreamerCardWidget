@@ -183,7 +183,7 @@ const I18N = {
   "btn-connect-twitch": { de: "Mit Twitch anmelden", en: "Sign in with Twitch" },
   "btn-refresh-twitch-status": { de: "Status prüfen", en: "Check status" },
   "btn-disconnect-twitch": { de: "Abmelden", en: "Sign out" },
-  "cp-title": { de: "Channel Points", en: "Channel Points" },
+  "cp-title": { de: "Belohnungen verwalten", en: "Manage rewards" },
   "draw-reward-eyebrow": { de: "Kartenpack", en: "Card pack" },
   "draw-reward-title": { de: "Kartenpack-Belohnung", en: "Card pack reward" },
   "confirm-delete-reward": { de: "Diese Belohnung wirklich löschen?", en: "Really delete this reward?" },
