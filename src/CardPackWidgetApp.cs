@@ -1622,7 +1622,13 @@ namespace CardPackWidgetApp
                 return;
             }
 
-            if (!IsTrackedReward(rewardId, rewardTitle)) return;
+            if (!IsTrackedReward(rewardId, rewardTitle))
+            {
+                // Helps diagnose "nothing happened" reports: a redemption came in but matched
+                // neither the draw reward nor the showcase reward (stale/mismatched reward id).
+                server.Log("draw", "info", "Belohnung \"" + rewardTitle + "\" (ID " + rewardId + ") eingeloest, aber weder als Kartenpack- noch als Sammlung-Belohnung hinterlegt - ignoriert.");
+                return;
+            }
 
             // The booster must be picked exactly once per redemption, here on the server.
             // It used to be picked client-side in the overlay, which meant every connected
