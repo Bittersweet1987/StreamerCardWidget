@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.10";
+        public const string Version = "1.4.11";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1506,7 +1506,17 @@ namespace CardPackWidgetApp
             string url = "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" +
                 Uri.EscapeDataString(GetString(twitch, "broadcasterId", "")) +
                 "&id=" + Uri.EscapeDataString(rewardId);
-            TwitchRaw("DELETE", url, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), null);
+            try
+            {
+                TwitchRaw("DELETE", url, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), null);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Already gone on Twitch's side (e.g. deleted manually in the dashboard) - that is
+                // effectively success for us. Without this, a stale id could never be cleared from
+                // the app: every delete attempt would keep failing with the same "not found" error.
+                if (ex.Message.IndexOf("was not found", StringComparison.OrdinalIgnoreCase) < 0) throw;
+            }
 
             Dictionary<string, object> settings = server.ReadSettingsObject();
             RemoveRewardId(Obj(settings, "draw"), rewardId);
