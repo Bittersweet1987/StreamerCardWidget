@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.11";
+        public const string Version = "1.4.12";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1618,7 +1618,7 @@ namespace CardPackWidgetApp
 
             // Collection showcase reward: not a pack opening - tell the collection overlay to
             // slide through every active booster for this viewer.
-            if (IsShowcaseReward(rewardId, rewardTitle))
+            if (ReconcileTrackedReward("showcase", rewardId, rewardTitle))
             {
                 server.Log("draw", "info", user + " hat die Sammlung angefordert.");
                 var showEvent = new Dictionary<string, object>
@@ -1632,7 +1632,7 @@ namespace CardPackWidgetApp
                 return;
             }
 
-            if (!IsTrackedReward(rewardId, rewardTitle))
+            if (!ReconcileTrackedReward("draw", rewardId, rewardTitle))
             {
                 // Helps diagnose "nothing happened" reports: a redemption came in but matched
                 // neither the draw reward nor the showcase reward (stale/mismatched reward id).
@@ -1744,14 +1744,25 @@ namespace CardPackWidgetApp
             TwitchJson("POST", "https://api.twitch.tv/helix/eventsub/subscriptions", GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), body);
         }
 
-        private bool IsShowcaseReward(string rewardId, string rewardTitle)
+        // Matches an incoming redemption against settings.draw or settings.showcase. If the id
+        // doesn't match but the (normalized) title still does, the reward was evidently deleted
+        // and recreated on Twitch's side under the same name - the live id from this event is
+        // adopted automatically so the stale id stops causing "nothing happened"/"not found"
+        // failures on every future redemption and on the next manual save/delete.
+        private bool ReconcileTrackedReward(string holderKey, string rewardId, string rewardTitle)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
-            Dictionary<string, object> showcase = Obj(settings, "showcase");
-            if (showcase.Count == 0) return false;
-            if (StringArrayContains(showcase, "rewardIds", rewardId)) return true;
-            string name = GetString(showcase, "rewardName", "");
-            return !String.IsNullOrWhiteSpace(name) && Normalize(name) == Normalize(rewardTitle);
+            Dictionary<string, object> holder = Obj(settings, holderKey);
+            if (holder.Count == 0) return false;
+            if (StringArrayContains(holder, "rewardIds", rewardId)) return true;
+
+            string name = GetString(holder, "rewardName", "");
+            if (String.IsNullOrWhiteSpace(name) || Normalize(name) != Normalize(rewardTitle)) return false;
+
+            holder["rewardIds"] = new object[] { rewardId };
+            server.WriteSettingsObject(settings);
+            server.Log("twitch", "info", "Belohnung \"" + rewardTitle + "\" hatte eine veraltete ID - automatisch aktualisiert.");
+            return true;
         }
 
         public Dictionary<string, object> SyncShowcaseReward(string bodyJson)
@@ -1825,16 +1836,6 @@ namespace CardPackWidgetApp
             showcase["rewardGlobalCooldown"] = globalCooldown;
             server.WriteSettingsObject(settings);
             return settings;
-        }
-
-        private bool IsTrackedReward(string rewardId, string rewardTitle)
-        {
-            Dictionary<string, object> settings = server.ReadSettingsObject();
-            Dictionary<string, object> draw = Obj(settings, "draw");
-            if (draw.Count == 0) return false;
-            if (StringArrayContains(draw, "rewardIds", rewardId)) return true;
-            string name = GetString(draw, "rewardName", "");
-            return !String.IsNullOrWhiteSpace(name) && Normalize(name) == Normalize(rewardTitle);
         }
 
         private void RestartQuietly()
