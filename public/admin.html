@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260626-i18n1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260628-cprewamp1">
   </head>
   <body>
     <div class="admin-shell">
@@ -167,67 +167,76 @@
               </div>
             </section>
 
-            <section class="tool-panel reward-manager">
+            <section class="tool-panel obs-panel">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">Channel Points</p>
-                  <h2 data-i18n="cp-title">Belohnungen verwalten</h2>
+                  <p class="eyebrow">OBS</p>
+                  <h2>WebSocket</h2>
                 </div>
+                <button class="ghost-button" id="obs-info-toggle" type="button" data-i18n="btn-obs-info">Hilfe anzeigen</button>
               </div>
-              <div class="button-row">
-                <button class="secondary-button" id="load-rewards" type="button" data-i18n="btn-load-rewards">Channelpoints laden</button>
-                <button class="ghost-button" id="new-reward" type="button" data-i18n="btn-new-reward">Neu</button>
+              <div class="info-box" id="obs-info" hidden>
+                <p data-i18n="obs-info-text">Öffne in OBS das Menü „Werkzeuge“ → „WebSocket-Servereinstellungen“. Aktiviere dort „WebSocket-Server aktivieren“. Den Port (Standard 4455) und das Passwort findest du über „Verbindungsinformationen anzeigen“. Trage Host (meist 127.0.0.1), Port und Passwort dann hier ein.</p>
               </div>
-              <label data-i18n="label-reward-select">Vorhandene Belohnung<select id="reward-select"></select></label>
+              <div class="status-line" id="obs-status" data-i18n="status-not-tested">Nicht getestet</div>
+              <label class="switch-row">
+                <input id="obs-enabled" type="checkbox">
+                <span data-i18n="label-obs-check">OBS WebSocket Verbindung prüfen</span>
+              </label>
               <div class="form-grid">
-                <label data-i18n="label-reward-title">Reward-Titel<input id="reward-title" type="text"></label>
-                <label data-i18n="label-reward-cost">Kosten<input id="reward-cost" type="number" min="1" step="1"></label>
-              </div>
-              <label data-i18n="label-reward-prompt">Beschreibung<input id="reward-prompt" type="text"></label>
-              <div class="form-grid">
-                <label data-i18n="label-reward-bg-color">Hintergrundfarbe<input id="reward-bg-color" type="color" value="#9147ff"></label>
-                <label data-i18n="label-reward-cooldown">Globaler Cooldown (Sek.)<input id="reward-cooldown" type="number" min="0" step="1" value="0"></label>
-                <label data-i18n="label-reward-max-stream">Max pro Stream<input id="reward-max-stream" type="number" min="0" step="1" value="0"></label>
-                <label data-i18n="label-reward-max-user">Max pro Nutzer/Stream<input id="reward-max-user" type="number" min="0" step="1" value="0"></label>
+                <label>Host<input id="obs-host" type="text"></label>
+                <label>Port<input id="obs-port" type="number" min="1"></label>
+                <label data-i18n="label-obs-password">Passwort<input id="obs-password" type="password"></label>
+                <label class="full-row" data-i18n="label-obs-scene">Szenenname<input id="obs-scene-name" type="text"></label>
+                <label class="full-row" data-i18n="label-obs-source">Quellenname<input id="obs-source-name" type="text"></label>
               </div>
               <div class="button-row">
-                <label class="switch-row compact-switch"><input id="reward-enabled" type="checkbox" checked><span data-i18n="label-reward-enabled">Aktiviert</span></label>
-                <label class="switch-row compact-switch"><input id="reward-paused" type="checkbox"><span data-i18n="label-reward-paused">Pausiert</span></label>
+                <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
+                <button class="primary-button" id="setup-obs" type="button" data-i18n="btn-setup-obs">OBS Szene aktualisieren</button>
               </div>
-              <div class="button-row">
-                <button class="primary-button" id="sync-reward" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
-                <button class="danger-button" id="delete-reward" type="button" data-i18n="btn-delete-reward">Löschen</button>
-              </div>
-              <p class="hint" data-i18n="hint-reward-assign">Die ausgewählte oder neu erstellte Belohnung wird dem aktuell gewählten Booster zugeordnet.</p>
             </section>
           </div>
-          <section class="tool-panel obs-panel">
+
+          <section class="tool-panel channel-points-panel">
             <div class="section-heading">
               <div>
-                <p class="eyebrow">OBS</p>
-                <h2>WebSocket</h2>
+                <p class="eyebrow">Twitch</p>
+                <h2 data-i18n="cp-title">Channel Points</h2>
               </div>
-              <button class="ghost-button" id="obs-info-toggle" type="button" data-i18n="btn-obs-info">Hilfe anzeigen</button>
             </div>
-            <div class="info-box" id="obs-info" hidden>
-              <p data-i18n="obs-info-text">Öffne in OBS das Menü „Werkzeuge“ → „WebSocket-Servereinstellungen“. Aktiviere dort „WebSocket-Server aktivieren“. Den Port (Standard 4455) und das Passwort findest du über „Verbindungsinformationen anzeigen“. Trage Host (meist 127.0.0.1), Port und Passwort dann hier ein.</p>
-            </div>
-            <div class="status-line" id="obs-status" data-i18n="status-not-tested">Nicht getestet</div>
-            <label class="switch-row">
-              <input id="obs-enabled" type="checkbox">
-              <span data-i18n="label-obs-check">OBS WebSocket Verbindung prüfen</span>
-            </label>
-            <div class="form-grid">
-              <label>Host<input id="obs-host" type="text"></label>
-              <label>Port<input id="obs-port" type="number" min="1"></label>
-              <label data-i18n="label-obs-password">Passwort<input id="obs-password" type="password"></label>
-              <label class="full-row" data-i18n="label-obs-scene">Szenenname<input id="obs-scene-name" type="text"></label>
-              <label class="full-row" data-i18n="label-obs-source">Quellenname<input id="obs-source-name" type="text"></label>
-            </div>
-            <div class="button-row">
-              <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
-              <button class="primary-button" id="setup-obs" type="button" data-i18n="btn-setup-obs">OBS Szene aktualisieren</button>
-            </div>
+
+            <p class="eyebrow reward-list-eyebrow" data-i18n="cp-booster-rewards-eyebrow">Booster-Belohnungen</p>
+            <div class="reward-entry-list" id="booster-reward-list"></div>
+
+            <article class="reward-entry showcase-entry">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="showcase-eyebrow">Sammlung</p>
+                  <h3 data-i18n="showcase-title">Sammlungs-Showcase</h3>
+                </div>
+                <button class="ghost-button" id="showcase-info-toggle" type="button" data-i18n="btn-showcase-info">Hilfe anzeigen</button>
+              </div>
+              <div class="info-box" id="showcase-info" hidden>
+                <p data-i18n="showcase-info-text">Löst ein Zuschauer die Belohnung „Sammlung zeigen“ über Kanalpunkte ein, sliden im OBS-Overlay nacheinander alle aktiven Booster mit den Karten dieses Zuschauers durch (gezogen = sichtbar, noch nicht gezogen = unbekannt). Richte dafür einmal die separate OBS-Quelle ein. Den globalen Cooldown legst du direkt an der Belohnung fest.</p>
+              </div>
+              <label class="switch-row">
+                <input id="showcase-enabled" type="checkbox">
+                <span data-i18n="label-showcase-enabled">Sammlungs-Showcase aktivieren</span>
+              </label>
+              <div class="form-grid">
+                <label data-i18n="label-showcase-reward-title">Reward-Titel<input id="showcase-reward-title" type="text"></label>
+                <label data-i18n="label-showcase-reward-cost">Kosten<input id="showcase-reward-cost" type="number" min="1" step="1"></label>
+                <label data-i18n="label-showcase-cooldown">Globaler Cooldown (Sek.)<input id="showcase-cooldown" type="number" min="0" step="1"></label>
+                <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="showcase-bg-color" type="color"></label>
+                <label data-i18n="label-showcase-seconds">Sekunden pro Booster<input id="showcase-seconds" type="number" min="2" step="1"></label>
+                <label data-i18n="label-showcase-source">OBS-Quellenname<input id="showcase-source-name" type="text"></label>
+              </div>
+              <div class="button-row">
+                <button class="primary-button" id="showcase-sync-reward" type="button" data-i18n="btn-showcase-sync">Belohnung speichern / aktualisieren</button>
+                <button class="secondary-button" id="showcase-setup-obs" type="button" data-i18n="btn-showcase-setup-obs">Sammlungs-Quelle in OBS einrichten</button>
+              </div>
+              <div class="status-line" id="showcase-status" hidden></div>
+            </article>
           </section>
         </section>
 
@@ -378,36 +387,6 @@
               <label data-i18n="label-backs-before-reveal">Verdeckte Karten vor Reveal<input id="backs-before-reveal" type="number" min="0" max="8" step="1"></label>
             </div>
           </section>
-
-          <section class="tool-panel showcase-panel">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow" data-i18n="showcase-eyebrow">Sammlung</p>
-                <h2 data-i18n="showcase-title">Sammlungs-Showcase</h2>
-              </div>
-              <button class="ghost-button" id="showcase-info-toggle" type="button" data-i18n="btn-showcase-info">Hilfe anzeigen</button>
-            </div>
-            <div class="info-box" id="showcase-info" hidden>
-              <p data-i18n="showcase-info-text">Löst ein Zuschauer die Belohnung „Sammlung zeigen“ über Kanalpunkte ein, sliden im OBS-Overlay nacheinander alle aktiven Booster mit den Karten dieses Zuschauers durch (gezogen = sichtbar, noch nicht gezogen = unbekannt). Richte dafür einmal die separate OBS-Quelle ein. Den globalen Cooldown legst du direkt an der Belohnung fest.</p>
-            </div>
-            <label class="switch-row">
-              <input id="showcase-enabled" type="checkbox">
-              <span data-i18n="label-showcase-enabled">Sammlungs-Showcase aktivieren</span>
-            </label>
-            <div class="form-grid">
-              <label data-i18n="label-showcase-reward-title">Reward-Titel<input id="showcase-reward-title" type="text"></label>
-              <label data-i18n="label-showcase-reward-cost">Kosten<input id="showcase-reward-cost" type="number" min="1" step="1"></label>
-              <label data-i18n="label-showcase-cooldown">Globaler Cooldown (Sek.)<input id="showcase-cooldown" type="number" min="0" step="1"></label>
-              <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="showcase-bg-color" type="color"></label>
-              <label data-i18n="label-showcase-seconds">Sekunden pro Booster<input id="showcase-seconds" type="number" min="2" step="1"></label>
-              <label data-i18n="label-showcase-source">OBS-Quellenname<input id="showcase-source-name" type="text"></label>
-            </div>
-            <div class="button-row">
-              <button class="primary-button" id="showcase-sync-reward" type="button" data-i18n="btn-showcase-sync">Belohnung speichern / aktualisieren</button>
-              <button class="secondary-button" id="showcase-setup-obs" type="button" data-i18n="btn-showcase-setup-obs">Sammlungs-Quelle in OBS einrichten</button>
-            </div>
-            <div class="status-line" id="showcase-status" hidden></div>
-          </section>
         </section>
 
         <section class="tab-panel" data-panel="update">
@@ -432,6 +411,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260626-i18n1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260628-cprewamp1"></script>
   </body>
 </html>

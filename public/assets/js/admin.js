@@ -10,7 +10,6 @@ import {
   installUpdate,
   getLogs,
   getSettings,
-  getTwitchRewards,
   getTwitchStatus,
   getVersion,
   persistCollectionSnapshot,
@@ -41,7 +40,6 @@ let settings;
 let selectedCardId;
 let selectedBoosterId;
 let previewCardId;
-let availableRewards = [];
 let availableFonts = [];
 let autoSaveTimer;
 let autoSaveReady = false;
@@ -185,11 +183,11 @@ const I18N = {
   "btn-connect-twitch": { de: "Mit Twitch anmelden", en: "Sign in with Twitch" },
   "btn-refresh-twitch-status": { de: "Status prüfen", en: "Check status" },
   "btn-disconnect-twitch": { de: "Abmelden", en: "Sign out" },
-  "cp-title": { de: "Belohnungen verwalten", en: "Manage rewards" },
-  "btn-load-rewards": { de: "Channelpoints laden", en: "Load channel points" },
-  "btn-new-reward": { de: "Neu", en: "New" },
-  "option-select-reward": { de: "Reward auswählen", en: "Select reward" },
-  "label-reward-select": { de: "Vorhandene Belohnung", en: "Existing reward" },
+  "cp-title": { de: "Channel Points", en: "Channel Points" },
+  "cp-booster-rewards-eyebrow": { de: "Booster-Belohnungen", en: "Booster rewards" },
+  "status-reward-linked": { de: "Verknüpft", en: "Linked" },
+  "status-reward-unsaved": { de: "Noch nicht gespeichert", en: "Not saved yet" },
+  "confirm-delete-reward": { de: "Diese Belohnung wirklich löschen?", en: "Really delete this reward?" },
   "label-reward-title": { de: "Reward-Titel", en: "Reward title" },
   "label-reward-cost": { de: "Kosten", en: "Cost" },
   "label-reward-prompt": { de: "Beschreibung", en: "Description" },
@@ -201,22 +199,13 @@ const I18N = {
   "label-reward-paused": { de: "Pausiert", en: "Paused" },
   "btn-sync-reward": { de: "Speichern / aktualisieren", en: "Save / update" },
   "btn-delete-reward": { de: "Löschen", en: "Delete" },
-  "hint-reward-assign": {
-    de: "Die ausgewählte oder neu erstellte Belohnung wird dem aktuell gewählten Booster zugeordnet.",
-    en: "The selected or newly created reward is assigned to the currently selected booster."
-  },
-  "status-loading-rewards": { de: "Lade Channelpoints...", en: "Loading channel points..." },
-  "status-rewards-loaded": { de: "Channelpoints geladen", en: "channel points loaded" },
-  "error-rewards-load-failed": { de: "Rewards konnten nicht geladen werden:", en: "Could not load rewards:" },
   "status-saving-reward": { de: "Speichere Channelpoint...", en: "Saving channel point..." },
   "notice-reward-saved": {
     de: "Channelpoint wurde gespeichert und dem Booster zugeordnet.",
     en: "Channel point was saved and assigned to the booster."
   },
-  "error-select-reward-first": { de: "Bitte zuerst eine Belohnung auswählen.", en: "Please select a reward first." },
   "status-deleting-reward": { de: "Lösche Channelpoint...", en: "Deleting channel point..." },
   "notice-reward-deleted": { de: "Channelpoint gelöscht.", en: "Channel point deleted." },
-  "notice-reward-applied": { de: "Reward für diesen Booster übernommen.", en: "Reward applied to this booster." },
   "status-not-tested": { de: "Nicht getestet", en: "Not tested" },
   "status-testing-obs": { de: "Teste OBS...", en: "Testing OBS..." },
   "error-obs-not-connected": { de: "OBS nicht verbunden:", en: "OBS not connected:" },
@@ -566,13 +555,127 @@ function bindTabs() {
   });
 }
 
-function renderRewardSelect() {
-  const select = $("#reward-select");
-  select.innerHTML = `<option value="">${t("option-select-reward")}</option>${availableRewards.map((reward) => `
-    <option value="${escapeHtml(reward.id || "")}" data-title="${escapeHtml(reward.title || "")}" data-cost="${escapeHtml(reward.cost || 1)}" data-prompt="${escapeHtml(reward.prompt || "")}">
-      ${escapeHtml(reward.title || reward.id)}
-    </option>
-  `).join("")}`;
+function setCardStatus(card, text, tone = "neutral") {
+  const el = card?.querySelector(".reward-entry-status");
+  if (!el) return;
+  el.hidden = false;
+  el.textContent = text;
+  el.dataset.tone = tone;
+}
+
+function boosterRewardCardMarkup(booster) {
+  const title = booster.rewardNames?.[0] || booster.title || "Kartenpack";
+  const hasReward = (booster.rewardIds || []).length > 0;
+  return `
+    <article class="reward-entry" data-booster-id="${escapeHtml(booster.id)}">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Booster</p>
+          <h3>${escapeHtml(booster.title || "Booster")}</h3>
+        </div>
+        <span class="status-line reward-entry-badge" data-tone="${hasReward ? "ok" : "warn"}">${hasReward ? t("status-reward-linked") : t("status-reward-unsaved")}</span>
+      </div>
+      <label class="switch-row">
+        <input data-field="rewardEnabled" type="checkbox" ${booster.rewardEnabled !== false ? "checked" : ""}>
+        <span>${t("label-reward-enabled")}</span>
+      </label>
+      <div class="form-grid">
+        <label>${t("label-reward-title")}<input data-field="rewardTitle" type="text" value="${escapeHtml(title)}"></label>
+        <label>${t("label-reward-cost")}<input data-field="rewardCost" type="number" min="1" step="1" value="${booster.rewardCost || 1}"></label>
+        <label>${t("label-reward-cooldown")}<input data-field="rewardGlobalCooldown" type="number" min="0" step="1" value="${booster.rewardGlobalCooldown || 0}"></label>
+        <label>${t("label-reward-bg-color")}<input data-field="rewardBackgroundColor" type="color" value="${escapeHtml(booster.rewardBackgroundColor || "#9147ff")}"></label>
+        <label>${t("label-reward-max-stream")}<input data-field="rewardMaxPerStream" type="number" min="0" step="1" value="${booster.rewardMaxPerStream || 0}"></label>
+        <label>${t("label-reward-max-user")}<input data-field="rewardMaxPerUserPerStream" type="number" min="0" step="1" value="${booster.rewardMaxPerUserPerStream || 0}"></label>
+      </div>
+      <label>${t("label-reward-prompt")}<input data-field="rewardPrompt" type="text" value="${escapeHtml(booster.rewardPrompt || "")}"></label>
+      <label class="switch-row compact-switch">
+        <input data-field="rewardPaused" type="checkbox" ${booster.rewardPaused ? "checked" : ""}>
+        <span>${t("label-reward-paused")}</span>
+      </label>
+      <div class="button-row">
+        <button class="primary-button" data-action="sync-booster-reward" type="button">${t("btn-sync-reward")}</button>
+        <button class="danger-button" data-action="delete-booster-reward" type="button" ${hasReward ? "" : "disabled"}>${t("btn-delete-reward")}</button>
+      </div>
+      <p class="status-line reward-entry-status" hidden></p>
+    </article>
+  `;
+}
+
+function renderBoosterRewards() {
+  const container = $("#booster-reward-list");
+  if (!container) return;
+  container.innerHTML = (settings.boosters || []).map(boosterRewardCardMarkup).join("");
+}
+
+function updateBoosterRewardField(boosterId, field, value, inputType) {
+  const booster = settings.boosters.find((item) => item.id === boosterId);
+  if (!booster) return;
+  if (field === "rewardTitle") {
+    booster.rewardNames = [value].filter(Boolean);
+    return;
+  }
+  if (inputType === "checkbox") booster[field] = Boolean(value);
+  else if (inputType === "number") booster[field] = Math.max(0, Number(value || 0));
+  else booster[field] = value;
+}
+
+function handleBoosterRewardChange(event) {
+  const input = event.target.closest("[data-field]");
+  if (!input) return;
+  const card = input.closest("[data-booster-id]");
+  if (!card) return;
+  updateBoosterRewardField(card.dataset.boosterId, input.dataset.field, input.type === "checkbox" ? input.checked : input.value, input.type);
+}
+
+async function handleBoosterRewardClick(event) {
+  const syncButton = event.target.closest("[data-action='sync-booster-reward']");
+  const deleteButton = event.target.closest("[data-action='delete-booster-reward']");
+  if (!syncButton && !deleteButton) return;
+  const card = event.target.closest("[data-booster-id]");
+  if (!card) return;
+  const boosterId = card.dataset.boosterId;
+  const booster = settings.boosters.find((item) => item.id === boosterId);
+  if (!booster) return;
+
+  if (syncButton) {
+    setCardStatus(card, t("status-saving-reward"), "neutral");
+    try {
+      const result = await syncTwitchReward({
+        boosterId,
+        rewardId: booster.rewardIds?.[0] || "",
+        title: booster.rewardNames?.[0] || booster.title || "Kartenpack",
+        cost: Number(booster.rewardCost || 1),
+        prompt: booster.rewardPrompt || "",
+        backgroundColor: booster.rewardBackgroundColor || "#9147ff",
+        isEnabled: booster.rewardEnabled !== false,
+        isPaused: booster.rewardPaused === true,
+        maxPerStream: Math.max(0, Number(booster.rewardMaxPerStream || 0)),
+        maxPerUserPerStream: Math.max(0, Number(booster.rewardMaxPerUserPerStream || 0)),
+        globalCooldown: Math.max(0, Number(booster.rewardGlobalCooldown || 0))
+      });
+      settings = normalizeSettings(result.settings || await getSettings());
+      renderBoosterRewards();
+      showNotice(t("notice-reward-saved"));
+    } catch (error) {
+      setCardStatus(card, error.message, "error");
+    }
+    return;
+  }
+
+  if (deleteButton) {
+    const rewardId = booster.rewardIds?.[0];
+    if (!rewardId) return;
+    if (!window.confirm(t("confirm-delete-reward"))) return;
+    setCardStatus(card, t("status-deleting-reward"), "neutral");
+    try {
+      const result = await deleteTwitchReward({ rewardId });
+      settings = normalizeSettings(result.settings || await getSettings());
+      renderBoosterRewards();
+      showNotice(t("notice-reward-deleted"));
+    } catch (error) {
+      setCardStatus(card, error.message, "error");
+    }
+  }
 }
 
 async function refreshTwitchStatus() {
@@ -648,90 +751,6 @@ async function handleTwitchDisconnect() {
   } catch (error) {
     setStatus("#twitch-status", error.message, "error");
   }
-}
-
-async function loadTwitchRewards() {
-  setStatus("#twitch-status", t("status-loading-rewards"), "neutral");
-  try {
-    const result = await getTwitchRewards();
-    availableRewards = (result.rewards || []).map((reward) => ({
-      id: String(reward.id || ""),
-      title: String(reward.title || reward.name || reward.id || ""),
-      cost: Number(reward.cost || 1),
-      prompt: String(reward.prompt || ""),
-      backgroundColor: String(reward.background_color || "#9147ff"),
-      isEnabled: reward.is_enabled !== false,
-      isPaused: reward.is_paused === true,
-      maxPerStream: reward.max_per_stream_setting?.is_enabled ? Number(reward.max_per_stream_setting?.max_per_stream || 0) : 0,
-      maxPerUserPerStream: reward.max_per_user_per_stream_setting?.is_enabled ? Number(reward.max_per_user_per_stream_setting?.max_per_user_per_stream || 0) : 0,
-      globalCooldown: reward.global_cooldown_setting?.is_enabled ? Number(reward.global_cooldown_setting?.global_cooldown_seconds || 0) : 0
-    }));
-    renderRewardSelect();
-    setStatus("#twitch-status", `${availableRewards.length} ${t("status-rewards-loaded")}`, "ok");
-  } catch (error) {
-    setStatus("#twitch-status", `${t("error-rewards-load-failed")} ${error.message}`, "error");
-  }
-}
-
-async function handleRewardSync() {
-  const booster = selectedBooster();
-  if (!booster) return;
-  setStatus("#twitch-status", t("status-saving-reward"), "neutral");
-  try {
-    const rewardId = $("#reward-select").value || "";
-    const result = await syncTwitchReward({
-      boosterId: booster.id,
-      rewardId,
-      title: $("#reward-title").value || booster.title || "Kartenpack",
-      cost: Number($("#reward-cost").value || 1),
-      prompt: $("#reward-prompt").value || "",
-      backgroundColor: $("#reward-bg-color").value || "#9147ff",
-      isEnabled: $("#reward-enabled").checked,
-      isPaused: $("#reward-paused").checked,
-      maxPerStream: Math.max(0, Number($("#reward-max-stream").value || 0)),
-      maxPerUserPerStream: Math.max(0, Number($("#reward-max-user").value || 0)),
-      globalCooldown: Math.max(0, Number($("#reward-cooldown").value || 0))
-    });
-    settings = normalizeSettings(result.settings || await getSettings());
-    selectedBoosterId = booster.id;
-    hydrateTrigger();
-    await loadTwitchRewards();
-    showNotice(t("notice-reward-saved"));
-  } catch (error) {
-    setStatus("#twitch-status", error.message, "error");
-  }
-}
-
-async function handleRewardDelete() {
-  const rewardId = $("#reward-select").value || "";
-  if (!rewardId) {
-    setStatus("#twitch-status", t("error-select-reward-first"), "error");
-    return;
-  }
-  setStatus("#twitch-status", t("status-deleting-reward"), "neutral");
-  try {
-    const result = await deleteTwitchReward({ rewardId });
-    settings = normalizeSettings(result.settings || await getSettings());
-    clearRewardForm();
-    await loadTwitchRewards();
-    showNotice(t("notice-reward-deleted"));
-  } catch (error) {
-    setStatus("#twitch-status", error.message, "error");
-  }
-}
-
-function clearRewardForm() {
-  const booster = selectedBooster();
-  $("#reward-select").value = "";
-  $("#reward-title").value = booster?.title || "Kartenpack";
-  $("#reward-cost").value = booster?.rewardCost || 1;
-  $("#reward-prompt").value = "";
-  $("#reward-bg-color").value = booster?.rewardBackgroundColor || "#9147ff";
-  $("#reward-enabled").checked = true;
-  $("#reward-paused").checked = false;
-  $("#reward-max-stream").value = booster?.rewardMaxPerStream || 0;
-  $("#reward-max-user").value = booster?.rewardMaxPerUserPerStream || 0;
-  $("#reward-cooldown").value = booster?.rewardGlobalCooldown || 0;
 }
 
 async function sha256Base64(value) {
@@ -1471,87 +1490,27 @@ function bindUsers() {
 }
 
 function hydrateTrigger() {
-  const booster = selectedBooster();
   settings.twitch ||= {};
   settings.twitch.clientId ||= DEFAULT_TWITCH_CLIENT_ID;
-  $("#reward-title").value = booster?.rewardNames?.[0] || booster?.title || "Kartenpack";
-  $("#reward-cost").value = booster?.rewardCost || 1;
-  $("#reward-prompt").value = booster?.rewardPrompt || "";
-  $("#reward-bg-color").value = booster?.rewardBackgroundColor || "#9147ff";
-  $("#reward-enabled").checked = booster?.rewardEnabled !== false;
-  $("#reward-paused").checked = booster?.rewardPaused === true;
-  $("#reward-max-stream").value = booster?.rewardMaxPerStream || 0;
-  $("#reward-max-user").value = booster?.rewardMaxPerUserPerStream || 0;
-  $("#reward-cooldown").value = booster?.rewardGlobalCooldown || 0;
-  renderRewardSelect();
-  $("#reward-select").value = booster?.rewardIds?.[0] || "";
+  renderBoosterRewards();
+  const showcase = settings.showcase || {};
+  $("#showcase-enabled").checked = showcase.enabled === true;
+  $("#showcase-reward-title").value = showcase.rewardName || "Sammlung zeigen";
+  $("#showcase-reward-cost").value = showcase.rewardCost || 500;
+  $("#showcase-cooldown").value = showcase.rewardGlobalCooldown || 0;
+  $("#showcase-bg-color").value = showcase.rewardBackgroundColor || "#9147ff";
+  $("#showcase-seconds").value = showcase.secondsPerBooster || 12;
+  $("#showcase-source-name").value = showcase.sourceName || "Streamer Card Sammlung";
 }
 
 function bindTrigger() {
   $("#connect-twitch").addEventListener("click", connectTwitch);
   $("#disconnect-twitch").addEventListener("click", handleTwitchDisconnect);
   $("#refresh-twitch-status").addEventListener("click", refreshTwitchStatus);
-  $("#load-rewards").addEventListener("click", loadTwitchRewards);
-  $("#sync-reward").addEventListener("click", handleRewardSync);
-  $("#delete-reward").addEventListener("click", handleRewardDelete);
-  $("#new-reward").addEventListener("click", clearRewardForm);
-  $("#reward-title").addEventListener("input", (event) => {
-    selectedBooster().rewardNames = [event.target.value].filter(Boolean);
-  });
-  $("#reward-cost").addEventListener("input", (event) => {
-    selectedBooster().rewardCost = Number(event.target.value || 1);
-  });
-  $("#reward-prompt").addEventListener("input", (event) => {
-    selectedBooster().rewardPrompt = event.target.value;
-  });
-  $("#reward-bg-color").addEventListener("input", (event) => {
-    selectedBooster().rewardBackgroundColor = event.target.value;
-  });
-  $("#reward-enabled").addEventListener("change", (event) => {
-    selectedBooster().rewardEnabled = event.target.checked;
-  });
-  $("#reward-paused").addEventListener("change", (event) => {
-    selectedBooster().rewardPaused = event.target.checked;
-  });
-  $("#reward-max-stream").addEventListener("input", (event) => {
-    selectedBooster().rewardMaxPerStream = Math.max(0, Number(event.target.value || 0));
-  });
-  $("#reward-max-user").addEventListener("input", (event) => {
-    selectedBooster().rewardMaxPerUserPerStream = Math.max(0, Number(event.target.value || 0));
-  });
-  $("#reward-cooldown").addEventListener("input", (event) => {
-    selectedBooster().rewardGlobalCooldown = Math.max(0, Number(event.target.value || 0));
-  });
-  $("#reward-select").addEventListener("change", (event) => {
-    const value = event.target.value;
-    if (!value) {
-      clearRewardForm();
-      return;
-    }
-    const reward = availableRewards.find((item) => item.id === value);
-    if (!reward) return;
-    $("#reward-title").value = reward.title;
-    $("#reward-cost").value = reward.cost;
-    $("#reward-prompt").value = reward.prompt;
-    $("#reward-bg-color").value = reward.backgroundColor || "#9147ff";
-    $("#reward-enabled").checked = reward.isEnabled !== false;
-    $("#reward-paused").checked = reward.isPaused === true;
-    $("#reward-max-stream").value = reward.maxPerStream || 0;
-    $("#reward-max-user").value = reward.maxPerUserPerStream || 0;
-    $("#reward-cooldown").value = reward.globalCooldown || 0;
-    const booster = selectedBooster();
-    booster.rewardIds = [reward.id];
-    booster.rewardNames = [reward.title];
-    booster.rewardCost = reward.cost;
-    booster.rewardPrompt = reward.prompt;
-    booster.rewardBackgroundColor = reward.backgroundColor;
-    booster.rewardEnabled = reward.isEnabled !== false;
-    booster.rewardPaused = reward.isPaused === true;
-    booster.rewardMaxPerStream = reward.maxPerStream || 0;
-    booster.rewardMaxPerUserPerStream = reward.maxPerUserPerStream || 0;
-    booster.rewardGlobalCooldown = reward.globalCooldown || 0;
-    showNotice(t("notice-reward-applied"));
-  });
+  $("#booster-reward-list").addEventListener("click", handleBoosterRewardClick);
+  $("#booster-reward-list").addEventListener("input", handleBoosterRewardChange);
+  $("#booster-reward-list").addEventListener("change", handleBoosterRewardChange);
+  bindShowcase();
 }
 
 function hydrateDesign() {
@@ -1581,14 +1540,6 @@ function hydrateDesign() {
   $("#obs-password").value = settings.obs?.password || "";
   $("#obs-scene-name").value = settings.obs?.sceneName || "Streamer Card Overlay";
   $("#obs-source-name").value = settings.obs?.sourceName || "Streamer Card Widget";
-  const showcase = settings.showcase || {};
-  $("#showcase-enabled").checked = showcase.enabled === true;
-  $("#showcase-reward-title").value = showcase.rewardName || "Sammlung zeigen";
-  $("#showcase-reward-cost").value = showcase.rewardCost || 500;
-  $("#showcase-cooldown").value = showcase.rewardGlobalCooldown || 0;
-  $("#showcase-bg-color").value = showcase.rewardBackgroundColor || "#9147ff";
-  $("#showcase-seconds").value = showcase.secondsPerBooster || 12;
-  $("#showcase-source-name").value = showcase.sourceName || "Streamer Card Sammlung";
   refreshSettingsPreview();
 }
 
@@ -1742,7 +1693,6 @@ function bindDesign() {
     box.hidden = !show;
     toggle.textContent = show ? t("btn-obs-info-hide") : t("btn-obs-info");
   });
-  bindShowcase();
   $("#sound-open").addEventListener("change", async (event) => {
     if (!event.target.files?.[0]) return;
     settings.sounds ||= {};

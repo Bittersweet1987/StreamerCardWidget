@@ -152,6 +152,7 @@ body {
 
 .topbar h1,
 .section-heading h2,
+.section-heading h3,
 .preview-copy h2 {
   margin: 0;
   line-height: 1.05;
@@ -265,6 +266,12 @@ button:disabled {
   border-color: #ffb6c8;
   color: #9a2048;
   background: #ffe6ec;
+}
+
+.status-line[data-tone="warn"] {
+  border-color: #f3dd8a;
+  color: #7f5b00;
+  background: #fff7d6;
 }
 
 .obs-panel,
@@ -473,12 +480,53 @@ input[type="range"] {
 
 .connection-layout {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   align-items: start;
 }
 
-.reward-manager {
-  max-width: 920px;
+.channel-points-panel {
+  margin-top: 18px;
+}
+
+.reward-list-eyebrow {
+  margin-top: 14px;
+}
+
+.reward-entry-list {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.reward-entry {
+  border: 1px solid #e4deec;
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, .6);
+}
+
+.reward-entry .section-heading {
+  margin-bottom: 12px;
+}
+
+.reward-entry-badge {
+  margin: 0;
+  flex-shrink: 0;
+  border: none;
+  padding: 4px 10px;
+  font-size: .72rem;
+  white-space: nowrap;
+}
+
+.showcase-entry {
+  border-color: #d9c8ef;
+  background: rgba(145, 71, 255, .06);
+}
+
+body[data-theme="dark"] .showcase-entry {
+  border-color: #5d3f8f;
+  background: rgba(145, 71, 255, .16);
 }
 
 .booster-layout {
@@ -885,6 +933,7 @@ body[data-theme="dark"] .card-editor,
 body[data-theme="dark"] .booster-list-item,
 body[data-theme="dark"] .assignment-tile,
 body[data-theme="dark"] .settings-preview,
+body[data-theme="dark"] .reward-entry,
 body[data-theme="dark"] .user-card {
   border-color: #3a314d;
   background: rgba(31, 26, 43, .94);
