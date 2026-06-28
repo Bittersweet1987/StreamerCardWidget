@@ -265,18 +265,17 @@ const I18N = {
     de: "Löst ein Zuschauer die Belohnung „Sammlung zeigen“ über Kanalpunkte ein, sliden im OBS-Overlay nacheinander alle aktiven Booster mit den Karten dieses Zuschauers durch (gezogen = sichtbar, noch nicht gezogen = unbekannt). Richte dafür einmal die separate OBS-Quelle ein. Den globalen Cooldown legst du direkt an der Belohnung fest.",
     en: "When a viewer redeems the “Show collection” channel-point reward, the OBS overlay slides through every active booster showing that viewer's cards (drawn = visible, not yet drawn = unknown). Set up the separate OBS source once. The global cooldown is set on the reward itself."
   },
-  "label-showcase-enabled": { de: "Sammlungs-Showcase aktivieren", en: "Enable collection showcase" },
   "label-showcase-reward-title": { de: "Reward-Titel", en: "Reward title" },
   "label-showcase-reward-cost": { de: "Kosten", en: "Cost" },
   "label-showcase-cooldown": { de: "Globaler Cooldown (Sek.)", en: "Global cooldown (sec.)" },
   "label-showcase-bg-color": { de: "Hintergrundfarbe", en: "Background color" },
   "label-showcase-seconds": { de: "Sekunden pro Booster", en: "Seconds per booster" },
   "label-showcase-source": { de: "OBS-Quellenname", en: "OBS source name" },
-  "btn-showcase-sync": { de: "Belohnung speichern / aktualisieren", en: "Save / update reward" },
-  "btn-showcase-setup-obs": { de: "Sammlungs-Quelle in OBS einrichten", en: "Set up collection source in OBS" },
   "status-showcase-saving": { de: "Showcase-Belohnung wird gespeichert...", en: "Saving showcase reward..." },
   "notice-showcase-saved": { de: "Showcase-Belohnung gespeichert.", en: "Showcase reward saved." },
-  "status-showcase-obs-done": { de: "Sammlungs-Quelle in OBS eingerichtet.", en: "Collection source set up in OBS." },
+  "obs-sources-title": { de: "Szenen und Quellen", en: "Scenes and sources" },
+  "btn-setup-all-obs-sources": { de: "Szenen und Quellen erstellen und einbinden", en: "Create and link scenes and sources" },
+  "status-obs-sources-done": { de: "Szenen und Quellen in OBS eingerichtet.", en: "Scenes and sources set up in OBS." },
   "label-sound-open": { de: "Öffnen-Sound", en: "Open sound" },
   "label-sound-reveal": { de: "Reveal-Sound", en: "Reveal sound" },
   "status-no-sound": { de: "Kein Sound ausgewählt", en: "No sound selected" },
@@ -933,24 +932,26 @@ async function applyObsBrowserSource(ws, sceneName, sourceName, url) {
   });
 }
 
-async function setupCollectionSource() {
-  const statusEl = $("#showcase-status");
+async function setupAllObsSources() {
+  const statusEl = $("#obs-sources-status");
   if (statusEl) statusEl.hidden = false;
-  setStatus("#showcase-status", t("status-setting-up-obs"), "neutral");
+  setStatus("#obs-sources-status", t("status-setting-up-obs"), "neutral");
   let ws;
   try {
-    settings.showcase ||= {};
     await saveSettings(settings);
     ws = await connectObs();
     const sceneName = settings.obs?.sceneName || "Streamer Card Overlay";
-    const sourceName = settings.showcase?.sourceName || "Streamer Card Sammlung";
-    await applyObsBrowserSource(ws, sceneName, sourceName, currentOriginUrl("/collection.html"));
-    setStatus("#showcase-status", t("status-showcase-obs-done"), "ok");
+    const packSourceName = settings.obs?.sourceName || "Streamer Card Widget";
+    const collectionSourceName = settings.showcase?.sourceName || "Streamer Card Sammlung";
+    await applyObsBrowserSource(ws, sceneName, packSourceName, currentOriginUrl("/overlay.html"));
+    await applyObsBrowserSource(ws, sceneName, collectionSourceName, currentOriginUrl("/collection.html"));
     settings.obs ||= {};
     settings.obs.enabled = true;
     await saveSettings(settings);
+    setStatus("#obs-sources-status", t("status-obs-sources-done"), "ok");
+    showNotice(t("status-obs-sources-done"));
   } catch (error) {
-    setStatus("#showcase-status", `${t("error-obs-setup-failed")} ${error.message}`, "error");
+    setStatus("#obs-sources-status", `${t("error-obs-setup-failed")} ${error.message}`, "error");
   } finally {
     try { ws?.close(); } catch {}
   }
@@ -963,15 +964,19 @@ async function handleShowcaseSync() {
   try {
     settings.showcase ||= {};
     await saveSettings(settings);
+    const showcase = settings.showcase;
     const result = await syncShowcaseReward({
-      rewardId: settings.showcase?.rewardIds?.[0] || "",
+      rewardId: showcase.rewardIds?.[0] || "",
       title: $("#showcase-reward-title").value || "Sammlung zeigen",
       cost: Number($("#showcase-reward-cost").value || 500),
+      prompt: $("#showcase-prompt").value || "",
       backgroundColor: $("#showcase-bg-color").value || "#9147ff",
+      isEnabled: $("#showcase-enabled").checked,
+      isPaused: $("#showcase-paused").checked,
       globalCooldown: Math.max(0, Number($("#showcase-cooldown").value || 0))
     });
     settings = normalizeSettings(result.settings || await getSettings());
-    hydrateDesign();
+    hydrateTrigger();
     setStatus("#showcase-status", t("notice-showcase-saved"), "ok");
     showNotice(t("notice-showcase-saved"));
   } catch (error) {
@@ -979,9 +984,25 @@ async function handleShowcaseSync() {
   }
 }
 
+async function handleShowcaseDelete() {
+  const rewardId = settings.showcase?.rewardIds?.[0];
+  if (!rewardId) return;
+  if (!window.confirm(t("confirm-delete-reward"))) return;
+  $("#showcase-status").hidden = false;
+  setStatus("#showcase-status", t("status-deleting-reward"), "neutral");
+  try {
+    const result = await deleteTwitchReward({ rewardId });
+    settings = normalizeSettings(result.settings || await getSettings());
+    hydrateTrigger();
+    setStatus("#showcase-status", t("notice-reward-deleted"), "ok");
+    showNotice(t("notice-reward-deleted"));
+  } catch (error) {
+    setStatus("#showcase-status", error.message, "error");
+  }
+}
+
 function bindShowcase() {
   const fields = {
-    "#showcase-enabled": ["enabled", "checkbox"],
     "#showcase-seconds": ["secondsPerBooster", "number"],
     "#showcase-source-name": ["sourceName"]
   };
@@ -999,7 +1020,7 @@ function bindShowcase() {
     toggle.textContent = show ? t("btn-showcase-info-hide") : t("btn-showcase-info");
   });
   $("#showcase-sync-reward").addEventListener("click", handleShowcaseSync);
-  $("#showcase-setup-obs").addEventListener("click", setupCollectionSource);
+  $("#showcase-delete-reward").addEventListener("click", handleShowcaseDelete);
 }
 
 function renderOverview() {
@@ -1450,9 +1471,11 @@ function hydrateTrigger() {
   settings.twitch.clientId ||= DEFAULT_TWITCH_CLIENT_ID;
   hydrateDrawReward();
   const showcase = settings.showcase || {};
-  $("#showcase-enabled").checked = showcase.enabled === true;
+  $("#showcase-enabled").checked = showcase.rewardEnabled !== false;
+  $("#showcase-paused").checked = showcase.rewardPaused === true;
   $("#showcase-reward-title").value = showcase.rewardName || "Sammlung zeigen";
   $("#showcase-reward-cost").value = showcase.rewardCost || 500;
+  $("#showcase-prompt").value = showcase.rewardPrompt || "";
   $("#showcase-cooldown").value = showcase.rewardGlobalCooldown || 0;
   $("#showcase-bg-color").value = showcase.rewardBackgroundColor || "#9147ff";
   $("#showcase-seconds").value = showcase.secondsPerBooster || 12;
@@ -1640,6 +1663,7 @@ function bindDesign() {
   }
   $("#test-obs").addEventListener("click", testObsConnection);
   $("#setup-obs").addEventListener("click", setupObsOverlay);
+  $("#setup-all-obs-sources").addEventListener("click", setupAllObsSources);
   $("#obs-info-toggle").addEventListener("click", () => {
     const box = $("#obs-info");
     const toggle = $("#obs-info-toggle");

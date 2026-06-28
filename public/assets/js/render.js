@@ -141,14 +141,16 @@ export function normalizeSettings(settings) {
   // Collection showcase: a dedicated channel-point reward that, when redeemed, slides through
   // every active booster showing the redeemer's owned + still-unknown cards in its own OBS source.
   settings.showcase ||= {};
-  settings.showcase.enabled = settings.showcase.enabled === true;
   settings.showcase.secondsPerBooster = Number(settings.showcase.secondsPerBooster) > 0 ? Number(settings.showcase.secondsPerBooster) : 12;
   settings.showcase.sourceName ||= "Streamer Card Sammlung";
   settings.showcase.rewardName ||= "Sammlung zeigen";
   settings.showcase.rewardCost = Number(settings.showcase.rewardCost || 500);
+  settings.showcase.rewardPrompt ||= "";
   settings.showcase.rewardIds ||= [];
   settings.showcase.rewardBackgroundColor ||= "#9147ff";
   settings.showcase.rewardGlobalCooldown = Number(settings.showcase.rewardGlobalCooldown || 0);
+  settings.showcase.rewardEnabled = settings.showcase.rewardEnabled !== false;
+  settings.showcase.rewardPaused = settings.showcase.rewardPaused === true;
 
   // Single global "open a pack" reward, decoupled from any one booster: PickRandomBoosterId()
   // (server-side) always draws from ALL eligible boosters regardless of which reward triggered

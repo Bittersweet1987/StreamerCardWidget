@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.9";
+        public const string Version = "1.4.10";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1733,8 +1733,6 @@ namespace CardPackWidgetApp
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> showcase = Obj(settings, "showcase");
             if (showcase.Count == 0) return false;
-            object enabledObj;
-            if (showcase.TryGetValue("enabled", out enabledObj) && enabledObj is bool && !(bool)enabledObj) return false;
             if (StringArrayContains(showcase, "rewardIds", rewardId)) return true;
             string name = GetString(showcase, "rewardName", "");
             return !String.IsNullOrWhiteSpace(name) && Normalize(name) == Normalize(rewardTitle);
@@ -1750,7 +1748,10 @@ namespace CardPackWidgetApp
 
             string title = GetString(body, "title", GetString(showcase, "rewardName", "Sammlung zeigen"));
             int cost = Math.Max(1, GetInt(body, "cost", 500));
+            string prompt = GetString(body, "prompt", "");
             string backgroundColor = GetString(body, "backgroundColor", "");
+            bool isEnabled = GetBool(body, "isEnabled", true);
+            bool isPaused = GetBool(body, "isPaused", false);
             int globalCooldown = Math.Max(0, GetInt(body, "globalCooldown", 0));
             bool explicitRewardId = body.ContainsKey("rewardId");
             string rewardId = GetString(body, "rewardId", "");
@@ -1761,7 +1762,8 @@ namespace CardPackWidgetApp
             {
                 { "title", title },
                 { "cost", cost },
-                { "is_enabled", true },
+                { "prompt", prompt },
+                { "is_enabled", isEnabled },
                 { "is_user_input_required", false },
                 { "is_global_cooldown_enabled", globalCooldown > 0 },
                 { "global_cooldown_seconds", globalCooldown > 0 ? globalCooldown : 1 }
@@ -1779,11 +1781,14 @@ namespace CardPackWidgetApp
             {
                 try
                 {
+                    // is_paused is only accepted on update (PATCH), never on create.
+                    payload["is_paused"] = isPaused;
                     result = TwitchJson("PATCH", baseUrl + "&id=" + Uri.EscapeDataString(rewardId), GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
                 }
                 catch (InvalidOperationException ex)
                 {
                     if (ex.Message.IndexOf("was not found", StringComparison.OrdinalIgnoreCase) < 0) throw;
+                    payload.Remove("is_paused");
                     result = TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
                 }
             }
@@ -1797,7 +1802,10 @@ namespace CardPackWidgetApp
             showcase["rewardIds"] = new object[] { savedId };
             showcase["rewardName"] = title;
             showcase["rewardCost"] = cost;
+            showcase["rewardPrompt"] = prompt;
             showcase["rewardBackgroundColor"] = backgroundColor;
+            showcase["rewardEnabled"] = isEnabled;
+            showcase["rewardPaused"] = isPaused;
             showcase["rewardGlobalCooldown"] = globalCooldown;
             server.WriteSettingsObject(settings);
             return settings;

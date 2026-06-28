@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260628-cprewamp2">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260628-cprewamp3">
   </head>
   <body>
     <div class="admin-shell">
@@ -249,7 +249,11 @@
               </div>
               <label class="switch-row">
                 <input id="showcase-enabled" type="checkbox">
-                <span data-i18n="label-showcase-enabled">Sammlungs-Showcase aktivieren</span>
+                <span data-i18n="label-reward-enabled">Aktiviert</span>
+              </label>
+              <label class="switch-row compact-switch">
+                <input id="showcase-paused" type="checkbox">
+                <span data-i18n="label-reward-paused">Pausiert</span>
               </label>
               <div class="form-grid">
                 <label data-i18n="label-showcase-reward-title">Reward-Titel<input id="showcase-reward-title" type="text"></label>
@@ -258,13 +262,27 @@
                 <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="showcase-bg-color" type="color"></label>
                 <label data-i18n="label-showcase-seconds">Sekunden pro Booster<input id="showcase-seconds" type="number" min="2" step="1"></label>
                 <label data-i18n="label-showcase-source">OBS-Quellenname<input id="showcase-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-reward-prompt">Beschreibung<input id="showcase-prompt" type="text"></label>
               </div>
               <div class="button-row">
-                <button class="primary-button" id="showcase-sync-reward" type="button" data-i18n="btn-showcase-sync">Belohnung speichern / aktualisieren</button>
-                <button class="secondary-button" id="showcase-setup-obs" type="button" data-i18n="btn-showcase-setup-obs">Sammlungs-Quelle in OBS einrichten</button>
+                <button class="primary-button" id="showcase-sync-reward" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
+                <button class="danger-button" id="showcase-delete-reward" type="button" data-i18n="btn-delete-reward">Löschen</button>
               </div>
               <div class="status-line" id="showcase-status" hidden></div>
             </article>
+          </section>
+
+          <section class="tool-panel obs-sources-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">OBS</p>
+                <h2 data-i18n="obs-sources-title">Szenen und Quellen</h2>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="primary-button" id="setup-all-obs-sources" type="button" data-i18n="btn-setup-all-obs-sources">Szenen und Quellen erstellen und einbinden</button>
+            </div>
+            <div class="status-line" id="obs-sources-status" hidden></div>
           </section>
         </section>
 
@@ -439,6 +457,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260628-cprewamp2"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260628-cprewamp3"></script>
   </body>
 </html>

@@ -480,12 +480,12 @@ input[type="range"] {
 
 .connection-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   align-items: start;
 }
 
-.channel-points-panel {
+.channel-points-panel,
+.obs-sources-panel {
   margin-top: 18px;
 }
 
