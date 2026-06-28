@@ -484,8 +484,7 @@ input[type="range"] {
   align-items: start;
 }
 
-.channel-points-panel,
-.obs-sources-panel {
+.channel-points-panel {
   margin-top: 18px;
 }
 

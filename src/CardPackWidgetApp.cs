@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.13";
+        public const string Version = "1.4.14";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1490,6 +1490,10 @@ namespace CardPackWidgetApp
                 : new Dictionary<string, object>();
 
             string savedId = GetString(reward, "id", rewardId);
+            // Diagnostic: Twitch may silently ignore should_redemptions_skip_request_queue on
+            // PATCH (it could be create-only) - log what Twitch actually echoes back so a stuck
+            // chat-dock-crash report can be confirmed/ruled out without guessing.
+            server.Log("twitch", "info", "Kartenpack-Belohnung gespeichert. Twitch-Antwort: " + server.Serializer.Serialize(reward));
             draw["rewardIds"] = new object[] { savedId };
             draw["rewardName"] = title;
             draw["rewardCost"] = cost;
@@ -1837,6 +1841,7 @@ namespace CardPackWidgetApp
                 ? (Dictionary<string, object>)rewards[0]
                 : new Dictionary<string, object>();
             string savedId = GetString(reward, "id", rewardId);
+            server.Log("twitch", "info", "Showcase-Belohnung gespeichert. Twitch-Antwort: " + server.Serializer.Serialize(reward));
 
             showcase["rewardIds"] = new object[] { savedId };
             showcase["rewardName"] = title;

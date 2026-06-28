@@ -228,7 +228,7 @@ const I18N = {
   "label-obs-source": { de: "Quellenname Booster", en: "Source name booster" },
   "label-obs-collection-source": { de: "Quellenname Kartensammlung", en: "Source name card collection" },
   "btn-test-obs": { de: "OBS testen", en: "Test OBS" },
-  "btn-setup-obs": { de: "OBS Szene aktualisieren", en: "Update OBS scene" },
+  "btn-setup-obs": { de: "OBS Szene / Quellen erstellen / aktualisieren", en: "Create / update OBS scene & sources" },
   "users-eyebrow": { de: "Sammlung", en: "Collection" },
   "users-title": { de: "Nutzer verwalten", en: "Manage users" },
   "placeholder-user-search": { de: "Nutzer suchen...", en: "Search users..." },
@@ -274,9 +274,6 @@ const I18N = {
   "label-showcase-seconds": { de: "Sekunden pro Booster", en: "Seconds per booster" },
   "status-showcase-saving": { de: "Showcase-Belohnung wird gespeichert...", en: "Saving showcase reward..." },
   "notice-showcase-saved": { de: "Showcase-Belohnung gespeichert.", en: "Showcase reward saved." },
-  "obs-sources-title": { de: "Szenen und Quellen", en: "Scenes and sources" },
-  "btn-setup-all-obs-sources": { de: "Szenen und Quellen erstellen und einbinden", en: "Create and link scenes and sources" },
-  "status-obs-sources-done": { de: "Szenen und Quellen in OBS eingerichtet.", en: "Scenes and sources set up in OBS." },
   "label-sound-open": { de: "Öffnen-Sound", en: "Open sound" },
   "label-sound-reveal": { de: "Reveal-Sound", en: "Reveal sound" },
   "status-no-sound": { de: "Kein Sound ausgewählt", en: "No sound selected" },
@@ -813,81 +810,15 @@ async function setupObsOverlay() {
   try {
     await saveSettings(settings);
     ws = await connectObs();
-    const obs = settings.obs || {};
-    const sceneName = obs.sceneName || "Streamer Card Overlay";
-    const sourceName = obs.sourceName || "Streamer Card Widget";
-    const overlayUrl = currentOriginUrl("/overlay.html");
+    const sceneName = settings.obs?.sceneName || "Streamer Card Overlay";
+    const packSourceName = settings.obs?.sourceName || "Streamer Card Widget";
+    const collectionSourceName = settings.showcase?.sourceName || "Streamer Card Sammlung";
+    await applyObsBrowserSource(ws, sceneName, packSourceName, currentOriginUrl("/overlay.html"));
+    await applyObsBrowserSource(ws, sceneName, collectionSourceName, currentOriginUrl("/collection.html"));
 
-    const scenes = await obsRequest(ws, "GetSceneList");
-    if (!(scenes.scenes || []).some((scene) => scene.sceneName === sceneName)) {
-      await obsRequest(ws, "CreateScene", { sceneName });
-    }
-
-    const inputs = await obsRequest(ws, "GetInputList");
-    const sourceExists = (inputs.inputs || []).some((input) => input.inputName === sourceName);
-    const inputSettings = {
-      url: overlayUrl,
-      width: 1920,
-      height: 1080,
-      fps: 60,
-      shutdown: false,
-      restart_when_active: true,
-      reroute_audio: false
-    };
-
-    if (!sourceExists) {
-      try {
-        await obsRequest(ws, "CreateInput", {
-          sceneName,
-          inputName: sourceName,
-          inputKind: "browser_source",
-          inputSettings,
-          sceneItemEnabled: true
-        });
-      } catch {
-        await obsRequest(ws, "CreateInput", {
-          sceneName,
-          inputName: sourceName,
-          inputKind: "obs_browser_source",
-          inputSettings,
-          sceneItemEnabled: true
-        });
-      }
-    } else {
-      await obsRequest(ws, "SetInputSettings", {
-        inputName: sourceName,
-        inputSettings,
-        overlay: true
-      });
-    }
-
-    let item;
-    try {
-      item = await obsRequest(ws, "GetSceneItemId", { sceneName, sourceName });
-    } catch {
-      await obsRequest(ws, "CreateSceneItem", { sceneName, sourceName, sceneItemEnabled: true });
-      item = await obsRequest(ws, "GetSceneItemId", { sceneName, sourceName });
-    }
-    await obsRequest(ws, "SetSceneItemTransform", {
-      sceneName,
-      sceneItemId: item.sceneItemId,
-      sceneItemTransform: {
-        positionX: 0,
-        positionY: 0,
-        scaleX: 1,
-        scaleY: 1,
-        cropTop: 0,
-        cropRight: 0,
-        cropBottom: 0,
-        cropLeft: 0,
-        boundsType: "OBS_BOUNDS_STRETCH",
-        boundsWidth: 1920,
-        boundsHeight: 1080
-      }
-    });
-
-    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${sourceName}`, "ok");
+    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName}`, "ok");
     setPill("#obs-pill", t("pill-obs-connected"), true);
+    settings.obs ||= {};
     settings.obs.enabled = true;
     await saveSettings(settings);
     showNotice(t("notice-obs-scene-updated"));
@@ -931,31 +862,6 @@ async function applyObsBrowserSource(ws, sceneName, sourceName, url) {
       boundsType: "OBS_BOUNDS_STRETCH", boundsWidth: 1920, boundsHeight: 1080
     }
   });
-}
-
-async function setupAllObsSources() {
-  const statusEl = $("#obs-sources-status");
-  if (statusEl) statusEl.hidden = false;
-  setStatus("#obs-sources-status", t("status-setting-up-obs"), "neutral");
-  let ws;
-  try {
-    await saveSettings(settings);
-    ws = await connectObs();
-    const sceneName = settings.obs?.sceneName || "Streamer Card Overlay";
-    const packSourceName = settings.obs?.sourceName || "Streamer Card Widget";
-    const collectionSourceName = settings.showcase?.sourceName || "Streamer Card Sammlung";
-    await applyObsBrowserSource(ws, sceneName, packSourceName, currentOriginUrl("/overlay.html"));
-    await applyObsBrowserSource(ws, sceneName, collectionSourceName, currentOriginUrl("/collection.html"));
-    settings.obs ||= {};
-    settings.obs.enabled = true;
-    await saveSettings(settings);
-    setStatus("#obs-sources-status", t("status-obs-sources-done"), "ok");
-    showNotice(t("status-obs-sources-done"));
-  } catch (error) {
-    setStatus("#obs-sources-status", `${t("error-obs-setup-failed")} ${error.message}`, "error");
-  } finally {
-    try { ws?.close(); } catch {}
-  }
 }
 
 async function handleShowcaseSync() {
@@ -1667,7 +1573,6 @@ function bindDesign() {
   });
   $("#test-obs").addEventListener("click", testObsConnection);
   $("#setup-obs").addEventListener("click", setupObsOverlay);
-  $("#setup-all-obs-sources").addEventListener("click", setupAllObsSources);
   $("#obs-info-toggle").addEventListener("click", () => {
     const box = $("#obs-info");
     const toggle = $("#obs-info-toggle");
