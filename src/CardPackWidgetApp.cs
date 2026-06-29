@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.24";
+        public const string Version = "1.4.25";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -310,6 +310,9 @@ namespace CardPackWidgetApp
         public int Start(int preferredPort)
         {
             EnsureDataFiles();
+            // The event log is a live diagnostics view, not a persistent history - start every
+            // app launch with an empty log.
+            eventLog.Clear();
             // Defensive margin only - the actual self-update handover no longer relies on this.
             // A normal "the old window is still closing" moment could still want a brief retry.
             int attempts = 0;
