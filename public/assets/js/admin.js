@@ -130,6 +130,10 @@ const I18N = {
   "placeholder-cu-search": { de: "Nutzer suchen...", en: "Search user..." },
   "hint-cu-empty": { de: "Noch keine Nutzungen vorhanden.", en: "No usage yet." },
   "unit-cu-uses": { de: "Nutzungen", en: "uses" },
+  "cu-pack-reset": { de: "Pack-Reset", en: "Pack reset" },
+  "cu-trade-reset": { de: "Tausch-Reset", en: "Trade reset" },
+  "cu-remaining": { de: "übrig", en: "left" },
+  "cu-unlimited": { de: "unbegrenzt", en: "unlimited" },
   "notice-cu-reset": { de: "Nutzung zurückgesetzt.", en: "Usage reset." },
   "notice-cu-reset-all": { de: "Alle Nutzungen zurückgesetzt.", en: "All usage reset." },
   "queue-eyebrow": { de: "Verarbeitung", en: "Processing" },
@@ -1542,22 +1546,36 @@ function bindUsers() {
   $("#user-list").addEventListener("change", handleUserListChange);
 }
 
-let commandUsageData = [];
+let commandUsage = { users: [], pack: {}, trade: {} };
 
 async function loadCommandUsage() {
   try {
     const result = await getCommandUsage();
-    commandUsageData = result.usage || [];
+    commandUsage = result.usage || { users: [], pack: {}, trade: {} };
   } catch {
-    commandUsageData = [];
+    commandUsage = { users: [], pack: {}, trade: {} };
   }
+}
+
+function formatResetTime(iso) {
+  if (!iso) return "–";
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "–" : date.toLocaleString();
+}
+
+function remainingLabel(value) {
+  return value == null ? t("cu-unlimited") : `${value} ${t("cu-remaining")}`;
 }
 
 function renderCommandUsage() {
   const list = $("#cu-list");
   if (!list) return;
+  const info = $("#cu-reset-info");
+  if (info) {
+    info.textContent = `${t("cu-pack-reset")}: ${formatResetTime(commandUsage.pack?.nextResetAt)} · ${t("cu-trade-reset")}: ${formatResetTime(commandUsage.trade?.nextResetAt)}`;
+  }
   const filter = ($("#cu-search")?.value || "").trim().toLowerCase();
-  const allUsers = [...commandUsageData].sort((a, b) => (a.displayName || a.login).localeCompare(b.displayName || b.login));
+  const allUsers = [...(commandUsage.users || [])].sort((a, b) => (a.displayName || a.login).localeCompare(b.displayName || b.login));
   const users = allUsers.filter((user) => !filter || (user.displayName || "").toLowerCase().includes(filter) || (user.login || "").includes(filter));
   $("#cu-empty-hint").hidden = allUsers.length > 0;
   if (!users.length) {
@@ -1570,7 +1588,7 @@ function renderCommandUsage() {
     <div class="user-card" data-user="${escapeHtml(user.login)}">
       <div class="user-card-header">
         <strong>${escapeHtml(user.displayName || user.login)}</strong>
-        <span>${user.count || 0} ${t("unit-cu-uses")}</span>
+        <span class="cu-stats">!pack: <b>${user.packCount || 0}</b> (${escapeHtml(remainingLabel(user.packRemaining))}) · !trade: <b>${user.tradeCount || 0}</b> (${escapeHtml(remainingLabel(user.tradeRemaining))})</span>
         <button class="danger-button" type="button" data-action="cu-reset-user" data-user="${escapeHtml(user.login)}">${t("btn-cu-reset-user")}</button>
       </div>
     </div>

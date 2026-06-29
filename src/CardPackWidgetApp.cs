@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.23";
+        public const string Version = "1.4.24";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1616,6 +1616,8 @@ namespace CardPackWidgetApp
         private CancellationTokenSource chatCancel;
         private bool chatEventSubConnected;
         private string chatLastError;
+        private bool chatRunning;
+        private string chatConfigSignature;
 
         private readonly object queueLock = new object();
         private readonly List<Dictionary<string, object>> actionQueue = new List<Dictionary<string, object>>();
@@ -2399,15 +2401,32 @@ namespace CardPackWidgetApp
 
         public void RefreshChatCommands()
         {
-            StopChat();
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> cc = Obj(settings, "chatCommands");
-            // Don't bother connecting if neither command is active (each command is toggled
-            // individually now; there is no separate master switch).
-            if (!GetBool(Obj(cc, "pack"), "enabled", true) && !GetBool(Obj(cc, "collection"), "enabled", true)) return;
+            // Each command is toggled individually now (no separate master switch). The chat
+            // EventSub subscription is the same regardless of command words/messages - it only
+            // depends on which account reads chat and whether any command is active at all.
+            bool anyEnabled =
+                GetBool(Obj(cc, "pack"), "enabled", true) ||
+                GetBool(Obj(cc, "collection"), "enabled", true) ||
+                GetBool(Obj(cc, "trade"), "enabled", true) ||
+                GetBool(Obj(cc, "tradeyes"), "enabled", true) ||
+                GetBool(Obj(cc, "tradeno"), "enabled", true);
 
             Dictionary<string, object> chat = ChatCredential();
             string token = GetString(chat, "accessToken", "");
+
+            // Only (re)connect when the thing that actually affects the connection changed - the
+            // reading account's token, or whether chat is needed at all. This stops every unrelated
+            // settings save (editing a command word or message) from tearing down and rebuilding the
+            // chat socket, which previously spammed the log with "Chat-Verbindung aufgebaut.".
+            string signature = anyEnabled ? token : "";
+            if (chatRunning && signature == chatConfigSignature) return;
+
+            StopChat();
+            chatConfigSignature = signature;
+            if (!anyEnabled) return;
+
             bool usingBot = !String.IsNullOrWhiteSpace(GetString(Obj(settings, "twitchBot"), "accessToken", ""));
             string who = usingBot ? "Bot-Account" : "Haupt-Account";
             if (String.IsNullOrWhiteSpace(token))
@@ -2439,12 +2458,14 @@ namespace CardPackWidgetApp
                 server.Log("twitch", "warn", "Chat-Rechte des " + who + " konnten nicht geprueft werden: " + ex.GetBaseException().Message);
             }
 
+            chatRunning = true;
             chatCancel = new CancellationTokenSource();
             Task.Factory.StartNew(delegate { ChatEventSubLoop(chatCancel.Token); }, TaskCreationOptions.LongRunning);
         }
 
         private void StopChat()
         {
+            chatRunning = false;
             try
             {
                 if (chatCancel != null) chatCancel.Cancel();
@@ -3112,25 +3133,48 @@ namespace CardPackWidgetApp
             catch { }
         }
 
-        public object[] GetCommandUsage()
+        public Dictionary<string, object> GetCommandUsage()
         {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> cc = Obj(settings, "chatCommands");
+            int packMax = Math.Max(0, GetInt(Obj(cc, "pack"), "maxUses", 0));
+            int tradeMax = Math.Max(0, GetInt(Obj(cc, "trade"), "maxUses", 0));
             lock (usageLock)
             {
                 EnsureUsageLoaded();
-                Dictionary<string, object> users = (Dictionary<string, object>)usageData["users"];
+                Dictionary<string, object> packUsers = usageData["users"] as Dictionary<string, object> ?? new Dictionary<string, object>();
+                Dictionary<string, object> tradeSection = TradeSection();
+                Dictionary<string, object> tradeUsers = tradeSection["users"] as Dictionary<string, object> ?? new Dictionary<string, object>();
+
+                var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (string k in packUsers.Keys) keys.Add(k);
+                foreach (string k in tradeUsers.Keys) keys.Add(k);
+
                 var list = new List<object>();
-                foreach (KeyValuePair<string, object> kv in users)
+                foreach (string key in keys)
                 {
-                    Dictionary<string, object> entry = kv.Value as Dictionary<string, object>;
-                    if (entry == null) continue;
+                    Dictionary<string, object> p = packUsers.ContainsKey(key) ? packUsers[key] as Dictionary<string, object> : null;
+                    Dictionary<string, object> tr = tradeUsers.ContainsKey(key) ? tradeUsers[key] as Dictionary<string, object> : null;
+                    int packCount = p != null ? GetInt(p, "count", 0) : 0;
+                    int tradeCount = tr != null ? GetInt(tr, "count", 0) : 0;
+                    string display = p != null ? GetString(p, "displayName", key) : (tr != null ? GetString(tr, "displayName", key) : key);
                     list.Add(new Dictionary<string, object>
                     {
-                        { "login", kv.Key },
-                        { "displayName", GetString(entry, "displayName", kv.Key) },
-                        { "count", GetInt(entry, "count", 0) }
+                        { "login", key },
+                        { "displayName", display },
+                        { "packCount", packCount },
+                        { "tradeCount", tradeCount },
+                        { "packRemaining", packMax > 0 ? (object)Math.Max(0, packMax - packCount) : null },
+                        { "tradeRemaining", tradeMax > 0 ? (object)Math.Max(0, tradeMax - tradeCount) : null }
                     });
                 }
-                return list.ToArray();
+
+                return new Dictionary<string, object>
+                {
+                    { "pack", new Dictionary<string, object> { { "maxUses", packMax }, { "nextResetAt", GetString(usageData, "nextGlobalResetAt", "") } } },
+                    { "trade", new Dictionary<string, object> { { "maxUses", tradeMax }, { "nextResetAt", GetString(tradeSection, "nextGlobalResetAt", "") } } },
+                    { "users", list.ToArray() }
+                };
             }
         }
 
@@ -3139,27 +3183,39 @@ namespace CardPackWidgetApp
             lock (usageLock)
             {
                 EnsureUsageLoaded();
-                Dictionary<string, object> users = (Dictionary<string, object>)usageData["users"];
+                Dictionary<string, object> packUsers = (Dictionary<string, object>)usageData["users"];
+                Dictionary<string, object> tradeUsers = TradeSection()["users"] as Dictionary<string, object>;
                 if (String.IsNullOrWhiteSpace(login))
                 {
-                    foreach (object value in users.Values)
-                    {
-                        Dictionary<string, object> entry = value as Dictionary<string, object>;
-                        if (entry != null) entry["count"] = 0;
-                    }
-                    server.Log("commands", "info", "Nutzung aller User zurueckgesetzt.");
+                    ZeroAllCounts(packUsers);
+                    ZeroAllCounts(tradeUsers);
+                    server.Log("commands", "info", "Nutzung (Pack & Tausch) aller User zurueckgesetzt.");
                 }
                 else
                 {
                     string key = login.Trim().ToLowerInvariant();
-                    if (users.ContainsKey(key) && users[key] is Dictionary<string, object>)
-                    {
-                        ((Dictionary<string, object>)users[key])["count"] = 0;
-                        server.Log("commands", "info", "Nutzung von " + login + " zurueckgesetzt.");
-                    }
+                    ZeroCount(packUsers, key);
+                    ZeroCount(tradeUsers, key);
+                    server.Log("commands", "info", "Nutzung (Pack & Tausch) von " + login + " zurueckgesetzt.");
                 }
                 SaveUsage();
             }
+        }
+
+        private static void ZeroAllCounts(Dictionary<string, object> users)
+        {
+            if (users == null) return;
+            foreach (object value in users.Values)
+            {
+                Dictionary<string, object> entry = value as Dictionary<string, object>;
+                if (entry != null) entry["count"] = 0;
+            }
+        }
+
+        private static void ZeroCount(Dictionary<string, object> users, string key)
+        {
+            if (users == null) return;
+            if (users.ContainsKey(key) && users[key] is Dictionary<string, object>) ((Dictionary<string, object>)users[key])["count"] = 0;
         }
 
         private void StartResetTimerOnce()
@@ -3182,7 +3238,9 @@ namespace CardPackWidgetApp
                 catch
                 {
                 }
-            }, null, 15000, 15000);
+            // Fire shortly after start too, so any reset that became due while the app was closed
+            // is applied right away (cooldowns are absolute timestamps and are honored on demand).
+            }, null, 2000, 15000);
         }
 
         private static DateTime ParseDate(string text)
