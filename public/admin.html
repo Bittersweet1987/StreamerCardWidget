@@ -165,6 +165,7 @@
                 <label class="full-row" data-i18n="label-obs-scene">Szenenname<input id="obs-scene-name" type="text"></label>
                 <label class="full-row" data-i18n="label-obs-source">Quellenname Booster<input id="obs-source-name" type="text"></label>
                 <label class="full-row" data-i18n="label-obs-collection-source">Quellenname Kartensammlung<input id="obs-collection-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-obs-trade-source">Quellenname Tausch-Animation<input id="obs-trade-source-name" type="text"></label>
               </div>
               <div class="button-row">
                 <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
@@ -686,6 +687,51 @@
                 <label class="ghost-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-reveal" type="file" accept="audio/*"></label>
                 <button class="danger-button" id="remove-reveal-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
               </div>
+            </div>
+            <div class="sound-row" data-sound="trade">
+              <div class="sound-row-info">
+                <strong data-i18n="label-sound-trade">Tausch-Sound</strong>
+                <span class="sound-row-status" id="sound-trade-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
+              </div>
+              <div class="sound-row-actions">
+                <button class="secondary-button" id="play-trade-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
+                <label class="ghost-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-trade" type="file" accept="audio/*"></label>
+                <button class="danger-button" id="remove-trade-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="tool-panel trade-anim-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="trade-anim-eyebrow">Tausch</p>
+                <h2 data-i18n="trade-anim-title">Tausch-Animation</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="trade-anim-hint">Bei einem erfolgreichen Tausch (!tradeyes) wird eine Animation in einer eigenen OBS-Quelle (trade.html) abgespielt. Quellenname & Einrichtung findest du unter „Verbindung".</p>
+            <label class="switch-row">
+              <input id="trade-anim-enabled" type="checkbox">
+              <span data-i18n="label-trade-anim-enabled">Tausch-Animation aktiviert</span>
+            </label>
+            <label class="switch-row compact-switch">
+              <input id="trade-anim-sendchat" type="checkbox">
+              <span data-i18n="label-trade-anim-sendchat">Erfolgsmeldung zusätzlich im Chat senden</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-trade-anim-style">Animationsstil
+                <select id="trade-anim-style">
+                  <option value="swap" data-i18n="opt-trade-style-swap">Karten-Swap (Kreuzung)</option>
+                  <option value="arc" data-i18n="opt-trade-style-arc">Übergabe-Bogen</option>
+                  <option value="flip" data-i18n="opt-trade-style-flip">Versus-Flip</option>
+                </select>
+              </label>
+              <label data-i18n="label-trade-anim-duration">Dauer
+                <select id="trade-anim-duration">
+                  <option value="short" data-i18n="opt-trade-dur-short">Kurz (~4s)</option>
+                  <option value="medium" data-i18n="opt-trade-dur-medium">Mittel (~6-7s)</option>
+                  <option value="long" data-i18n="opt-trade-dur-long">Länger (~9s)</option>
+                </select>
+              </label>
             </div>
           </section>
 

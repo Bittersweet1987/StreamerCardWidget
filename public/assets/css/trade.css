@@ -1,0 +1,150 @@
+/* Trade animation overlay. Three selectable styles (swap / arc / flip), length driven by
+   --dur which trade.js sets from the configured duration. The card visuals (.tcg-card) come
+   from overlay.css; this file only handles layout, the username labels and the motion. */
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+.trade-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.trade-scene {
+  position: absolute;
+  inset: 0;
+  --gap: 22vw;
+  --dur: 6500ms;
+}
+
+.trade-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 320px;
+  max-width: 24vw;
+  transform: translate(-50%, -50%);
+  perspective: 1400px;
+}
+
+.trade-anim {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.trade-anim .tcg-card {
+  width: 100%;
+}
+
+.trade-name {
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+  padding: 5px 16px;
+  background: rgba(20, 16, 32, .55);
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 26vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mid-screen flash that peaks while the cards cross. */
+.trade-flash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60vw;
+  height: 60vw;
+  transform: translate(-50%, -50%) scale(.2);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .85) 0%, rgba(145, 71, 255, .35) 35%, transparent 70%);
+  opacity: 0;
+  animation: trade-flash var(--dur) ease-in-out both;
+}
+
+@keyframes trade-flash {
+  0%, 38% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  50% { opacity: .9; transform: translate(-50%, -50%) scale(1.1); }
+  62% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); }
+  100% { opacity: 0; }
+}
+
+/* ---------- Style: Swap (cards cross over) ---------- */
+.style-swap .slot-a .trade-anim { animation: swap-a var(--dur) cubic-bezier(.55,.1,.3,1) both; }
+.style-swap .slot-b .trade-anim { animation: swap-b var(--dur) cubic-bezier(.55,.1,.3,1) both; }
+
+@keyframes swap-a {
+  0%   { transform: translateX(calc(-1 * var(--gap) - 60vw)); opacity: 0; }
+  14%  { transform: translateX(calc(-1 * var(--gap))); opacity: 1; }
+  32%  { transform: translateX(calc(-1 * var(--gap))) translateY(0); }
+  50%  { transform: translateX(var(--gap)) translateY(-7vh) scale(1.06); }
+  64%  { transform: translateX(var(--gap)) translateY(0); }
+  86%  { transform: translateX(var(--gap)); opacity: 1; }
+  100% { transform: translateX(var(--gap)) translateY(34vh); opacity: 0; }
+}
+@keyframes swap-b {
+  0%   { transform: translateX(calc(var(--gap) + 60vw)); opacity: 0; }
+  14%  { transform: translateX(var(--gap)); opacity: 1; }
+  32%  { transform: translateX(var(--gap)) translateY(0); }
+  50%  { transform: translateX(calc(-1 * var(--gap))) translateY(7vh) scale(1.06); }
+  64%  { transform: translateX(calc(-1 * var(--gap))) translateY(0); }
+  86%  { transform: translateX(calc(-1 * var(--gap))); opacity: 1; }
+  100% { transform: translateX(calc(-1 * var(--gap))) translateY(34vh); opacity: 0; }
+}
+
+/* ---------- Style: Arc (hand-off along an arc) ---------- */
+.style-arc .slot-a .trade-anim { animation: arc-a var(--dur) cubic-bezier(.45,.05,.3,1) both; }
+.style-arc .slot-b .trade-anim { animation: arc-b var(--dur) cubic-bezier(.45,.05,.3,1) both; }
+
+@keyframes arc-a {
+  0%   { transform: translateX(calc(-1 * var(--gap))) translateY(8vh); opacity: 0; }
+  14%  { transform: translateX(calc(-1 * var(--gap))) translateY(0); opacity: 1; }
+  34%  { transform: translateX(calc(-1 * var(--gap))) translateY(0) rotate(0); }
+  46%  { transform: translateX(0) translateY(-24vh) rotate(9deg) scale(1.05); }
+  58%  { transform: translateX(var(--gap)) translateY(0) rotate(0); }
+  86%  { transform: translateX(var(--gap)); opacity: 1; }
+  100% { transform: translateX(var(--gap)) scale(.9); opacity: 0; }
+}
+@keyframes arc-b {
+  0%   { transform: translateX(var(--gap)) translateY(8vh); opacity: 0; }
+  14%  { transform: translateX(var(--gap)) translateY(0); opacity: 1; }
+  34%  { transform: translateX(var(--gap)) translateY(0) rotate(0); }
+  46%  { transform: translateX(0) translateY(24vh) rotate(-9deg) scale(1.05); }
+  58%  { transform: translateX(calc(-1 * var(--gap))) translateY(0) rotate(0); }
+  86%  { transform: translateX(calc(-1 * var(--gap))); opacity: 1; }
+  100% { transform: translateX(calc(-1 * var(--gap))) scale(.9); opacity: 0; }
+}
+
+/* ---------- Style: Flip (reveal then spin-swap) ---------- */
+.style-flip .slot-a .trade-anim { animation: flip-a var(--dur) cubic-bezier(.5,.05,.3,1) both; }
+.style-flip .slot-b .trade-anim { animation: flip-b var(--dur) cubic-bezier(.5,.05,.3,1) both; }
+
+@keyframes flip-a {
+  0%   { transform: translateX(calc(-1 * var(--gap))) rotateY(180deg); opacity: 0; }
+  12%  { transform: translateX(calc(-1 * var(--gap))) rotateY(180deg); opacity: 1; }
+  30%  { transform: translateX(calc(-1 * var(--gap))) rotateY(0deg); }
+  50%  { transform: translateX(calc(-1 * var(--gap))) rotateY(0deg); }
+  66%  { transform: translateX(var(--gap)) rotateY(360deg); }
+  86%  { transform: translateX(var(--gap)) rotateY(360deg); opacity: 1; }
+  100% { transform: translateX(var(--gap)) rotateY(360deg) translateY(22vh); opacity: 0; }
+}
+@keyframes flip-b {
+  0%   { transform: translateX(var(--gap)) rotateY(180deg); opacity: 0; }
+  12%  { transform: translateX(var(--gap)) rotateY(180deg); opacity: 1; }
+  30%  { transform: translateX(var(--gap)) rotateY(0deg); }
+  50%  { transform: translateX(var(--gap)) rotateY(0deg); }
+  66%  { transform: translateX(calc(-1 * var(--gap))) rotateY(-360deg); }
+  86%  { transform: translateX(calc(-1 * var(--gap))) rotateY(-360deg); opacity: 1; }
+  100% { transform: translateX(calc(-1 * var(--gap))) rotateY(-360deg) translateY(22vh); opacity: 0; }
+}

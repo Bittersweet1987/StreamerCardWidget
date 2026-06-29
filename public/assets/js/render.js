@@ -112,6 +112,16 @@ export function normalizeSettings(settings) {
   settings.sounds ||= {};
   settings.sounds.open ||= "";
   settings.sounds.reveal ||= "";
+  settings.sounds.trade ||= "";
+
+  // Trade animation: shown in its own OBS browser source (trade.html) when a !tradeyes swap
+  // succeeds. Style and length are picked here; an optional chat message is separate.
+  settings.tradeAnimation ||= {};
+  settings.tradeAnimation.enabled = settings.tradeAnimation.enabled === true;
+  settings.tradeAnimation.style = ["swap", "arc", "flip"].includes(settings.tradeAnimation.style) ? settings.tradeAnimation.style : "swap";
+  settings.tradeAnimation.duration = ["short", "medium", "long"].includes(settings.tradeAnimation.duration) ? settings.tradeAnimation.duration : "medium";
+  settings.tradeAnimation.sendChat = settings.tradeAnimation.sendChat !== false;
+  settings.tradeAnimation.sourceName ||= "Streamer Card Tausch";
   settings.deck ||= {};
   settings.deck.cards ||= [];
   settings.boosters ||= [];

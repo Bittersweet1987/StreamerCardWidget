@@ -379,6 +379,7 @@ const I18N = {
   "notice-showcase-saved": { de: "Showcase-Belohnung gespeichert.", en: "Showcase reward saved." },
   "label-sound-open": { de: "Öffnen-Sound", en: "Open sound" },
   "label-sound-reveal": { de: "Reveal-Sound", en: "Reveal sound" },
+  "label-sound-trade": { de: "Tausch-Sound", en: "Trade sound" },
   "status-no-sound": { de: "Kein Sound ausgewählt", en: "No sound selected" },
   "status-sound-set": { de: "Sound gespeichert", en: "Sound saved" },
   "btn-play": { de: "▶ Abspielen", en: "▶ Play" },
@@ -388,6 +389,25 @@ const I18N = {
   "notice-sound-reveal-saved": { de: "Reveal-Sound gespeichert.", en: "Reveal sound saved." },
   "notice-sound-open-removed": { de: "Öffnen-Sound entfernt.", en: "Open sound removed." },
   "notice-sound-reveal-removed": { de: "Reveal-Sound entfernt.", en: "Reveal sound removed." },
+  "notice-sound-trade-saved": { de: "Tausch-Sound gespeichert.", en: "Trade sound saved." },
+  "notice-sound-trade-removed": { de: "Tausch-Sound entfernt.", en: "Trade sound removed." },
+  "label-obs-trade-source": { de: "Quellenname Tausch-Animation", en: "Source name trade animation" },
+  "trade-anim-eyebrow": { de: "Tausch", en: "Trade" },
+  "trade-anim-title": { de: "Tausch-Animation", en: "Trade animation" },
+  "trade-anim-hint": {
+    de: "Bei einem erfolgreichen Tausch (!tradeyes) wird eine Animation in einer eigenen OBS-Quelle (trade.html) abgespielt. Quellenname & Einrichtung findest du unter „Verbindung".",
+    en: "On a successful trade (!tradeyes) an animation plays in its own OBS source (trade.html). Source name & setup are under “Connection”."
+  },
+  "label-trade-anim-enabled": { de: "Tausch-Animation aktiviert", en: "Trade animation enabled" },
+  "label-trade-anim-sendchat": { de: "Erfolgsmeldung zusätzlich im Chat senden", en: "Also send success message in chat" },
+  "label-trade-anim-style": { de: "Animationsstil", en: "Animation style" },
+  "label-trade-anim-duration": { de: "Dauer", en: "Duration" },
+  "opt-trade-style-swap": { de: "Karten-Swap (Kreuzung)", en: "Card swap (cross over)" },
+  "opt-trade-style-arc": { de: "Übergabe-Bogen", en: "Hand-off arc" },
+  "opt-trade-style-flip": { de: "Versus-Flip", en: "Versus flip" },
+  "opt-trade-dur-short": { de: "Kurz (~4s)", en: "Short (~4s)" },
+  "opt-trade-dur-medium": { de: "Mittel (~6-7s)", en: "Medium (~6-7s)" },
+  "opt-trade-dur-long": { de: "Länger (~9s)", en: "Longer (~9s)" },
   "error-sound-play-failed": { de: "Sound konnte nicht abgespielt werden:", en: "Sound could not be played:" },
   "notice-saved": {
     de: "Gespeichert. Das Overlay aktualisiert sich automatisch.",
@@ -994,10 +1014,12 @@ async function setupObsOverlay() {
     const sceneName = settings.obs?.sceneName || "Streamer Card Overlay";
     const packSourceName = settings.obs?.sourceName || "Streamer Card Widget";
     const collectionSourceName = settings.showcase?.sourceName || "Streamer Card Sammlung";
+    const tradeSourceName = settings.tradeAnimation?.sourceName || "Streamer Card Tausch";
     await applyObsBrowserSource(ws, sceneName, packSourceName, currentOriginUrl("/overlay.html"));
     await applyObsBrowserSource(ws, sceneName, collectionSourceName, currentOriginUrl("/collection.html"));
+    await applyObsBrowserSource(ws, sceneName, tradeSourceName, currentOriginUrl("/trade.html"));
 
-    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName}`, "ok");
+    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName} + ${tradeSourceName}`, "ok");
     setPill("#obs-pill", t("pill-obs-connected"), true);
     settings.obs ||= {};
     settings.obs.enabled = true;
@@ -1874,6 +1896,7 @@ function hydrateDesign() {
   $("#volume").value = settings.style.volume ?? 65;
   updateSoundRow("open");
   updateSoundRow("reveal");
+  updateSoundRow("trade");
   $("#show-collection").checked = settings.style.showCollection !== false;
   $("#card-borders").checked = settings.style.cardBorders !== false;
   $("#name-position").value = ["bottom", "middle", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
@@ -1893,6 +1916,11 @@ function hydrateDesign() {
   $("#obs-scene-name").value = settings.obs?.sceneName || "Streamer Card Overlay";
   $("#obs-source-name").value = settings.obs?.sourceName || "Streamer Card Widget";
   $("#obs-collection-source-name").value = settings.showcase?.sourceName || "Streamer Card Sammlung";
+  $("#obs-trade-source-name").value = settings.tradeAnimation?.sourceName || "Streamer Card Tausch";
+  $("#trade-anim-enabled").checked = settings.tradeAnimation?.enabled === true;
+  $("#trade-anim-sendchat").checked = settings.tradeAnimation?.sendChat !== false;
+  $("#trade-anim-style").value = ["swap", "arc", "flip"].includes(settings.tradeAnimation?.style) ? settings.tradeAnimation.style : "swap";
+  $("#trade-anim-duration").value = ["short", "medium", "long"].includes(settings.tradeAnimation?.duration) ? settings.tradeAnimation.duration : "medium";
   refreshSettingsPreview();
 }
 
@@ -2084,8 +2112,47 @@ function bindDesign() {
     scheduleAutoSave();
     showNotice(t("notice-sound-reveal-removed"));
   });
+  $("#sound-trade").addEventListener("change", async (event) => {
+    if (!event.target.files?.[0]) return;
+    settings.sounds ||= {};
+    settings.sounds.trade = await readFileAsDataUrl(event.target.files[0]);
+    event.target.value = "";
+    updateSoundRow("trade");
+    scheduleAutoSave();
+    showNotice(t("notice-sound-trade-saved"));
+  });
+  $("#remove-trade-sound").addEventListener("click", () => {
+    settings.sounds ||= {};
+    settings.sounds.trade = "";
+    $("#sound-trade").value = "";
+    updateSoundRow("trade");
+    scheduleAutoSave();
+    showNotice(t("notice-sound-trade-removed"));
+  });
   $("#play-open-sound").addEventListener("click", () => playSoundPreview("open"));
   $("#play-reveal-sound").addEventListener("click", () => playSoundPreview("reveal"));
+  $("#play-trade-sound").addEventListener("click", () => playSoundPreview("trade"));
+
+  $("#obs-trade-source-name").addEventListener("input", (event) => {
+    settings.tradeAnimation ||= {};
+    settings.tradeAnimation.sourceName = event.target.value;
+  });
+  $("#trade-anim-enabled").addEventListener("change", (event) => {
+    settings.tradeAnimation ||= {};
+    settings.tradeAnimation.enabled = event.target.checked;
+  });
+  $("#trade-anim-sendchat").addEventListener("change", (event) => {
+    settings.tradeAnimation ||= {};
+    settings.tradeAnimation.sendChat = event.target.checked;
+  });
+  $("#trade-anim-style").addEventListener("change", (event) => {
+    settings.tradeAnimation ||= {};
+    settings.tradeAnimation.style = event.target.value;
+  });
+  $("#trade-anim-duration").addEventListener("change", (event) => {
+    settings.tradeAnimation ||= {};
+    settings.tradeAnimation.duration = event.target.value;
+  });
 }
 
 function playSoundPreview(kind) {

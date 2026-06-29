@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.0.1";
+        public const string Version = "2.1.0";
         public const string ReleaseDate = "2026-06-29";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -2917,16 +2917,38 @@ namespace CardPackWidgetApp
                     SaveUsage();
                 }
 
-                string msg = GetString(yesCfg, "successMessage", DefaultTradeSuccess)
-                    .Replace("@userNameA", "@" + fromUser)
-                    .Replace("@userNameB", "@" + displayName)
-                    .Replace("[KarteA]", cardATitle)
-                    .Replace("[BoosterA]", boosterATitle)
-                    .Replace("[KarteB]", cardBTitle)
-                    .Replace("[BoosterB]", boosterBTitle)
-                    .Replace("[AnzahlA]", Convert.ToString(result["aNewCardB"]))
-                    .Replace("[AnzahlB]", Convert.ToString(result["bNewCardA"]));
-                SendChatMessageSafe(msg);
+                // Trade animation (own OBS source) + optional chat message. When the animation is
+                // enabled, the streamer can choose whether the chat success message is still sent.
+                Dictionary<string, object> tradeAnim = Obj(server.ReadSettingsObject(), "tradeAnimation");
+                bool animEnabled = GetBool(tradeAnim, "enabled", false);
+                bool sendChat = animEnabled ? GetBool(tradeAnim, "sendChat", true) : true;
+                if (sendChat)
+                {
+                    string msg = GetString(yesCfg, "successMessage", DefaultTradeSuccess)
+                        .Replace("@userNameA", "@" + fromUser)
+                        .Replace("@userNameB", "@" + displayName)
+                        .Replace("[KarteA]", cardATitle)
+                        .Replace("[BoosterA]", boosterATitle)
+                        .Replace("[KarteB]", cardBTitle)
+                        .Replace("[BoosterB]", boosterBTitle)
+                        .Replace("[AnzahlA]", Convert.ToString(result["aNewCardB"]))
+                        .Replace("[AnzahlB]", Convert.ToString(result["bNewCardA"]));
+                    SendChatMessageSafe(msg);
+                }
+
+                var tradeEvent = new Dictionary<string, object>
+                {
+                    { "eventId", GetString(activeTrade, "id", Guid.NewGuid().ToString("N")) },
+                    { "userA", fromUser },
+                    { "userB", displayName },
+                    { "cardAId", cardAId },
+                    { "boosterAId", boosterAId },
+                    { "cardBId", cardBId },
+                    { "boosterBId", boosterBId },
+                    { "newCountA", result["aNewCardB"] },
+                    { "newCountB", result["bNewCardA"] }
+                };
+                server.Broadcast("trade", server.Serializer.Serialize(tradeEvent));
                 server.Log("commands", "info", fromUser + " tauschte " + cardATitle + " mit " + displayName + " gegen " + cardBTitle + ".");
                 ClearActiveTrade();
             }
