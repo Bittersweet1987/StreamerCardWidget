@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.16";
+        public const string Version = "1.4.17";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -2268,6 +2268,15 @@ namespace CardPackWidgetApp
                 Dictionary<string, object> entry = GetOrCreateUsageEntry(login, displayName);
 
                 DateTime cooldownUntil = ParseDate(GetString(entry, "cooldownUntil", ""));
+                // Clamp a stale cooldown to the current setting: cooldownUntil is stored as an
+                // absolute timestamp (last use + old cooldownSeconds), so lowering the cooldown
+                // later would otherwise keep a viewer blocked for the old, longer duration. Capping
+                // it at now + current cooldownSeconds makes a shortened cooldown take effect at once.
+                if (cooldownSeconds > 0 && cooldownUntil > now.AddSeconds(cooldownSeconds))
+                {
+                    cooldownUntil = now.AddSeconds(cooldownSeconds);
+                    entry["cooldownUntil"] = cooldownUntil.ToString("o");
+                }
                 if (cooldownSeconds > 0 && cooldownUntil > now)
                 {
                     int remaining = (int)Math.Ceiling((cooldownUntil - now).TotalSeconds);
