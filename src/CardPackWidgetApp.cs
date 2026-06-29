@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.15";
+        public const string Version = "1.4.16";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1385,6 +1385,7 @@ namespace CardPackWidgetApp
 
         private readonly object queueLock = new object();
         private readonly List<Dictionary<string, object>> actionQueue = new List<Dictionary<string, object>>();
+        private Dictionary<string, object> currentQueueItem;
         private readonly AutoResetEvent queueSignal = new AutoResetEvent(false);
         private volatile bool queueRunning;
         private volatile bool queueWorkerStarted;
@@ -1864,7 +1865,20 @@ namespace CardPackWidgetApp
 
         public object[] GetQueueItems()
         {
-            lock (queueLock) return actionQueue.ToArray();
+            lock (queueLock)
+            {
+                var list = new List<object>();
+                // The in-flight item is shown first (with a "processing" flag) so the queue tab
+                // reflects the event currently being handled, not just those still waiting.
+                if (currentQueueItem != null)
+                {
+                    var copy = new Dictionary<string, object>(currentQueueItem);
+                    copy["processing"] = true;
+                    list.Add(copy);
+                }
+                list.AddRange(actionQueue);
+                return list.ToArray();
+            }
         }
 
         private void BroadcastQueue()
@@ -1894,13 +1908,18 @@ namespace CardPackWidgetApp
                     {
                         item = actionQueue[0];
                         actionQueue.RemoveAt(0);
+                        currentQueueItem = item;
                     }
                 }
                 if (item == null) continue;
+                // Broadcast right after picking so the in-flight item becomes visible while it
+                // is being processed (and during the 500ms cooldown afterwards).
+                BroadcastQueue();
                 try { ProcessQueueItem(item); }
                 catch (Exception ex) { server.Log("queue", "error", "Queue-Verarbeitung fehlgeschlagen: " + ex.Message); }
-                BroadcastQueue();
                 Thread.Sleep(500);
+                lock (queueLock) { currentQueueItem = null; }
+                BroadcastQueue();
             }
         }
 
@@ -2314,7 +2333,12 @@ namespace CardPackWidgetApp
         private void ApplyResetIfDue(Dictionary<string, object> packCfg, DateTime nowUtc)
         {
             DateTime nextReset = ParseDate(GetString(usageData, "nextGlobalResetAt", ""));
-            if (nextReset != DateTime.MinValue && nextReset > nowUtc) return;
+            // Not yet due AND still consistent with the current interval. The upper bound clamp
+            // (nextReset <= dueLimit) ensures that if the interval was shortened after this value
+            // was computed (e.g. from "Tage" down to "5 Minuten"), the now-too-distant stale value
+            // is treated as due and recomputed, instead of blocking all resets until the old time.
+            DateTime dueLimit = ComputeNextResetAt(packCfg, nowUtc);
+            if (nextReset != DateTime.MinValue && nextReset > nowUtc && nextReset <= dueLimit) return;
 
             Dictionary<string, object> users = (Dictionary<string, object>)usageData["users"];
             bool hadUsers = users.Count > 0;

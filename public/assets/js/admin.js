@@ -1,6 +1,7 @@
 import {
   addLog,
   clearLogs,
+  connectEventStream,
   currentOriginUrl,
   deleteTwitchReward,
   disconnectBot,
@@ -105,6 +106,11 @@ const I18N = {
     en: "Channel point redemptions and chat commands are processed strictly in order here (500ms pause between entries)."
   },
   "hint-queue-empty": { de: "Aktuell keine ausstehenden Einträge.", en: "No pending entries right now." },
+  "queue-kind-draw": { de: "Kartenpack", en: "Card pack" },
+  "queue-kind-showcollection": { de: "Sammlung zeigen", en: "Show collection" },
+  "queue-source-chat": { de: "Chat", en: "Chat" },
+  "queue-source-channelpoints": { de: "Kanalpunkte", en: "Channel points" },
+  "queue-processing": { de: "wird verarbeitet", en: "processing" },
   "log-eyebrow": { de: "Verlauf", en: "History" },
   "log-title": { de: "Ereignis-Log", en: "Event log" },
   "placeholder-log-search": { de: "Log durchsuchen...", en: "Search log..." },
@@ -1557,22 +1563,31 @@ function bindCommandUsage() {
 
 let queuePollTimer;
 
-async function refreshQueue() {
-  try {
-    const result = await getQueueItems();
-    const items = result.items || [];
-    const list = $("#queue-list");
-    if (!list) return;
-    $("#queue-empty-hint").hidden = items.length > 0;
-    list.innerHTML = items.map((item) => `
-      <div class="user-card">
+function renderQueueItems(items) {
+  const list = $("#queue-list");
+  if (!list) return;
+  const hint = $("#queue-empty-hint");
+  if (hint) hint.hidden = items.length > 0;
+  list.innerHTML = items.map((item) => {
+    const kindLabel = item.kind === "draw" ? t("queue-kind-draw") : item.kind === "showcollection" ? t("queue-kind-showcollection") : (item.kind || "");
+    const sourceLabel = item.source === "chat" ? t("queue-source-chat") : item.source === "channelpoints" ? t("queue-source-channelpoints") : (item.source || "");
+    const badge = item.processing ? `<span class="queue-processing">${t("queue-processing")}</span>` : "";
+    return `
+      <div class="user-card${item.processing ? " is-processing" : ""}">
         <div class="user-card-header">
           <strong>${escapeHtml(item.user || item.userLogin || "?")}</strong>
-          <span>${escapeHtml(item.kind || "")} · ${escapeHtml(item.source || "")}</span>
+          <span>${escapeHtml(kindLabel)} · ${escapeHtml(sourceLabel)} ${badge}</span>
           <span>${escapeHtml(item.triggeredAt ? new Date(item.triggeredAt).toLocaleTimeString() : "")}</span>
         </div>
       </div>
-    `).join("");
+    `;
+  }).join("");
+}
+
+async function refreshQueue() {
+  try {
+    const result = await getQueueItems();
+    renderQueueItems(result.items || []);
   } catch {
   }
 }
@@ -1581,6 +1596,10 @@ function startQueuePolling() {
   clearInterval(queuePollTimer);
   refreshQueue();
   queuePollTimer = setInterval(refreshQueue, 1500);
+}
+
+function isQueueTabActive() {
+  return document.querySelector('[data-panel="queue"]')?.classList.contains("is-active");
 }
 
 function hydrateChatCommands() {
@@ -1999,6 +2018,11 @@ async function init() {
     setInterval(() => {
       if (settings.obs?.enabled) testObsConnection();
     }, 20000);
+    connectEventStream({
+      queue: (data) => {
+        if (isQueueTabActive()) renderQueueItems(data.items || []);
+      }
+    });
   } catch (error) {
     setPill("#twitch-pill", t("pill-server-unreachable"), false);
     showNotice(error.message, "error");
