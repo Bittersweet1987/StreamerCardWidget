@@ -11,10 +11,14 @@ export async function getCollections() {
 }
 
 export async function saveSettings(settings) {
+  // Credentials (twitch / twitchBot) are owned exclusively by the dedicated connect/disconnect
+  // endpoints. Never include them in a settings save, otherwise a stale in-memory copy could
+  // resurrect a disconnected account or overwrite freshly issued tokens.
+  const { twitch, twitchBot, ...safe } = settings || {};
   const response = await fetch("/api/settings", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(settings)
+    body: JSON.stringify(safe)
   });
   if (!response.ok) throw new Error("Einstellungen konnten nicht gespeichert werden.");
   return response.json();

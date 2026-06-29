@@ -728,7 +728,6 @@ async function connectTwitch() {
   }
   try {
     settings.twitch.clientId = clientId;
-    await saveSettings(settings);
     const state = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
     sessionStorage.setItem("cardpack_twitch_state", state);
     const url = new URL("https://id.twitch.tv/oauth2/authorize");
@@ -840,6 +839,7 @@ function pollBotStatusAfterLogin() {
 async function handleBotDisconnect() {
   try {
     await disconnectBot();
+    settings = normalizeSettings(await getSettings());
     await refreshBotStatus();
     showNotice(t("notice-twitch-disconnected"));
   } catch (error) {
