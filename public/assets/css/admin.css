@@ -508,6 +508,123 @@ input[type="range"] {
   background: rgba(145, 71, 255, .06);
 }
 
+/* ---- Chat command cards ---- */
+.master-switch {
+  margin: 0;
+}
+
+.command-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.command-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(145, 71, 255, .08);
+  border-bottom: 1px solid #e4deec;
+}
+
+.command-card-head h3 {
+  margin: 2px 0 0;
+}
+
+.command-card-head .switch-row {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.field-group {
+  padding: 14px 16px;
+}
+
+.field-group + .field-group {
+  border-top: 1px solid #ece6f4;
+}
+
+.field-group-title {
+  margin: 0 0 10px;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #8a6fc4;
+}
+
+.message-field {
+  display: grid;
+  gap: 6px;
+}
+
+.message-field + .message-field {
+  margin-top: 14px;
+}
+
+.message-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.message-field-label {
+  font-weight: 800;
+  color: #4a4458;
+}
+
+.var-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.var-chip {
+  padding: 3px 10px;
+  border: 1px dashed #b79be8;
+  border-radius: 999px;
+  background: rgba(145, 71, 255, .1);
+  color: #6f4fc0;
+  font-size: .78rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.var-chip:hover {
+  background: rgba(145, 71, 255, .22);
+  border-color: #9147ff;
+}
+
+.message-field textarea {
+  width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+body[data-theme="dark"] .command-card-head {
+  background: rgba(145, 71, 255, .14);
+  border-color: rgba(255, 255, 255, .08);
+}
+
+body[data-theme="dark"] .field-group + .field-group {
+  border-color: rgba(255, 255, 255, .06);
+}
+
+body[data-theme="dark"] .message-field-label {
+  color: #d7cdec;
+}
+
+body[data-theme="dark"] .var-chip {
+  background: rgba(145, 71, 255, .2);
+  color: #d9c8ff;
+  border-color: rgba(183, 155, 232, .6);
+}
+
 body[data-theme="dark"] .showcase-entry {
   border-color: #5d3f8f;
   background: rgba(145, 71, 255, .16);

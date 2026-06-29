@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.19";
+        public const string Version = "1.4.20";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -2121,8 +2121,42 @@ namespace CardPackWidgetApp
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> cc = Obj(settings, "chatCommands");
             if (!GetBool(cc, "enabled", false)) return;
+            // Don't bother connecting if neither command is actually active.
+            if (!GetBool(Obj(cc, "pack"), "enabled", true) && !GetBool(Obj(cc, "collection"), "enabled", true)) return;
+
             Dictionary<string, object> chat = ChatCredential();
-            if (String.IsNullOrWhiteSpace(GetString(chat, "accessToken", ""))) return;
+            string token = GetString(chat, "accessToken", "");
+            bool usingBot = !String.IsNullOrWhiteSpace(GetString(Obj(settings, "twitchBot"), "accessToken", ""));
+            string who = usingBot ? "Bot-Account" : "Haupt-Account";
+            if (String.IsNullOrWhiteSpace(token))
+            {
+                server.Log("twitch", "warn", "Chat-Befehle sind aktiv, aber es ist kein Twitch-Account verbunden. Bitte unter \"Verbindung\" anmelden.");
+                return;
+            }
+
+            // The chat reader needs user:read:chat / user:write:chat. A token connected before
+            // these scopes existed (typically the main account) silently fails to subscribe, so we
+            // check up front and log an actionable message instead of leaving the user guessing.
+            try
+            {
+                Dictionary<string, object> validation = TwitchGet("https://id.twitch.tv/oauth2/validate", "", token);
+                var scopes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                object scopesObj;
+                if (validation.TryGetValue("scopes", out scopesObj) && scopesObj is object[])
+                {
+                    foreach (object scope in (object[])scopesObj) scopes.Add(Convert.ToString(scope));
+                }
+                if (!scopes.Contains("user:read:chat") || !scopes.Contains("user:write:chat"))
+                {
+                    server.Log("twitch", "error", "Dem " + who + " fehlen die Chat-Rechte (user:read:chat / user:write:chat). Bitte unter \"Verbindung\" den " + who + " neu anmelden, damit die Chat-Befehle funktionieren.");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                server.Log("twitch", "warn", "Chat-Rechte des " + who + " konnten nicht geprueft werden: " + ex.GetBaseException().Message);
+            }
+
             chatCancel = new CancellationTokenSource();
             Task.Factory.StartNew(delegate { ChatEventSubLoop(chatCancel.Token); }, TaskCreationOptions.LongRunning);
         }
@@ -2297,13 +2331,13 @@ namespace CardPackWidgetApp
 
             if (MatchesCommand(text, pack))
             {
-                HandlePackCommand(login, displayName, pack);
+                if (GetBool(pack, "enabled", true)) HandlePackCommand(login, displayName, pack);
                 return;
             }
             if (MatchesCommand(text, collection))
             {
                 // No usage limit, no cooldown, no tracking for the collection command.
-                Enqueue("showcollection", login, displayName, "chat");
+                if (GetBool(collection, "enabled", true)) Enqueue("showcollection", login, displayName, "chat");
             }
         }
 

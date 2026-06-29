@@ -177,6 +177,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands ||= {};
   settings.chatCommands.enabled = settings.chatCommands.enabled === true;
   settings.chatCommands.pack ||= {};
+  settings.chatCommands.pack.enabled = settings.chatCommands.pack.enabled !== false;
   settings.chatCommands.pack.prefix ||= "!";
   settings.chatCommands.pack.command ||= "pack";
   settings.chatCommands.pack.maxUses = Number(settings.chatCommands.pack.maxUses) >= 0 ? Number(settings.chatCommands.pack.maxUses) : 5;
@@ -187,6 +188,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.pack.cooldownMessage ||= "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
   settings.chatCommands.pack.successMessage ||= "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.";
   settings.chatCommands.collection ||= {};
+  settings.chatCommands.collection.enabled = settings.chatCommands.collection.enabled !== false;
   settings.chatCommands.collection.prefix ||= "!";
   settings.chatCommands.collection.command ||= "collection";
 

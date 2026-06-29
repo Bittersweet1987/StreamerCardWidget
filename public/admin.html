@@ -245,65 +245,104 @@
                 <p class="eyebrow">Twitch Chat</p>
                 <h2 data-i18n="cc-title">Chat-Befehle verwalten</h2>
               </div>
+              <label class="switch-row compact-switch master-switch">
+                <input id="cc-enabled" type="checkbox">
+                <span data-i18n="label-cc-enabled">Chat-Befehle aktiviert</span>
+              </label>
             </div>
-            <label class="switch-row">
-              <input id="cc-enabled" type="checkbox">
-              <span data-i18n="label-cc-enabled">Chat-Befehle aktiviert</span>
-            </label>
+            <p class="hint" data-i18n="cc-intro">Lege fest, mit welchen Chat-Befehlen Zuschauer ein Pack ziehen oder ihre Sammlung anzeigen können. Jeder Befehl lässt sich einzeln aktivieren.</p>
 
-            <article class="reward-entry">
-              <div class="section-heading">
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-pack-eyebrow">Kartenpack</p>
                   <h3 data-i18n="cc-pack-title">Pack-Befehl</h3>
                 </div>
-              </div>
-              <div class="form-grid">
-                <label data-i18n="label-cc-prefix">Präfix<input id="cc-pack-prefix" type="text" maxlength="1"></label>
-                <label data-i18n="label-cc-command">Befehl<input id="cc-pack-command" type="text"></label>
-                <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-pack-maxuses" type="number" min="0" step="1"></label>
-                <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-pack-cooldown" type="number" min="0" step="1"></label>
-                <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-pack-reset-value" type="number" min="1" step="1"></label>
-                <label data-i18n="label-cc-reset-unit">Einheit
-                  <select id="cc-pack-reset-unit">
-                    <option value="minutes" data-i18n="opt-minutes">Minuten</option>
-                    <option value="hours" data-i18n="opt-hours">Stunden</option>
-                    <option value="days" data-i18n="opt-days">Tage</option>
-                  </select>
+                <label class="switch-row compact-switch">
+                  <input id="cc-pack-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
                 </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-pack-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-pack-command" type="text"></label>
+                </div>
               </div>
-              <label class="full-row" data-i18n="label-cc-success-message">Nachricht bei Einlösung
-                <textarea id="cc-pack-success-message" rows="2"></textarea>
-              </label>
-              <div class="button-row" id="cc-pack-success-vars">
-                <button class="ghost-button" type="button" data-insert="@userName">@userName</button>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit &amp; Cooldown</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-pack-maxuses" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-pack-cooldown" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-pack-reset-value" type="number" min="1" step="1"></label>
+                  <label data-i18n="label-cc-reset-unit">Einheit
+                    <select id="cc-pack-reset-unit">
+                      <option value="minutes" data-i18n="opt-minutes">Minuten</option>
+                      <option value="hours" data-i18n="opt-hours">Stunden</option>
+                      <option value="days" data-i18n="opt-days">Tage</option>
+                    </select>
+                  </label>
+                </div>
               </div>
-              <label class="full-row" data-i18n="label-cc-limit-message">Nachricht bei erreichtem Limit
-                <textarea id="cc-pack-limit-message" rows="2"></textarea>
-              </label>
-              <div class="button-row" id="cc-pack-limit-vars">
-                <button class="ghost-button" type="button" data-insert="@userName">@userName</button>
-                <button class="ghost-button" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
-              </div>
-              <label class="full-row" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown
-                <textarea id="cc-pack-cooldown-message" rows="2"></textarea>
-              </label>
-              <div class="button-row" id="cc-pack-cooldown-vars">
-                <button class="ghost-button" type="button" data-insert="@userName">@userName</button>
-                <button class="ghost-button" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-success-message">Nachricht bei Einlösung</span>
+                    <div class="var-chips" id="cc-pack-success-vars">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-pack-success-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-limit-message">Nachricht bei erreichtem Limit</span>
+                    <div class="var-chips" id="cc-pack-limit-vars">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-pack-limit-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" id="cc-pack-cooldown-vars">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-pack-cooldown-message" rows="2"></textarea>
+                </div>
               </div>
             </article>
 
-            <article class="reward-entry">
-              <div class="section-heading">
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-collection-eyebrow">Sammlung</p>
                   <h3 data-i18n="cc-collection-title">Sammlung-Befehl</h3>
                 </div>
-              </div>
-              <div class="form-grid">
-                <label data-i18n="label-cc-prefix">Präfix<input id="cc-collection-prefix" type="text" maxlength="1"></label>
-                <label data-i18n="label-cc-command">Befehl<input id="cc-collection-command" type="text"></label>
+                <label class="switch-row compact-switch">
+                  <input id="cc-collection-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-collection-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-collection-command" type="text"></label>
+                </div>
               </div>
             </article>
           </section>

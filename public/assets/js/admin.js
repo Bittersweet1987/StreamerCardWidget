@@ -75,12 +75,20 @@ const I18N = {
   "btn-connect-twitch-bot": { de: "Bot mit Twitch anmelden", en: "Sign in bot with Twitch" },
   "cc-title": { de: "Chat-Befehle verwalten", en: "Manage chat commands" },
   "label-cc-enabled": { de: "Chat-Befehle aktiviert", en: "Chat commands enabled" },
+  "label-cc-command-enabled": { de: "Aktiviert", en: "Enabled" },
+  "cc-intro": {
+    de: "Lege fest, mit welchen Chat-Befehlen Zuschauer ein Pack ziehen oder ihre Sammlung anzeigen können. Jeder Befehl lässt sich einzeln aktivieren.",
+    en: "Define which chat commands let viewers draw a pack or show their collection. Each command can be enabled separately."
+  },
+  "cc-group-command": { de: "Befehl", en: "Command" },
+  "cc-group-limits": { de: "Limit & Cooldown", en: "Limit & cooldown" },
+  "cc-group-messages": { de: "Chat-Nachrichten", en: "Chat messages" },
   "cc-pack-eyebrow": { de: "Kartenpack", en: "Card pack" },
   "cc-pack-title": { de: "Pack-Befehl", en: "Pack command" },
   "cc-collection-eyebrow": { de: "Sammlung", en: "Collection" },
   "cc-collection-title": { de: "Sammlung-Befehl", en: "Collection command" },
   "label-cc-prefix": { de: "Präfix", en: "Prefix" },
-  "label-cc-command": { de: "Befehl", en: "Command" },
+  "label-cc-command": { de: "Befehlswort", en: "Command word" },
   "label-cc-maxuses": { de: "Max. Nutzungen pro Viewer", en: "Max uses per viewer" },
   "label-cc-cooldown": { de: "Cooldown pro Viewer (Sek.)", en: "Cooldown per viewer (sec.)" },
   "label-cc-reset-value": { de: "Auto-Reset alle", en: "Auto-reset every" },
@@ -1609,6 +1617,8 @@ function hydrateChatCommands() {
   cc.pack ||= {};
   cc.collection ||= {};
   $("#cc-enabled").checked = cc.enabled === true;
+  $("#cc-pack-enabled").checked = cc.pack.enabled !== false;
+  $("#cc-collection-enabled").checked = cc.collection.enabled !== false;
   $("#cc-pack-prefix").value = cc.pack.prefix || "!";
   $("#cc-pack-command").value = cc.pack.command || "pack";
   $("#cc-pack-maxuses").value = cc.pack.maxUses ?? 0;
@@ -1628,6 +1638,8 @@ function readChatCommandsFromForm() {
   cc.pack ||= {};
   cc.collection ||= {};
   cc.enabled = $("#cc-enabled").checked;
+  cc.pack.enabled = $("#cc-pack-enabled").checked;
+  cc.collection.enabled = $("#cc-collection-enabled").checked;
   cc.pack.prefix = $("#cc-pack-prefix").value || "!";
   cc.pack.command = $("#cc-pack-command").value.trim() || "pack";
   cc.pack.maxUses = Math.max(0, Math.round(Number($("#cc-pack-maxuses").value) || 0));
