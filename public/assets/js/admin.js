@@ -209,6 +209,13 @@ const I18N = {
   },
   "ov-status-eyebrow": { de: "Status", en: "Status" },
   "ov-deck-title": { de: "Deck-Übersicht", en: "Deck overview" },
+  "ov-help-eyebrow": { de: "Hilfe", en: "Help" },
+  "ov-help-title": { de: "Fragen?", en: "Questions?" },
+  "ov-help-text": {
+    de: "Auf GitHub findest du eine kleine Anleitung, falls du Fragen zur Einrichtung oder den Funktionen hast.",
+    en: "On GitHub you'll find a short guide in case you have questions about setup or features."
+  },
+  "btn-open-guide": { de: "Anleitung auf GitHub öffnen", en: "Open guide on GitHub" },
   "metric-cards-label": { de: "Karten", en: "Cards" },
   "metric-enabled-label": { de: "aktiv", en: "active" },
   "btn-reset-collections": { de: "Sammlungen leeren", en: "Clear collections" },
