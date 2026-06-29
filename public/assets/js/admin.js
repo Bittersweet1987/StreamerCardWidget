@@ -88,6 +88,7 @@ const I18N = {
   "opt-minutes": { de: "Minuten", en: "Minutes" },
   "opt-hours": { de: "Stunden", en: "Hours" },
   "opt-days": { de: "Tage", en: "Days" },
+  "label-cc-success-message": { de: "Nachricht bei Einlösung", en: "Message on redemption" },
   "label-cc-limit-message": { de: "Nachricht bei erreichtem Limit", en: "Message when limit reached" },
   "label-cc-cooldown-message": { de: "Nachricht bei aktivem Cooldown", en: "Message when cooldown active" },
   "cu-eyebrow": { de: "Chat-Befehle", en: "Chat commands" },
@@ -1576,8 +1577,8 @@ function renderQueueItems(items) {
       <div class="user-card${item.processing ? " is-processing" : ""}">
         <div class="user-card-header">
           <strong>${escapeHtml(item.user || item.userLogin || "?")}</strong>
-          <span>${escapeHtml(kindLabel)} · ${escapeHtml(sourceLabel)} ${badge}</span>
-          <span>${escapeHtml(item.triggeredAt ? new Date(item.triggeredAt).toLocaleTimeString() : "")}</span>
+          <span class="queue-meta">${escapeHtml(kindLabel)} · ${escapeHtml(sourceLabel)} ${badge}</span>
+          <span class="queue-time">${escapeHtml(item.triggeredAt ? new Date(item.triggeredAt).toLocaleTimeString() : "")}</span>
         </div>
       </div>
     `;
@@ -1614,7 +1615,8 @@ function hydrateChatCommands() {
   $("#cc-pack-cooldown").value = cc.pack.cooldownSeconds ?? 0;
   $("#cc-pack-reset-value").value = cc.pack.resetValue ?? 1;
   $("#cc-pack-reset-unit").value = cc.pack.resetUnit || "days";
-  $("#cc-pack-limit-message").value = cc.pack.limitMessage || "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr neue Packs zur Verfügung stehen.";
+  $("#cc-pack-success-message").value = cc.pack.successMessage || "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.";
+  $("#cc-pack-limit-message").value = cc.pack.limitMessage || "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
   $("#cc-pack-cooldown-message").value = cc.pack.cooldownMessage || "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
   $("#cc-collection-prefix").value = cc.collection.prefix || "!";
   $("#cc-collection-command").value = cc.collection.command || "collection";
@@ -1632,6 +1634,7 @@ function readChatCommandsFromForm() {
   cc.pack.cooldownSeconds = Math.max(0, Math.round(Number($("#cc-pack-cooldown").value) || 0));
   cc.pack.resetValue = Math.max(1, Math.round(Number($("#cc-pack-reset-value").value) || 1));
   cc.pack.resetUnit = $("#cc-pack-reset-unit").value || "days";
+  cc.pack.successMessage = $("#cc-pack-success-message").value;
   cc.pack.limitMessage = $("#cc-pack-limit-message").value;
   cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
   cc.collection.prefix = $("#cc-collection-prefix").value || "!";
@@ -1650,6 +1653,11 @@ function insertVariableIntoField(fieldId, variable) {
 }
 
 function bindChatCommands() {
+  $("#cc-pack-success-vars").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-insert]");
+    if (!button) return;
+    insertVariableIntoField("cc-pack-success-message", button.dataset.insert);
+  });
   $("#cc-pack-limit-vars").addEventListener("click", (event) => {
     const button = event.target.closest("[data-insert]");
     if (!button) return;

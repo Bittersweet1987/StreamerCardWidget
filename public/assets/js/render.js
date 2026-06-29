@@ -183,8 +183,9 @@ export function normalizeSettings(settings) {
   settings.chatCommands.pack.resetUnit = ["minutes", "hours", "days"].includes(settings.chatCommands.pack.resetUnit) ? settings.chatCommands.pack.resetUnit : "hours";
   settings.chatCommands.pack.resetValue = Number(settings.chatCommands.pack.resetValue) > 0 ? Number(settings.chatCommands.pack.resetValue) : 8;
   settings.chatCommands.pack.cooldownSeconds = Number(settings.chatCommands.pack.cooldownSeconds) >= 0 ? Number(settings.chatCommands.pack.cooldownSeconds) : 300;
-  settings.chatCommands.pack.limitMessage ||= "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr neue Packs zur Verfügung stehen.";
+  settings.chatCommands.pack.limitMessage ||= "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
   settings.chatCommands.pack.cooldownMessage ||= "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
+  settings.chatCommands.pack.successMessage ||= "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.";
   settings.chatCommands.collection ||= {};
   settings.chatCommands.collection.prefix ||= "!";
   settings.chatCommands.collection.command ||= "collection";

@@ -728,6 +728,18 @@ body[data-theme="dark"] .showcase-entry {
   box-shadow: 0 0 0 1px #9147ff, 0 18px 42px rgba(145, 71, 255, .18);
 }
 
+.queue-meta {
+  margin-left: 12px !important;
+  margin-right: 0 !important;
+}
+
+.queue-time {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .queue-processing {
   display: inline-block;
   margin-left: 6px;

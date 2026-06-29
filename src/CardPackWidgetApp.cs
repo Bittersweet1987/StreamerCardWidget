@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.18";
+        public const string Version = "1.4.19";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -1406,8 +1406,9 @@ namespace CardPackWidgetApp
         private System.Threading.Timer resetTimer;
         private volatile bool resetTimerStarted;
 
-        private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr neue Packs zur Verfügung stehen.";
+        private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
         private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
+        private const string DefaultSuccessMessage = "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.";
 
         public TwitchBridge(CardPackServer server)
         {
@@ -1972,7 +1973,11 @@ namespace CardPackWidgetApp
                 // Wait until the overlay reports the animation finished (POST /api/queue/complete),
                 // so the NEXT event is only fired once the current one has fully played out. A
                 // per-kind safety timeout prevents a permanent stall if no overlay is connected.
-                completionSignal.WaitOne(ComputeQueueTimeoutMs(item));
+                bool acked = completionSignal.WaitOne(ComputeQueueTimeoutMs(item));
+                if (!acked)
+                {
+                    server.Log("queue", "warn", "Keine Abschluss-Rueckmeldung vom Overlay fuer \"" + GetString(item, "kind", "") + "\" - nach Timeout fortgefahren. Ist die passende OBS-Quelle geoeffnet und aktuell?");
+                }
                 awaitingEventId = null;
 
                 // Only after completion: the mandatory 500ms gap before the next action.
@@ -2360,6 +2365,14 @@ namespace CardPackWidgetApp
                 entry["count"] = count + 1;
                 if (cooldownSeconds > 0) entry["cooldownUntil"] = now.AddSeconds(cooldownSeconds).ToString("o");
                 SaveUsage();
+            }
+
+            // Immediate confirmation in chat, sent the moment the command is accepted - before the
+            // booster is actually opened in the overlay (which may be queued behind other events).
+            string success = GetString(packCfg, "successMessage", DefaultSuccessMessage);
+            if (!String.IsNullOrWhiteSpace(success))
+            {
+                SendChatMessageSafe(success.Replace("@userName", "@" + displayName));
             }
 
             Enqueue("draw", login, displayName, "chat");
