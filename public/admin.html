@@ -4,7 +4,40 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-tradeanim2">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-tradeanim3">
+    <script>
+      // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
+      // module parse/evaluation error (which the in-module reporter cannot see). Posts the
+      // exact error + location to the server log, and shows it on screen as a fallback.
+      (function () {
+        function report(msg) {
+          try {
+            fetch("/api/logs", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ category: "ui", level: "error", message: String(msg).slice(0, 800) }),
+              keepalive: true
+            });
+          } catch (e) {}
+          try {
+            var bar = document.getElementById("boot-error");
+            if (!bar) {
+              bar = document.createElement("div");
+              bar.id = "boot-error";
+              bar.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#b3261e;color:#fff;font:13px/1.4 monospace;padding:8px 12px;white-space:pre-wrap";
+              (document.body || document.documentElement).appendChild(bar);
+            }
+            bar.textContent = "Startfehler: " + msg;
+          } catch (e) {}
+        }
+        window.addEventListener("error", function (e) {
+          report((e.message || "Fehler") + " @ " + (e.filename || "?") + ":" + (e.lineno || 0) + ":" + (e.colno || 0));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          report("Promise: " + ((e.reason && e.reason.message) || e.reason));
+        });
+      })();
+    </script>
   </head>
   <body>
     <div class="admin-shell">
@@ -892,6 +925,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260630-tradeanim2"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260630-tradeanim3"></script>
   </body>
 </html>

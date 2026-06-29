@@ -395,7 +395,7 @@ const I18N = {
   "trade-anim-eyebrow": { de: "Tausch", en: "Trade" },
   "trade-anim-title": { de: "Tausch-Animation", en: "Trade animation" },
   "trade-anim-hint": {
-    de: "Bei einem erfolgreichen Tausch (!tradeyes) wird eine Animation in einer eigenen OBS-Quelle (trade.html) abgespielt. Quellenname & Einrichtung findest du unter „Verbindung".",
+    de: "Bei einem erfolgreichen Tausch (!tradeyes) wird eine Animation in einer eigenen OBS-Quelle (trade.html) abgespielt. Quellenname & Einrichtung findest du unter „Verbindung“.",
     en: "On a successful trade (!tradeyes) an animation plays in its own OBS source (trade.html). Source name & setup are under “Connection”."
   },
   "label-trade-anim-enabled": { de: "Tausch-Animation aktiviert", en: "Trade animation enabled" },
