@@ -1,4 +1,4 @@
-import { addLog, connectEventStream, getCollections, getSettings, persistCollectionSnapshot } from "./api.js";
+import { addLog, completeQueueItem, connectEventStream, getCollections, getSettings, persistCollectionSnapshot } from "./api.js";
 import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, weightedBoosterPick, weightedPick } from "./render.js";
 
 const stage = document.querySelector("#stage");
@@ -148,9 +148,17 @@ function pickCard(booster, request = {}) {
 
 function enqueueDraw(request = {}) {
   const booster = pickBooster(request.boosterId);
-  if (!booster) return;
+  // If we won't play this event (no booster available, or it's a duplicate redelivery), the
+  // server's queue must still be released so it doesn't stall waiting for a completion ack.
+  if (!booster) {
+    completeQueueItem(request.eventId);
+    return;
+  }
   const key = eventKey(request, booster.id);
-  if (isDuplicate(key)) return;
+  if (isDuplicate(key)) {
+    completeQueueItem(request.eventId);
+    return;
+  }
   queue.push({ ...request, boosterId: booster.id });
   if (!running) runQueue();
 }
@@ -159,7 +167,12 @@ async function runQueue() {
   running = true;
   while (queue.length) {
     const request = queue.shift();
-    await runOpening(request);
+    try {
+      await runOpening(request);
+    } finally {
+      // Tell the server this event has finished playing so it can proceed (after its 500ms gap).
+      completeQueueItem(request.eventId);
+    }
     await delay(Number(settings.behavior?.cooldownSeconds || 0.8) * 1000);
   }
   running = false;

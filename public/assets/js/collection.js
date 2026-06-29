@@ -1,4 +1,4 @@
-import { connectEventStream, getCollections, getSettings } from "./api.js";
+import { completeQueueItem, connectEventStream, getCollections, getSettings } from "./api.js";
 import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText } from "./render.js";
 
 const stage = document.querySelector("#showcase-stage");
@@ -93,7 +93,12 @@ async function runQueue() {
   running = true;
   while (queue.length) {
     const request = queue.shift();
-    await runShowcase(request);
+    try {
+      await runShowcase(request);
+    } finally {
+      // Release the server queue once the whole showcase slideshow has played out.
+      completeQueueItem(request.eventId);
+    }
     await delay(400);
   }
   running = false;

@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.17";
+        public const string Version = "1.4.18";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -733,6 +733,14 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (request.Method == "POST" && request.Path == "/api/queue/complete")
+            {
+                Dictionary<string, object> body = ParseObject(request.Body);
+                twitchBridge.CompleteQueueItem(GetString(body, "eventId", ""));
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object> { { "ok", true } }));
+                return;
+            }
+
             if (request.Method == "GET" && request.Path == "/api/twitch/rewards")
             {
                 try
@@ -1387,6 +1395,8 @@ namespace CardPackWidgetApp
         private readonly List<Dictionary<string, object>> actionQueue = new List<Dictionary<string, object>>();
         private Dictionary<string, object> currentQueueItem;
         private readonly AutoResetEvent queueSignal = new AutoResetEvent(false);
+        private readonly AutoResetEvent completionSignal = new AutoResetEvent(false);
+        private volatile string awaitingEventId;
         private volatile bool queueRunning;
         private volatile bool queueWorkerStarted;
 
@@ -1886,6 +1896,42 @@ namespace CardPackWidgetApp
             server.Broadcast("queue", server.Serializer.Serialize(new Dictionary<string, object> { { "items", GetQueueItems() } }));
         }
 
+        // Called by the overlay (POST /api/queue/complete) once it has finished playing the
+        // animation for a given event. Releases the queue worker so it can proceed to the
+        // 500ms gap and then the next item.
+        public void CompleteQueueItem(string eventId)
+        {
+            if (String.IsNullOrEmpty(eventId)) return;
+            if (eventId == awaitingEventId) completionSignal.Set();
+        }
+
+        // Safety upper bound for how long to wait on the overlay's completion ack. Generously
+        // covers the real animation length so it is effectively never hit when an overlay is
+        // connected, but still bounds the wait if no overlay acks (e.g. OBS source closed).
+        private int ComputeQueueTimeoutMs(Dictionary<string, object> item)
+        {
+            string kind = GetString(item, "kind", "");
+            if (kind == "showcollection")
+            {
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                int boosters = 1;
+                object boostersObj;
+                if (settings.TryGetValue("boosters", out boostersObj) && boostersObj is object[])
+                {
+                    boosters = Math.Max(1, ((object[])boostersObj).Length);
+                }
+                int secondsPerBooster = 12;
+                object showcaseObj;
+                if (settings.TryGetValue("showcase", out showcaseObj) && showcaseObj is Dictionary<string, object>)
+                {
+                    secondsPerBooster = Math.Max(2, GetInt((Dictionary<string, object>)showcaseObj, "secondsPerBooster", 12));
+                }
+                return boosters * (secondsPerBooster * 1000 + 700) + 8000;
+            }
+            // Draw animation is a fixed sequence (~7s) plus reveal time; 30s is a safe ceiling.
+            return 30000;
+        }
+
         private void StartQueueWorkerOnce()
         {
             if (queueWorkerStarted) return;
@@ -1912,11 +1958,24 @@ namespace CardPackWidgetApp
                     }
                 }
                 if (item == null) continue;
-                // Broadcast right after picking so the in-flight item becomes visible while it
-                // is being processed (and during the 500ms cooldown afterwards).
+
+                // Arm the completion gate BEFORE firing the event so an ack can never be missed,
+                // then broadcast the queue so the in-flight item is visible as "processing".
+                string eventId = GetString(item, "id", "");
+                awaitingEventId = eventId;
+                completionSignal.Reset();
                 BroadcastQueue();
+
                 try { ProcessQueueItem(item); }
                 catch (Exception ex) { server.Log("queue", "error", "Queue-Verarbeitung fehlgeschlagen: " + ex.Message); }
+
+                // Wait until the overlay reports the animation finished (POST /api/queue/complete),
+                // so the NEXT event is only fired once the current one has fully played out. A
+                // per-kind safety timeout prevents a permanent stall if no overlay is connected.
+                completionSignal.WaitOne(ComputeQueueTimeoutMs(item));
+                awaitingEventId = null;
+
+                // Only after completion: the mandatory 500ms gap before the next action.
                 Thread.Sleep(500);
                 lock (queueLock) { currentQueueItem = null; }
                 BroadcastQueue();

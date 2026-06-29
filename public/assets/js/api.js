@@ -177,6 +177,18 @@ export async function getQueueItems() {
   return response.json();
 }
 
+export async function completeQueueItem(eventId) {
+  if (!eventId) return;
+  try {
+    await fetch("/api/queue/complete", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventId })
+    });
+  } catch {
+  }
+}
+
 export function connectEventStream(handlers) {
   const source = new EventSource("/api/events");
   for (const [event, handler] of Object.entries(handlers)) {
