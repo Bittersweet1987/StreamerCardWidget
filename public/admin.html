@@ -20,11 +20,14 @@
           <button class="nav-button is-active" data-tab="overview" data-i18n="nav-overview">Übersicht</button>
           <button class="nav-button" data-tab="trigger" data-i18n="nav-trigger">Verbindung</button>
           <button class="nav-button" data-tab="channelpoints" data-i18n="nav-channelpoints">Kanalpunkte</button>
+          <button class="nav-button" data-tab="chatcommands" data-i18n="nav-chatcommands">Chat Befehle</button>
           <button class="nav-button" data-tab="design" data-i18n="nav-design">Einstellungen</button>
           <button class="nav-button" data-tab="cards" data-i18n="nav-cards">Karten</button>
           <button class="nav-button" data-tab="booster" data-i18n="nav-booster">Booster</button>
           <button class="nav-button" data-tab="users" data-i18n="nav-users">User</button>
+          <button class="nav-button" data-tab="commandusage" data-i18n="nav-commandusage">Nutzung Befehle</button>
           <button class="nav-button" data-tab="update" data-i18n="nav-update">Update</button>
+          <button class="nav-button" data-tab="queue" data-i18n="nav-queue">Queue</button>
           <button class="nav-button" data-tab="log" data-i18n="nav-log">Log</button>
         </nav>
         <div class="sidebar-settings">
@@ -108,6 +111,22 @@
                 <button class="primary-button" id="connect-twitch" type="button" data-i18n="btn-connect-twitch">Mit Twitch anmelden</button>
                 <button class="secondary-button" id="refresh-twitch-status" type="button" data-i18n="btn-refresh-twitch-status">Status prüfen</button>
                 <button class="ghost-button" id="disconnect-twitch" type="button" data-i18n="btn-disconnect-twitch">Abmelden</button>
+              </div>
+            </section>
+
+            <section class="tool-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Twitch</p>
+                  <h2 data-i18n="bot-trigger-title">Bot-Verbindung (Chat)</h2>
+                </div>
+              </div>
+              <p class="hint" data-i18n="bot-trigger-hint">Optional: separater Bot-Account zum Lesen und Senden von Chat-Nachrichten. Wenn nicht verbunden, wird die Haupt-Twitch-Verbindung dafür verwendet.</p>
+              <div class="status-line" id="twitch-bot-status" data-i18n="status-not-connected">Nicht verbunden</div>
+              <div class="button-row">
+                <button class="primary-button" id="connect-twitch-bot" type="button" data-i18n="btn-connect-twitch-bot">Bot mit Twitch anmelden</button>
+                <button class="secondary-button" id="refresh-twitch-bot-status" type="button" data-i18n="btn-refresh-twitch-status">Status prüfen</button>
+                <button class="ghost-button" id="disconnect-twitch-bot" type="button" data-i18n="btn-disconnect-twitch">Abmelden</button>
               </div>
             </section>
 
@@ -215,6 +234,71 @@
                 <button class="danger-button" id="showcase-delete-reward" type="button" data-i18n="btn-delete-reward">Löschen</button>
               </div>
               <div class="status-line" id="showcase-status" hidden></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-panel="chatcommands">
+          <section class="tool-panel chat-commands-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Twitch Chat</p>
+                <h2 data-i18n="cc-title">Chat-Befehle verwalten</h2>
+              </div>
+            </div>
+            <label class="switch-row">
+              <input id="cc-enabled" type="checkbox">
+              <span data-i18n="label-cc-enabled">Chat-Befehle aktiviert</span>
+            </label>
+
+            <article class="reward-entry">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-pack-eyebrow">Kartenpack</p>
+                  <h3 data-i18n="cc-pack-title">Pack-Befehl</h3>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label data-i18n="label-cc-prefix">Präfix<input id="cc-pack-prefix" type="text" maxlength="1"></label>
+                <label data-i18n="label-cc-command">Befehl<input id="cc-pack-command" type="text"></label>
+                <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-pack-maxuses" type="number" min="0" step="1"></label>
+                <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-pack-cooldown" type="number" min="0" step="1"></label>
+                <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-pack-reset-value" type="number" min="1" step="1"></label>
+                <label data-i18n="label-cc-reset-unit">Einheit
+                  <select id="cc-pack-reset-unit">
+                    <option value="minutes" data-i18n="opt-minutes">Minuten</option>
+                    <option value="hours" data-i18n="opt-hours">Stunden</option>
+                    <option value="days" data-i18n="opt-days">Tage</option>
+                  </select>
+                </label>
+              </div>
+              <label class="full-row" data-i18n="label-cc-limit-message">Nachricht bei erreichtem Limit
+                <textarea id="cc-pack-limit-message" rows="2"></textarea>
+              </label>
+              <div class="button-row" id="cc-pack-limit-vars">
+                <button class="ghost-button" type="button" data-insert="@userName">@userName</button>
+                <button class="ghost-button" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
+              </div>
+              <label class="full-row" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown
+                <textarea id="cc-pack-cooldown-message" rows="2"></textarea>
+              </label>
+              <div class="button-row" id="cc-pack-cooldown-vars">
+                <button class="ghost-button" type="button" data-insert="@userName">@userName</button>
+                <button class="ghost-button" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+              </div>
+            </article>
+
+            <article class="reward-entry">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-collection-eyebrow">Sammlung</p>
+                  <h3 data-i18n="cc-collection-title">Sammlung-Befehl</h3>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label data-i18n="label-cc-prefix">Präfix<input id="cc-collection-prefix" type="text" maxlength="1"></label>
+                <label data-i18n="label-cc-command">Befehl<input id="cc-collection-command" type="text"></label>
+              </div>
             </article>
           </section>
         </section>
@@ -409,6 +493,21 @@
           <div class="user-list" id="user-list"></div>
         </section>
 
+        <section class="tab-panel" data-panel="commandusage">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="cu-eyebrow">Chat-Befehle</p>
+              <h2 data-i18n="cu-title">Nutzung Befehle</h2>
+            </div>
+            <div class="button-row">
+              <button class="danger-button" id="cu-reset-all" type="button" data-i18n="btn-cu-reset-all">Alle zurücksetzen</button>
+            </div>
+          </div>
+          <input id="cu-search" type="text" class="full-row" data-i18n-placeholder="placeholder-cu-search" placeholder="Nutzer suchen...">
+          <p class="hint" id="cu-empty-hint" hidden data-i18n="hint-cu-empty">Noch keine Nutzungen vorhanden.</p>
+          <div class="user-list" id="cu-list"></div>
+        </section>
+
         <section class="tab-panel" data-panel="update">
           <section class="tool-panel">
             <div class="section-heading">
@@ -427,6 +526,18 @@
               <button class="primary-button" id="install-update" type="button" hidden data-i18n="btn-install-update">Installieren</button>
             </div>
           </section>
+        </section>
+
+        <section class="tab-panel" data-panel="queue">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="queue-eyebrow">Verarbeitung</p>
+              <h2 data-i18n="queue-title">Warteschlange</h2>
+            </div>
+          </div>
+          <p class="hint" data-i18n="hint-queue">Kanalpunkte-Einlösungen und Chat-Befehle werden hier streng nacheinander verarbeitet (500ms Pause zwischen Einträgen).</p>
+          <p class="hint" id="queue-empty-hint" hidden data-i18n="hint-queue-empty">Aktuell keine ausstehenden Einträge.</p>
+          <div class="user-list" id="queue-list"></div>
         </section>
 
         <section class="tab-panel" data-panel="log">

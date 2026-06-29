@@ -131,6 +131,52 @@ export async function deleteTwitchReward(payload) {
   return data;
 }
 
+export async function getBotStatus() {
+  const response = await fetch("/api/twitch/bot/status", { cache: "no-store" });
+  if (!response.ok) throw new Error("Bot-Status konnte nicht geladen werden.");
+  return response.json();
+}
+
+export async function saveBotToken(payload) {
+  const response = await fetch("/api/twitch/bot/token", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Bot-Verbindung konnte nicht gespeichert werden.");
+  return data;
+}
+
+export async function disconnectBot() {
+  const response = await fetch("/api/twitch/bot/disconnect", { method: "POST" });
+  if (!response.ok) throw new Error("Bot-Verbindung konnte nicht getrennt werden.");
+  return response.json();
+}
+
+export async function getCommandUsage() {
+  const response = await fetch("/api/command-usage", { cache: "no-store" });
+  if (!response.ok) throw new Error("Nutzungsdaten konnten nicht geladen werden.");
+  return response.json();
+}
+
+export async function resetCommandUsage(login = "") {
+  const response = await fetch("/api/command-usage/reset", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ login })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Nutzung konnte nicht zurückgesetzt werden.");
+  return data;
+}
+
+export async function getQueueItems() {
+  const response = await fetch("/api/queue", { cache: "no-store" });
+  if (!response.ok) throw new Error("Warteschlange konnte nicht geladen werden.");
+  return response.json();
+}
+
 export function connectEventStream(handlers) {
   const source = new EventSource("/api/events");
   for (const [event, handler] of Object.entries(handlers)) {

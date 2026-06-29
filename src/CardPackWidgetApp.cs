@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.14";
+        public const string Version = "1.4.15";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -575,6 +575,7 @@ namespace CardPackWidgetApp
             {
                 Dictionary<string, object> incoming = ParseObject(request.Body);
                 WriteSettingsObject(incoming);
+                twitchBridge.RefreshChatCommands();
                 string payload = json.Serialize(ReadSettingsObject());
                 SendJson(stream, 200, "{\"ok\":true,\"settings\":" + payload + "}");
                 return;
@@ -656,6 +657,79 @@ namespace CardPackWidgetApp
             {
                 twitchBridge.Disconnect();
                 SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
+            if (request.Method == "GET" && request.Path == "/api/twitch/bot/status")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "status", twitchBridge.BotStatus() }
+                }));
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/twitch/bot/token")
+            {
+                try
+                {
+                    Dictionary<string, object> tokenResult = twitchBridge.SaveBotToken(request.Body);
+                    SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", true },
+                        { "status", tokenResult }
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    Log("twitch", "error", "Bot-Verbindung fehlgeschlagen: " + ex.Message);
+                    SendJson(stream, 400, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", false },
+                        { "error", ex.Message }
+                    }));
+                }
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/twitch/bot/disconnect")
+            {
+                twitchBridge.DisconnectBot();
+                SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
+            if (request.Method == "GET" && request.Path == "/api/command-usage")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "usage", twitchBridge.GetCommandUsage() }
+                }));
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/command-usage/reset")
+            {
+                Dictionary<string, object> body = ParseObject(request.Body);
+                string login = GetString(body, "login", "");
+                twitchBridge.ResetCommandUsage(login);
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "usage", twitchBridge.GetCommandUsage() }
+                }));
+                return;
+            }
+
+            if (request.Method == "GET" && request.Path == "/api/queue")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "items", twitchBridge.GetQueueItems() }
+                }));
                 return;
             }
 
@@ -866,6 +940,24 @@ namespace CardPackWidgetApp
             if (changed) File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
         }
 
+        // Bot-account credentials for Twitch Chat live in their own file (same rationale as
+        // twitch.json/obs.json): app updates only ever replace public/+the exe, never data/, so
+        // the bot connection survives updates/resets.
+        private string TwitchBotConfigPath()
+        {
+            return Path.Combine(dataDir, "twitch-bot.json");
+        }
+
+        internal string CommandUsagePath()
+        {
+            return Path.Combine(dataDir, "command-usage.json");
+        }
+
+        internal string ReadFileText(string path, string fallback)
+        {
+            return ReadFile(path, fallback);
+        }
+
         // Boosters and cards used to live inline in settings.json. They now live in their own
         // files so that app updates and newly added rarities can never overwrite content the
         // user has already created (only public/+exe are replaced on update, never data/).
@@ -1066,6 +1158,7 @@ namespace CardPackWidgetApp
         {
             Dictionary<string, object> settings = ParseObject(ReadFile(SettingsPath(), "{}"));
             settings["twitch"] = ParseObject(ReadFile(TwitchConfigPath(), "{}"));
+            settings["twitchBot"] = ParseObject(ReadFile(TwitchBotConfigPath(), "{}"));
             settings["obs"] = ParseObject(ReadFile(ObsConfigPath(), "{}"));
             if (File.Exists(BoostersPath()))
             {
@@ -1099,6 +1192,12 @@ namespace CardPackWidgetApp
                 if (preserveTwitchSecrets) PreserveTwitchSecrets(twitch, ParseObject(ReadFile(TwitchConfigPath(), "{}")));
                 File.WriteAllText(TwitchConfigPath(), json.Serialize(twitch), Encoding.UTF8);
             }
+            if (settings.ContainsKey("twitchBot") && settings["twitchBot"] is Dictionary<string, object>)
+            {
+                Dictionary<string, object> twitchBot = (Dictionary<string, object>)settings["twitchBot"];
+                if (preserveTwitchSecrets) PreserveTwitchSecrets(twitchBot, ParseObject(ReadFile(TwitchBotConfigPath(), "{}")));
+                File.WriteAllText(TwitchBotConfigPath(), json.Serialize(twitchBot), Encoding.UTF8);
+            }
             if (settings.ContainsKey("obs") && settings["obs"] is Dictionary<string, object>)
             {
                 File.WriteAllText(ObsConfigPath(), json.Serialize(settings["obs"]), Encoding.UTF8);
@@ -1122,6 +1221,7 @@ namespace CardPackWidgetApp
             // of settings.json without mutating the caller's dict (callers may return it to the client).
             Dictionary<string, object> toStore = new Dictionary<string, object>(settings);
             toStore.Remove("twitch");
+            toStore.Remove("twitchBot");
             toStore.Remove("obs");
             toStore.Remove("boosters");
             if (toStore.ContainsKey("deck") && toStore["deck"] is Dictionary<string, object>)
@@ -1278,6 +1378,26 @@ namespace CardPackWidgetApp
         private string lastError;
         private readonly object stateLock = new object();
 
+        private ClientWebSocket chatSocket;
+        private CancellationTokenSource chatCancel;
+        private bool chatEventSubConnected;
+        private string chatLastError;
+
+        private readonly object queueLock = new object();
+        private readonly List<Dictionary<string, object>> actionQueue = new List<Dictionary<string, object>>();
+        private readonly AutoResetEvent queueSignal = new AutoResetEvent(false);
+        private volatile bool queueRunning;
+        private volatile bool queueWorkerStarted;
+
+        private readonly object usageLock = new object();
+        private Dictionary<string, object> usageData;
+        private bool usageLoaded;
+        private System.Threading.Timer resetTimer;
+        private volatile bool resetTimerStarted;
+
+        private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr neue Packs zur Verfügung stehen.";
+        private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
+
         public TwitchBridge(CardPackServer server)
         {
             this.server = server;
@@ -1285,11 +1405,16 @@ namespace CardPackWidgetApp
 
         public void Start()
         {
+            StartQueueWorkerOnce();
+            StartResetTimerOnce();
             Dictionary<string, object> twitch = TwitchSettings();
-            if (String.IsNullOrWhiteSpace(GetString(twitch, "accessToken", ""))) return;
-            Stop();
-            cancel = new CancellationTokenSource();
-            Task.Factory.StartNew(delegate { EventSubLoop(cancel.Token); }, TaskCreationOptions.LongRunning);
+            if (!String.IsNullOrWhiteSpace(GetString(twitch, "accessToken", "")))
+            {
+                Stop();
+                cancel = new CancellationTokenSource();
+                Task.Factory.StartNew(delegate { EventSubLoop(cancel.Token); }, TaskCreationOptions.LongRunning);
+            }
+            RefreshChatCommands();
         }
 
         public void Stop()
@@ -1306,6 +1431,7 @@ namespace CardPackWidgetApp
             {
                 eventSubConnected = false;
             }
+            StopChat();
         }
 
         public Dictionary<string, object> Status()
@@ -1630,18 +1756,12 @@ namespace CardPackWidgetApp
             string login = GetString(ev, "user_login", user);
 
             // Collection showcase reward: not a pack opening - tell the collection overlay to
-            // slide through every active booster for this viewer.
+            // slide through every active booster for this viewer. Routed through the action
+            // queue (like every other redemption/chat command) so concurrent triggers are
+            // always processed strictly one after another with a pause in between.
             if (ReconcileTrackedReward("showcase", rewardId, rewardTitle))
             {
-                server.Log("draw", "info", user + " hat die Sammlung angefordert.");
-                var showEvent = new Dictionary<string, object>
-                {
-                    { "eventId", GetString(ev, "id", DateTime.UtcNow.Ticks.ToString()) },
-                    { "user", user },
-                    { "userLogin", login },
-                    { "source", "twitch" }
-                };
-                server.Broadcast("showcollection", server.Serializer.Serialize(showEvent));
+                Enqueue("showcollection", login, user, "channelpoints");
                 return;
             }
 
@@ -1653,29 +1773,7 @@ namespace CardPackWidgetApp
                 return;
             }
 
-            // The booster must be picked exactly once per redemption, here on the server.
-            // It used to be picked client-side in the overlay, which meant every connected
-            // overlay instance (and every duplicate EventSub delivery) rolled its own random
-            // booster independently - so a single redemption could visibly open different
-            // packs at once. Resolving it here and broadcasting the concrete boosterId keeps
-            // every listener in sync with a single random draw, weighted by booster score.
-            string boosterId = PickRandomBoosterId();
-            if (String.IsNullOrWhiteSpace(boosterId))
-            {
-                server.Log("draw", "error", user + " hat \"" + rewardTitle + "\" eingeloest, aber kein Booster war verfuegbar.");
-                return;
-            }
-            server.Log("draw", "info", user + " hat \"" + rewardTitle + "\" eingeloest.");
-
-            var drawEvent = new Dictionary<string, object>
-            {
-                { "eventId", GetString(ev, "id", DateTime.UtcNow.Ticks.ToString()) },
-                { "user", user },
-                { "userLogin", login },
-                { "boosterId", boosterId },
-                { "source", "twitch" }
-            };
-            server.Broadcast("draw", server.Serializer.Serialize(drawEvent));
+            Enqueue("draw", login, user, "channelpoints");
         }
 
         private static readonly Random RandomSource = new Random();
@@ -1742,6 +1840,598 @@ namespace CardPackWidgetApp
             if (!data.ContainsKey(key) || data[key] == null) return fallback;
             double value;
             return Double.TryParse(Convert.ToString(data[key]), out value) ? value : fallback;
+        }
+
+        // ---- Action queue: serializes channel-point redemptions and chat commands so that
+        // concurrent triggers from multiple viewers are always processed strictly one after
+        // another, with a fixed pause between actions. ----
+
+        public void Enqueue(string kind, string login, string displayName, string source)
+        {
+            var item = new Dictionary<string, object>
+            {
+                { "id", Guid.NewGuid().ToString("N") },
+                { "kind", kind },
+                { "user", displayName },
+                { "userLogin", login },
+                { "source", source },
+                { "triggeredAt", DateTime.UtcNow.ToString("o") }
+            };
+            lock (queueLock) { actionQueue.Add(item); }
+            BroadcastQueue();
+            queueSignal.Set();
+        }
+
+        public object[] GetQueueItems()
+        {
+            lock (queueLock) return actionQueue.ToArray();
+        }
+
+        private void BroadcastQueue()
+        {
+            server.Broadcast("queue", server.Serializer.Serialize(new Dictionary<string, object> { { "items", GetQueueItems() } }));
+        }
+
+        private void StartQueueWorkerOnce()
+        {
+            if (queueWorkerStarted) return;
+            queueWorkerStarted = true;
+            queueRunning = true;
+            var worker = new Thread(QueueLoop);
+            worker.IsBackground = true;
+            worker.Start();
+        }
+
+        private void QueueLoop()
+        {
+            while (queueRunning)
+            {
+                queueSignal.WaitOne(1000);
+                Dictionary<string, object> item = null;
+                lock (queueLock)
+                {
+                    if (actionQueue.Count > 0)
+                    {
+                        item = actionQueue[0];
+                        actionQueue.RemoveAt(0);
+                    }
+                }
+                if (item == null) continue;
+                try { ProcessQueueItem(item); }
+                catch (Exception ex) { server.Log("queue", "error", "Queue-Verarbeitung fehlgeschlagen: " + ex.Message); }
+                BroadcastQueue();
+                Thread.Sleep(500);
+            }
+        }
+
+        private void ProcessQueueItem(Dictionary<string, object> item)
+        {
+            string kind = GetString(item, "kind", "");
+            string user = GetString(item, "user", "Viewer");
+            string login = GetString(item, "userLogin", user);
+            string source = GetString(item, "source", "");
+
+            if (kind == "showcollection")
+            {
+                server.Log("draw", "info", user + " hat die Sammlung angefordert.");
+                var showEvent = new Dictionary<string, object>
+                {
+                    { "eventId", GetString(item, "id", DateTime.UtcNow.Ticks.ToString()) },
+                    { "user", user },
+                    { "userLogin", login },
+                    { "source", source }
+                };
+                server.Broadcast("showcollection", server.Serializer.Serialize(showEvent));
+                return;
+            }
+
+            if (kind == "draw")
+            {
+                // The booster is picked exactly once per queued item, here on the server.
+                // Resolving it here and broadcasting the concrete boosterId keeps every
+                // listener in sync with a single random draw, weighted by booster score.
+                string boosterId = PickRandomBoosterId();
+                if (String.IsNullOrWhiteSpace(boosterId))
+                {
+                    server.Log("draw", "error", user + " hat ein Kartenpack ausgeloest, aber kein Booster war verfuegbar.");
+                    return;
+                }
+                server.Log("draw", "info", user + " hat ein Kartenpack ausgeloest.");
+                var drawEvent = new Dictionary<string, object>
+                {
+                    { "eventId", GetString(item, "id", DateTime.UtcNow.Ticks.ToString()) },
+                    { "user", user },
+                    { "userLogin", login },
+                    { "boosterId", boosterId },
+                    { "source", source }
+                };
+                server.Broadcast("draw", server.Serializer.Serialize(drawEvent));
+            }
+        }
+
+        // ---- Twitch Chat: reads chat via EventSub (channel.chat.message) using the bot
+        // account if connected, otherwise falling back to the main/broadcaster account, and
+        // matches messages against the two configurable prefix+command pairs. ----
+
+        public Dictionary<string, object> BotStatus()
+        {
+            Dictionary<string, object> bot = BotSettings();
+            bool connected = !String.IsNullOrWhiteSpace(GetString(bot, "accessToken", ""));
+            lock (stateLock)
+            {
+                return new Dictionary<string, object>
+                {
+                    { "connected", connected },
+                    { "chatEventSubConnected", chatEventSubConnected },
+                    { "clientId", GetString(bot, "clientId", "") },
+                    { "login", GetString(bot, "login", "") },
+                    { "displayName", GetString(bot, "displayName", "") },
+                    { "broadcasterId", GetString(bot, "broadcasterId", "") },
+                    { "expiresAt", GetString(bot, "expiresAt", "") },
+                    { "lastError", chatLastError ?? "" }
+                };
+            }
+        }
+
+        private Dictionary<string, object> BotSettings()
+        {
+            return EnsureObject(server.ReadSettingsObject(), "twitchBot");
+        }
+
+        public Dictionary<string, object> SaveBotToken(string bodyJson)
+        {
+            Dictionary<string, object> body = ParseObject(bodyJson);
+            string token = NormalizeAccessToken(GetString(body, "accessToken", ""));
+            if (String.IsNullOrWhiteSpace(token)) throw new InvalidOperationException("Twitch Access Token fehlt.");
+
+            Dictionary<string, object> validation = TwitchGet("https://id.twitch.tv/oauth2/validate", "", token);
+            string clientId = GetString(validation, "client_id", "");
+            string login = GetString(validation, "login", "");
+            string userId = GetString(validation, "user_id", "");
+            if (String.IsNullOrWhiteSpace(clientId) || String.IsNullOrWhiteSpace(userId))
+            {
+                throw new InvalidOperationException("Twitch Token konnte nicht validiert werden.");
+            }
+            EnsureChatScopes(validation);
+
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> bot = EnsureObject(settings, "twitchBot");
+            bot["clientId"] = clientId;
+            bot["accessToken"] = token;
+            bot["login"] = login;
+            bot["displayName"] = login;
+            bot["broadcasterId"] = userId;
+            bot["expiresAt"] = DateTime.UtcNow.AddSeconds(GetInt(validation, "expires_in", 0)).ToString("o");
+            server.WriteSettingsObject(settings);
+            server.Log("twitch", "info", "Twitch-Bot verbunden als " + login + ".");
+            RefreshChatCommands();
+            return BotStatus();
+        }
+
+        public void DisconnectBot()
+        {
+            server.Log("twitch", "info", "Twitch-Bot-Verbindung getrennt.");
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> bot = EnsureObject(settings, "twitchBot");
+            bot.Remove("accessToken");
+            bot.Remove("login");
+            bot.Remove("displayName");
+            bot.Remove("broadcasterId");
+            bot.Remove("expiresAt");
+            server.WriteSettingsObject(settings, false);
+            RefreshChatCommands();
+        }
+
+        // The chat-reading/sending identity: the bot account if one is connected, otherwise
+        // the main/broadcaster account as the documented fallback.
+        private Dictionary<string, object> ChatCredential()
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> bot = Obj(settings, "twitchBot");
+            if (!String.IsNullOrWhiteSpace(GetString(bot, "accessToken", ""))) return bot;
+            return Obj(settings, "twitch");
+        }
+
+        public void RefreshChatCommands()
+        {
+            StopChat();
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> cc = Obj(settings, "chatCommands");
+            if (!GetBool(cc, "enabled", false)) return;
+            Dictionary<string, object> chat = ChatCredential();
+            if (String.IsNullOrWhiteSpace(GetString(chat, "accessToken", ""))) return;
+            chatCancel = new CancellationTokenSource();
+            Task.Factory.StartNew(delegate { ChatEventSubLoop(chatCancel.Token); }, TaskCreationOptions.LongRunning);
+        }
+
+        private void StopChat()
+        {
+            try
+            {
+                if (chatCancel != null) chatCancel.Cancel();
+                if (chatSocket != null) chatSocket.Abort();
+            }
+            catch
+            {
+            }
+            lock (stateLock)
+            {
+                chatEventSubConnected = false;
+            }
+        }
+
+        private void ChatEventSubLoop(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    lock (stateLock)
+                    {
+                        chatEventSubConnected = false;
+                        chatLastError = "";
+                    }
+                    using (chatSocket = new ClientWebSocket())
+                    {
+                        chatSocket.ConnectAsync(new Uri("wss://eventsub.wss.twitch.tv/ws"), token).Wait(token);
+                        ReadChatEventSubMessages(token).Wait(token);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    string message = ex.GetBaseException().Message;
+                    lock (stateLock)
+                    {
+                        chatEventSubConnected = false;
+                        chatLastError = message;
+                    }
+                    if (!token.IsCancellationRequested)
+                    {
+                        server.Log("twitch", "error", "Chat-Verbindung verloren: " + message);
+                        Thread.Sleep(5000);
+                    }
+                }
+            }
+        }
+
+        private async Task ReadChatEventSubMessages(CancellationToken token)
+        {
+            byte[] buffer = new byte[32768];
+            while (!token.IsCancellationRequested && chatSocket.State == WebSocketState.Open)
+            {
+                var bytes = new List<byte>();
+                WebSocketReceiveResult result;
+                do
+                {
+                    result = await chatSocket.ReceiveAsync(new ArraySegment<byte>(buffer), token);
+                    if (result.MessageType == WebSocketMessageType.Close) return;
+                    for (int i = 0; i < result.Count; i++) bytes.Add(buffer[i]);
+                } while (!result.EndOfMessage);
+
+                string text = Encoding.UTF8.GetString(bytes.ToArray());
+                HandleChatEventSubMessage(text);
+            }
+        }
+
+        private void HandleChatEventSubMessage(string text)
+        {
+            Dictionary<string, object> message = ParseObject(text);
+            Dictionary<string, object> metadata = Obj(message, "metadata");
+            string type = GetString(metadata, "message_type", "");
+            Dictionary<string, object> payload = Obj(message, "payload");
+
+            if (type == "session_welcome")
+            {
+                string sessionId = GetString(Obj(payload, "session"), "id", "");
+                try { CreateChatEventSubSubscription(sessionId); }
+                catch (Exception ex) { server.Log("twitch", "error", "Chat-Abonnement fehlgeschlagen: " + ex.Message); }
+                lock (stateLock) chatEventSubConnected = true;
+                server.Log("twitch", "info", "Chat-Verbindung aufgebaut.");
+                return;
+            }
+
+            if (type != "notification") return;
+            Dictionary<string, object> subscription = Obj(payload, "subscription");
+            if (GetString(subscription, "type", "") != "channel.chat.message") return;
+            Dictionary<string, object> ev = Obj(payload, "event");
+            string login = GetString(ev, "chatter_user_login", "");
+            string displayName = GetString(ev, "chatter_user_name", login);
+            string chatText = GetString(Obj(ev, "message"), "text", "");
+            if (String.IsNullOrWhiteSpace(login) || String.IsNullOrWhiteSpace(chatText)) return;
+            ProcessChatMessage(login, displayName, chatText);
+        }
+
+        private void CreateChatEventSubSubscription(string sessionId)
+        {
+            Dictionary<string, object> chat = ChatCredential();
+            Dictionary<string, object> twitch = TwitchSettings();
+            string broadcasterId = GetString(twitch, "broadcasterId", "");
+            string userId = GetString(chat, "broadcasterId", broadcasterId);
+            var body = new Dictionary<string, object>
+            {
+                { "type", "channel.chat.message" },
+                { "version", "1" },
+                { "condition", new Dictionary<string, object> { { "broadcaster_user_id", broadcasterId }, { "user_id", userId } } },
+                { "transport", new Dictionary<string, object> { { "method", "websocket" }, { "session_id", sessionId } } }
+            };
+            TwitchJson("POST", "https://api.twitch.tv/helix/eventsub/subscriptions", GetString(chat, "clientId", ""), GetString(chat, "accessToken", ""), body);
+        }
+
+        private static void EnsureChatScopes(Dictionary<string, object> validation)
+        {
+            var scopes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            object scopesObj;
+            if (validation.TryGetValue("scopes", out scopesObj) && scopesObj is object[])
+            {
+                foreach (object scope in (object[])scopesObj) scopes.Add(Convert.ToString(scope));
+            }
+            var missing = new List<string>();
+            if (!scopes.Contains("user:read:chat")) missing.Add("user:read:chat");
+            if (!scopes.Contains("user:write:chat")) missing.Add("user:write:chat");
+            if (missing.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "Token ist gueltig, aber fuer den Chat fehlen Scopes: " + String.Join(", ", missing.ToArray()) +
+                    ". Bitte einen Token mit diesen Rechten generieren.");
+            }
+        }
+
+        private void SendChatMessageSafe(string message)
+        {
+            try { SendChatMessage(message); }
+            catch (Exception ex) { server.Log("twitch", "error", "Chat-Nachricht konnte nicht gesendet werden: " + ex.Message); }
+        }
+
+        private void SendChatMessage(string message)
+        {
+            if (String.IsNullOrWhiteSpace(message)) return;
+            Dictionary<string, object> twitch = TwitchSettings();
+            Dictionary<string, object> chat = ChatCredential();
+            string broadcasterId = GetString(twitch, "broadcasterId", "");
+            string senderId = GetString(chat, "broadcasterId", broadcasterId);
+            if (String.IsNullOrWhiteSpace(GetString(chat, "accessToken", "")) || String.IsNullOrWhiteSpace(broadcasterId)) return;
+            var body = new Dictionary<string, object>
+            {
+                { "broadcaster_id", broadcasterId },
+                { "sender_id", senderId },
+                { "message", message }
+            };
+            TwitchJson("POST", "https://api.twitch.tv/helix/chat/messages", GetString(chat, "clientId", ""), GetString(chat, "accessToken", ""), body);
+        }
+
+        // ---- Command parsing + per-user usage/cooldown tracking ----
+
+        private void ProcessChatMessage(string login, string displayName, string text)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> cc = Obj(settings, "chatCommands");
+            if (!GetBool(cc, "enabled", false)) return;
+            text = text.Trim();
+            if (text.Length == 0) return;
+
+            Dictionary<string, object> pack = Obj(cc, "pack");
+            Dictionary<string, object> collection = Obj(cc, "collection");
+
+            if (MatchesCommand(text, pack))
+            {
+                HandlePackCommand(login, displayName, pack);
+                return;
+            }
+            if (MatchesCommand(text, collection))
+            {
+                // No usage limit, no cooldown, no tracking for the collection command.
+                Enqueue("showcollection", login, displayName, "chat");
+            }
+        }
+
+        private static bool MatchesCommand(string text, Dictionary<string, object> cmd)
+        {
+            string prefix = GetString(cmd, "prefix", "");
+            string word = GetString(cmd, "command", "");
+            if (String.IsNullOrEmpty(prefix) || String.IsNullOrWhiteSpace(word)) return false;
+            string full = prefix + word;
+            if (text.Length < full.Length) return false;
+            if (String.Compare(text, 0, full, 0, full.Length, StringComparison.OrdinalIgnoreCase) != 0) return false;
+            // Require a word boundary so e.g. "!packs" does not match the "!pack" command.
+            return text.Length == full.Length || Char.IsWhiteSpace(text[full.Length]);
+        }
+
+        private void HandlePackCommand(string login, string displayName, Dictionary<string, object> packCfg)
+        {
+            int maxUses = Math.Max(0, GetInt(packCfg, "maxUses", 0));
+            int cooldownSeconds = Math.Max(0, GetInt(packCfg, "cooldownSeconds", 0));
+            DateTime now = DateTime.UtcNow;
+
+            lock (usageLock)
+            {
+                EnsureUsageLoaded();
+                ApplyResetIfDue(packCfg, now);
+                Dictionary<string, object> entry = GetOrCreateUsageEntry(login, displayName);
+
+                DateTime cooldownUntil = ParseDate(GetString(entry, "cooldownUntil", ""));
+                if (cooldownSeconds > 0 && cooldownUntil > now)
+                {
+                    int remaining = (int)Math.Ceiling((cooldownUntil - now).TotalSeconds);
+                    string message = GetString(packCfg, "cooldownMessage", DefaultCooldownMessage)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Restzeit]", remaining.ToString());
+                    SendChatMessageSafe(message);
+                    return;
+                }
+
+                int count = GetInt(entry, "count", 0);
+                if (maxUses > 0 && count >= maxUses)
+                {
+                    string resetTimeText = FormatLocalTime(ParseDate(GetString(usageData, "nextGlobalResetAt", "")));
+                    string message = GetString(packCfg, "limitMessage", DefaultLimitMessage)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Uhrzeit]", resetTimeText);
+                    SendChatMessageSafe(message);
+                    return;
+                }
+
+                entry["count"] = count + 1;
+                if (cooldownSeconds > 0) entry["cooldownUntil"] = now.AddSeconds(cooldownSeconds).ToString("o");
+                SaveUsage();
+            }
+
+            Enqueue("draw", login, displayName, "chat");
+        }
+
+        private void EnsureUsageLoaded()
+        {
+            if (usageLoaded) return;
+            usageData = ParseObject(server.ReadFileText(server.CommandUsagePath(), "{}"));
+            if (!usageData.ContainsKey("users") || !(usageData["users"] is Dictionary<string, object>))
+            {
+                usageData["users"] = new Dictionary<string, object>();
+            }
+            usageLoaded = true;
+        }
+
+        private Dictionary<string, object> GetOrCreateUsageEntry(string login, string displayName)
+        {
+            string key = login.Trim().ToLowerInvariant();
+            Dictionary<string, object> users = (Dictionary<string, object>)usageData["users"];
+            Dictionary<string, object> entry;
+            if (users.ContainsKey(key) && users[key] is Dictionary<string, object>)
+            {
+                entry = (Dictionary<string, object>)users[key];
+            }
+            else
+            {
+                entry = new Dictionary<string, object> { { "count", 0 } };
+                users[key] = entry;
+            }
+            entry["displayName"] = displayName;
+            return entry;
+        }
+
+        // Applies the periodic reset to every viewer's pack-usage counter once the configured
+        // interval has elapsed. "Tage" always resets at local 00:01 - computing the next
+        // occurrence from the calendar date (rather than adding a fixed 24h span) means the
+        // wall-clock target is always correct across a daylight-saving transition.
+        private void ApplyResetIfDue(Dictionary<string, object> packCfg, DateTime nowUtc)
+        {
+            DateTime nextReset = ParseDate(GetString(usageData, "nextGlobalResetAt", ""));
+            if (nextReset != DateTime.MinValue && nextReset > nowUtc) return;
+
+            Dictionary<string, object> users = (Dictionary<string, object>)usageData["users"];
+            bool hadUsers = users.Count > 0;
+            foreach (object value in users.Values)
+            {
+                Dictionary<string, object> entry = value as Dictionary<string, object>;
+                if (entry != null) entry["count"] = 0;
+            }
+            usageData["nextGlobalResetAt"] = ComputeNextResetAt(packCfg, nowUtc).ToString("o");
+            SaveUsage();
+            if (hadUsers) server.Log("commands", "info", "Automatischer Reset der Pack-Nutzung durchgefuehrt.");
+        }
+
+        private static DateTime ComputeNextResetAt(Dictionary<string, object> packCfg, DateTime fromUtc)
+        {
+            string unit = GetString(packCfg, "resetUnit", "hours");
+            int value = Math.Max(1, GetInt(packCfg, "resetValue", 24));
+
+            if (unit == "days")
+            {
+                DateTime localNow = fromUtc.ToLocalTime();
+                DateTime candidate = localNow.Date.AddMinutes(1); // today 00:01 local
+                if (candidate <= localNow) candidate = candidate.AddDays(1);
+                return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(candidate, DateTimeKind.Unspecified), TimeZoneInfo.Local);
+            }
+            if (unit == "minutes") return fromUtc.AddMinutes(value);
+            return fromUtc.AddHours(value);
+        }
+
+        private void SaveUsage()
+        {
+            try { File.WriteAllText(server.CommandUsagePath(), server.Serializer.Serialize(usageData), Encoding.UTF8); }
+            catch { }
+        }
+
+        public object[] GetCommandUsage()
+        {
+            lock (usageLock)
+            {
+                EnsureUsageLoaded();
+                Dictionary<string, object> users = (Dictionary<string, object>)usageData["users"];
+                var list = new List<object>();
+                foreach (KeyValuePair<string, object> kv in users)
+                {
+                    Dictionary<string, object> entry = kv.Value as Dictionary<string, object>;
+                    if (entry == null) continue;
+                    list.Add(new Dictionary<string, object>
+                    {
+                        { "login", kv.Key },
+                        { "displayName", GetString(entry, "displayName", kv.Key) },
+                        { "count", GetInt(entry, "count", 0) }
+                    });
+                }
+                return list.ToArray();
+            }
+        }
+
+        public void ResetCommandUsage(string login)
+        {
+            lock (usageLock)
+            {
+                EnsureUsageLoaded();
+                Dictionary<string, object> users = (Dictionary<string, object>)usageData["users"];
+                if (String.IsNullOrWhiteSpace(login))
+                {
+                    foreach (object value in users.Values)
+                    {
+                        Dictionary<string, object> entry = value as Dictionary<string, object>;
+                        if (entry != null) entry["count"] = 0;
+                    }
+                    server.Log("commands", "info", "Nutzung aller User zurueckgesetzt.");
+                }
+                else
+                {
+                    string key = login.Trim().ToLowerInvariant();
+                    if (users.ContainsKey(key) && users[key] is Dictionary<string, object>)
+                    {
+                        ((Dictionary<string, object>)users[key])["count"] = 0;
+                        server.Log("commands", "info", "Nutzung von " + login + " zurueckgesetzt.");
+                    }
+                }
+                SaveUsage();
+            }
+        }
+
+        private void StartResetTimerOnce()
+        {
+            if (resetTimerStarted) return;
+            resetTimerStarted = true;
+            resetTimer = new System.Threading.Timer(delegate
+            {
+                try
+                {
+                    Dictionary<string, object> settings = server.ReadSettingsObject();
+                    Dictionary<string, object> packCfg = Obj(Obj(settings, "chatCommands"), "pack");
+                    lock (usageLock)
+                    {
+                        EnsureUsageLoaded();
+                        ApplyResetIfDue(packCfg, DateTime.UtcNow);
+                    }
+                }
+                catch
+                {
+                }
+            }, null, 15000, 15000);
+        }
+
+        private static DateTime ParseDate(string text)
+        {
+            DateTime value;
+            return DateTime.TryParse(text, null, System.Globalization.DateTimeStyles.RoundtripKind, out value) ? value.ToUniversalTime() : DateTime.MinValue;
+        }
+
+        private static string FormatLocalTime(DateTime utc)
+        {
+            if (utc == DateTime.MinValue) return "?";
+            return utc.ToLocalTime().ToString("HH:mm");
         }
 
         private void CreateEventSubSubscription(string sessionId)

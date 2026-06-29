@@ -36,12 +36,15 @@
       const token = params.get("access_token");
       const expiresIn = Number(params.get("expires_in") || 0);
       const tokenType = params.get("token_type") || "bearer";
+      const state = params.get("state") || "";
+      const isBot = state.indexOf("bot-") === 0;
       const title = document.querySelector("#title");
       const message = document.querySelector("#message");
 
       async function run() {
         if (!token) throw new Error("Twitch hat kein OAuth Access Token zurückgegeben.");
-        const response = await fetch("/api/twitch/token", {
+        const endpoint = isBot ? "/api/twitch/bot/token" : "/api/twitch/token";
+        const response = await fetch(endpoint, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ accessToken: token, expiresIn, tokenType })
@@ -51,7 +54,7 @@
         title.textContent = "Twitch-Anmeldung abgeschlossen";
         message.textContent = "Der OAuth-Zugriff wurde lokal gespeichert. Du kannst dieses Fenster schließen.";
         try {
-          window.opener?.postMessage({ type: "cardpack:twitch-connected" }, location.origin);
+          window.opener?.postMessage({ type: isBot ? "cardpack:twitch-bot-connected" : "cardpack:twitch-connected" }, location.origin);
         } catch {
         }
         setTimeout(() => window.close(), 1200);

@@ -168,6 +168,27 @@ export function normalizeSettings(settings) {
   settings.draw.rewardEnabled = settings.draw.rewardEnabled !== false;
   settings.draw.rewardPaused = settings.draw.rewardPaused === true;
 
+  // Second Twitch identity (bot account) used for reading/sending chat. Falls back to the
+  // main/broadcaster connection when not configured.
+  settings.twitchBot ||= {};
+
+  // Chat commands: !pack (usage limit + cooldown, both strictly per-username) and !collection
+  // (no limit, no cooldown, no usage tracking) - mirrors the channel-point draw/showcase rewards.
+  settings.chatCommands ||= {};
+  settings.chatCommands.enabled = settings.chatCommands.enabled === true;
+  settings.chatCommands.pack ||= {};
+  settings.chatCommands.pack.prefix ||= "!";
+  settings.chatCommands.pack.command ||= "pack";
+  settings.chatCommands.pack.maxUses = Number(settings.chatCommands.pack.maxUses) >= 0 ? Number(settings.chatCommands.pack.maxUses) : 5;
+  settings.chatCommands.pack.resetUnit = ["minutes", "hours", "days"].includes(settings.chatCommands.pack.resetUnit) ? settings.chatCommands.pack.resetUnit : "hours";
+  settings.chatCommands.pack.resetValue = Number(settings.chatCommands.pack.resetValue) > 0 ? Number(settings.chatCommands.pack.resetValue) : 8;
+  settings.chatCommands.pack.cooldownSeconds = Number(settings.chatCommands.pack.cooldownSeconds) >= 0 ? Number(settings.chatCommands.pack.cooldownSeconds) : 300;
+  settings.chatCommands.pack.limitMessage ||= "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr neue Packs zur Verfügung stehen.";
+  settings.chatCommands.pack.cooldownMessage ||= "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
+  settings.chatCommands.collection ||= {};
+  settings.chatCommands.collection.prefix ||= "!";
+  settings.chatCommands.collection.command ||= "collection";
+
   if (!settings.boosters.length) {
     const legacy = settings.booster || {};
     settings.boosters = [{

@@ -3,10 +3,14 @@ import {
   clearLogs,
   currentOriginUrl,
   deleteTwitchReward,
+  disconnectBot,
   disconnectTwitch,
+  getBotStatus,
   getCollections,
+  getCommandUsage,
   getFonts,
   getLatestRelease,
+  getQueueItems,
   installUpdate,
   getLogs,
   getSettings,
@@ -14,6 +18,7 @@ import {
   getVersion,
   persistCollectionSnapshot,
   resetCollections,
+  resetCommandUsage,
   resetSettings,
   saveSettings,
   syncShowcaseReward,
@@ -45,7 +50,8 @@ let autoSaveTimer;
 let autoSaveReady = false;
 let collections = {};
 const DEFAULT_TWITCH_CLIENT_ID = "klgyxuiixy0mfo7ze7goubj5j16g7u";
-const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions";
+const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions user:read:chat user:write:chat";
+const TWITCH_BOT_SCOPES = "user:read:chat user:write:chat";
 
 const I18N = {
   "nav-overview": { de: "Übersicht", en: "Overview" },
@@ -57,6 +63,48 @@ const I18N = {
   "nav-design": { de: "Einstellungen", en: "Settings" },
   "nav-update": { de: "Update", en: "Update" },
   "nav-log": { de: "Log", en: "Log" },
+  "nav-chatcommands": { de: "Chat Befehle", en: "Chat commands" },
+  "nav-commandusage": { de: "Nutzung Befehle", en: "Command usage" },
+  "nav-queue": { de: "Queue", en: "Queue" },
+  "bot-trigger-title": { de: "Bot-Verbindung (Chat)", en: "Bot connection (chat)" },
+  "bot-trigger-hint": {
+    de: "Optional: separater Bot-Account zum Lesen und Senden von Chat-Nachrichten. Wenn nicht verbunden, wird die Haupt-Twitch-Verbindung dafür verwendet.",
+    en: "Optional: separate bot account for reading and sending chat messages. If not connected, the main Twitch connection is used instead."
+  },
+  "btn-connect-twitch-bot": { de: "Bot mit Twitch anmelden", en: "Sign in bot with Twitch" },
+  "cc-title": { de: "Chat-Befehle verwalten", en: "Manage chat commands" },
+  "label-cc-enabled": { de: "Chat-Befehle aktiviert", en: "Chat commands enabled" },
+  "cc-pack-eyebrow": { de: "Kartenpack", en: "Card pack" },
+  "cc-pack-title": { de: "Pack-Befehl", en: "Pack command" },
+  "cc-collection-eyebrow": { de: "Sammlung", en: "Collection" },
+  "cc-collection-title": { de: "Sammlung-Befehl", en: "Collection command" },
+  "label-cc-prefix": { de: "Präfix", en: "Prefix" },
+  "label-cc-command": { de: "Befehl", en: "Command" },
+  "label-cc-maxuses": { de: "Max. Nutzungen pro Viewer", en: "Max uses per viewer" },
+  "label-cc-cooldown": { de: "Cooldown pro Viewer (Sek.)", en: "Cooldown per viewer (sec.)" },
+  "label-cc-reset-value": { de: "Auto-Reset alle", en: "Auto-reset every" },
+  "label-cc-reset-unit": { de: "Einheit", en: "Unit" },
+  "opt-minutes": { de: "Minuten", en: "Minutes" },
+  "opt-hours": { de: "Stunden", en: "Hours" },
+  "opt-days": { de: "Tage", en: "Days" },
+  "label-cc-limit-message": { de: "Nachricht bei erreichtem Limit", en: "Message when limit reached" },
+  "label-cc-cooldown-message": { de: "Nachricht bei aktivem Cooldown", en: "Message when cooldown active" },
+  "cu-eyebrow": { de: "Chat-Befehle", en: "Chat commands" },
+  "cu-title": { de: "Nutzung Befehle", en: "Command usage" },
+  "btn-cu-reset-all": { de: "Alle zurücksetzen", en: "Reset all" },
+  "btn-cu-reset-user": { de: "Zurücksetzen", en: "Reset" },
+  "placeholder-cu-search": { de: "Nutzer suchen...", en: "Search user..." },
+  "hint-cu-empty": { de: "Noch keine Nutzungen vorhanden.", en: "No usage yet." },
+  "unit-cu-uses": { de: "Nutzungen", en: "uses" },
+  "notice-cu-reset": { de: "Nutzung zurückgesetzt.", en: "Usage reset." },
+  "notice-cu-reset-all": { de: "Alle Nutzungen zurückgesetzt.", en: "All usage reset." },
+  "queue-eyebrow": { de: "Verarbeitung", en: "Processing" },
+  "queue-title": { de: "Warteschlange", en: "Queue" },
+  "hint-queue": {
+    de: "Kanalpunkte-Einlösungen und Chat-Befehle werden hier streng nacheinander verarbeitet (500ms Pause zwischen Einträgen).",
+    en: "Channel point redemptions and chat commands are processed strictly in order here (500ms pause between entries)."
+  },
+  "hint-queue-empty": { de: "Aktuell keine ausstehenden Einträge.", en: "No pending entries right now." },
   "log-eyebrow": { de: "Verlauf", en: "History" },
   "log-title": { de: "Ereignis-Log", en: "Event log" },
   "placeholder-log-search": { de: "Log durchsuchen...", en: "Search log..." },
@@ -547,6 +595,15 @@ function bindTabs() {
         await loadLogs();
         renderLogs();
       }
+      if (button.dataset.tab === "commandusage") {
+        await loadCommandUsage();
+        renderCommandUsage();
+      }
+      if (button.dataset.tab === "queue") {
+        startQueuePolling();
+      } else {
+        clearInterval(queuePollTimer);
+      }
     });
   });
 }
@@ -703,6 +760,75 @@ async function handleTwitchDisconnect() {
     showNotice(t("notice-twitch-disconnected"));
   } catch (error) {
     setStatus("#twitch-status", error.message, "error");
+  }
+}
+
+async function refreshBotStatus() {
+  try {
+    const result = await getBotStatus();
+    const status = result.status || {};
+    if (status.connected) {
+      setStatus("#twitch-bot-status", `${t("status-connected-as")} ${status.displayName || status.login || "Twitch"}`, "ok");
+    } else {
+      setStatus("#twitch-bot-status", t("status-not-connected"), "neutral");
+    }
+  } catch (error) {
+    setStatus("#twitch-bot-status", `${t("status-error")} ${error.message}`, "error");
+  }
+}
+
+async function connectTwitchBot() {
+  settings.twitch ||= {};
+  const clientId = String(settings.twitch.clientId || DEFAULT_TWITCH_CLIENT_ID).trim();
+  if (!clientId) {
+    setStatus("#twitch-bot-status", t("error-missing-client-id"), "error");
+    return;
+  }
+  try {
+    const state = `bot-${crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`}`;
+    sessionStorage.setItem("cardpack_twitch_bot_state", state);
+    const url = new URL("https://id.twitch.tv/oauth2/authorize");
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", "http://localhost:5377/twitch-callback.html");
+    url.searchParams.set("response_type", "token");
+    url.searchParams.set("scope", TWITCH_BOT_SCOPES);
+    url.searchParams.set("force_verify", "true");
+    url.searchParams.set("state", state);
+    window.open(url.toString(), "_blank");
+    pollBotStatusAfterLogin();
+    setStatus("#twitch-bot-status", t("status-login-opened"), "neutral");
+  } catch (error) {
+    setStatus("#twitch-bot-status", `${t("error-login-failed")} ${error.message}`, "error");
+  }
+}
+
+let botPollTimer;
+function pollBotStatusAfterLogin() {
+  clearInterval(botPollTimer);
+  let attempts = 0;
+  botPollTimer = setInterval(async () => {
+    attempts += 1;
+    try {
+      const result = await getBotStatus();
+      if (result?.status?.connected) {
+        clearInterval(botPollTimer);
+        await refreshBotStatus();
+        showNotice(t("notice-twitch-connected"));
+        return;
+      }
+    } catch {
+    }
+    if (attempts >= 30) clearInterval(botPollTimer);
+  }, 2000);
+}
+
+async function handleBotDisconnect() {
+  try {
+    await disconnectBot();
+    await refreshBotStatus();
+    showNotice(t("notice-twitch-disconnected"));
+  } catch (error) {
+    setStatus("#twitch-bot-status", error.message, "error");
   }
 }
 
@@ -1372,6 +1498,153 @@ function bindUsers() {
   $("#user-list").addEventListener("change", handleUserListChange);
 }
 
+let commandUsageData = [];
+
+async function loadCommandUsage() {
+  try {
+    const result = await getCommandUsage();
+    commandUsageData = result.usage || [];
+  } catch {
+    commandUsageData = [];
+  }
+}
+
+function renderCommandUsage() {
+  const list = $("#cu-list");
+  if (!list) return;
+  const filter = ($("#cu-search")?.value || "").trim().toLowerCase();
+  const allUsers = [...commandUsageData].sort((a, b) => (a.displayName || a.login).localeCompare(b.displayName || b.login));
+  const users = allUsers.filter((user) => !filter || (user.displayName || "").toLowerCase().includes(filter) || (user.login || "").includes(filter));
+  $("#cu-empty-hint").hidden = allUsers.length > 0;
+  if (!users.length) {
+    list.innerHTML = filter
+      ? `<p class="hint">${t("hint-no-users-found")} „${escapeHtml(filter)}“.</p>`
+      : "";
+    return;
+  }
+  list.innerHTML = users.map((user) => `
+    <div class="user-card" data-user="${escapeHtml(user.login)}">
+      <div class="user-card-header">
+        <strong>${escapeHtml(user.displayName || user.login)}</strong>
+        <span>${user.count || 0} ${t("unit-cu-uses")}</span>
+        <button class="danger-button" type="button" data-action="cu-reset-user" data-user="${escapeHtml(user.login)}">${t("btn-cu-reset-user")}</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function handleCommandUsageClick(event) {
+  const button = event.target.closest("[data-action='cu-reset-user']");
+  if (!button) return;
+  await resetCommandUsage(button.dataset.user);
+  await loadCommandUsage();
+  renderCommandUsage();
+  showNotice(t("notice-cu-reset"));
+}
+
+async function handleCommandUsageResetAll() {
+  await resetCommandUsage("");
+  await loadCommandUsage();
+  renderCommandUsage();
+  showNotice(t("notice-cu-reset-all"));
+}
+
+function bindCommandUsage() {
+  $("#cu-search").addEventListener("input", renderCommandUsage);
+  $("#cu-list").addEventListener("click", handleCommandUsageClick);
+  $("#cu-reset-all").addEventListener("click", handleCommandUsageResetAll);
+}
+
+let queuePollTimer;
+
+async function refreshQueue() {
+  try {
+    const result = await getQueueItems();
+    const items = result.items || [];
+    const list = $("#queue-list");
+    if (!list) return;
+    $("#queue-empty-hint").hidden = items.length > 0;
+    list.innerHTML = items.map((item) => `
+      <div class="user-card">
+        <div class="user-card-header">
+          <strong>${escapeHtml(item.user || item.userLogin || "?")}</strong>
+          <span>${escapeHtml(item.kind || "")} · ${escapeHtml(item.source || "")}</span>
+          <span>${escapeHtml(item.triggeredAt ? new Date(item.triggeredAt).toLocaleTimeString() : "")}</span>
+        </div>
+      </div>
+    `).join("");
+  } catch {
+  }
+}
+
+function startQueuePolling() {
+  clearInterval(queuePollTimer);
+  refreshQueue();
+  queuePollTimer = setInterval(refreshQueue, 1500);
+}
+
+function hydrateChatCommands() {
+  settings.chatCommands ||= {};
+  const cc = settings.chatCommands;
+  cc.pack ||= {};
+  cc.collection ||= {};
+  $("#cc-enabled").checked = cc.enabled === true;
+  $("#cc-pack-prefix").value = cc.pack.prefix || "!";
+  $("#cc-pack-command").value = cc.pack.command || "pack";
+  $("#cc-pack-maxuses").value = cc.pack.maxUses ?? 0;
+  $("#cc-pack-cooldown").value = cc.pack.cooldownSeconds ?? 0;
+  $("#cc-pack-reset-value").value = cc.pack.resetValue ?? 1;
+  $("#cc-pack-reset-unit").value = cc.pack.resetUnit || "days";
+  $("#cc-pack-limit-message").value = cc.pack.limitMessage || "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr neue Packs zur Verfügung stehen.";
+  $("#cc-pack-cooldown-message").value = cc.pack.cooldownMessage || "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
+  $("#cc-collection-prefix").value = cc.collection.prefix || "!";
+  $("#cc-collection-command").value = cc.collection.command || "collection";
+}
+
+function readChatCommandsFromForm() {
+  settings.chatCommands ||= {};
+  const cc = settings.chatCommands;
+  cc.pack ||= {};
+  cc.collection ||= {};
+  cc.enabled = $("#cc-enabled").checked;
+  cc.pack.prefix = $("#cc-pack-prefix").value || "!";
+  cc.pack.command = $("#cc-pack-command").value.trim() || "pack";
+  cc.pack.maxUses = Math.max(0, Math.round(Number($("#cc-pack-maxuses").value) || 0));
+  cc.pack.cooldownSeconds = Math.max(0, Math.round(Number($("#cc-pack-cooldown").value) || 0));
+  cc.pack.resetValue = Math.max(1, Math.round(Number($("#cc-pack-reset-value").value) || 1));
+  cc.pack.resetUnit = $("#cc-pack-reset-unit").value || "days";
+  cc.pack.limitMessage = $("#cc-pack-limit-message").value;
+  cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
+  cc.collection.prefix = $("#cc-collection-prefix").value || "!";
+  cc.collection.command = $("#cc-collection-command").value.trim() || "collection";
+}
+
+function insertVariableIntoField(fieldId, variable) {
+  const field = $(`#${fieldId}`);
+  if (!field) return;
+  if (field.value.includes(variable)) return;
+  const start = field.selectionStart ?? field.value.length;
+  const end = field.selectionEnd ?? field.value.length;
+  field.value = `${field.value.slice(0, start)}${variable}${field.value.slice(end)}`;
+  field.focus();
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function bindChatCommands() {
+  $("#cc-pack-limit-vars").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-insert]");
+    if (!button) return;
+    insertVariableIntoField("cc-pack-limit-message", button.dataset.insert);
+  });
+  $("#cc-pack-cooldown-vars").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-insert]");
+    if (!button) return;
+    insertVariableIntoField("cc-pack-cooldown-message", button.dataset.insert);
+  });
+  document.querySelector('[data-panel="chatcommands"]').addEventListener("input", readChatCommandsFromForm);
+  document.querySelector('[data-panel="chatcommands"]').addEventListener("change", readChatCommandsFromForm);
+}
+
 function hydrateTrigger() {
   settings.twitch ||= {};
   settings.twitch.clientId ||= DEFAULT_TWITCH_CLIENT_ID;
@@ -1391,6 +1664,9 @@ function bindTrigger() {
   $("#connect-twitch").addEventListener("click", connectTwitch);
   $("#disconnect-twitch").addEventListener("click", handleTwitchDisconnect);
   $("#refresh-twitch-status").addEventListener("click", refreshTwitchStatus);
+  $("#connect-twitch-bot").addEventListener("click", connectTwitchBot);
+  $("#disconnect-twitch-bot").addEventListener("click", handleBotDisconnect);
+  $("#refresh-twitch-bot-status").addEventListener("click", refreshBotStatus);
   bindDrawReward();
   bindShowcase();
 }
@@ -1681,6 +1957,7 @@ function renderAll() {
   hydrateBooster();
   hydrateTrigger();
   hydrateDesign();
+  hydrateChatCommands();
   renderOverview();
   renderUsers();
 }
@@ -1697,6 +1974,8 @@ async function init() {
     bindTrigger();
     bindDesign();
     bindUsers();
+    bindChatCommands();
+    bindCommandUsage();
     bindUpdateTab();
     bindLogTab();
     renderAll();
@@ -1713,8 +1992,10 @@ async function init() {
       }
     });
     await refreshTwitchStatus();
+    await refreshBotStatus();
     if (settings.obs?.enabled) testObsConnection();
     setInterval(refreshTwitchStatus, 20000);
+    setInterval(refreshBotStatus, 20000);
     setInterval(() => {
       if (settings.obs?.enabled) testObsConnection();
     }, 20000);
@@ -1728,6 +2009,10 @@ window.addEventListener("message", (event) => {
   if (event.origin !== window.location.origin) return;
   if (event.data?.type === "cardpack:twitch-connected") {
     refreshTwitchStatus();
+    showNotice(t("notice-twitch-connected"));
+  }
+  if (event.data?.type === "cardpack:twitch-bot-connected") {
+    refreshBotStatus();
     showNotice(t("notice-twitch-connected"));
   }
 });
