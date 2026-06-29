@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.21";
+        public const string Version = "1.4.22";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -728,7 +728,8 @@ namespace CardPackWidgetApp
                 SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
                 {
                     { "ok", true },
-                    { "items", twitchBridge.GetQueueItems() }
+                    { "items", twitchBridge.GetQueueItems() },
+                    { "paused", twitchBridge.QueuePaused }
                 }));
                 return;
             }
@@ -737,6 +738,29 @@ namespace CardPackWidgetApp
             {
                 Dictionary<string, object> body = ParseObject(request.Body);
                 twitchBridge.CompleteQueueItem(GetString(body, "eventId", ""));
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object> { { "ok", true } }));
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/queue/pause")
+            {
+                Dictionary<string, object> body = ParseObject(request.Body);
+                twitchBridge.SetQueuePaused(GetBool(body, "paused", false));
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object> { { "ok", true }, { "paused", twitchBridge.QueuePaused } }));
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/queue/remove")
+            {
+                Dictionary<string, object> body = ParseObject(request.Body);
+                twitchBridge.RemoveQueueItem(GetString(body, "id", ""));
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object> { { "ok", true }, { "items", twitchBridge.GetQueueItems() } }));
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/queue/clear")
+            {
+                twitchBridge.ClearQueue();
                 SendJson(stream, 200, json.Serialize(new Dictionary<string, object> { { "ok", true } }));
                 return;
             }
@@ -1271,6 +1295,14 @@ namespace CardPackWidgetApp
             return Convert.ToString(data[key]);
         }
 
+        private static bool GetBool(Dictionary<string, object> data, string key, bool fallback)
+        {
+            if (!data.ContainsKey(key) || data[key] == null) return fallback;
+            if (data[key] is bool) return (bool)data[key];
+            bool value;
+            return Boolean.TryParse(Convert.ToString(data[key]), out value) ? value : fallback;
+        }
+
         private static string NormalizeUser(string value)
         {
             if (String.IsNullOrWhiteSpace(value)) return "viewer";
@@ -1399,6 +1431,7 @@ namespace CardPackWidgetApp
         private volatile string awaitingEventId;
         private volatile bool queueRunning;
         private volatile bool queueWorkerStarted;
+        private volatile bool queuePaused;
 
         private readonly object usageLock = new object();
         private Dictionary<string, object> usageData;
@@ -1894,7 +1927,7 @@ namespace CardPackWidgetApp
 
         private void BroadcastQueue()
         {
-            server.Broadcast("queue", server.Serializer.Serialize(new Dictionary<string, object> { { "items", GetQueueItems() } }));
+            server.Broadcast("queue", server.Serializer.Serialize(new Dictionary<string, object> { { "items", GetQueueItems() }, { "paused", queuePaused } }));
         }
 
         // Called by the overlay (POST /api/queue/complete) once it has finished playing the
@@ -1904,6 +1937,32 @@ namespace CardPackWidgetApp
         {
             if (String.IsNullOrEmpty(eventId)) return;
             if (eventId == awaitingEventId) completionSignal.Set();
+        }
+
+        public bool QueuePaused { get { return queuePaused; } }
+
+        public void SetQueuePaused(bool paused)
+        {
+            queuePaused = paused;
+            server.Log("queue", "info", paused ? "Warteschlange pausiert - Eintraege werden gesammelt." : "Warteschlange fortgesetzt.");
+            if (!paused) queueSignal.Set();
+            BroadcastQueue();
+        }
+
+        public void RemoveQueueItem(string id)
+        {
+            if (String.IsNullOrEmpty(id)) return;
+            lock (queueLock)
+            {
+                actionQueue.RemoveAll(delegate(Dictionary<string, object> item) { return GetString(item, "id", "") == id; });
+            }
+            BroadcastQueue();
+        }
+
+        public void ClearQueue()
+        {
+            lock (queueLock) actionQueue.Clear();
+            BroadcastQueue();
         }
 
         // Safety upper bound for how long to wait on the overlay's completion ack. Generously
@@ -1948,6 +2007,8 @@ namespace CardPackWidgetApp
             while (queueRunning)
             {
                 queueSignal.WaitOne(1000);
+                // While paused, keep collecting incoming events but don't process any.
+                if (queuePaused) continue;
                 Dictionary<string, object> item = null;
                 lock (queueLock)
                 {
@@ -2120,8 +2181,8 @@ namespace CardPackWidgetApp
             StopChat();
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> cc = Obj(settings, "chatCommands");
-            if (!GetBool(cc, "enabled", false)) return;
-            // Don't bother connecting if neither command is actually active.
+            // Don't bother connecting if neither command is active (each command is toggled
+            // individually now; there is no separate master switch).
             if (!GetBool(Obj(cc, "pack"), "enabled", true) && !GetBool(Obj(cc, "collection"), "enabled", true)) return;
 
             Dictionary<string, object> chat = ChatCredential();
@@ -2322,7 +2383,6 @@ namespace CardPackWidgetApp
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> cc = Obj(settings, "chatCommands");
-            if (!GetBool(cc, "enabled", false)) return;
             text = text.Trim();
             if (text.Length == 0) return;
 

@@ -245,10 +245,6 @@
                 <p class="eyebrow">Twitch Chat</p>
                 <h2 data-i18n="cc-title">Chat-Befehle verwalten</h2>
               </div>
-              <label class="switch-row compact-switch master-switch">
-                <input id="cc-enabled" type="checkbox">
-                <span data-i18n="label-cc-enabled">Chat-Befehle aktiviert</span>
-              </label>
             </div>
             <p class="hint" data-i18n="cc-intro">Lege fest, mit welchen Chat-Befehlen Zuschauer ein Pack ziehen oder ihre Sammlung anzeigen können. Jeder Befehl lässt sich einzeln aktivieren.</p>
 
@@ -578,6 +574,13 @@
             <div>
               <p class="eyebrow" data-i18n="queue-eyebrow">Verarbeitung</p>
               <h2 data-i18n="queue-title">Warteschlange</h2>
+            </div>
+            <div class="queue-controls">
+              <label class="switch-row compact-switch">
+                <input id="queue-paused" type="checkbox">
+                <span data-i18n="label-queue-paused">Queue pausieren</span>
+              </label>
+              <button class="danger-button" id="queue-clear" type="button" data-i18n="btn-queue-clear">Alle Einträge löschen</button>
             </div>
           </div>
           <p class="hint" data-i18n="hint-queue">Kanalpunkte-Einlösungen und Chat-Befehle werden hier streng nacheinander verarbeitet (500ms Pause zwischen Einträgen).</p>

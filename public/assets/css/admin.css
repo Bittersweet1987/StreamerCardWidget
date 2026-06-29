@@ -857,6 +857,22 @@ body[data-theme="dark"] .showcase-entry {
   white-space: nowrap;
 }
 
+.queue-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.queue-controls .switch-row {
+  margin: 0;
+}
+
+.queue-remove {
+  margin-left: 12px;
+  flex: 0 0 auto;
+}
+
 .queue-processing {
   display: inline-block;
   margin-left: 6px;

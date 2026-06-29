@@ -8,10 +8,13 @@ import {
   disconnectTwitch,
   getBotStatus,
   getCollections,
+  clearQueue,
   getCommandUsage,
   getFonts,
   getLatestRelease,
   getQueueItems,
+  removeQueueItem,
+  setQueuePaused,
   installUpdate,
   getLogs,
   getSettings,
@@ -115,6 +118,10 @@ const I18N = {
     en: "Channel point redemptions and chat commands are processed strictly in order here (500ms pause between entries)."
   },
   "hint-queue-empty": { de: "Aktuell keine ausstehenden Einträge.", en: "No pending entries right now." },
+  "label-queue-paused": { de: "Queue pausieren", en: "Pause queue" },
+  "btn-queue-clear": { de: "Alle Einträge löschen", en: "Clear all entries" },
+  "btn-queue-remove": { de: "Entfernen", en: "Remove" },
+  "notice-queue-cleared": { de: "Warteschlange geleert.", en: "Queue cleared." },
   "queue-kind-draw": { de: "Kartenpack", en: "Card pack" },
   "queue-kind-showcollection": { de: "Sammlung zeigen", en: "Show collection" },
   "queue-source-chat": { de: "Chat", en: "Chat" },
@@ -1581,22 +1588,32 @@ function renderQueueItems(items) {
     const kindLabel = item.kind === "draw" ? t("queue-kind-draw") : item.kind === "showcollection" ? t("queue-kind-showcollection") : (item.kind || "");
     const sourceLabel = item.source === "chat" ? t("queue-source-chat") : item.source === "channelpoints" ? t("queue-source-channelpoints") : (item.source || "");
     const badge = item.processing ? `<span class="queue-processing">${t("queue-processing")}</span>` : "";
+    // The in-flight item can't be removed (it's already playing); only waiting items get a delete button.
+    const remove = item.processing
+      ? ""
+      : `<button class="ghost-button queue-remove" type="button" data-action="queue-remove" data-id="${escapeHtml(item.id || "")}">${t("btn-queue-remove")}</button>`;
     return `
       <div class="user-card${item.processing ? " is-processing" : ""}">
         <div class="user-card-header">
           <strong>${escapeHtml(item.user || item.userLogin || "?")}</strong>
           <span class="queue-meta">${escapeHtml(kindLabel)} · ${escapeHtml(sourceLabel)} ${badge}</span>
           <span class="queue-time">${escapeHtml(item.triggeredAt ? new Date(item.triggeredAt).toLocaleTimeString() : "")}</span>
+          ${remove}
         </div>
       </div>
     `;
   }).join("");
 }
 
+function applyQueueState(result) {
+  renderQueueItems(result.items || []);
+  const pausedBox = $("#queue-paused");
+  if (pausedBox) pausedBox.checked = result.paused === true;
+}
+
 async function refreshQueue() {
   try {
-    const result = await getQueueItems();
-    renderQueueItems(result.items || []);
+    applyQueueState(await getQueueItems());
   } catch {
   }
 }
@@ -1605,6 +1622,42 @@ function startQueuePolling() {
   clearInterval(queuePollTimer);
   refreshQueue();
   queuePollTimer = setInterval(refreshQueue, 1500);
+}
+
+async function handleQueueListClick(event) {
+  const button = event.target.closest("[data-action='queue-remove']");
+  if (!button) return;
+  try {
+    await removeQueueItem(button.dataset.id);
+    await refreshQueue();
+  } catch (error) {
+    showNotice(error.message, "error");
+  }
+}
+
+async function handleQueuePauseToggle(event) {
+  try {
+    await setQueuePaused(event.target.checked);
+  } catch (error) {
+    showNotice(error.message, "error");
+    event.target.checked = !event.target.checked;
+  }
+}
+
+async function handleQueueClear() {
+  try {
+    await clearQueue();
+    await refreshQueue();
+    showNotice(t("notice-queue-cleared"));
+  } catch (error) {
+    showNotice(error.message, "error");
+  }
+}
+
+function bindQueue() {
+  $("#queue-list").addEventListener("click", handleQueueListClick);
+  $("#queue-paused").addEventListener("change", handleQueuePauseToggle);
+  $("#queue-clear").addEventListener("click", handleQueueClear);
 }
 
 function isQueueTabActive() {
@@ -1616,7 +1669,6 @@ function hydrateChatCommands() {
   const cc = settings.chatCommands;
   cc.pack ||= {};
   cc.collection ||= {};
-  $("#cc-enabled").checked = cc.enabled === true;
   $("#cc-pack-enabled").checked = cc.pack.enabled !== false;
   $("#cc-collection-enabled").checked = cc.collection.enabled !== false;
   $("#cc-pack-prefix").value = cc.pack.prefix || "!";
@@ -1637,7 +1689,7 @@ function readChatCommandsFromForm() {
   const cc = settings.chatCommands;
   cc.pack ||= {};
   cc.collection ||= {};
-  cc.enabled = $("#cc-enabled").checked;
+  cc.enabled = true;
   cc.pack.enabled = $("#cc-pack-enabled").checked;
   cc.collection.enabled = $("#cc-collection-enabled").checked;
   cc.pack.prefix = $("#cc-pack-prefix").value || "!";
@@ -2015,6 +2067,7 @@ async function init() {
     bindUsers();
     bindChatCommands();
     bindCommandUsage();
+    bindQueue();
     bindUpdateTab();
     bindLogTab();
     renderAll();
@@ -2040,7 +2093,7 @@ async function init() {
     }, 20000);
     connectEventStream({
       queue: (data) => {
-        if (isQueueTabActive()) renderQueueItems(data.items || []);
+        if (isQueueTabActive()) applyQueueState(data);
       }
     });
   } catch (error) {

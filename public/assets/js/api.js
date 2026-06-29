@@ -181,6 +181,32 @@ export async function getQueueItems() {
   return response.json();
 }
 
+export async function setQueuePaused(paused) {
+  const response = await fetch("/api/queue/pause", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ paused: !!paused })
+  });
+  if (!response.ok) throw new Error("Warteschlange konnte nicht umgeschaltet werden.");
+  return response.json();
+}
+
+export async function removeQueueItem(id) {
+  const response = await fetch("/api/queue/remove", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id })
+  });
+  if (!response.ok) throw new Error("Eintrag konnte nicht entfernt werden.");
+  return response.json();
+}
+
+export async function clearQueue() {
+  const response = await fetch("/api/queue/clear", { method: "POST" });
+  if (!response.ok) throw new Error("Warteschlange konnte nicht geleert werden.");
+  return response.json();
+}
+
 export async function completeQueueItem(eventId) {
   if (!eventId) return;
   try {
