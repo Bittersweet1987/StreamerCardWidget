@@ -10,12 +10,17 @@ das live in OBS aufgeht. Jeder Zuschauer baut so seine eigene Sammlung auf.
 
 - [Schnellstart](#schnellstart)
 - [Twitch verbinden](#twitch-verbinden)
+- [Bot-Account für Chat](#bot-account-für-chat)
 - [OBS einrichten](#obs-einrichten)
 - [Booster anlegen](#booster-anlegen)
 - [Karten anlegen](#karten-anlegen)
 - [Seltenheiten & Gewichtung](#seltenheiten--gewichtung)
 - [Kanalpunkte-Belohnungen](#kanalpunkte-belohnungen)
 - [Sammlungs-Showcase](#sammlungs-showcase)
+- [Chat-Befehle](#chat-befehle)
+- [Tauschsystem](#tauschsystem)
+- [Nutzung Befehle](#nutzung-befehle)
+- [Queue](#queue)
 - [Darstellung & Sounds](#darstellung--sounds)
 - [Nutzer verwalten](#nutzer-verwalten)
 - [Daten & Updates](#daten--updates)
@@ -41,8 +46,27 @@ das live in OBS aufgeht. Jeder Zuschauer baut so seine eigene Sammlung auf.
 2. Nach der Freigabe aktualisiert sich der Status automatisch (grün = verbunden).
 
 Es muss **keine eigene Twitch-Developer-App** angelegt werden. Die nötigen Berechtigungen
-(`channel:read:redemptions`, `channel:manage:redemptions`) werden automatisch angefragt.
+(`channel:read:redemptions`, `channel:manage:redemptions` sowie `user:read:chat`,
+`user:write:chat` für die Chat-Befehle) werden automatisch angefragt.
 Mit **Abmelden** wird das lokal gespeicherte Token gelöscht.
+
+> **Wenn du die App von einer älteren Version aktualisierst:** Melde den Hauptaccount einmal
+> **neu an**, damit er die zusätzlichen Chat-Rechte erhält – sonst funktionieren die Chat-Befehle
+> nicht (das Log weist darauf hin).
+
+---
+
+## Bot-Account für Chat
+
+Die Chat-Befehle (`!pack`, `!collection`, `!trade` …) liest und beantwortet die App über einen
+Twitch-Account. Standardmäßig wird dafür der **Hauptaccount** verwendet.
+
+Optional kannst du unter **Verbindung → Bot-Verbindung (Chat)** einen **separaten Bot-Account**
+anmelden, der dann statt des Hauptaccounts im Chat liest und schreibt. Ist kein Bot verbunden,
+greift automatisch der Hauptaccount als Fallback.
+
+> Der lesende Account (Haupt oder Bot) muss im Kanal mitlesen dürfen – ist es nicht der
+> Broadcaster selbst, sollte der Bot-Account **Moderator** im Kanal sein.
 
 ---
 
@@ -141,6 +165,68 @@ Beim Einlösen sliden nacheinander alle aktiven Booster mit den Karten dieses Zu
 
 ---
 
+## Chat-Befehle
+
+Zusätzlich zu den Kanalpunkten können Zuschauer Aktionen per **Chat-Befehl** auslösen
+(Tab **Chat Befehle**). Jeder Befehl hat ein eigenes **Präfix** und **Befehlswort** und einen
+eigenen **Aktiviert**-Schalter – es gibt keinen globalen Hauptschalter mehr.
+
+- **Pack-Befehl** (Standard `!pack`) – entspricht der Kartenpack-Belohnung. Einstellbar:
+  - **Max. Nutzungen pro Viewer** und ein **Auto-Reset** des Kontingents (Minuten / Stunden / Tage;
+    bei „Tage" immer um lokal 00:01, sommerzeit-korrekt).
+  - **Cooldown pro Viewer** (Sekunden, gilt strikt pro Nutzer).
+  - Anpassbare Chat-Nachrichten für **Einlösung**, **erreichtes Limit** und **aktiven Cooldown**.
+- **Sammlung-Befehl** (Standard `!collection`) – entspricht dem Sammlungs-Showcase.
+  Ohne Limit, ohne Cooldown, ohne Zählung.
+
+Alle Nachrichten lassen sich frei bearbeiten. Die verfügbaren **Variablen** (z. B. `@userName`,
+`[Uhrzeit]`, `[Restzeit]`) stehen als anklickbare Chips über dem jeweiligen Textfeld und werden
+per Klick eingefügt.
+
+---
+
+## Tauschsystem
+
+Zuschauer können untereinander Karten tauschen (drei Befehle im Tab **Chat Befehle**, jeweils
+einzeln aktivierbar mit eigenem Präfix/Befehlswort):
+
+1. **`!trade [Username] [Kartenname]`** – User A bietet User B eine Karte an (über den
+   **Kartennamen**, nicht die ID). Geprüft wird, ob der Partner existiert, ob der Kartenname
+   stimmt (bei Tippfehlern kommt ein **„Meintest du …?"**-Vorschlag) und ob der Anbieter die
+   Karte besitzt. Eigene Einstellungen: **Cooldown** pro Viewer, **Limit** pro Reset
+   (Minuten/Stunden/Tage) und wie lange eine Anfrage **offen bleibt** (Standard 120 s).
+2. **`!tradeyes [Kartenname]`** – User B nimmt an und nennt die Karte, die er im Gegenzug gibt.
+   Nach Prüfung des Besitzes wird der Tausch vollzogen: die Kartenbestände beider werden
+   angepasst, beiden wird eine Tauschanfrage abgezogen und der Cooldown gesetzt.
+3. **`!tradeno`** – User B lehnt ab. Dem Anfragenden wird eine Anfrage abgezogen und der
+   Cooldown gesetzt; B bleibt unbelastet.
+
+Antwortet B nicht rechtzeitig, läuft die Anfrage ab (kein Kontingent verbraucht, aber Cooldown).
+Es ist immer nur **ein Tausch gleichzeitig** möglich – weitere `!trade` erhalten einen Hinweis.
+Sämtliche Chat-Ausgaben (Angebot, Erfolg, Ablehnung, Timeout, Cooldown, Limit, „läuft bereits",
+Karte/Nutzer nicht gefunden …) sind anpassbar, Variablen wieder per Klick einfügbar.
+
+---
+
+## Nutzung Befehle
+
+Der Tab **Nutzung Befehle** listet pro Zuschauer, wie oft er **`!pack`** und **`!trade`** genutzt
+hat, samt **verbleibender Nutzungen** bis zum nächsten Reset. Oben stehen die nächsten Pack- und
+Tausch-Resetzeiten. Du kannst nach Nutzern suchen, einzelne Nutzer oder **alle** zurücksetzen.
+
+---
+
+## Queue
+
+Alle ausgelösten Aktionen – Kanalpunkt-Einlösungen **und** Chat-Befehle – laufen über eine
+gemeinsame **Warteschlange** (Tab **Queue**) und werden streng nacheinander abgearbeitet, mit
+kurzer Pause zwischen den Einträgen. So überlagern sich auch bei vielen gleichzeitigen Auslösern
+keine Animationen. Der Tab zeigt live alle offenen Einträge (wer, was, wann) und das gerade
+laufende. Du kannst die **Queue pausieren** (sammelt dann nur), **einzelne Einträge entfernen**
+oder **alle löschen**.
+
+---
+
 ## Darstellung & Sounds
 
 Im Tab **Einstellungen**:
@@ -167,11 +253,15 @@ Sammlungen einem Booster neu zuordnen.
 
 Alles liegt updatesicher im Ordner `data\`:
 
-- `settings.json` – Einstellungen (Look, Timing, Showcase)
+- `settings.json` – Einstellungen (Look, Timing, Showcase, Chat-Befehle)
 - `cards.json` – deine Karten
 - `boosters.json` – deine Booster
 - `collections.json` – Sammlungen je Zuschauer
-- `twitch.json` / `obs.json` – Zugangsdaten (getrennt gespeichert)
+- `command-usage.json` – Nutzungszähler & Cooldowns der Chat-Befehle (Pack & Tausch)
+- `twitch.json` / `twitch-bot.json` / `obs.json` – Zugangsdaten (getrennt gespeichert)
+
+> Der Ereignis-Log (Tab **Log**) ist nur eine Live-Diagnose und wird bei **jedem App-Start
+> geleert**.
 
 Updates ersetzen nur `public\` und die exe – `data\` bleibt unberührt, neue Seltenheiten oder
 Funktionen überschreiben angelegte Karten/Booster also nie. Updates lassen sich im Tab **Update**
