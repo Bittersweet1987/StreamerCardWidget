@@ -192,6 +192,38 @@ export function normalizeSettings(settings) {
   settings.chatCommands.collection.prefix ||= "!";
   settings.chatCommands.collection.command ||= "collection";
 
+  // Trade system: !trade (offer), !tradeyes (accept), !tradeno (decline).
+  settings.chatCommands.trade ||= {};
+  settings.chatCommands.trade.enabled = settings.chatCommands.trade.enabled !== false;
+  settings.chatCommands.trade.prefix ||= "!";
+  settings.chatCommands.trade.command ||= "trade";
+  settings.chatCommands.trade.cooldownSeconds = Number(settings.chatCommands.trade.cooldownSeconds) >= 0 ? Number(settings.chatCommands.trade.cooldownSeconds) : 60;
+  settings.chatCommands.trade.maxUses = Number(settings.chatCommands.trade.maxUses) >= 0 ? Number(settings.chatCommands.trade.maxUses) : 5;
+  settings.chatCommands.trade.resetUnit = ["minutes", "hours", "days"].includes(settings.chatCommands.trade.resetUnit) ? settings.chatCommands.trade.resetUnit : "hours";
+  settings.chatCommands.trade.resetValue = Number(settings.chatCommands.trade.resetValue) > 0 ? Number(settings.chatCommands.trade.resetValue) : 8;
+  settings.chatCommands.trade.requestTimeoutSeconds = Number(settings.chatCommands.trade.requestTimeoutSeconds) > 0 ? Number(settings.chatCommands.trade.requestTimeoutSeconds) : 120;
+  settings.chatCommands.trade.cardNotFoundMessage ||= "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
+  settings.chatCommands.trade.offerNotOwnedMessage ||= "@userName, du besitzt die Karte [Kartenname] nicht und kannst sie daher nicht anbieten.";
+  settings.chatCommands.trade.userNotFoundMessage ||= "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
+  settings.chatCommands.trade.offerMessage ||= "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Möchtest du diesen annehmen?";
+  settings.chatCommands.trade.timeoutMessage ||= "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Tauschanfrage beendet.";
+  settings.chatCommands.trade.cooldownMessage ||= "@userName, leider musst du mit der Tauschanfrage noch bis [Uhrzeit] warten, da der Cooldown von [Cooldownwert] [Einheit] noch aktiv ist.";
+  settings.chatCommands.trade.limitMessage ||= "@userName, leider sind deine Tauschanfragen aktuell aufgebraucht. Bitte warte bis [Uhrzeit] Uhr.";
+  settings.chatCommands.trade.busyMessage ||= "@userName, es wird bereits gerade getauscht. Bitte warte bis dieser Tausch abgeschlossen wurde.";
+
+  settings.chatCommands.tradeyes ||= {};
+  settings.chatCommands.tradeyes.enabled = settings.chatCommands.tradeyes.enabled !== false;
+  settings.chatCommands.tradeyes.prefix ||= "!";
+  settings.chatCommands.tradeyes.command ||= "tradeyes";
+  settings.chatCommands.tradeyes.notOwnedMessage ||= "@userNameB, du besitzt diese Karte leider nicht. Bitte wähle eine andere.";
+  settings.chatCommands.tradeyes.successMessage ||= "@userNameA tauschte seine Karte [KarteA] aus [BoosterA] erfolgreich mit @userNameB gegen Karte [KarteB] aus [BoosterB]. Damit hat @userNameA nun [AnzahlA] Karten [KarteB] und @userNameB [AnzahlB] Karten [KarteA].";
+
+  settings.chatCommands.tradeno ||= {};
+  settings.chatCommands.tradeno.enabled = settings.chatCommands.tradeno.enabled !== false;
+  settings.chatCommands.tradeno.prefix ||= "!";
+  settings.chatCommands.tradeno.command ||= "tradeno";
+  settings.chatCommands.tradeno.declineMessage ||= "@userNameA, leider hat @userNameB deine Tauschanfrage abgelehnt, damit bleiben dir bis zum [Uhrzeit] noch [Anzahl] Tauschanfragen.";
+
   if (!settings.boosters.length) {
     const legacy = settings.booster || {};
     settings.boosters = [{

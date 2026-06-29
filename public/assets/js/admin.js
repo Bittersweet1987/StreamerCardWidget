@@ -86,6 +86,27 @@ const I18N = {
   "cc-group-command": { de: "Befehl", en: "Command" },
   "cc-group-limits": { de: "Limit & Cooldown", en: "Limit & cooldown" },
   "cc-group-messages": { de: "Chat-Nachrichten", en: "Chat messages" },
+  "cc-trade-eyebrow": { de: "Tausch", en: "Trade" },
+  "cc-trade-title": { de: "Tausch-Befehl", en: "Trade command" },
+  "cc-trade-usage": { de: "Nutzung im Chat: <code>!trade [Username] [Kartenname]</code>", en: "Chat usage: <code>!trade [username] [card name]</code>" },
+  "label-cc-trade-timeout": { de: "Anfrage offen für (Sek.)", en: "Request open for (sec.)" },
+  "label-cc-trade-offer": { de: "Angebot an den Tauschpartner", en: "Offer to the trade partner" },
+  "label-cc-trade-cardnotfound": { de: "Karte nicht gefunden (Vorschlag)", en: "Card not found (suggestion)" },
+  "label-cc-trade-offernotowned": { de: "Anbieter besitzt Karte nicht", en: "Offerer doesn't own the card" },
+  "label-cc-trade-usernotfound": { de: "Tauschpartner nicht gefunden", en: "Trade partner not found" },
+  "label-cc-trade-cooldown": { de: "Nachricht bei aktivem Cooldown", en: "Message when cooldown active" },
+  "label-cc-trade-limit": { de: "Nachricht bei erreichtem Limit", en: "Message when limit reached" },
+  "label-cc-trade-timeoutmsg": { de: "Nachricht bei Zeitüberschreitung", en: "Message on timeout" },
+  "label-cc-trade-busy": { de: "Nachricht bei laufendem Tausch", en: "Message while a trade is running" },
+  "cc-tradeyes-eyebrow": { de: "Tausch annehmen", en: "Accept trade" },
+  "cc-tradeyes-title": { de: "Tausch-Annahme-Befehl", en: "Trade accept command" },
+  "cc-tradeyes-usage": { de: "Nutzung im Chat: <code>!tradeyes [Kartenname]</code>", en: "Chat usage: <code>!tradeyes [card name]</code>" },
+  "label-cc-tradeyes-notowned": { de: "Partner besitzt Karte nicht", en: "Partner doesn't own the card" },
+  "label-cc-tradeyes-success": { de: "Nachricht bei erfolgreichem Tausch", en: "Message on successful trade" },
+  "cc-tradeno-eyebrow": { de: "Tausch ablehnen", en: "Decline trade" },
+  "cc-tradeno-title": { de: "Tausch-Ablehnungs-Befehl", en: "Trade decline command" },
+  "cc-tradeno-usage": { de: "Nutzung im Chat: <code>!tradeno</code>", en: "Chat usage: <code>!tradeno</code>" },
+  "label-cc-tradeno-decline": { de: "Nachricht bei Ablehnung", en: "Message on decline" },
   "cc-pack-eyebrow": { de: "Kartenpack", en: "Card pack" },
   "cc-pack-title": { de: "Pack-Befehl", en: "Pack command" },
   "cc-collection-eyebrow": { de: "Sammlung", en: "Collection" },
@@ -124,6 +145,7 @@ const I18N = {
   "notice-queue-cleared": { de: "Warteschlange geleert.", en: "Queue cleared." },
   "queue-kind-draw": { de: "Kartenpack", en: "Card pack" },
   "queue-kind-showcollection": { de: "Sammlung zeigen", en: "Show collection" },
+  "queue-kind-trade": { de: "Tausch", en: "Trade" },
   "queue-source-chat": { de: "Chat", en: "Chat" },
   "queue-source-channelpoints": { de: "Kanalpunkte", en: "Channel points" },
   "queue-processing": { de: "wird verarbeitet", en: "processing" },
@@ -1585,7 +1607,7 @@ function renderQueueItems(items) {
   const hint = $("#queue-empty-hint");
   if (hint) hint.hidden = items.length > 0;
   list.innerHTML = items.map((item) => {
-    const kindLabel = item.kind === "draw" ? t("queue-kind-draw") : item.kind === "showcollection" ? t("queue-kind-showcollection") : (item.kind || "");
+    const kindLabel = item.kind === "draw" ? t("queue-kind-draw") : item.kind === "showcollection" ? t("queue-kind-showcollection") : item.kind === "trade" ? t("queue-kind-trade") : (item.kind || "");
     const sourceLabel = item.source === "chat" ? t("queue-source-chat") : item.source === "channelpoints" ? t("queue-source-channelpoints") : (item.source || "");
     const badge = item.processing ? `<span class="queue-processing">${t("queue-processing")}</span>` : "";
     // The in-flight item can't be removed (it's already playing); only waiting items get a delete button.
@@ -1682,6 +1704,37 @@ function hydrateChatCommands() {
   $("#cc-pack-cooldown-message").value = cc.pack.cooldownMessage || "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
   $("#cc-collection-prefix").value = cc.collection.prefix || "!";
   $("#cc-collection-command").value = cc.collection.command || "collection";
+
+  const trade = cc.trade || {};
+  $("#cc-trade-enabled").checked = trade.enabled !== false;
+  $("#cc-trade-prefix").value = trade.prefix || "!";
+  $("#cc-trade-command").value = trade.command || "trade";
+  $("#cc-trade-maxuses").value = trade.maxUses ?? 5;
+  $("#cc-trade-cooldown").value = trade.cooldownSeconds ?? 60;
+  $("#cc-trade-reset-value").value = trade.resetValue ?? 8;
+  $("#cc-trade-reset-unit").value = trade.resetUnit || "hours";
+  $("#cc-trade-timeout").value = trade.requestTimeoutSeconds ?? 120;
+  $("#cc-trade-offer-message").value = trade.offerMessage || "";
+  $("#cc-trade-cardnotfound-message").value = trade.cardNotFoundMessage || "";
+  $("#cc-trade-offernotowned-message").value = trade.offerNotOwnedMessage || "";
+  $("#cc-trade-usernotfound-message").value = trade.userNotFoundMessage || "";
+  $("#cc-trade-cooldown-message").value = trade.cooldownMessage || "";
+  $("#cc-trade-limit-message").value = trade.limitMessage || "";
+  $("#cc-trade-timeout-message").value = trade.timeoutMessage || "";
+  $("#cc-trade-busy-message").value = trade.busyMessage || "";
+
+  const tradeyes = cc.tradeyes || {};
+  $("#cc-tradeyes-enabled").checked = tradeyes.enabled !== false;
+  $("#cc-tradeyes-prefix").value = tradeyes.prefix || "!";
+  $("#cc-tradeyes-command").value = tradeyes.command || "tradeyes";
+  $("#cc-tradeyes-notowned-message").value = tradeyes.notOwnedMessage || "";
+  $("#cc-tradeyes-success-message").value = tradeyes.successMessage || "";
+
+  const tradeno = cc.tradeno || {};
+  $("#cc-tradeno-enabled").checked = tradeno.enabled !== false;
+  $("#cc-tradeno-prefix").value = tradeno.prefix || "!";
+  $("#cc-tradeno-command").value = tradeno.command || "tradeno";
+  $("#cc-tradeno-decline-message").value = tradeno.declineMessage || "";
 }
 
 function readChatCommandsFromForm() {
@@ -1703,6 +1756,37 @@ function readChatCommandsFromForm() {
   cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
   cc.collection.prefix = $("#cc-collection-prefix").value || "!";
   cc.collection.command = $("#cc-collection-command").value.trim() || "collection";
+
+  cc.trade ||= {};
+  cc.trade.enabled = $("#cc-trade-enabled").checked;
+  cc.trade.prefix = $("#cc-trade-prefix").value || "!";
+  cc.trade.command = $("#cc-trade-command").value.trim() || "trade";
+  cc.trade.maxUses = Math.max(0, Math.round(Number($("#cc-trade-maxuses").value) || 0));
+  cc.trade.cooldownSeconds = Math.max(0, Math.round(Number($("#cc-trade-cooldown").value) || 0));
+  cc.trade.resetValue = Math.max(1, Math.round(Number($("#cc-trade-reset-value").value) || 1));
+  cc.trade.resetUnit = $("#cc-trade-reset-unit").value || "hours";
+  cc.trade.requestTimeoutSeconds = Math.max(10, Math.round(Number($("#cc-trade-timeout").value) || 120));
+  cc.trade.offerMessage = $("#cc-trade-offer-message").value;
+  cc.trade.cardNotFoundMessage = $("#cc-trade-cardnotfound-message").value;
+  cc.trade.offerNotOwnedMessage = $("#cc-trade-offernotowned-message").value;
+  cc.trade.userNotFoundMessage = $("#cc-trade-usernotfound-message").value;
+  cc.trade.cooldownMessage = $("#cc-trade-cooldown-message").value;
+  cc.trade.limitMessage = $("#cc-trade-limit-message").value;
+  cc.trade.timeoutMessage = $("#cc-trade-timeout-message").value;
+  cc.trade.busyMessage = $("#cc-trade-busy-message").value;
+
+  cc.tradeyes ||= {};
+  cc.tradeyes.enabled = $("#cc-tradeyes-enabled").checked;
+  cc.tradeyes.prefix = $("#cc-tradeyes-prefix").value || "!";
+  cc.tradeyes.command = $("#cc-tradeyes-command").value.trim() || "tradeyes";
+  cc.tradeyes.notOwnedMessage = $("#cc-tradeyes-notowned-message").value;
+  cc.tradeyes.successMessage = $("#cc-tradeyes-success-message").value;
+
+  cc.tradeno ||= {};
+  cc.tradeno.enabled = $("#cc-tradeno-enabled").checked;
+  cc.tradeno.prefix = $("#cc-tradeno-prefix").value || "!";
+  cc.tradeno.command = $("#cc-tradeno-command").value.trim() || "tradeno";
+  cc.tradeno.declineMessage = $("#cc-tradeno-decline-message").value;
 }
 
 function insertVariableIntoField(fieldId, variable) {
@@ -1717,23 +1801,17 @@ function insertVariableIntoField(fieldId, variable) {
 }
 
 function bindChatCommands() {
-  $("#cc-pack-success-vars").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-insert]");
+  const panel = document.querySelector('[data-panel="chatcommands"]');
+  // One delegated handler for every variable chip: insert into the textarea named by the
+  // chip container's data-target.
+  panel.addEventListener("click", (event) => {
+    const button = event.target.closest(".var-chips [data-insert]");
     if (!button) return;
-    insertVariableIntoField("cc-pack-success-message", button.dataset.insert);
+    const target = button.closest(".var-chips")?.dataset.target;
+    if (target) insertVariableIntoField(target, button.dataset.insert);
   });
-  $("#cc-pack-limit-vars").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-insert]");
-    if (!button) return;
-    insertVariableIntoField("cc-pack-limit-message", button.dataset.insert);
-  });
-  $("#cc-pack-cooldown-vars").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-insert]");
-    if (!button) return;
-    insertVariableIntoField("cc-pack-cooldown-message", button.dataset.insert);
-  });
-  document.querySelector('[data-panel="chatcommands"]').addEventListener("input", readChatCommandsFromForm);
-  document.querySelector('[data-panel="chatcommands"]').addEventListener("change", readChatCommandsFromForm);
+  panel.addEventListener("input", readChatCommandsFromForm);
+  panel.addEventListener("change", readChatCommandsFromForm);
 }
 
 function hydrateTrigger() {

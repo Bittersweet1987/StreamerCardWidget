@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "1.4.22";
+        public const string Version = "1.4.23";
         public const string ReleaseDate = "2026-06-28";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -213,6 +213,7 @@ namespace CardPackWidgetApp
         private readonly JavaScriptSerializer json;
         private readonly List<SseClient> clients;
         private readonly object clientsLock;
+        private readonly object collectionWriteLock = new object();
         private readonly TwitchBridge twitchBridge;
         private readonly EventLog eventLog;
         private TcpListener listener;
@@ -1158,6 +1159,199 @@ namespace CardPackWidgetApp
             File.WriteAllText(CollectionsPath(), json.Serialize(collections), Encoding.UTF8);
         }
 
+        // ---- Trade support: card/booster/collection access used by the chat trade commands. ----
+
+        // Resolves a free-text card name to a concrete card + its booster. On a miss, returns the
+        // closest title as a suggestion so the chat command can answer "did you mean ...?".
+        internal Dictionary<string, object> ResolveCardByName(string name)
+        {
+            var result = new Dictionary<string, object>
+            {
+                { "found", false }, { "suggestion", "" }, { "cardId", "" }, { "cardTitle", "" }, { "boosterId", "" }, { "boosterTitle", "" }
+            };
+            if (String.IsNullOrWhiteSpace(name)) return result;
+            Dictionary<string, object> settings = ReadSettingsObject();
+            object[] cards = SettingsCards(settings);
+            object[] boosters = settings.ContainsKey("boosters") && settings["boosters"] is object[] ? (object[])settings["boosters"] : new object[0];
+
+            var cardBooster = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
+            foreach (object bo in boosters)
+            {
+                Dictionary<string, object> booster = bo as Dictionary<string, object>;
+                if (booster == null) continue;
+                object idsObj;
+                if (!booster.TryGetValue("cardIds", out idsObj) || !(idsObj is object[])) continue;
+                foreach (object cid in (object[])idsObj)
+                {
+                    string cidStr = Convert.ToString(cid);
+                    if (!cardBooster.ContainsKey(cidStr)) cardBooster[cidStr] = booster;
+                }
+            }
+
+            string target = name.Trim();
+            string bestTitle = "";
+            int bestDistance = Int32.MaxValue;
+            foreach (object co in cards)
+            {
+                Dictionary<string, object> card = co as Dictionary<string, object>;
+                if (card == null) continue;
+                string title = GetString(card, "title", "");
+                if (String.IsNullOrWhiteSpace(title)) continue;
+                if (String.Equals(title.Trim(), target, StringComparison.OrdinalIgnoreCase))
+                {
+                    string cardId = GetString(card, "id", "");
+                    result["found"] = true;
+                    result["cardId"] = cardId;
+                    result["cardTitle"] = title;
+                    Dictionary<string, object> booster;
+                    if (cardBooster.TryGetValue(cardId, out booster))
+                    {
+                        result["boosterId"] = GetString(booster, "id", "");
+                        result["boosterTitle"] = GetString(booster, "title", "");
+                    }
+                    return result;
+                }
+                int d = LevenshteinDistance(title.Trim().ToLowerInvariant(), target.ToLowerInvariant());
+                if (d < bestDistance) { bestDistance = d; bestTitle = title; }
+            }
+            result["suggestion"] = bestTitle;
+            return result;
+        }
+
+        internal bool UserExistsInCollections(string login)
+        {
+            string key = NormalizeUser(login).ToLowerInvariant();
+            Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+            foreach (object value in collections.Values)
+            {
+                Dictionary<string, object> booster = value as Dictionary<string, object>;
+                if (booster == null) continue;
+                object usersObj;
+                if (booster.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>)
+                {
+                    if (((Dictionary<string, object>)usersObj).ContainsKey(key)) return true;
+                }
+            }
+            return false;
+        }
+
+        internal int GetCardCount(string login, string boosterId, string cardId)
+        {
+            Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+            Dictionary<string, object> cards = FindUserCards(collections, boosterId, login);
+            return cards == null ? 0 : CardCount(cards, cardId);
+        }
+
+        // Performs the full two-sided swap atomically and persists once. A gives cardA (boosterA)
+        // and receives cardB (boosterB); B gives cardB and receives cardA. Returns the new counts
+        // (A's cardB, B's cardA) or null if either side no longer owns the card being given.
+        internal Dictionary<string, object> ApplyTradeSwap(string loginA, string displayA, string boosterA, string cardA,
+            string loginB, string displayB, string boosterB, string cardB)
+        {
+            lock (collectionWriteLock)
+            {
+                Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+                Dictionary<string, object> aGives = EnsureUserCards(collections, boosterA, loginA, displayA);
+                if (CardCount(aGives, cardA) < 1) return null;
+                Dictionary<string, object> bGives = EnsureUserCards(collections, boosterB, loginB, displayB);
+                if (CardCount(bGives, cardB) < 1) return null;
+                Dictionary<string, object> aGets = EnsureUserCards(collections, boosterB, loginA, displayA);
+                Dictionary<string, object> bGets = EnsureUserCards(collections, boosterA, loginB, displayB);
+
+                SetCount(aGives, cardA, CardCount(aGives, cardA) - 1);
+                int aNewCardB = CardCount(aGets, cardB) + 1; SetCount(aGets, cardB, aNewCardB);
+                SetCount(bGives, cardB, CardCount(bGives, cardB) - 1);
+                int bNewCardA = CardCount(bGets, cardA) + 1; SetCount(bGets, cardA, bNewCardA);
+
+                File.WriteAllText(CollectionsPath(), json.Serialize(collections), Encoding.UTF8);
+                Broadcast("collections", "{\"updated\":true}");
+                return new Dictionary<string, object> { { "aNewCardB", aNewCardB }, { "bNewCardA", bNewCardA } };
+            }
+        }
+
+        private static object[] SettingsCards(Dictionary<string, object> settings)
+        {
+            object deckObj;
+            if (settings.TryGetValue("deck", out deckObj) && deckObj is Dictionary<string, object>)
+            {
+                object cardsObj;
+                if (((Dictionary<string, object>)deckObj).TryGetValue("cards", out cardsObj) && cardsObj is object[]) return (object[])cardsObj;
+            }
+            return new object[0];
+        }
+
+        private static Dictionary<string, object> FindUserCards(Dictionary<string, object> collections, string boosterId, string login)
+        {
+            string key = NormalizeUser(login).ToLowerInvariant();
+            object bObj;
+            if (!collections.TryGetValue(boosterId, out bObj) || !(bObj is Dictionary<string, object>)) return null;
+            object usersObj;
+            if (!((Dictionary<string, object>)bObj).TryGetValue("users", out usersObj) || !(usersObj is Dictionary<string, object>)) return null;
+            object uObj;
+            if (!((Dictionary<string, object>)usersObj).TryGetValue(key, out uObj) || !(uObj is Dictionary<string, object>)) return null;
+            object cObj;
+            if (!((Dictionary<string, object>)uObj).TryGetValue("cards", out cObj) || !(cObj is Dictionary<string, object>)) return null;
+            return (Dictionary<string, object>)cObj;
+        }
+
+        private static Dictionary<string, object> EnsureUserCards(Dictionary<string, object> collections, string boosterId, string login, string displayName)
+        {
+            object bObj;
+            Dictionary<string, object> booster;
+            if (collections.TryGetValue(boosterId, out bObj) && bObj is Dictionary<string, object>) booster = (Dictionary<string, object>)bObj;
+            else { booster = new Dictionary<string, object> { { "version", 1 }, { "boosterId", boosterId }, { "users", new Dictionary<string, object>() } }; collections[boosterId] = booster; }
+            object usersObj;
+            Dictionary<string, object> users;
+            if (booster.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>) users = (Dictionary<string, object>)usersObj;
+            else { users = new Dictionary<string, object>(); booster["users"] = users; }
+            string key = NormalizeUser(login).ToLowerInvariant();
+            object uObj;
+            Dictionary<string, object> userData;
+            if (users.TryGetValue(key, out uObj) && uObj is Dictionary<string, object>) userData = (Dictionary<string, object>)uObj;
+            else { userData = new Dictionary<string, object> { { "displayName", displayName }, { "cards", new Dictionary<string, object>() } }; users[key] = userData; }
+            if (!String.IsNullOrWhiteSpace(displayName)) userData["displayName"] = displayName;
+            object cObj;
+            Dictionary<string, object> cards;
+            if (userData.TryGetValue("cards", out cObj) && cObj is Dictionary<string, object>) cards = (Dictionary<string, object>)cObj;
+            else { cards = new Dictionary<string, object>(); userData["cards"] = cards; }
+            return cards;
+        }
+
+        private static int CardCount(Dictionary<string, object> cards, string cardId)
+        {
+            object o;
+            if (!cards.TryGetValue(cardId, out o)) return 0;
+            int v;
+            return Int32.TryParse(Convert.ToString(o), out v) ? v : 0;
+        }
+
+        private static void SetCount(Dictionary<string, object> cards, string cardId, int value)
+        {
+            if (value <= 0) cards.Remove(cardId);
+            else cards[cardId] = value;
+        }
+
+        private static int LevenshteinDistance(string a, string b)
+        {
+            if (a == b) return 0;
+            if (a.Length == 0) return b.Length;
+            if (b.Length == 0) return a.Length;
+            int[] prev = new int[b.Length + 1];
+            int[] cur = new int[b.Length + 1];
+            for (int j = 0; j <= b.Length; j++) prev[j] = j;
+            for (int i = 1; i <= a.Length; i++)
+            {
+                cur[0] = i;
+                for (int j = 1; j <= b.Length; j++)
+                {
+                    int cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                    cur[j] = Math.Min(Math.Min(cur[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+                }
+                int[] tmp = prev; prev = cur; cur = tmp;
+            }
+            return prev[b.Length];
+        }
+
         private Dictionary<string, object> ParseObject(string text)
         {
             if (String.IsNullOrWhiteSpace(text)) return new Dictionary<string, object>();
@@ -1439,9 +1633,25 @@ namespace CardPackWidgetApp
         private System.Threading.Timer resetTimer;
         private volatile bool resetTimerStarted;
 
+        private readonly object tradeLock = new object();
+        private Dictionary<string, object> activeTrade;
+        private System.Threading.Timer tradeTimeoutTimer;
+
         private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
         private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
         private const string DefaultSuccessMessage = "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.";
+
+        private const string DefaultTradeCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
+        private const string DefaultTradeOfferNotOwned = "@userName, du besitzt die Karte [Kartenname] nicht und kannst sie daher nicht anbieten.";
+        private const string DefaultTradeUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
+        private const string DefaultTradeOffer = "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Möchtest du diesen annehmen?";
+        private const string DefaultTradeTimeout = "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Tauschanfrage beendet.";
+        private const string DefaultTradeCooldown = "@userName, leider musst du mit der Tauschanfrage noch bis [Uhrzeit] warten, da der Cooldown von [Cooldownwert] [Einheit] noch aktiv ist.";
+        private const string DefaultTradeLimit = "@userName, leider sind deine Tauschanfragen aktuell aufgebraucht. Bitte warte bis [Uhrzeit] Uhr.";
+        private const string DefaultTradeBusy = "@userName, es wird bereits gerade getauscht. Bitte warte bis dieser Tausch abgeschlossen wurde.";
+        private const string DefaultTradeDecline = "@userNameA, leider hat @userNameB deine Tauschanfrage abgelehnt, damit bleiben dir bis zum [Uhrzeit] noch [Anzahl] Tauschanfragen.";
+        private const string DefaultTradeNotOwned = "@userNameB, du besitzt diese Karte leider nicht. Bitte wähle eine andere.";
+        private const string DefaultTradeSuccess = "@userNameA tauschte seine Karte [KarteA] aus [BoosterA] erfolgreich mit @userNameB gegen Karte [KarteB] aus [BoosterB]. Damit hat @userNameA nun [AnzahlA] Karten [KarteB] und @userNameB [AnzahlB] Karten [KarteA].";
 
         public TwitchBridge(CardPackServer server)
         {
@@ -1912,7 +2122,18 @@ namespace CardPackWidgetApp
             lock (queueLock)
             {
                 var list = new List<object>();
-                // The in-flight item is shown first (with a "processing" flag) so the queue tab
+                // An open trade request runs alongside the draw queue (it does not block draws) but
+                // is shown first as a processing item until it is accepted, declined or times out.
+                Dictionary<string, object> trade = activeTrade;
+                if (trade != null)
+                {
+                    var tcopy = new Dictionary<string, object>(trade);
+                    tcopy["processing"] = true;
+                    tcopy["user"] = GetString(trade, "fromUser", "");
+                    tcopy["userLogin"] = GetString(trade, "fromLogin", "");
+                    list.Add(tcopy);
+                }
+                // The in-flight item is shown next (with a "processing" flag) so the queue tab
                 // reflects the event currently being handled, not just those still waiting.
                 if (currentQueueItem != null)
                 {
@@ -2388,6 +2609,9 @@ namespace CardPackWidgetApp
 
             Dictionary<string, object> pack = Obj(cc, "pack");
             Dictionary<string, object> collection = Obj(cc, "collection");
+            Dictionary<string, object> trade = Obj(cc, "trade");
+            Dictionary<string, object> tradeYes = Obj(cc, "tradeyes");
+            Dictionary<string, object> tradeNo = Obj(cc, "tradeno");
 
             if (MatchesCommand(text, pack))
             {
@@ -2398,6 +2622,22 @@ namespace CardPackWidgetApp
             {
                 // No usage limit, no cooldown, no tracking for the collection command.
                 if (GetBool(collection, "enabled", true)) Enqueue("showcollection", login, displayName, "chat");
+                return;
+            }
+            if (MatchesCommand(text, tradeYes))
+            {
+                if (GetBool(tradeYes, "enabled", true)) HandleTradeYes(login, displayName, ArgsAfterCommand(text, tradeYes), cc);
+                return;
+            }
+            if (MatchesCommand(text, tradeNo))
+            {
+                if (GetBool(tradeNo, "enabled", true)) HandleTradeNo(login, displayName, cc);
+                return;
+            }
+            if (MatchesCommand(text, trade))
+            {
+                if (GetBool(trade, "enabled", true)) HandleTradeCommand(login, displayName, ArgsAfterCommand(text, trade), trade);
+                return;
             }
         }
 
@@ -2470,6 +2710,329 @@ namespace CardPackWidgetApp
             }
 
             Enqueue("draw", login, displayName, "chat");
+        }
+
+        // ---- Trade system: !trade / !tradeyes / !tradeno ----
+
+        private static string ArgsAfterCommand(string text, Dictionary<string, object> cmd)
+        {
+            string full = GetString(cmd, "prefix", "") + GetString(cmd, "command", "");
+            if (text.Length <= full.Length) return "";
+            return text.Substring(full.Length).Trim();
+        }
+
+        private void HandleTradeCommand(string login, string displayName, string args, Dictionary<string, object> tradeCfg)
+        {
+            // "@partner cardName with spaces" -> partner + free-text card name.
+            string rest = args.Trim();
+            if (rest.Length == 0) return;
+            int sp = rest.IndexOf(' ');
+            if (sp < 0) return; // need both a partner and a card name
+            string partnerRaw = rest.Substring(0, sp).Trim().TrimStart('@');
+            string cardName = rest.Substring(sp + 1).Trim();
+            if (partnerRaw.Length == 0 || cardName.Length == 0) return;
+            string partnerLogin = partnerRaw.ToLowerInvariant();
+
+            int cooldownSeconds = Math.Max(0, GetInt(tradeCfg, "cooldownSeconds", 0));
+            int maxUses = Math.Max(0, GetInt(tradeCfg, "maxUses", 0));
+            int timeoutSeconds = Math.Max(10, GetInt(tradeCfg, "requestTimeoutSeconds", 120));
+            DateTime now = DateTime.UtcNow;
+
+            lock (tradeLock)
+            {
+                if (activeTrade != null)
+                {
+                    SendChatMessageSafe(GetString(tradeCfg, "busyMessage", DefaultTradeBusy).Replace("@userName", "@" + displayName));
+                    return;
+                }
+
+                lock (usageLock)
+                {
+                    EnsureUsageLoaded();
+                    ApplyTradeResetIfDue(tradeCfg, now);
+                    Dictionary<string, object> entry = GetOrCreateTradeEntry(login, displayName);
+
+                    DateTime cooldownUntil = ParseDate(GetString(entry, "cooldownUntil", ""));
+                    if (cooldownSeconds > 0 && cooldownUntil > now.AddSeconds(cooldownSeconds)) { cooldownUntil = now.AddSeconds(cooldownSeconds); entry["cooldownUntil"] = cooldownUntil.ToString("o"); }
+                    if (cooldownSeconds > 0 && cooldownUntil > now)
+                    {
+                        string msg = GetString(tradeCfg, "cooldownMessage", DefaultTradeCooldown)
+                            .Replace("@userName", "@" + displayName)
+                            .Replace("[Uhrzeit]", FormatLocalTime(cooldownUntil))
+                            .Replace("[Cooldownwert]", cooldownSeconds.ToString())
+                            .Replace("[Einheit]", "Sekunden");
+                        SendChatMessageSafe(msg);
+                        return;
+                    }
+
+                    if (maxUses > 0 && GetInt(entry, "count", 0) >= maxUses)
+                    {
+                        string msg = GetString(tradeCfg, "limitMessage", DefaultTradeLimit)
+                            .Replace("@userName", "@" + displayName)
+                            .Replace("[Uhrzeit]", FormatLocalTime(TradeNextReset()));
+                        SendChatMessageSafe(msg);
+                        return;
+                    }
+                }
+
+                // Partner must exist (has drawn cards before).
+                if (!server.UserExistsInCollections(partnerLogin))
+                {
+                    SendChatMessageSafe(GetString(tradeCfg, "userNotFoundMessage", DefaultTradeUserNotFound)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Nutzer]", partnerRaw));
+                    return;
+                }
+
+                // Resolve the offered card name (no cooldown / quota consumed on a typo).
+                Dictionary<string, object> card = server.ResolveCardByName(cardName);
+                if (!Convert.ToBoolean(card["found"]))
+                {
+                    SendChatMessageSafe(GetString(tradeCfg, "cardNotFoundMessage", DefaultTradeCardNotFound)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[falscherName]", cardName)
+                        .Replace("[Kartenname]", GetString(card, "suggestion", "")));
+                    return;
+                }
+                string cardId = GetString(card, "cardId", "");
+                string cardTitle = GetString(card, "cardTitle", "");
+                string boosterId = GetString(card, "boosterId", "");
+                string boosterTitle = GetString(card, "boosterTitle", "");
+
+                // The offering user must actually own the card.
+                if (server.GetCardCount(login, boosterId, cardId) < 1)
+                {
+                    SendChatMessageSafe(GetString(tradeCfg, "offerNotOwnedMessage", DefaultTradeOfferNotOwned)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Kartenname]", cardTitle));
+                    return;
+                }
+
+                activeTrade = new Dictionary<string, object>
+                {
+                    { "id", Guid.NewGuid().ToString("N") },
+                    { "kind", "trade" },
+                    { "source", "chat" },
+                    { "triggeredAt", now.ToString("o") },
+                    { "fromLogin", login.ToLowerInvariant() },
+                    { "fromUser", displayName },
+                    { "toLogin", partnerLogin },
+                    { "toUser", partnerRaw },
+                    { "cardId", cardId },
+                    { "cardTitle", cardTitle },
+                    { "boosterId", boosterId },
+                    { "boosterTitle", boosterTitle },
+                    { "expiresAt", now.AddSeconds(timeoutSeconds).ToString("o") }
+                };
+                if (tradeTimeoutTimer != null) tradeTimeoutTimer.Dispose();
+                tradeTimeoutTimer = new System.Threading.Timer(delegate { TradeTimedOut(); }, null, timeoutSeconds * 1000, Timeout.Infinite);
+
+                SendChatMessageSafe(GetString(tradeCfg, "offerMessage", DefaultTradeOffer)
+                    .Replace("@userNameB", "@" + partnerRaw)
+                    .Replace("@userNameA", "@" + displayName)
+                    .Replace("[Kartenname]", cardTitle)
+                    .Replace("[Boostername]", boosterTitle));
+            }
+            BroadcastQueue();
+        }
+
+        private void HandleTradeYes(string login, string displayName, string args, Dictionary<string, object> cc)
+        {
+            Dictionary<string, object> tradeCfg = Obj(cc, "trade");
+            Dictionary<string, object> yesCfg = Obj(cc, "tradeyes");
+            lock (tradeLock)
+            {
+                if (activeTrade == null) return;
+                if (login.ToLowerInvariant() != GetString(activeTrade, "toLogin", "")) return;
+                string cardName = args.Trim();
+                if (cardName.Length == 0) return;
+
+                Dictionary<string, object> card = server.ResolveCardByName(cardName);
+                if (!Convert.ToBoolean(card["found"]))
+                {
+                    SendChatMessageSafe(GetString(tradeCfg, "cardNotFoundMessage", DefaultTradeCardNotFound)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[falscherName]", cardName)
+                        .Replace("[Kartenname]", GetString(card, "suggestion", "")));
+                    return; // trade stays open, partner can retry within the timeout
+                }
+                string cardBId = GetString(card, "cardId", "");
+                string cardBTitle = GetString(card, "cardTitle", "");
+                string boosterBId = GetString(card, "boosterId", "");
+                string boosterBTitle = GetString(card, "boosterTitle", "");
+
+                if (server.GetCardCount(login, boosterBId, cardBId) < 1)
+                {
+                    SendChatMessageSafe(GetString(yesCfg, "notOwnedMessage", DefaultTradeNotOwned)
+                        .Replace("@userNameB", "@" + displayName));
+                    return; // trade stays open
+                }
+
+                string fromLogin = GetString(activeTrade, "fromLogin", "");
+                string fromUser = GetString(activeTrade, "fromUser", "");
+                string cardAId = GetString(activeTrade, "cardId", "");
+                string cardATitle = GetString(activeTrade, "cardTitle", "");
+                string boosterAId = GetString(activeTrade, "boosterId", "");
+                string boosterATitle = GetString(activeTrade, "boosterTitle", "");
+
+                Dictionary<string, object> result = server.ApplyTradeSwap(fromLogin, fromUser, boosterAId, cardAId, login, displayName, boosterBId, cardBId);
+                if (result == null)
+                {
+                    SendChatMessageSafe(GetString(yesCfg, "notOwnedMessage", DefaultTradeNotOwned)
+                        .Replace("@userNameB", "@" + displayName));
+                    return;
+                }
+
+                DateTime now = DateTime.UtcNow;
+                int cooldownSeconds = Math.Max(0, GetInt(tradeCfg, "cooldownSeconds", 0));
+                lock (usageLock)
+                {
+                    EnsureUsageLoaded();
+                    ConsumeTrade(fromLogin, fromUser, cooldownSeconds, now);
+                    ConsumeTrade(login, displayName, cooldownSeconds, now);
+                    SaveUsage();
+                }
+
+                string msg = GetString(yesCfg, "successMessage", DefaultTradeSuccess)
+                    .Replace("@userNameA", "@" + fromUser)
+                    .Replace("@userNameB", "@" + displayName)
+                    .Replace("[KarteA]", cardATitle)
+                    .Replace("[BoosterA]", boosterATitle)
+                    .Replace("[KarteB]", cardBTitle)
+                    .Replace("[BoosterB]", boosterBTitle)
+                    .Replace("[AnzahlA]", Convert.ToString(result["aNewCardB"]))
+                    .Replace("[AnzahlB]", Convert.ToString(result["bNewCardA"]));
+                SendChatMessageSafe(msg);
+                server.Log("commands", "info", fromUser + " tauschte " + cardATitle + " mit " + displayName + " gegen " + cardBTitle + ".");
+                ClearActiveTrade();
+            }
+            BroadcastQueue();
+        }
+
+        private void HandleTradeNo(string login, string displayName, Dictionary<string, object> cc)
+        {
+            Dictionary<string, object> tradeCfg = Obj(cc, "trade");
+            Dictionary<string, object> noCfg = Obj(cc, "tradeno");
+            lock (tradeLock)
+            {
+                if (activeTrade == null) return;
+                if (login.ToLowerInvariant() != GetString(activeTrade, "toLogin", "")) return;
+
+                string fromLogin = GetString(activeTrade, "fromLogin", "");
+                string fromUser = GetString(activeTrade, "fromUser", "");
+                int cooldownSeconds = Math.Max(0, GetInt(tradeCfg, "cooldownSeconds", 0));
+                int maxUses = Math.Max(0, GetInt(tradeCfg, "maxUses", 0));
+                DateTime now = DateTime.UtcNow;
+                int remaining;
+                lock (usageLock)
+                {
+                    EnsureUsageLoaded();
+                    int newCount = ConsumeTrade(fromLogin, fromUser, cooldownSeconds, now);
+                    SaveUsage();
+                    remaining = maxUses > 0 ? Math.Max(0, maxUses - newCount) : 0;
+                }
+
+                SendChatMessageSafe(GetString(noCfg, "declineMessage", DefaultTradeDecline)
+                    .Replace("@userNameA", "@" + fromUser)
+                    .Replace("@userNameB", "@" + displayName)
+                    .Replace("[Uhrzeit]", FormatLocalTime(TradeNextReset()))
+                    .Replace("[Anzahl]", remaining.ToString()));
+                ClearActiveTrade();
+            }
+            BroadcastQueue();
+        }
+
+        private void TradeTimedOut()
+        {
+            lock (tradeLock)
+            {
+                if (activeTrade == null) return;
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                Dictionary<string, object> tradeCfg = Obj(Obj(settings, "chatCommands"), "trade");
+                string fromLogin = GetString(activeTrade, "fromLogin", "");
+                string fromUser = GetString(activeTrade, "fromUser", "");
+                string toUser = GetString(activeTrade, "toUser", "");
+                int cooldownSeconds = Math.Max(0, GetInt(tradeCfg, "cooldownSeconds", 0));
+                int timeoutSeconds = Math.Max(10, GetInt(tradeCfg, "requestTimeoutSeconds", 120));
+                // Cooldown applies on timeout, but no trade quota is consumed.
+                lock (usageLock)
+                {
+                    EnsureUsageLoaded();
+                    if (cooldownSeconds > 0) GetOrCreateTradeEntry(fromLogin, fromUser)["cooldownUntil"] = DateTime.UtcNow.AddSeconds(cooldownSeconds).ToString("o");
+                    SaveUsage();
+                }
+                SendChatMessageSafe(GetString(tradeCfg, "timeoutMessage", DefaultTradeTimeout)
+                    .Replace("@userNameA", "@" + fromUser)
+                    .Replace("@userNameB", "@" + toUser)
+                    .Replace("[Zeit]", timeoutSeconds.ToString()));
+                ClearActiveTrade();
+            }
+            BroadcastQueue();
+        }
+
+        // Increments the trade-usage counter and (re)sets the per-user cooldown. Returns new count.
+        private int ConsumeTrade(string login, string displayName, int cooldownSeconds, DateTime now)
+        {
+            Dictionary<string, object> entry = GetOrCreateTradeEntry(login, displayName);
+            int count = GetInt(entry, "count", 0) + 1;
+            entry["count"] = count;
+            if (cooldownSeconds > 0) entry["cooldownUntil"] = now.AddSeconds(cooldownSeconds).ToString("o");
+            return count;
+        }
+
+        private void ClearActiveTrade()
+        {
+            activeTrade = null;
+            if (tradeTimeoutTimer != null) { tradeTimeoutTimer.Dispose(); tradeTimeoutTimer = null; }
+        }
+
+        // ---- Trade usage tracking (separate namespace inside command-usage.json) ----
+
+        private Dictionary<string, object> TradeSection()
+        {
+            EnsureUsageLoaded();
+            object obj;
+            if (usageData.TryGetValue("trade", out obj) && obj is Dictionary<string, object>) return (Dictionary<string, object>)obj;
+            Dictionary<string, object> section = new Dictionary<string, object> { { "users", new Dictionary<string, object>() } };
+            usageData["trade"] = section;
+            return section;
+        }
+
+        private Dictionary<string, object> GetOrCreateTradeEntry(string login, string displayName)
+        {
+            Dictionary<string, object> section = TradeSection();
+            Dictionary<string, object> users = section["users"] as Dictionary<string, object>;
+            if (users == null) { users = new Dictionary<string, object>(); section["users"] = users; }
+            string key = login.Trim().ToLowerInvariant();
+            Dictionary<string, object> entry;
+            if (users.ContainsKey(key) && users[key] is Dictionary<string, object>) entry = (Dictionary<string, object>)users[key];
+            else { entry = new Dictionary<string, object> { { "count", 0 } }; users[key] = entry; }
+            entry["displayName"] = displayName;
+            return entry;
+        }
+
+        private void ApplyTradeResetIfDue(Dictionary<string, object> tradeCfg, DateTime nowUtc)
+        {
+            Dictionary<string, object> section = TradeSection();
+            DateTime nextReset = ParseDate(GetString(section, "nextGlobalResetAt", ""));
+            DateTime dueLimit = ComputeNextResetAt(tradeCfg, nowUtc);
+            if (nextReset != DateTime.MinValue && nextReset > nowUtc && nextReset <= dueLimit) return;
+            Dictionary<string, object> users = section["users"] as Dictionary<string, object>;
+            if (users != null)
+            {
+                foreach (object value in users.Values)
+                {
+                    Dictionary<string, object> entry = value as Dictionary<string, object>;
+                    if (entry != null) entry["count"] = 0;
+                }
+            }
+            section["nextGlobalResetAt"] = ComputeNextResetAt(tradeCfg, nowUtc).ToString("o");
+            SaveUsage();
+        }
+
+        private DateTime TradeNextReset()
+        {
+            return ParseDate(GetString(TradeSection(), "nextGlobalResetAt", ""));
         }
 
         private void EnsureUsageLoaded()
@@ -2608,11 +3171,12 @@ namespace CardPackWidgetApp
                 try
                 {
                     Dictionary<string, object> settings = server.ReadSettingsObject();
-                    Dictionary<string, object> packCfg = Obj(Obj(settings, "chatCommands"), "pack");
+                    Dictionary<string, object> cc = Obj(settings, "chatCommands");
                     lock (usageLock)
                     {
                         EnsureUsageLoaded();
-                        ApplyResetIfDue(packCfg, DateTime.UtcNow);
+                        ApplyResetIfDue(Obj(cc, "pack"), DateTime.UtcNow);
+                        ApplyTradeResetIfDue(Obj(cc, "trade"), DateTime.UtcNow);
                     }
                 }
                 catch

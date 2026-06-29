@@ -26,9 +26,9 @@
           <button class="nav-button" data-tab="booster" data-i18n="nav-booster">Booster</button>
           <button class="nav-button" data-tab="users" data-i18n="nav-users">User</button>
           <button class="nav-button" data-tab="commandusage" data-i18n="nav-commandusage">Nutzung Befehle</button>
-          <button class="nav-button" data-tab="update" data-i18n="nav-update">Update</button>
           <button class="nav-button" data-tab="queue" data-i18n="nav-queue">Queue</button>
           <button class="nav-button" data-tab="log" data-i18n="nav-log">Log</button>
+          <button class="nav-button" data-tab="update" data-i18n="nav-update">Update</button>
         </nav>
         <div class="sidebar-settings">
           <label data-i18n="label-language">Sprache<select id="language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
@@ -290,7 +290,7 @@
                 <div class="message-field">
                   <div class="message-field-head">
                     <span class="message-field-label" data-i18n="label-cc-success-message">Nachricht bei Einlösung</span>
-                    <div class="var-chips" id="cc-pack-success-vars">
+                    <div class="var-chips" data-target="cc-pack-success-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                     </div>
                   </div>
@@ -300,7 +300,7 @@
                 <div class="message-field">
                   <div class="message-field-head">
                     <span class="message-field-label" data-i18n="label-cc-limit-message">Nachricht bei erreichtem Limit</span>
-                    <div class="var-chips" id="cc-pack-limit-vars">
+                    <div class="var-chips" data-target="cc-pack-limit-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                       <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
                     </div>
@@ -311,7 +311,7 @@
                 <div class="message-field">
                   <div class="message-field-head">
                     <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
-                    <div class="var-chips" id="cc-pack-cooldown-vars">
+                    <div class="var-chips" data-target="cc-pack-cooldown-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                       <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
                     </div>
@@ -338,6 +338,233 @@
                 <div class="form-grid">
                   <label data-i18n="label-cc-prefix">Präfix<input id="cc-collection-prefix" type="text" maxlength="1"></label>
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-collection-command" type="text"></label>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-trade-eyebrow">Tausch</p>
+                  <h3 data-i18n="cc-trade-title">Tausch-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-trade-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-trade-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-trade-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!trade [Username] [Kartenname]</code></p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit, Cooldown &amp; Dauer</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-trade-maxuses" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-trade-cooldown" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-trade-reset-value" type="number" min="1" step="1"></label>
+                  <label data-i18n="label-cc-reset-unit">Einheit
+                    <select id="cc-trade-reset-unit">
+                      <option value="minutes" data-i18n="opt-minutes">Minuten</option>
+                      <option value="hours" data-i18n="opt-hours">Stunden</option>
+                      <option value="days" data-i18n="opt-days">Tage</option>
+                    </select>
+                  </label>
+                  <label data-i18n="label-cc-trade-timeout">Anfrage offen für (Sek.)<input id="cc-trade-timeout" type="number" min="10" step="1"></label>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-trade-offer">Angebot an den Tauschpartner</span>
+                    <div class="var-chips" data-target="cc-trade-offer-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                      <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-trade-offer-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-trade-cardnotfound">Karte nicht gefunden (Vorschlag)</span>
+                    <div class="var-chips" data-target="cc-trade-cardnotfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[falscherName]">[falscherName]</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-trade-cardnotfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-trade-offernotowned">Anbieter besitzt Karte nicht</span>
+                    <div class="var-chips" data-target="cc-trade-offernotowned-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-trade-offernotowned-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-trade-usernotfound">Tauschpartner nicht gefunden</span>
+                    <div class="var-chips" data-target="cc-trade-usernotfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Nutzer]">[Nutzer]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-trade-usernotfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-trade-cooldown">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-trade-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
+                      <button class="var-chip" type="button" data-insert="[Cooldownwert]">[Cooldownwert]</button>
+                      <button class="var-chip" type="button" data-insert="[Einheit]">[Einheit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-trade-cooldown-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-trade-limit">Nachricht bei erreichtem Limit</span>
+                    <div class="var-chips" data-target="cc-trade-limit-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-trade-limit-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-trade-timeoutmsg">Nachricht bei Zeitüberschreitung</span>
+                    <div class="var-chips" data-target="cc-trade-timeout-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[Zeit]">[Zeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-trade-timeout-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-trade-busy">Nachricht bei laufendem Tausch</span>
+                    <div class="var-chips" data-target="cc-trade-busy-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-trade-busy-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-tradeyes-eyebrow">Tausch annehmen</p>
+                  <h3 data-i18n="cc-tradeyes-title">Tausch-Annahme-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-tradeyes-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tradeyes-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tradeyes-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!tradeyes [Kartenname]</code></p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-tradeyes-notowned">Partner besitzt Karte nicht</span>
+                    <div class="var-chips" data-target="cc-tradeyes-notowned-message">
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-tradeyes-notowned-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-tradeyes-success">Nachricht bei erfolgreichem Tausch</span>
+                    <div class="var-chips" data-target="cc-tradeyes-success-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[KarteA]">[KarteA]</button>
+                      <button class="var-chip" type="button" data-insert="[BoosterA]">[BoosterA]</button>
+                      <button class="var-chip" type="button" data-insert="[KarteB]">[KarteB]</button>
+                      <button class="var-chip" type="button" data-insert="[BoosterB]">[BoosterB]</button>
+                      <button class="var-chip" type="button" data-insert="[AnzahlA]">[AnzahlA]</button>
+                      <button class="var-chip" type="button" data-insert="[AnzahlB]">[AnzahlB]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-tradeyes-success-message" rows="3"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-tradeno-eyebrow">Tausch ablehnen</p>
+                  <h3 data-i18n="cc-tradeno-title">Tausch-Ablehnungs-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-tradeno-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tradeno-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tradeno-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!tradeno</code></p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-tradeno-decline">Nachricht bei Ablehnung</span>
+                    <div class="var-chips" data-target="cc-tradeno-decline-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
+                      <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-tradeno-decline-message" rows="2"></textarea>
                 </div>
               </div>
             </article>
