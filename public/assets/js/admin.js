@@ -2212,15 +2212,27 @@ function bindGlobalActions() {
 }
 
 function renderAll() {
-  applyTheme(settings);
-  applyTranslations();
-  renderCards();
-  hydrateBooster();
-  hydrateTrigger();
-  hydrateDesign();
-  hydrateChatCommands();
-  renderOverview();
-  renderUsers();
+  // Run each step independently so one failing hydrate (e.g. a missing element after a partial
+  // page load) can't abort the whole render and leave the app looking dead.
+  const steps = [
+    ["applyTheme", () => applyTheme(settings)],
+    ["applyTranslations", applyTranslations],
+    ["renderCards", renderCards],
+    ["hydrateBooster", hydrateBooster],
+    ["hydrateTrigger", hydrateTrigger],
+    ["hydrateDesign", hydrateDesign],
+    ["hydrateChatCommands", hydrateChatCommands],
+    ["renderOverview", renderOverview],
+    ["renderUsers", renderUsers]
+  ];
+  for (const [name, fn] of steps) {
+    try {
+      fn();
+    } catch (error) {
+      console.error(`renderAll:${name}`, error);
+      try { addLog("ui", "error", `renderAll:${name} ${error.message}`); } catch {}
+    }
+  }
 }
 
 async function init() {
@@ -2290,6 +2302,15 @@ window.addEventListener("message", (event) => {
     refreshBotStatus();
     showNotice(t("notice-twitch-connected"));
   }
+});
+
+// Surface uncaught client-side errors in the server log so they can be diagnosed without a
+// dev console (the embedded WebView has none).
+window.addEventListener("error", (event) => {
+  try { addLog("ui", "error", `${event.message} @ ${event.filename}:${event.lineno}:${event.colno}`); } catch {}
+});
+window.addEventListener("unhandledrejection", (event) => {
+  try { addLog("ui", "error", `Promise: ${event.reason?.message || event.reason}`); } catch {}
 });
 
 init();
