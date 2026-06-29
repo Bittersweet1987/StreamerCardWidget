@@ -2224,11 +2224,10 @@ function renderAll() {
 }
 
 async function init() {
+  // Bind the navigation and controls FIRST, before any data loading. This way the UI (tab
+  // switching, buttons) always works even if loading/normalizing the settings later fails -
+  // otherwise a single load error would leave the whole window dead and unclickable.
   try {
-    settings = normalizeSettings(await getSettings());
-    availableFonts = (await getFonts()).fonts || [];
-    selectedCardId = settings.deck.cards[0]?.id;
-    selectedBoosterId = settings.boosters[0]?.id;
     bindTabs();
     bindGlobalActions();
     bindBooster();
@@ -2240,6 +2239,15 @@ async function init() {
     bindQueue();
     bindUpdateTab();
     bindLogTab();
+  } catch (error) {
+    console.error("Bind-Fehler:", error);
+  }
+
+  try {
+    settings = normalizeSettings(await getSettings());
+    availableFonts = (await getFonts()).fonts || [];
+    selectedCardId = settings.deck.cards[0]?.id;
+    selectedBoosterId = settings.boosters[0]?.id;
     renderAll();
     await loadUsers();
     renderUsers();
