@@ -618,6 +618,20 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (request.Method == "POST" && request.Path == "/api/trade/test")
+            {
+                // Preview the trade animation in OBS: the frontend supplies two random cards/names,
+                // we just tag it as a test (so the overlay plays it even if the animation is off)
+                // and broadcast it on the same "trade" channel a real swap uses.
+                Dictionary<string, object> body = ParseObject(request.Body);
+                body["eventId"] = "test-" + DateTime.UtcNow.Ticks.ToString();
+                body["test"] = true;
+                string tradeJson = json.Serialize(body);
+                Broadcast("trade", tradeJson);
+                SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
             if (request.Method == "GET" && request.Path == "/api/collections")
             {
                 SendText(stream, 200, "application/json; charset=utf-8", ReadFile(CollectionsPath(), "{}"), "no-store");

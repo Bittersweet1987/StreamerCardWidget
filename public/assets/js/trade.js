@@ -58,7 +58,8 @@ function playTradeSound() {
 }
 
 function enqueueTrade(event = {}) {
-  if (settings?.tradeAnimation?.enabled !== true) return;
+  // A test event always previews (so it can be checked before enabling); real events obey the toggle.
+  if (event.test !== true && settings?.tradeAnimation?.enabled !== true) return;
   queue.push(event);
   if (!running) runQueue();
 }

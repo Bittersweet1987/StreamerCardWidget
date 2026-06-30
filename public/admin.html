@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-themes5">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-themes6">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -783,6 +783,10 @@
                 </select>
               </label>
             </div>
+            <div class="button-row">
+              <button class="secondary-button" id="trade-anim-test" type="button" data-i18n="btn-trade-anim-test">Test starten</button>
+            </div>
+            <p class="hint" data-i18n="trade-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
           </section>
 
           <section class="tool-panel timing-panel">
@@ -989,6 +993,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260630-themes5"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260630-themes6"></script>
   </body>
 </html>

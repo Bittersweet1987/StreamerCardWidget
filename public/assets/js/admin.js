@@ -27,6 +27,7 @@ import {
   saveSettings,
   syncShowcaseReward,
   syncTwitchReward,
+  testTradeAnimation,
   triggerDraw
 } from "./api.js";
 import {
@@ -440,6 +441,13 @@ const I18N = {
   },
   "label-trade-anim-enabled": { de: "Tausch-Animation aktiviert", en: "Trade animation enabled" },
   "label-trade-anim-sendchat": { de: "Erfolgsmeldung zusätzlich im Chat senden", en: "Also send success message in chat" },
+  "btn-trade-anim-test": { de: "Test starten", en: "Run test" },
+  "trade-anim-test-hint": {
+    de: "Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.",
+    en: "Plays the animation once in OBS – with two random names and cards. Works even if the animation isn't enabled yet."
+  },
+  "notice-trade-test-started": { de: "Test-Animation in OBS gestartet.", en: "Test animation started in OBS." },
+  "notice-trade-test-no-cards": { de: "Keine aktiven Karten in einem Booster gefunden.", en: "No active cards found in any booster." },
   "label-trade-anim-style": { de: "Animationsstil", en: "Animation style" },
   "label-trade-anim-duration": { de: "Dauer", en: "Duration" },
   "opt-trade-style-swap": { de: "Karten-Swap (Kreuzung)", en: "Card swap (cross over)" },
@@ -2222,6 +2230,43 @@ function bindDesign() {
     settings.tradeAnimation ||= {};
     settings.tradeAnimation.duration = event.target.value;
   });
+  $("#trade-anim-test").addEventListener("click", handleTradeAnimTest);
+}
+
+async function handleTradeAnimTest() {
+  // Collect cards that actually belong to a booster - the animation needs a booster id per card.
+  const pairs = [];
+  for (const booster of settings.boosters || []) {
+    for (const card of cardsForBooster(settings, booster)) {
+      if (card.enabled !== false) pairs.push({ card, booster });
+    }
+  }
+  if (!pairs.length) {
+    showNotice(t("notice-trade-test-no-cards"), "error");
+    return;
+  }
+  const pick = () => pairs[Math.floor(Math.random() * pairs.length)];
+  const a = pick();
+  let b = pick();
+  for (let i = 0; i < 10 && pairs.length > 1 && b === a; i++) b = pick();
+  let userA = randomUsername();
+  let userB = randomUsername();
+  for (let i = 0; i < 5 && userB === userA; i++) userB = randomUsername();
+  try {
+    await testTradeAnimation({
+      userA,
+      userB,
+      cardAId: a.card.id,
+      boosterAId: a.booster.id,
+      cardBId: b.card.id,
+      boosterBId: b.booster.id,
+      newCountA: 1 + Math.floor(Math.random() * 9),
+      newCountB: 1 + Math.floor(Math.random() * 9)
+    });
+    showNotice(t("notice-trade-test-started"));
+  } catch (error) {
+    showNotice(error.message, "error");
+  }
 }
 
 function playSoundPreview(kind) {
