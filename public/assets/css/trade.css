@@ -57,6 +57,19 @@ html, body {
   max-width: 26vw;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: background .25s ease, color .25s ease, transform .25s ease;
+}
+
+/* Brief pop + accent when a card's label flips to its new owner after the swap. */
+.trade-name.is-new-owner {
+  background: rgba(145, 71, 255, .85);
+  animation: trade-name-pop .45s ease;
+}
+
+@keyframes trade-name-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  100% { transform: scale(1); }
 }
 
 /* Mid-screen flash that peaks while the cards cross. */

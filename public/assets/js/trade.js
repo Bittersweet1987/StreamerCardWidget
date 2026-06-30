@@ -101,6 +101,17 @@ async function playTrade(event = {}) {
   stage.append(scene);
   playTradeSound();
   addLog("trade", "info", `${event.userA} ⇄ ${event.userB}: ${cardA.title || cardA.id} / ${cardB.title || cardB.id}`);
+
+  // The cards change hands during the animation: once they have crossed to the other side,
+  // each card now belongs to the OTHER viewer, so the name underneath updates to the new owner.
+  const nameA = scene.querySelector(".slot-a .trade-name");
+  const nameB = scene.querySelector(".slot-b .trade-name");
+  const swapAt = Math.round(total * 0.6);
+  setTimeout(() => {
+    if (nameA) { nameA.textContent = event.userB || ""; nameA.classList.add("is-new-owner"); }
+    if (nameB) { nameB.textContent = event.userA || ""; nameB.classList.add("is-new-owner"); }
+  }, swapAt);
+
   await delay(total + 150);
   scene.remove();
 }
