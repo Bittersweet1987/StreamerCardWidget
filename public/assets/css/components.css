@@ -400,6 +400,16 @@ select {
    default look as fallback. Custom properties resolve by proximity, so a per-tile preview
    in the Themes tab renders its own theme regardless of the globally selected one. */
 
+/* The default theme must actively reset the theme variables to "initial" so they fall back to
+   the classic look. Without this, the default tile (and a globally-selected default) would
+   inherit whatever theme variables a parent set, since custom properties cascade by proximity. */
+[data-card-theme="default"] {
+  --card-bg: initial;
+  --card-pattern: initial;
+  --card-pattern-opacity: initial;
+  --card-art-bg: initial;
+}
+
 /* Dark presets use a soft light sheen; bright presets a soft white sheen – cleaner and less
    noisy than the dotted default. --card-art-bg keeps the image frame matching the surface. */
 
