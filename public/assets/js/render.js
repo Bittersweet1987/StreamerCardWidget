@@ -108,6 +108,7 @@ export function normalizeSettings(settings) {
   settings.twitch.clientId ||= "klgyxuiixy0mfo7ze7goubj5j16g7u";
   settings.style ||= {};
   settings.style.themeMode ||= "light";
+  settings.style.cardTheme = CARD_THEMES.includes(settings.style.cardTheme) ? settings.style.cardTheme : "default";
   settings.style.namePosition = ["bottom", "middle", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
   settings.sounds ||= {};
   settings.sounds.open ||= "";
@@ -378,10 +379,15 @@ export function overlayText(key, language) {
   return OVERLAY_STRINGS[key]?.[lang] ?? OVERLAY_STRINGS[key]?.de ?? key;
 }
 
+export const CARD_THEMES = ["default", "onyx", "carbon", "prism", "gold", "sunset", "mint"];
+
 export function applyTheme(settings) {
   const style = settings.style || {};
   const root = document.documentElement;
-  if (document.body) document.body.dataset.theme = style.themeMode || "light";
+  if (document.body) {
+    document.body.dataset.theme = style.themeMode || "light";
+    document.body.dataset.cardTheme = CARD_THEMES.includes(style.cardTheme) ? style.cardTheme : "default";
+  }
   root.style.setProperty("--accent", style.accentColor || "#ff78bb");
   root.style.setProperty("--panel-text", style.panelTextColor || "#2f2945");
   root.style.setProperty("--font", style.fontFamily || "Inter, Arial, sans-serif");

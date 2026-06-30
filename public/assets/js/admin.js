@@ -32,6 +32,7 @@ import {
 import {
   applyTheme,
   boosterMarkup,
+  CARD_THEMES,
   cardMarkup,
   cardsForBooster,
   createId,
@@ -68,6 +69,21 @@ const I18N = {
   "nav-update": { de: "Update", en: "Update" },
   "nav-log": { de: "Log", en: "Log" },
   "nav-chatcommands": { de: "Chat Befehle", en: "Chat commands" },
+  "nav-themes": { de: "Themes", en: "Themes" },
+  "themes-eyebrow": { de: "Kartendesign", en: "Card design" },
+  "themes-title": { de: "Karten-Themes", en: "Card themes" },
+  "themes-hint": {
+    de: "Wähle das Aussehen aller Karten per Klick. Die Auswahl gilt sofort für Overlay, Sammlung und Vorschauen.",
+    en: "Pick the look of all cards with one click. It applies instantly to overlay, collection and previews."
+  },
+  "theme-selected": { de: "Ausgewählt", en: "Selected" },
+  "theme-default": { de: "Klassik (Standard)", en: "Classic (default)" },
+  "theme-onyx": { de: "Onyx (Dunkel)", en: "Onyx (dark)" },
+  "theme-carbon": { de: "Carbon", en: "Carbon" },
+  "theme-prism": { de: "Prisma (Holo)", en: "Prism (holo)" },
+  "theme-gold": { de: "Gold", en: "Gold" },
+  "theme-sunset": { de: "Sunset", en: "Sunset" },
+  "theme-mint": { de: "Mint", en: "Mint" },
   "nav-commandusage": { de: "Nutzung Befehle", en: "Command usage" },
   "nav-queue": { de: "Queue", en: "Queue" },
   "bot-trigger-title": { de: "Bot-Verbindung (Chat)", en: "Bot connection (chat)" },
@@ -2240,6 +2256,40 @@ function bindGlobalActions() {
   $("#card-list").addEventListener("change", handleCardListChange);
 }
 
+function renderThemes() {
+  const grid = $("#themes-grid");
+  if (!grid) return;
+  const current = settings.style?.cardTheme || "default";
+  const accent = settings.style?.accentColor || "#ff78bb";
+  // Use a real card if one exists so the preview is representative; otherwise a synthetic sample.
+  const base = settings.deck?.cards?.[0];
+  const sample = base ? { ...base } : { title: "Sample", rarity: "epic", accent };
+  grid.innerHTML = CARD_THEMES.map((id) => `
+    <button type="button" class="theme-tile${id === current ? " is-selected" : ""}" data-theme="${escapeHtml(id)}" aria-pressed="${id === current}">
+      <div class="theme-card-preview" data-card-theme="${escapeHtml(id)}">${cardMarkup(sample)}</div>
+      <div class="theme-tile-foot">
+        <span class="theme-name">${t(`theme-${id}`)}</span>
+        ${id === current ? `<span class="theme-badge">${t("theme-selected")}</span>` : ""}
+      </div>
+    </button>
+  `).join("");
+}
+
+function bindThemes() {
+  const grid = $("#themes-grid");
+  if (!grid) return;
+  grid.addEventListener("click", (event) => {
+    const tile = event.target.closest(".theme-tile");
+    if (!tile) return;
+    settings.style ||= {};
+    settings.style.cardTheme = tile.dataset.theme;
+    applyTheme(settings);
+    renderThemes();
+    refreshSettingsPreview();
+    scheduleAutoSave();
+  });
+}
+
 function renderAll() {
   // Run each step independently so one failing hydrate (e.g. a missing element after a partial
   // page load) can't abort the whole render and leave the app looking dead.
@@ -2251,6 +2301,7 @@ function renderAll() {
     ["hydrateTrigger", hydrateTrigger],
     ["hydrateDesign", hydrateDesign],
     ["hydrateChatCommands", hydrateChatCommands],
+    ["renderThemes", renderThemes],
     ["renderOverview", renderOverview],
     ["renderUsers", renderUsers]
   ];
@@ -2277,6 +2328,7 @@ async function init() {
     bindUsers();
     bindChatCommands();
     bindCommandUsage();
+    bindThemes();
     bindQueue();
     bindUpdateTab();
     bindLogTab();

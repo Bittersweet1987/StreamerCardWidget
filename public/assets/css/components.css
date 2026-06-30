@@ -26,10 +26,12 @@ select {
   border: 10px solid var(--rarity-border, #fff);
   border-radius: 22px;
   color: var(--card-accent, var(--accent));
-  background:
+  /* The card surface is driven by --card-bg so the "Themes" presets can restyle it. The
+     fallback is the classic white/accent look (the default theme). */
+  background: var(--card-bg,
     radial-gradient(circle at 22% 16%, rgba(255, 255, 255, .9), transparent 26%),
     linear-gradient(155deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .96) 64%),
-    linear-gradient(135deg, var(--card-accent, #ff78bb), #ffffff);
+    linear-gradient(135deg, var(--card-accent, #ff78bb), #ffffff));
   box-shadow: 0 22px 55px rgba(43, 33, 79, .28);
 }
 
@@ -110,10 +112,10 @@ select {
   position: absolute;
   inset: 10%;
   border-radius: 18px;
-  background:
+  background: var(--card-pattern,
     radial-gradient(circle, currentColor 0 3px, transparent 4px) 0 0 / 28px 28px,
-    linear-gradient(145deg, transparent 0 72%, rgba(255, 255, 255, .46) 72%);
-  opacity: .38;
+    linear-gradient(145deg, transparent 0 72%, rgba(255, 255, 255, .46) 72%));
+  opacity: var(--card-pattern-opacity, .38);
 }
 
 .hide-borders .tcg-card {
@@ -134,7 +136,7 @@ select {
   place-items: center;
   overflow: hidden;
   border-radius: 16px;
-  background: rgba(255, 255, 255, .42);
+  background: var(--card-art-bg, rgba(255, 255, 255, .42));
 }
 
 .card-art img {
@@ -391,4 +393,61 @@ select {
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
+}
+
+/* ---- Card themes (presets) ----
+   Each theme just sets a few custom properties; the card reads them via var() with the
+   default look as fallback. Custom properties resolve by proximity, so a per-tile preview
+   in the Themes tab renders its own theme regardless of the globally selected one. */
+
+[data-card-theme="onyx"] {
+  --card-bg:
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, .10), transparent 30%),
+    linear-gradient(155deg, #2c2740, #14111f 72%);
+  --card-pattern:
+    radial-gradient(circle, currentColor 0 3px, transparent 4px) 0 0 / 28px 28px,
+    linear-gradient(145deg, transparent 0 72%, rgba(255, 255, 255, .12) 72%);
+  --card-pattern-opacity: .24;
+  --card-art-bg: rgba(255, 255, 255, .06);
+}
+
+[data-card-theme="carbon"] {
+  --card-bg: linear-gradient(135deg, #20232a, #0e0f13);
+  --card-pattern:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .06) 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .06) 0 6px, transparent 6px 12px);
+  --card-pattern-opacity: .5;
+  --card-art-bg: rgba(255, 255, 255, .05);
+}
+
+[data-card-theme="prism"] {
+  --card-bg: linear-gradient(135deg, #ffd9ec, #d6e6ff 35%, #d4fff0 68%, #fff3c4);
+  --card-pattern: radial-gradient(circle, rgba(255, 255, 255, .75) 0 2px, transparent 3px) 0 0 / 22px 22px;
+  --card-pattern-opacity: .42;
+  --card-art-bg: rgba(255, 255, 255, .5);
+}
+
+[data-card-theme="gold"] {
+  --card-bg:
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, .85), transparent 30%),
+    linear-gradient(150deg, #fff7e2, #f3dca0 70%, #e9c879);
+  --card-pattern:
+    radial-gradient(circle, rgba(176, 137, 38, .55) 0 2px, transparent 3px) 0 0 / 26px 26px,
+    linear-gradient(145deg, transparent 0 72%, rgba(255, 255, 255, .55) 72%);
+  --card-pattern-opacity: .35;
+  --card-art-bg: rgba(255, 255, 255, .55);
+}
+
+[data-card-theme="sunset"] {
+  --card-bg: linear-gradient(160deg, #ffd16b, #ff7eb3 58%, #a96bff);
+  --card-pattern: radial-gradient(circle, rgba(255, 255, 255, .6) 0 2px, transparent 3px) 0 0 / 24px 24px;
+  --card-pattern-opacity: .3;
+  --card-art-bg: rgba(255, 255, 255, .4);
+}
+
+[data-card-theme="mint"] {
+  --card-bg: linear-gradient(155deg, #d6fff4, #8fe9d6 58%, #57c9e0);
+  --card-pattern: radial-gradient(circle, rgba(255, 255, 255, .6) 0 2px, transparent 3px) 0 0 / 24px 24px;
+  --card-pattern-opacity: .34;
+  --card-art-bg: rgba(255, 255, 255, .45);
 }

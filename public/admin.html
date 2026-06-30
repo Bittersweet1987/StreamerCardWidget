@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-nav4">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-themes1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -55,6 +55,7 @@
           <button class="nav-button" data-tab="channelpoints" data-i18n="nav-channelpoints">Kanalpunkte</button>
           <button class="nav-button" data-tab="chatcommands" data-i18n="nav-chatcommands">Chat Befehle</button>
           <button class="nav-button" data-tab="design" data-i18n="nav-design">Einstellungen</button>
+          <button class="nav-button" data-tab="themes" data-i18n="nav-themes">Themes</button>
           <button class="nav-button" data-tab="cards" data-i18n="nav-cards">Karten</button>
           <button class="nav-button" data-tab="booster" data-i18n="nav-booster">Booster</button>
           <button class="nav-button" data-tab="users" data-i18n="nav-users">User</button>
@@ -799,6 +800,17 @@
           </section>
         </section>
 
+        <section class="tab-panel" data-panel="themes">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="themes-eyebrow">Kartendesign</p>
+              <h2 data-i18n="themes-title">Karten-Themes</h2>
+            </div>
+          </div>
+          <p class="hint" data-i18n="themes-hint">Wähle das Aussehen aller Karten per Klick. Die Auswahl gilt sofort für Overlay, Sammlung und Vorschauen.</p>
+          <div class="themes-grid" id="themes-grid"></div>
+        </section>
+
         <section class="tab-panel" data-panel="cards">
           <div class="section-heading">
             <div>
@@ -941,6 +953,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260630-nav4"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260630-themes1"></script>
   </body>
 </html>
