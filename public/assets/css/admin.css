@@ -182,11 +182,16 @@ body {
   background: rgba(255, 255, 255, .1);
 }
 
-/* The open dropdown list is drawn by the OS on a light surface, so force readable dark
-   text on white there (the white-on-dark select styling only fits the closed control). */
+/* Theme the open dropdown list so it matches light/dark mode instead of the OS default. */
 .sidebar-settings select option {
   color: #241f33;
   background: #fff;
+}
+
+.sidebar-settings select option:checked {
+  color: #6f4fc0;
+  background: rgba(145, 71, 255, .14);
+  font-weight: 800;
 }
 
 .sidebar-status {
@@ -1195,6 +1200,16 @@ body[data-theme="dark"] .user-card {
 body[data-theme="dark"] .sidebar {
   background: linear-gradient(180deg, #15111f 0%, #100d18 60%, #0c0a12 100%);
   border-right-color: rgba(255, 255, 255, .05);
+}
+
+body[data-theme="dark"] .sidebar-settings select option {
+  color: #ece7f6;
+  background: #1c1726;
+}
+
+body[data-theme="dark"] .sidebar-settings select option:checked {
+  color: #d9c8ff;
+  background: rgba(145, 71, 255, .3);
 }
 
 body[data-theme="dark"] .eyebrow,
