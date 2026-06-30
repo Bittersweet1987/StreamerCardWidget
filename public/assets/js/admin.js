@@ -463,6 +463,32 @@ function setPill(id, text, connected = false) {
   node.classList.toggle("is-ok", connected);
 }
 
+// Two-option segmented toggle (e.g. DE/EN, light/dark). data-active drives the sliding indicator.
+function setSegToggle(id, value) {
+  const toggle = $(`#${id}`);
+  if (!toggle) return;
+  const options = $$(".seg-option", toggle);
+  let activeIndex = 0;
+  options.forEach((opt, index) => {
+    const on = opt.dataset.value === value;
+    opt.classList.toggle("is-active", on);
+    opt.setAttribute("aria-checked", on ? "true" : "false");
+    if (on) activeIndex = index;
+  });
+  toggle.dataset.active = String(activeIndex);
+}
+
+function bindSegToggle(id, onChange) {
+  const toggle = $(`#${id}`);
+  if (!toggle) return;
+  toggle.addEventListener("click", (event) => {
+    const opt = event.target.closest(".seg-option");
+    if (!opt || !toggle.contains(opt)) return;
+    setSegToggle(id, opt.dataset.value);
+    onChange(opt.dataset.value);
+  });
+}
+
 function scheduleAutoSave() {
   if (!autoSaveReady || !settings) return;
   clearTimeout(autoSaveTimer);
@@ -1890,8 +1916,8 @@ function bindTrigger() {
 function hydrateDesign() {
   renderFontSelect();
   $("#font-family").value = settings.style.fontFamily || "";
-  $("#theme-mode").value = settings.style.themeMode || "light";
-  $("#language").value = settings.language || "de";
+  setSegToggle("theme-toggle", settings.style.themeMode || "light");
+  setSegToggle("language-toggle", settings.language || "de");
   $("#style-accent").value = settings.style.accentColor || "#ff78bb";
   $("#volume").value = settings.style.volume ?? 65;
   updateSoundRow("open");
@@ -1992,9 +2018,11 @@ function bindDesign() {
       refreshSettingsPreview();
     });
   }
-  $("#theme-mode").addEventListener("input", (event) => {
-    settings.style.themeMode = event.target.value;
+  bindSegToggle("theme-toggle", (value) => {
+    settings.style.themeMode = value;
+    applyTheme(settings);
     refreshSettingsPreview();
+    scheduleAutoSave();
   });
   $("#preview-card-select").addEventListener("change", (event) => {
     previewCardId = event.target.value;
@@ -2036,10 +2064,11 @@ function bindDesign() {
     scheduleAutoSave();
     showNotice(t("notice-rarity-weights-reset"));
   });
-  $("#language").addEventListener("input", (event) => {
-    settings.language = event.target.value;
+  bindSegToggle("language-toggle", (value) => {
+    settings.language = value;
     renderAll();
     refreshSettingsPreview();
+    scheduleAutoSave();
   });
   const behaviorFields = {
     "#reveal-seconds": "revealSeconds",

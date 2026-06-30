@@ -150,9 +150,14 @@ body {
   border-top: 1px solid rgba(255, 255, 255, .08);
 }
 
-.sidebar-settings label {
+.seg-field {
   display: grid;
-  gap: 6px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.seg-label {
   color: rgba(255, 255, 255, .5);
   font-size: .72rem;
   font-weight: 800;
@@ -160,38 +165,57 @@ body {
   text-transform: uppercase;
 }
 
-.sidebar-settings select {
-  width: 100%;
-  padding: 9px 11px;
-  border: 1px solid rgba(255, 255, 255, .14);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, .06);
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color .18s ease, background .18s ease;
+.seg-toggle {
+  position: relative;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .12);
 }
 
-.sidebar-settings select:hover {
-  background: rgba(255, 255, 255, .1);
+/* Sliding indicator behind the active option (brand gradient). */
+.seg-toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 999px;
+  background: linear-gradient(145deg, #8df4d5, #ff83bd);
+  box-shadow: 0 2px 8px rgba(255, 131, 189, .35);
+  transition: transform .22s cubic-bezier(.4, .1, .3, 1);
 }
 
-.sidebar-settings select:focus {
-  outline: none;
-  border-color: #ff83bd;
-  background: rgba(255, 255, 255, .1);
+.seg-toggle[data-active="1"]::after {
+  transform: translateX(100%);
 }
 
-/* Theme the open dropdown list so it matches light/dark mode instead of the OS default. */
-.sidebar-settings select option {
-  color: #241f33;
-  background: #fff;
-}
-
-.sidebar-settings select option:checked {
-  color: #6f4fc0;
-  background: rgba(145, 71, 255, .14);
+.seg-option {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, .58);
   font-weight: 800;
+  font-size: .82rem;
+  cursor: pointer;
+  transition: color .18s ease;
+}
+
+.seg-option svg {
+  width: 17px;
+  height: 17px;
+}
+
+.seg-option.is-active {
+  color: #241f33;
 }
 
 .sidebar-status {
@@ -1202,15 +1226,6 @@ body[data-theme="dark"] .sidebar {
   border-right-color: rgba(255, 255, 255, .05);
 }
 
-body[data-theme="dark"] .sidebar-settings select option {
-  color: #ece7f6;
-  background: #1c1726;
-}
-
-body[data-theme="dark"] .sidebar-settings select option:checked {
-  color: #d9c8ff;
-  background: rgba(145, 71, 255, .3);
-}
 
 body[data-theme="dark"] .eyebrow,
 body[data-theme="dark"] .hint,
