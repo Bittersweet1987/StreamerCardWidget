@@ -1228,13 +1228,16 @@ body[data-theme="dark"] .user-card {
 }
 
 .theme-tile {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   padding: 14px;
   border: 1px solid #e4deec;
   border-radius: 12px;
   background: rgba(255, 255, 255, .6);
+  color: inherit;
   cursor: pointer;
   transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
@@ -1246,12 +1249,34 @@ body[data-theme="dark"] .user-card {
 
 .theme-tile.is-selected {
   border-color: #9147ff;
-  box-shadow: 0 0 0 2px rgba(145, 71, 255, .4);
+  box-shadow: 0 0 0 2px rgba(145, 71, 255, .45);
+}
+
+.theme-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: none;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: #9147ff;
+  color: #fff;
+  font-size: .85rem;
+  font-weight: 900;
+  box-shadow: 0 4px 12px rgba(145, 71, 255, .5);
+}
+
+.theme-tile.is-selected .theme-check {
+  display: grid;
 }
 
 .theme-card-preview {
   display: grid;
   place-items: center;
+  width: 100%;
   pointer-events: none;
 }
 
@@ -1260,30 +1285,20 @@ body[data-theme="dark"] .user-card {
   box-shadow: 0 10px 26px rgba(43, 33, 79, .22);
 }
 
-.theme-tile-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .theme-name {
+  width: 100%;
+  text-align: center;
   font-weight: 800;
-}
-
-.theme-badge {
-  flex: 0 0 auto;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: #9147ff;
-  color: #fff;
-  font-size: .72rem;
-  font-weight: 800;
+  line-height: 1.2;
 }
 
 body[data-theme="dark"] .theme-tile {
   border-color: #3a314d;
   background: rgba(31, 26, 43, .6);
+}
+
+body[data-theme="dark"] .theme-name {
+  color: #f8f5ff;
 }
 
 body[data-theme="dark"] .sidebar {

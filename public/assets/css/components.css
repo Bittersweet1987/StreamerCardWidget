@@ -400,54 +400,91 @@ select {
    default look as fallback. Custom properties resolve by proximity, so a per-tile preview
    in the Themes tab renders its own theme regardless of the globally selected one. */
 
+/* Dark presets use a soft light sheen; bright presets a soft white sheen – cleaner and less
+   noisy than the dotted default. --card-art-bg keeps the image frame matching the surface. */
+
 [data-card-theme="onyx"] {
   --card-bg:
-    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, .10), transparent 30%),
-    linear-gradient(155deg, #2c2740, #14111f 72%);
-  --card-pattern:
-    radial-gradient(circle, currentColor 0 3px, transparent 4px) 0 0 / 28px 28px,
-    linear-gradient(145deg, transparent 0 72%, rgba(255, 255, 255, .12) 72%);
-  --card-pattern-opacity: .24;
-  --card-art-bg: rgba(255, 255, 255, .06);
+    radial-gradient(circle at 26% 14%, rgba(255, 255, 255, .12), transparent 32%),
+    linear-gradient(155deg, #322c4a, #15121f 74%);
+  --card-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .07) 64%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .05);
 }
 
 [data-card-theme="carbon"] {
-  --card-bg: linear-gradient(135deg, #20232a, #0e0f13);
+  --card-bg: linear-gradient(135deg, #262a31, #0e0f13);
   --card-pattern:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, .06) 0 6px, transparent 6px 12px),
-    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .06) 0 6px, transparent 6px 12px);
-  --card-pattern-opacity: .5;
-  --card-art-bg: rgba(255, 255, 255, .05);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 5px, transparent 5px 10px);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .045);
+}
+
+[data-card-theme="midnight"] {
+  --card-bg:
+    radial-gradient(circle at 28% 16%, rgba(120, 130, 255, .14), transparent 34%),
+    linear-gradient(160deg, #15161c, #050507 78%);
+  --card-pattern: linear-gradient(145deg, transparent 0 66%, rgba(255, 255, 255, .05) 66%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .04);
+}
+
+[data-card-theme="slate"] {
+  --card-bg:
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, .7), transparent 30%),
+    linear-gradient(155deg, #eef0f5, #c7cdd9 70%, #a9b1c2);
+  --card-pattern: linear-gradient(145deg, transparent 0 66%, rgba(255, 255, 255, .45) 66%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .42);
 }
 
 [data-card-theme="prism"] {
   --card-bg: linear-gradient(135deg, #ffd9ec, #d6e6ff 35%, #d4fff0 68%, #fff3c4);
-  --card-pattern: radial-gradient(circle, rgba(255, 255, 255, .75) 0 2px, transparent 3px) 0 0 / 22px 22px;
-  --card-pattern-opacity: .42;
+  --card-pattern: linear-gradient(135deg, rgba(255, 255, 255, .4) 0 20%, transparent 40%, rgba(255, 255, 255, .35) 60%, transparent 80%);
+  --card-pattern-opacity: 1;
   --card-art-bg: rgba(255, 255, 255, .5);
 }
 
 [data-card-theme="gold"] {
   --card-bg:
-    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, .85), transparent 30%),
-    linear-gradient(150deg, #fff7e2, #f3dca0 70%, #e9c879);
-  --card-pattern:
-    radial-gradient(circle, rgba(176, 137, 38, .55) 0 2px, transparent 3px) 0 0 / 26px 26px,
-    linear-gradient(145deg, transparent 0 72%, rgba(255, 255, 255, .55) 72%);
-  --card-pattern-opacity: .35;
-  --card-art-bg: rgba(255, 255, 255, .55);
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, .85), transparent 32%),
+    linear-gradient(150deg, #fff7e2, #f1d995 68%, #e3bb63);
+  --card-pattern: linear-gradient(145deg, transparent 0 62%, rgba(255, 255, 255, .55) 62%, rgba(255, 255, 255, .2) 74%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .5);
 }
 
 [data-card-theme="sunset"] {
-  --card-bg: linear-gradient(160deg, #ffd16b, #ff7eb3 58%, #a96bff);
-  --card-pattern: radial-gradient(circle, rgba(255, 255, 255, .6) 0 2px, transparent 3px) 0 0 / 24px 24px;
-  --card-pattern-opacity: .3;
-  --card-art-bg: rgba(255, 255, 255, .4);
+  --card-bg: linear-gradient(160deg, #ffce5e, #ff7eb3 56%, #9d63ff);
+  --card-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .35) 64%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .38);
 }
 
 [data-card-theme="mint"] {
-  --card-bg: linear-gradient(155deg, #d6fff4, #8fe9d6 58%, #57c9e0);
-  --card-pattern: radial-gradient(circle, rgba(255, 255, 255, .6) 0 2px, transparent 3px) 0 0 / 24px 24px;
-  --card-pattern-opacity: .34;
-  --card-art-bg: rgba(255, 255, 255, .45);
+  --card-bg: linear-gradient(155deg, #d9fff5, #82e6d3 58%, #45c1da);
+  --card-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .4) 64%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .42);
+}
+
+[data-card-theme="ocean"] {
+  --card-bg: linear-gradient(160deg, #3b86ff, #1450c8 62%, #0a2570);
+  --card-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .12) 64%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .1);
+}
+
+[data-card-theme="rose"] {
+  --card-bg: linear-gradient(155deg, #ffe6f0, #ffb3cd 62%, #ff7ba6);
+  --card-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .45) 64%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .48);
+}
+
+[data-card-theme="forest"] {
+  --card-bg: linear-gradient(155deg, #dcf6df, #8fd99f 56%, #2f8f55);
+  --card-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .35) 64%);
+  --card-pattern-opacity: 1;
+  --card-art-bg: rgba(255, 255, 255, .4);
 }

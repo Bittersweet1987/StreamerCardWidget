@@ -379,7 +379,10 @@ export function overlayText(key, language) {
   return OVERLAY_STRINGS[key]?.[lang] ?? OVERLAY_STRINGS[key]?.de ?? key;
 }
 
-export const CARD_THEMES = ["default", "onyx", "carbon", "prism", "gold", "sunset", "mint"];
+export const CARD_THEMES = [
+  "default", "onyx", "carbon", "midnight", "slate",
+  "prism", "gold", "sunset", "mint", "ocean", "rose", "forest"
+];
 
 export function applyTheme(settings) {
   const style = settings.style || {};

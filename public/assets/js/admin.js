@@ -77,13 +77,18 @@ const I18N = {
     en: "Pick the look of all cards with one click. It applies instantly to overlay, collection and previews."
   },
   "theme-selected": { de: "Ausgewählt", en: "Selected" },
-  "theme-default": { de: "Klassik (Standard)", en: "Classic (default)" },
-  "theme-onyx": { de: "Onyx (Dunkel)", en: "Onyx (dark)" },
+  "theme-default": { de: "Klassik", en: "Classic" },
+  "theme-onyx": { de: "Onyx", en: "Onyx" },
   "theme-carbon": { de: "Carbon", en: "Carbon" },
-  "theme-prism": { de: "Prisma (Holo)", en: "Prism (holo)" },
+  "theme-midnight": { de: "Mitternacht", en: "Midnight" },
+  "theme-slate": { de: "Schiefer", en: "Slate" },
+  "theme-prism": { de: "Prisma", en: "Prism" },
   "theme-gold": { de: "Gold", en: "Gold" },
   "theme-sunset": { de: "Sunset", en: "Sunset" },
   "theme-mint": { de: "Mint", en: "Mint" },
+  "theme-ocean": { de: "Ozean", en: "Ocean" },
+  "theme-rose": { de: "Rosé", en: "Rose" },
+  "theme-forest": { de: "Wald", en: "Forest" },
   "nav-commandusage": { de: "Nutzung Befehle", en: "Command usage" },
   "nav-queue": { de: "Queue", en: "Queue" },
   "bot-trigger-title": { de: "Bot-Verbindung (Chat)", en: "Bot connection (chat)" },
@@ -2265,12 +2270,10 @@ function renderThemes() {
   const base = settings.deck?.cards?.[0];
   const sample = base ? { ...base } : { title: "Sample", rarity: "epic", accent };
   grid.innerHTML = CARD_THEMES.map((id) => `
-    <button type="button" class="theme-tile${id === current ? " is-selected" : ""}" data-theme="${escapeHtml(id)}" aria-pressed="${id === current}">
+    <button type="button" class="theme-tile${id === current ? " is-selected" : ""}" data-theme="${escapeHtml(id)}" aria-pressed="${id === current}" title="${t(`theme-${id}`)}">
+      <span class="theme-check" aria-label="${t("theme-selected")}">✓</span>
       <div class="theme-card-preview" data-card-theme="${escapeHtml(id)}">${cardMarkup(sample)}</div>
-      <div class="theme-tile-foot">
-        <span class="theme-name">${t(`theme-${id}`)}</span>
-        ${id === current ? `<span class="theme-badge">${t("theme-selected")}</span>` : ""}
-      </div>
+      <span class="theme-name">${t(`theme-${id}`)}</span>
     </button>
   `).join("");
 }
