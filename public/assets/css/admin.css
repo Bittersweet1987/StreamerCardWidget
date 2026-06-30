@@ -1292,6 +1292,39 @@ body[data-theme="dark"] .user-card {
   line-height: 1.2;
 }
 
+.theme-editor {
+  margin-top: 20px;
+}
+
+.theme-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: 22px;
+  align-items: start;
+}
+
+.theme-editor-controls {
+  display: grid;
+  gap: 14px;
+}
+
+.theme-editor-preview {
+  display: grid;
+  place-items: center;
+  padding: 10px;
+}
+
+.theme-editor-preview .tcg-card {
+  width: 180px;
+  box-shadow: 0 14px 32px rgba(43, 33, 79, .26);
+}
+
+@media (max-width: 720px) {
+  .theme-editor-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 body[data-theme="dark"] .theme-tile {
   border-color: #3a314d;
   background: rgba(31, 26, 43, .6);

@@ -109,6 +109,15 @@ export function normalizeSettings(settings) {
   settings.style ||= {};
   settings.style.themeMode ||= "light";
   settings.style.cardTheme = CARD_THEMES.includes(settings.style.cardTheme) ? settings.style.cardTheme : "default";
+  settings.style.customTheme ||= {};
+  settings.style.customTheme.color1 ||= "#6a5cff";
+  settings.style.customTheme.color2 ||= "#22d3ee";
+  settings.style.customTheme.color3 ||= "#ff7ad9";
+  settings.style.customTheme.useColor3 = settings.style.customTheme.useColor3 === true;
+  settings.style.customTheme.angle = clamp(settings.style.customTheme.angle ?? 155, 0, 360);
+  settings.style.customTheme.sheen = clamp(settings.style.customTheme.sheen ?? 30, 0, 70);
+  settings.style.customTheme.artColor ||= "#ffffff";
+  settings.style.customTheme.artOpacity = clamp(settings.style.customTheme.artOpacity ?? 45, 0, 100);
   settings.style.namePosition = ["bottom", "middle", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
   settings.sounds ||= {};
   settings.sounds.open ||= "";
@@ -381,15 +390,54 @@ export function overlayText(key, language) {
 
 export const CARD_THEMES = [
   "default", "onyx", "carbon", "midnight", "slate",
-  "prism", "gold", "sunset", "mint", "ocean", "rose", "forest"
+  "prism", "gold", "sunset", "mint", "ocean", "rose", "forest",
+  "custom"
 ];
+
+function hexToRgba(hex, alpha) {
+  let h = String(hex || "#ffffff").replace("#", "").trim();
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const n = parseInt(h, 16);
+  if (Number.isNaN(n)) return `rgba(255, 255, 255, ${alpha})`;
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+// Builds the card CSS variables for a user-defined theme. Only ever touches --card-* so a
+// custom theme can never affect anything but the card surface itself.
+export function customThemeCss(ct = {}) {
+  const c1 = ct.color1 || "#6a5cff";
+  const c2 = ct.color2 || "#22d3ee";
+  const c3 = ct.color3 || "#ff7ad9";
+  const angle = clamp(ct.angle ?? 155, 0, 360);
+  const colors = ct.useColor3 ? [c1, c2, c3] : [c1, c2];
+  const bg = `linear-gradient(${angle}deg, ${colors.join(", ")})`;
+  const sheen = clamp(ct.sheen ?? 30, 0, 70) / 100;
+  const pattern = sheen > 0
+    ? `linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, ${sheen}) 64%)`
+    : "none";
+  const artBg = hexToRgba(ct.artColor || "#ffffff", clamp(ct.artOpacity ?? 45, 0, 100) / 100);
+  return `--card-bg:${bg};--card-pattern:${pattern};--card-pattern-opacity:1;--card-art-bg:${artBg};`;
+}
+
+const CARD_VARS = ["--card-bg", "--card-pattern", "--card-pattern-opacity", "--card-art-bg"];
 
 export function applyTheme(settings) {
   const style = settings.style || {};
   const root = document.documentElement;
   if (document.body) {
     document.body.dataset.theme = style.themeMode || "light";
-    document.body.dataset.cardTheme = CARD_THEMES.includes(style.cardTheme) ? style.cardTheme : "default";
+    const cardTheme = CARD_THEMES.includes(style.cardTheme) ? style.cardTheme : "default";
+    document.body.dataset.cardTheme = cardTheme;
+    // For built-in themes the static [data-card-theme] CSS drives the look, so clear any
+    // inline card vars. For "custom", apply the user's values inline (they're dynamic).
+    if (cardTheme === "custom") {
+      for (const decl of customThemeCss(style.customTheme).split(";")) {
+        const [prop, value] = decl.split(":");
+        if (prop && value) document.body.style.setProperty(prop.trim(), value.trim());
+      }
+    } else {
+      for (const prop of CARD_VARS) document.body.style.removeProperty(prop);
+    }
   }
   root.style.setProperty("--accent", style.accentColor || "#ff78bb");
   root.style.setProperty("--panel-text", style.panelTextColor || "#2f2945");

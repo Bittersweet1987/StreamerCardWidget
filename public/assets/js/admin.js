@@ -36,6 +36,7 @@ import {
   cardMarkup,
   cardsForBooster,
   createId,
+  customThemeCss,
   DEFAULT_RARITY_COLORS,
   DEFAULT_RARITY_WEIGHTS,
   escapeHtml,
@@ -89,6 +90,23 @@ const I18N = {
   "theme-ocean": { de: "Ozean", en: "Ocean" },
   "theme-rose": { de: "Rosé", en: "Rose" },
   "theme-forest": { de: "Wald", en: "Forest" },
+  "theme-custom": { de: "Eigenes", en: "Custom" },
+  "theme-editor-eyebrow": { de: "Eigenes Theme", en: "Custom theme" },
+  "theme-editor-title": { de: "Theme-Editor", en: "Theme editor" },
+  "theme-editor-hint": {
+    de: "Stelle dein eigenes Karten-Theme zusammen. Die Einstellungen wirken sich nur auf die Karte aus.",
+    en: "Build your own card theme. These settings only affect the card itself."
+  },
+  "label-ct-color1": { de: "Farbe 1", en: "Color 1" },
+  "label-ct-color2": { de: "Farbe 2", en: "Color 2" },
+  "label-ct-color3": { de: "Farbe 3", en: "Color 3" },
+  "label-ct-use-color3": { de: "Dritte Farbe verwenden", en: "Use a third color" },
+  "label-ct-angle": { de: "Verlaufswinkel", en: "Gradient angle" },
+  "label-ct-sheen": { de: "Glanz", en: "Sheen" },
+  "label-ct-art-color": { de: "Bildrahmen-Farbe", en: "Image frame color" },
+  "label-ct-art-opacity": { de: "Bildrahmen-Deckkraft", en: "Image frame opacity" },
+  "btn-ct-activate": { de: "Eigenes Theme aktivieren", en: "Activate custom theme" },
+  "notice-theme-custom-active": { de: "Eigenes Theme aktiviert.", en: "Custom theme activated." },
   "nav-commandusage": { de: "Nutzung Befehle", en: "Command usage" },
   "nav-queue": { de: "Queue", en: "Queue" },
   "bot-trigger-title": { de: "Bot-Verbindung (Chat)", en: "Bot connection (chat)" },
@@ -2261,36 +2279,103 @@ function bindGlobalActions() {
   $("#card-list").addEventListener("change", handleCardListChange);
 }
 
+function themeSampleCard() {
+  const accent = settings.style?.accentColor || "#ff78bb";
+  const base = settings.deck?.cards?.[0];
+  // Use a real card if one exists so the preview is representative; otherwise a synthetic sample.
+  return base ? { ...base } : { title: "Sample", rarity: "epic", accent };
+}
+
 function renderThemes() {
   const grid = $("#themes-grid");
   if (!grid) return;
   const current = settings.style?.cardTheme || "default";
-  const accent = settings.style?.accentColor || "#ff78bb";
-  // Use a real card if one exists so the preview is representative; otherwise a synthetic sample.
-  const base = settings.deck?.cards?.[0];
-  const sample = base ? { ...base } : { title: "Sample", rarity: "epic", accent };
-  grid.innerHTML = CARD_THEMES.map((id) => `
+  const sample = themeSampleCard();
+  grid.innerHTML = CARD_THEMES.map((id) => {
+    // The custom tile carries its vars inline (they're dynamic); built-ins use the static CSS.
+    const previewStyle = id === "custom" ? ` style="${customThemeCss(settings.style?.customTheme)}"` : "";
+    return `
     <button type="button" class="theme-tile${id === current ? " is-selected" : ""}" data-theme="${escapeHtml(id)}" aria-pressed="${id === current}" title="${t(`theme-${id}`)}">
       <span class="theme-check" aria-label="${t("theme-selected")}">✓</span>
-      <div class="theme-card-preview" data-card-theme="${escapeHtml(id)}">${cardMarkup(sample)}</div>
+      <div class="theme-card-preview" data-card-theme="${escapeHtml(id)}"${previewStyle}>${cardMarkup(sample)}</div>
       <span class="theme-name">${t(`theme-${id}`)}</span>
-    </button>
-  `).join("");
+    </button>`;
+  }).join("");
+}
+
+function hydrateThemeEditor() {
+  const ct = settings.style?.customTheme;
+  if (!ct || !$("#ct-color1")) return;
+  $("#ct-color1").value = ct.color1 || "#6a5cff";
+  $("#ct-color2").value = ct.color2 || "#22d3ee";
+  $("#ct-color3").value = ct.color3 || "#ff7ad9";
+  $("#ct-use-color3").checked = ct.useColor3 === true;
+  $("#ct-angle").value = ct.angle ?? 155;
+  $("#ct-sheen").value = ct.sheen ?? 30;
+  $("#ct-art-color").value = ct.artColor || "#ffffff";
+  $("#ct-art-opacity").value = ct.artOpacity ?? 45;
+  updateThemeEditorPreview();
+}
+
+function updateThemeEditorPreview() {
+  const preview = $("#ct-preview");
+  if (!preview) return;
+  preview.setAttribute("style", customThemeCss(settings.style?.customTheme));
+  preview.innerHTML = cardMarkup(themeSampleCard());
+}
+
+function readThemeEditor() {
+  settings.style ||= {};
+  settings.style.customTheme = {
+    color1: $("#ct-color1").value,
+    color2: $("#ct-color2").value,
+    color3: $("#ct-color3").value,
+    useColor3: $("#ct-use-color3").checked,
+    angle: Number($("#ct-angle").value),
+    sheen: Number($("#ct-sheen").value),
+    artColor: $("#ct-art-color").value,
+    artOpacity: Number($("#ct-art-opacity").value)
+  };
+  updateThemeEditorPreview();
+  // Keep the custom tile in the grid in sync with the editor.
+  const customPreview = $('#themes-grid .theme-tile[data-theme="custom"] .theme-card-preview');
+  if (customPreview) customPreview.setAttribute("style", customThemeCss(settings.style.customTheme));
+  // If the custom theme is the active one, update the live look everywhere immediately.
+  if (settings.style.cardTheme === "custom") applyTheme(settings);
+  scheduleAutoSave();
 }
 
 function bindThemes() {
   const grid = $("#themes-grid");
-  if (!grid) return;
-  grid.addEventListener("click", (event) => {
-    const tile = event.target.closest(".theme-tile");
-    if (!tile) return;
-    settings.style ||= {};
-    settings.style.cardTheme = tile.dataset.theme;
-    applyTheme(settings);
-    renderThemes();
-    refreshSettingsPreview();
-    scheduleAutoSave();
-  });
+  if (grid) {
+    grid.addEventListener("click", (event) => {
+      const tile = event.target.closest(".theme-tile");
+      if (!tile) return;
+      settings.style ||= {};
+      settings.style.cardTheme = tile.dataset.theme;
+      applyTheme(settings);
+      renderThemes();
+      refreshSettingsPreview();
+      scheduleAutoSave();
+    });
+  }
+  const editor = $("#theme-editor");
+  if (editor) {
+    editor.addEventListener("input", readThemeEditor);
+    editor.addEventListener("change", readThemeEditor);
+  }
+  const activate = $("#ct-activate");
+  if (activate) {
+    activate.addEventListener("click", () => {
+      settings.style ||= {};
+      settings.style.cardTheme = "custom";
+      applyTheme(settings);
+      renderThemes();
+      refreshSettingsPreview();
+      scheduleAutoSave();
+      showNotice(t("notice-theme-custom-active"));
+    });
+  }
 }
 
 function renderAll() {
@@ -2305,6 +2390,7 @@ function renderAll() {
     ["hydrateDesign", hydrateDesign],
     ["hydrateChatCommands", hydrateChatCommands],
     ["renderThemes", renderThemes],
+    ["hydrateThemeEditor", hydrateThemeEditor],
     ["renderOverview", renderOverview],
     ["renderUsers", renderUsers]
   ];
