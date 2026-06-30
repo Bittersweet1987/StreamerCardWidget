@@ -1,8 +1,23 @@
 # 🃏 Streamer Card Widget
 
-Lokale Windows-App für Twitch-Sammelkarten über Kanalpunkte – mit animiertem OBS-Overlay.
-Zuschauer lösen eine Kanalpunkte-Belohnung ein und ziehen eine Karte aus einem Booster-Pack,
-das live in OBS aufgeht. Jeder Zuschauer baut so seine eigene Sammlung auf.
+Lokale Windows-App für Twitch-Sammelkarten – mit animiertem OBS-Overlay.
+Deine Zuschauer ziehen über **Kanalpunkte** oder **Chat-Befehle** Karten aus Booster-Packs,
+die live in OBS aufgehen, bauen ihre eigene **Sammlung** auf und können Karten sogar
+untereinander **tauschen**.
+
+### Wie es funktioniert (in Kürze)
+
+1. Du legst **Booster** (Karten-Packs) und **Karten** an – ein paar Beispiele sind schon dabei,
+   du kannst also sofort loslegen.
+2. Du verbindest **Twitch** (für Kanalpunkte/Chat) und **OBS** (für das Overlay).
+3. Ein Zuschauer löst eine Belohnung ein oder tippt z. B. `!pack` in den Chat → die App zieht
+   zufällig eine Karte und spielt die Animation in OBS ab.
+4. Jede gezogene Karte landet in der **Sammlung** des Zuschauers. Über `!collection` kann er sie
+   zeigen, über `!trade` mit anderen tauschen.
+
+> **Du brauchst:** Windows 10/11 und OBS Studio. Die WebView2-Runtime (für die Bedienoberfläche)
+> ist auf aktuellen Windows-Versionen vorinstalliert. Eine eigene Twitch-Entwickler-App ist
+> **nicht** nötig.
 
 ---
 
@@ -19,6 +34,7 @@ das live in OBS aufgeht. Jeder Zuschauer baut so seine eigene Sammlung auf.
 - [Sammlungs-Showcase](#sammlungs-showcase)
 - [Chat-Befehle](#chat-befehle)
 - [Tauschsystem](#tauschsystem)
+- [Tausch-Animation](#tausch-animation)
 - [Nutzung Befehle](#nutzung-befehle)
 - [Queue](#queue)
 - [Darstellung & Sounds](#darstellung--sounds)
@@ -31,12 +47,22 @@ das live in OBS aufgeht. Jeder Zuschauer baut so seine eigene Sammlung auf.
 
 ## Schnellstart
 
-1. Aktuelle Version von der [Releases-Seite](https://github.com/Bittersweet1987/StreamerCardWidget/releases/latest) herunterladen, ZIP entpacken und `CardPackWidget.exe` starten.
-2. Die komplette Verwaltung ist direkt in der App eingebettet (linke Navigation).
-3. Reihenfolge fürs erste Einrichten: **Verbindung → Booster → Karten → Einstellungen**.
+1. Aktuelle Version von der [Releases-Seite](https://github.com/Bittersweet1987/StreamerCardWidget/releases/latest) herunterladen.
+2. Das ZIP **komplett entpacken** (nicht direkt im ZIP starten) und `CardPackWidget.exe` ausführen.
+   Es öffnet sich ein Fenster mit der kompletten Verwaltung – links die Navigation.
+3. Empfohlene Reihenfolge fürs erste Einrichten:
+   **Verbindung → Booster → Karten → Kanalpunkte / Chat Befehle**.
+4. Zum Ausprobieren: Im Tab **Übersicht** auf **Demo zufällig ausführen** klicken – das spielt eine
+   Pack-Animation ab (das OBS-Overlay oder die Datei `overlay.html` muss dafür geöffnet sein).
+
+> **Tipp:** Beispiel-Booster und -Karten sind bereits enthalten – du kannst die Animation also
+> testen, bevor du eigene Inhalte anlegst.
+>
+> Falls du Fragen hast, gibt es in der App unter **Übersicht** einen Button, der direkt zu dieser
+> Anleitung führt.
 
 > Der Ordner `data\` enthält deine Karten, Booster und Sammlungen. Bei einem manuellen Update
-> immer behalten – nur `public\`, die DLLs und die exe überschreiben.
+> immer behalten – nur `public\`, die DLLs und die exe überschreiben (siehe [Daten & Updates](#daten--updates)).
 
 ---
 
@@ -208,6 +234,24 @@ Karte/Nutzer nicht gefunden …) sind anpassbar, Variablen wieder per Klick einf
 
 ---
 
+## Tausch-Animation
+
+Kommt ein Tausch erfolgreich zustande, kann eine eigene **Tausch-Animation** in OBS abgespielt
+werden – in einer **separaten Browserquelle** (neben Pack und Sammlung).
+
+1. **Einstellungen → Tausch-Animation** → *aktivieren*.
+2. **Stil** wählen: *Karten-Swap* (Karten kreuzen), *Übergabe-Bogen* oder *Versus-Flip*.
+3. **Dauer** wählen (kurz / mittel / lang) und optional einen eigenen **Tausch-Sound** hochladen
+   (Tab Einstellungen → Sounds).
+4. **Verbindung → Quellenname Tausch-Animation** vergeben und auf **OBS Szene aktualisieren**
+   klicken – die Quelle wird automatisch angelegt.
+
+In der Animation werden beide getauschten Karten gezeigt; unter jeder Karte steht zuerst der
+bisherige, nach dem Tausch der neue Besitzer. Mit der Option **„Erfolgsmeldung im Chat senden"**
+legst du fest, ob zusätzlich die Chat-Nachricht kommt oder nur die Animation laufen soll.
+
+---
+
 ## Nutzung Befehle
 
 Der Tab **Nutzung Befehle** listet pro Zuschauer, wie oft er **`!pack`** und **`!trade`** genutzt
@@ -235,9 +279,11 @@ Im Tab **Einstellungen**:
 - **Vorschau** mit Karten-Auswahl.
 - **Sammlungsleiste** und **Kartenrahmen** ein-/ausblenden.
 - **Position Einlöser-Name** im Overlay: Unten / Mitte / Oben.
-- **Sounds** für Öffnen & Reveal + **Lautstärke**.
+- **Sounds** für Öffnen, Reveal und Tausch + **Lautstärke**.
 - **Timing**: Karte sichtbar (Sek.), Cooldown, verdeckte Karten vor dem Reveal.
-- Sprache **Deutsch / Englisch**, Hell-/Dunkelmodus.
+
+Sprache (**DE / EN**) und Modus (**Hell ☀ / Dunkel 🌙**) schaltest du jederzeit über die beiden
+Schalter unten links in der Navigation um.
 
 ---
 
