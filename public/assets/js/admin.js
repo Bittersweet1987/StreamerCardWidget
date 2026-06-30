@@ -78,6 +78,7 @@ const I18N = {
     en: "Pick the look of all cards with one click. It applies instantly to overlay, collection and previews."
   },
   "theme-selected": { de: "Ausgewählt", en: "Selected" },
+  "label-theme-preview-card": { de: "Vorschaukarte", en: "Preview card" },
   "theme-default": { de: "Klassik", en: "Classic" },
   "theme-onyx": { de: "Onyx", en: "Onyx" },
   "theme-carbon": { de: "Carbon", en: "Carbon" },
@@ -2279,16 +2280,30 @@ function bindGlobalActions() {
   $("#card-list").addEventListener("change", handleCardListChange);
 }
 
+let themePreviewCardId;
+
 function themeSampleCard() {
   const accent = settings.style?.accentColor || "#ff78bb";
-  const base = settings.deck?.cards?.[0];
-  // Use a real card if one exists so the preview is representative; otherwise a synthetic sample.
+  const cards = settings.deck?.cards || [];
+  // Use the card picked in the preview dropdown (or the first one); fall back to a synthetic sample.
+  const base = cards.find((card) => card.id === themePreviewCardId) || cards[0];
   return base ? { ...base } : { title: "Sample", rarity: "epic", accent };
+}
+
+function renderThemePreviewPicker() {
+  const select = $("#theme-preview-card");
+  if (!select) return;
+  const cards = settings.deck?.cards || [];
+  if (!cards.some((card) => card.id === themePreviewCardId)) themePreviewCardId = cards[0]?.id;
+  select.innerHTML = cards.map((card) => `<option value="${escapeHtml(card.id)}">${escapeHtml(card.title || card.id)}</option>`).join("");
+  if (themePreviewCardId) select.value = themePreviewCardId;
+  select.disabled = cards.length === 0;
 }
 
 function renderThemes() {
   const grid = $("#themes-grid");
   if (!grid) return;
+  renderThemePreviewPicker();
   const current = settings.style?.cardTheme || "default";
   const sample = themeSampleCard();
   grid.innerHTML = CARD_THEMES.map((id) => {
@@ -2314,6 +2329,8 @@ function hydrateThemeEditor() {
   $("#ct-sheen").value = ct.sheen ?? 30;
   $("#ct-art-color").value = ct.artColor || "#ffffff";
   $("#ct-art-opacity").value = ct.artOpacity ?? 45;
+  const color3Field = $("#ct-color3-field");
+  if (color3Field) color3Field.hidden = ct.useColor3 !== true;
   updateThemeEditorPreview();
 }
 
@@ -2336,6 +2353,8 @@ function readThemeEditor() {
     artColor: $("#ct-art-color").value,
     artOpacity: Number($("#ct-art-opacity").value)
   };
+  const color3Field = $("#ct-color3-field");
+  if (color3Field) color3Field.hidden = settings.style.customTheme.useColor3 !== true;
   updateThemeEditorPreview();
   // Keep the custom tile in the grid in sync with the editor.
   const customPreview = $('#themes-grid .theme-tile[data-theme="custom"] .theme-card-preview');
@@ -2357,6 +2376,14 @@ function bindThemes() {
       renderThemes();
       refreshSettingsPreview();
       scheduleAutoSave();
+    });
+  }
+  const picker = $("#theme-preview-card");
+  if (picker) {
+    picker.addEventListener("change", (event) => {
+      themePreviewCardId = event.target.value;
+      renderThemes();
+      updateThemeEditorPreview();
     });
   }
   const editor = $("#theme-editor");

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-themes4">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-themes5">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -808,9 +808,10 @@
             </div>
           </div>
           <p class="hint" data-i18n="themes-hint">Wähle das Aussehen aller Karten per Klick. Die Auswahl gilt sofort für Overlay, Sammlung und Vorschauen.</p>
+          <label class="theme-preview-picker" data-i18n="label-theme-preview-card">Vorschaukarte<select id="theme-preview-card"></select></label>
           <div class="themes-grid" id="themes-grid"></div>
 
-          <section class="tool-panel theme-editor">
+          <section class="tool-panel theme-editor" id="theme-editor">
             <div class="section-heading">
               <div>
                 <p class="eyebrow" data-i18n="theme-editor-eyebrow">Eigenes Theme</p>
@@ -829,7 +830,7 @@
                   <span data-i18n="label-ct-use-color3">Dritte Farbe verwenden</span>
                 </label>
                 <div class="form-grid">
-                  <label data-i18n="label-ct-color3">Farbe 3<input id="ct-color3" type="color"></label>
+                  <label id="ct-color3-field" data-i18n="label-ct-color3" hidden>Farbe 3<input id="ct-color3" type="color"></label>
                   <label data-i18n="label-ct-angle">Verlaufswinkel<input id="ct-angle" type="range" min="0" max="360" step="5"></label>
                   <label data-i18n="label-ct-sheen">Glanz<input id="ct-sheen" type="range" min="0" max="70" step="1"></label>
                   <label data-i18n="label-ct-art-color">Bildrahmen-Farbe<input id="ct-art-color" type="color"></label>
@@ -988,6 +989,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260630-themes4"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260630-themes5"></script>
   </body>
 </html>

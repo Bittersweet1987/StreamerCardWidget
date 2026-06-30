@@ -1221,6 +1221,13 @@ body[data-theme="dark"] .user-card {
   box-shadow: 0 18px 42px rgba(0, 0, 0, .22);
 }
 
+.theme-preview-picker {
+  display: inline-grid;
+  gap: 6px;
+  margin-bottom: 18px;
+  min-width: 220px;
+}
+
 .themes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
