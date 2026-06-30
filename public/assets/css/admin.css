@@ -182,6 +182,13 @@ body {
   background: rgba(255, 255, 255, .1);
 }
 
+/* The open dropdown list is drawn by the OS on a light surface, so force readable dark
+   text on white there (the white-on-dark select styling only fits the closed control). */
+.sidebar-settings select option {
+  color: #241f33;
+  background: #fff;
+}
+
 .sidebar-status {
   display: grid;
   gap: 8px;
