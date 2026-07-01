@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260630-themes6">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260701-postmsg1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -258,6 +258,21 @@
                 <label data-i18n="label-reward-max-user">Max pro Nutzer/Stream<input id="reward-max-user" type="number" min="0" step="1"></label>
                 <label class="full-row" data-i18n="label-reward-prompt">Beschreibung<input id="reward-prompt" type="text"></label>
               </div>
+              <label class="switch-row compact-switch">
+                <input id="reward-post-enabled" type="checkbox">
+                <span data-i18n="label-reward-post-enabled">Chat-Nachricht nach dem Ziehen senden</span>
+              </label>
+              <div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-reward-post-message">Nachricht nach der Animation</span>
+                  <div class="var-chips" data-target="reward-post-message">
+                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                  </div>
+                </div>
+                <textarea id="reward-post-message" rows="2"></textarea>
+              </div>
               <div class="button-row">
                 <button class="primary-button" id="sync-reward" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
                 <button class="danger-button" id="delete-reward" type="button" data-i18n="btn-delete-reward">Löschen</button>
@@ -355,6 +370,8 @@
                     <span class="message-field-label" data-i18n="label-cc-success-message">Nachricht bei Einlösung</span>
                     <div class="var-chips" data-target="cc-pack-success-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                      <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
                     </div>
                   </div>
                   <textarea id="cc-pack-success-message" rows="2"></textarea>
@@ -993,6 +1010,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260630-themes6"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260701-postmsg1"></script>
   </body>
 </html>

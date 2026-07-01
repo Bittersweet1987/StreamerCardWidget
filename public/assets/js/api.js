@@ -217,13 +217,13 @@ export async function clearQueue() {
   return response.json();
 }
 
-export async function completeQueueItem(eventId) {
+export async function completeQueueItem(eventId, cardTitle = "", boosterTitle = "") {
   if (!eventId) return;
   try {
     await fetch("/api/queue/complete", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ eventId })
+      body: JSON.stringify({ eventId, cardTitle, boosterTitle })
     });
   } catch {
   }

@@ -335,6 +335,8 @@ const I18N = {
   "label-reward-title": { de: "Reward-Titel", en: "Reward title" },
   "label-reward-cost": { de: "Kosten", en: "Cost" },
   "label-reward-prompt": { de: "Beschreibung", en: "Description" },
+  "label-reward-post-enabled": { de: "Chat-Nachricht nach dem Ziehen senden", en: "Send chat message after the draw" },
+  "label-reward-post-message": { de: "Nachricht nach der Animation", en: "Message after the animation" },
   "label-reward-bg-color": { de: "Hintergrundfarbe", en: "Background color" },
   "label-reward-cooldown": { de: "Globaler Cooldown (Sek.)", en: "Global cooldown (sec.)" },
   "label-reward-max-stream": { de: "Max pro Stream", en: "Max per stream" },
@@ -768,6 +770,8 @@ function hydrateDrawReward() {
   $("#reward-max-stream").value = draw.rewardMaxPerStream || 0;
   $("#reward-max-user").value = draw.rewardMaxPerUserPerStream || 0;
   $("#reward-cooldown").value = draw.rewardGlobalCooldown || 0;
+  $("#reward-post-enabled").checked = draw.postMessageEnabled === true;
+  $("#reward-post-message").value = draw.postMessage || "@userName hat [Kartenname] aus [Boostername] gezogen.";
 }
 
 function bindDrawReward() {
@@ -780,7 +784,9 @@ function bindDrawReward() {
     "#reward-paused": ["rewardPaused", "checkbox"],
     "#reward-max-stream": ["rewardMaxPerStream", "number"],
     "#reward-max-user": ["rewardMaxPerUserPerStream", "number"],
-    "#reward-cooldown": ["rewardGlobalCooldown", "number"]
+    "#reward-cooldown": ["rewardGlobalCooldown", "number"],
+    "#reward-post-enabled": ["postMessageEnabled", "checkbox"],
+    "#reward-post-message": ["postMessage"]
   };
   for (const [selector, [field, type]] of Object.entries(fields)) {
     $(selector).addEventListener("input", (event) => {
@@ -1921,16 +1927,19 @@ function insertVariableIntoField(fieldId, variable) {
   field.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function bindChatCommands() {
-  const panel = document.querySelector('[data-panel="chatcommands"]');
-  // One delegated handler for every variable chip: insert into the textarea named by the
-  // chip container's data-target.
-  panel.addEventListener("click", (event) => {
+function bindVariableChips() {
+  // One document-wide handler for every variable chip (chat commands AND the draw reward):
+  // insert into the textarea named by the chip container's data-target.
+  document.addEventListener("click", (event) => {
     const button = event.target.closest(".var-chips [data-insert]");
     if (!button) return;
     const target = button.closest(".var-chips")?.dataset.target;
     if (target) insertVariableIntoField(target, button.dataset.insert);
   });
+}
+
+function bindChatCommands() {
+  const panel = document.querySelector('[data-panel="chatcommands"]');
   panel.addEventListener("input", readChatCommandsFromForm);
   panel.addEventListener("change", readChatCommandsFromForm);
 }
@@ -2488,6 +2497,7 @@ async function init() {
     bindDesign();
     bindUsers();
     bindChatCommands();
+    bindVariableChips();
     bindCommandUsage();
     bindThemes();
     bindQueue();

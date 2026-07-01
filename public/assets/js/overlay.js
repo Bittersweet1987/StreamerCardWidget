@@ -170,8 +170,9 @@ async function runQueue() {
     try {
       await runOpening(request);
     } finally {
-      // Tell the server this event has finished playing so it can proceed (after its 500ms gap).
-      completeQueueItem(request.eventId);
+      // Tell the server this event has finished playing (so it can proceed after its 500ms gap)
+      // and report the drawn card/booster so the post-animation chat message can name them.
+      completeQueueItem(request.eventId, request.drawnCardTitle, request.drawnBoosterTitle);
     }
     await delay(Number(settings.behavior?.cooldownSeconds || 0.8) * 1000);
   }
@@ -182,6 +183,8 @@ async function runOpening(request = {}) {
   const booster = pickBooster(request.boosterId);
   const card = booster ? pickCard(booster, request) : null;
   if (!booster || !card) return;
+  request.drawnCardTitle = card.title || card.id || "";
+  request.drawnBoosterTitle = booster.title || booster.id || "";
 
   const user = request.user || request.displayName || "Viewer";
   const login = request.userLogin || request.login || user;

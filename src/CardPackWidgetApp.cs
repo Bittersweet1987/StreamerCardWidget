@@ -758,7 +758,7 @@ namespace CardPackWidgetApp
             if (request.Method == "POST" && request.Path == "/api/queue/complete")
             {
                 Dictionary<string, object> body = ParseObject(request.Body);
-                twitchBridge.CompleteQueueItem(GetString(body, "eventId", ""));
+                twitchBridge.CompleteQueueItem(GetString(body, "eventId", ""), GetString(body, "cardTitle", ""), GetString(body, "boosterTitle", ""));
                 SendJson(stream, 200, json.Serialize(new Dictionary<string, object> { { "ok", true } }));
                 return;
             }
@@ -2176,10 +2176,44 @@ namespace CardPackWidgetApp
         // Called by the overlay (POST /api/queue/complete) once it has finished playing the
         // animation for a given event. Releases the queue worker so it can proceed to the
         // 500ms gap and then the next item.
-        public void CompleteQueueItem(string eventId)
+        public void CompleteQueueItem(string eventId, string cardTitle, string boosterTitle)
         {
             if (String.IsNullOrEmpty(eventId)) return;
-            if (eventId == awaitingEventId) completionSignal.Set();
+            if (eventId != awaitingEventId) return;
+            // The animation just finished and the overlay reported which card was drawn, so the
+            // post-animation chat message (channel points and/or !pack) can now be sent by name.
+            try
+            {
+                Dictionary<string, object> item;
+                lock (queueLock) item = currentQueueItem;
+                if (item != null && GetString(item, "kind", "") == "draw") SendDrawPostMessage(item, cardTitle, boosterTitle);
+            }
+            catch { }
+            completionSignal.Set();
+        }
+
+        private void SendDrawPostMessage(Dictionary<string, object> item, string cardTitle, string boosterTitle)
+        {
+            string source = GetString(item, "source", "");
+            string user = GetString(item, "user", "Viewer");
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            string template = null;
+            if (source == "chat")
+            {
+                // The !pack "Nachricht bei Einloesung" - always sent (no separate toggle).
+                template = GetString(Obj(Obj(settings, "chatCommands"), "pack"), "successMessage", "");
+            }
+            else if (source == "channelpoints")
+            {
+                Dictionary<string, object> draw = Obj(settings, "draw");
+                if (GetBool(draw, "postMessageEnabled", false)) template = GetString(draw, "postMessage", "");
+            }
+            if (String.IsNullOrWhiteSpace(template)) return;
+            string msg = template
+                .Replace("@userName", "@" + user)
+                .Replace("[Kartenname]", cardTitle ?? "")
+                .Replace("[Boostername]", boosterTitle ?? "");
+            SendChatMessageSafe(msg);
         }
 
         public bool QueuePaused { get { return queuePaused; } }
@@ -2742,14 +2776,8 @@ namespace CardPackWidgetApp
                 SaveUsage();
             }
 
-            // Immediate confirmation in chat, sent the moment the command is accepted - before the
-            // booster is actually opened in the overlay (which may be queued behind other events).
-            string success = GetString(packCfg, "successMessage", DefaultSuccessMessage);
-            if (!String.IsNullOrWhiteSpace(success))
-            {
-                SendChatMessageSafe(success.Replace("@userName", "@" + displayName));
-            }
-
+            // The "Nachricht bei Einloesung" is sent AFTER the animation finishes (see
+            // SendDrawPostMessage), so it can include the actual drawn card and booster name.
             Enqueue("draw", login, displayName, "chat");
         }
 

@@ -187,6 +187,9 @@ export function normalizeSettings(settings) {
   settings.draw.rewardMaxPerUserPerStream = Number(settings.draw.rewardMaxPerUserPerStream || 0);
   settings.draw.rewardEnabled = settings.draw.rewardEnabled !== false;
   settings.draw.rewardPaused = settings.draw.rewardPaused === true;
+  // Optional chat message sent after the pack animation finishes (channel-point draws).
+  settings.draw.postMessageEnabled = settings.draw.postMessageEnabled === true;
+  settings.draw.postMessage ||= "@userName hat [Kartenname] aus [Boostername] gezogen.";
 
   // Second Twitch identity (bot account) used for reading/sending chat. Falls back to the
   // main/broadcaster connection when not configured.
@@ -206,7 +209,12 @@ export function normalizeSettings(settings) {
   settings.chatCommands.pack.cooldownSeconds = Number(settings.chatCommands.pack.cooldownSeconds) >= 0 ? Number(settings.chatCommands.pack.cooldownSeconds) : 300;
   settings.chatCommands.pack.limitMessage ||= "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
   settings.chatCommands.pack.cooldownMessage ||= "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
-  settings.chatCommands.pack.successMessage ||= "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.";
+  // The pack success message is now sent AFTER the animation, so it can name the drawn card.
+  // Migrate the old "sold/opening" default (which no longer fits) to the new post-draw text.
+  if (!settings.chatCommands.pack.successMessage
+      || settings.chatCommands.pack.successMessage === "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.") {
+    settings.chatCommands.pack.successMessage = "@userName hat [Kartenname] aus [Boostername] gezogen.";
+  }
   settings.chatCommands.collection ||= {};
   settings.chatCommands.collection.enabled = settings.chatCommands.collection.enabled !== false;
   settings.chatCommands.collection.prefix ||= "!";
