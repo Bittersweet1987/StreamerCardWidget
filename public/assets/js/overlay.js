@@ -193,7 +193,7 @@ async function runOpening(request = {}) {
   if (settings.behavior?.persistCollections !== false) {
     await persistCollectionSnapshot(collection, booster.id, "");
   }
-  addLog("draw", "info", `${user} hat "${card.title || card.id}" aus "${booster.title || booster.id}" gezogen.`);
+  // The server now logs the draw (it picks the card), so no duplicate log entry from here.
 
   const scene = document.createElement("section");
   const namePos = ["bottom", "middle", "top"].includes(settings.style?.namePosition) ? settings.style.namePosition : "bottom";

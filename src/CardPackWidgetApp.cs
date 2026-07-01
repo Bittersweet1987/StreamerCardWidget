@@ -2093,6 +2093,93 @@ namespace CardPackWidgetApp
             return GetString(pool[pool.Count - 1], "id", "");
         }
 
+        private static readonly Dictionary<string, double> DefaultRarityWeights = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "common", 100 }, { "uncommon", 60 }, { "rare", 30 }, { "epic", 12 }, { "legendary", 4 }, { "holo", 1 }
+        };
+
+        private static string NormalizeRarityId(string rarity)
+        {
+            string r = (rarity ?? "").Trim().ToLowerInvariant();
+            if (DefaultRarityWeights.ContainsKey(r)) return r;
+            switch (r)
+            {
+                case "gewöhnlich": case "gewoehnlich": return "common";
+                case "ungewöhnlich": case "ungewoehnlich": return "uncommon";
+                case "selten": return "rare";
+                case "episch": return "epic";
+                case "legendär": case "legendaer": return "legendary";
+            }
+            return "common";
+        }
+
+        private static double RarityWeight(Dictionary<string, object> card, Dictionary<string, object> weightsOverride)
+        {
+            string id = NormalizeRarityId(GetString(card, "rarity", ""));
+            if (weightsOverride != null && weightsOverride.ContainsKey(id))
+            {
+                double v;
+                if (Double.TryParse(Convert.ToString(weightsOverride[id]), out v) && v > 0) return v;
+            }
+            return DefaultRarityWeights.ContainsKey(id) ? DefaultRarityWeights[id] : 1;
+        }
+
+        private Dictionary<string, object> FindBooster(Dictionary<string, object> settings, string boosterId)
+        {
+            object boostersObj;
+            if (!settings.TryGetValue("boosters", out boostersObj) || !(boostersObj is object[])) return null;
+            foreach (object bo in (object[])boostersObj)
+            {
+                Dictionary<string, object> b = bo as Dictionary<string, object>;
+                if (b != null && GetString(b, "id", "") == boosterId) return b;
+            }
+            return null;
+        }
+
+        // Picks one enabled card from the booster, weighted by rarity weight (mirrors the overlay's
+        // weightedPick). Returns null only if the booster has no eligible cards.
+        private Dictionary<string, object> PickCardFromBooster(Dictionary<string, object> settings, string boosterId)
+        {
+            Dictionary<string, object> booster = FindBooster(settings, boosterId);
+            if (booster == null) return null;
+            object idsObj;
+            if (!booster.TryGetValue("cardIds", out idsObj) || !(idsObj is object[])) return null;
+            var cardIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (object cid in (object[])idsObj) cardIds.Add(Convert.ToString(cid));
+
+            object deckObj;
+            if (!settings.TryGetValue("deck", out deckObj) || !(deckObj is Dictionary<string, object>)) return null;
+            object cardsObj;
+            if (!((Dictionary<string, object>)deckObj).TryGetValue("cards", out cardsObj) || !(cardsObj is object[])) return null;
+
+            Dictionary<string, object> weights = Obj(settings, "rarityWeights");
+            var pool = new List<Dictionary<string, object>>();
+            var poolWeights = new List<double>();
+            double total = 0;
+            foreach (object co in (object[])cardsObj)
+            {
+                Dictionary<string, object> card = co as Dictionary<string, object>;
+                if (card == null) continue;
+                if (!cardIds.Contains(GetString(card, "id", ""))) continue;
+                object en;
+                if (card.TryGetValue("enabled", out en) && en is bool && !(bool)en) continue;
+                double w = RarityWeight(card, weights);
+                if (w <= 0) continue;
+                pool.Add(card);
+                poolWeights.Add(w);
+                total += w;
+            }
+            if (pool.Count == 0) return null;
+            double cursor;
+            lock (RandomSource) cursor = RandomSource.NextDouble() * total;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                cursor -= poolWeights[i];
+                if (cursor <= 0) return pool[i];
+            }
+            return pool[pool.Count - 1];
+        }
+
         private static bool BoosterHasEnabledCard(Dictionary<string, object> settings, object[] cardIds)
         {
             object cardsObj;
@@ -2209,10 +2296,16 @@ namespace CardPackWidgetApp
                 if (GetBool(draw, "postMessageEnabled", false)) template = GetString(draw, "postMessage", "");
             }
             if (String.IsNullOrWhiteSpace(template)) return;
+            // The server picked the card, so its titles (stored on the item) are authoritative;
+            // the overlay-reported ones are only a fallback for older cached overlays.
+            string cardT = GetString(item, "cardTitle", "");
+            if (String.IsNullOrEmpty(cardT)) cardT = cardTitle ?? "";
+            string boosterT = GetString(item, "boosterTitle", "");
+            if (String.IsNullOrEmpty(boosterT)) boosterT = boosterTitle ?? "";
             string msg = template
                 .Replace("@userName", "@" + user)
-                .Replace("[Kartenname]", cardTitle ?? "")
-                .Replace("[Boostername]", boosterTitle ?? "");
+                .Replace("[Kartenname]", cardT)
+                .Replace("[Boostername]", boosterT);
             SendChatMessageSafe(msg);
         }
 
@@ -2348,22 +2441,32 @@ namespace CardPackWidgetApp
 
             if (kind == "draw")
             {
-                // The booster is picked exactly once per queued item, here on the server.
-                // Resolving it here and broadcasting the concrete boosterId keeps every
-                // listener in sync with a single random draw, weighted by booster score.
+                // Booster AND card are picked here on the server (weighted by booster score and
+                // rarity weight). Broadcasting the concrete cardId means every overlay shows the
+                // same card, and - crucially - the server knows the drawn card/booster by name, so
+                // the post-animation chat message works regardless of the overlay's cached version.
                 string boosterId = PickRandomBoosterId();
                 if (String.IsNullOrWhiteSpace(boosterId))
                 {
                     server.Log("draw", "error", user + " hat ein Kartenpack ausgeloest, aber kein Booster war verfuegbar.");
                     return;
                 }
-                server.Log("draw", "info", user + " hat ein Kartenpack ausgeloest.");
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                Dictionary<string, object> booster = FindBooster(settings, boosterId);
+                Dictionary<string, object> card = PickCardFromBooster(settings, boosterId);
+                string cardId = card != null ? GetString(card, "id", "") : "";
+                string cardTitle = card != null ? GetString(card, "title", "") : "";
+                string boosterTitle = booster != null ? GetString(booster, "title", "") : "";
+                item["cardTitle"] = cardTitle;
+                item["boosterTitle"] = boosterTitle;
+                server.Log("draw", "info", user + " hat \"" + cardTitle + "\" aus \"" + boosterTitle + "\" gezogen.");
                 var drawEvent = new Dictionary<string, object>
                 {
                     { "eventId", GetString(item, "id", DateTime.UtcNow.Ticks.ToString()) },
                     { "user", user },
                     { "userLogin", login },
                     { "boosterId", boosterId },
+                    { "cardId", cardId },
                     { "source", source }
                 };
                 server.Broadcast("draw", server.Serializer.Serialize(drawEvent));
