@@ -628,6 +628,9 @@ namespace CardPackWidgetApp
                 body["test"] = true;
                 string tradeJson = json.Serialize(body);
                 Broadcast("trade", tradeJson);
+                int clientCount;
+                lock (clientsLock) clientCount = clients.Count;
+                Log("trade", "info", "Test-Animation an Overlays gesendet (" + GetString(body, "userA", "?") + " <-> " + GetString(body, "userB", "?") + "). Verbundene Overlay-Seiten: " + clientCount + ". Falls in OBS nichts passiert: Browserquelle aktualisieren (Cache).");
                 SendJson(stream, 200, "{\"ok\":true}");
                 return;
             }
