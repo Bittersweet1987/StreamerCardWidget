@@ -37,6 +37,7 @@ untereinander **tauschen**.
 - [Tausch-Animation](#tausch-animation)
 - [Nutzung Befehle](#nutzung-befehle)
 - [Queue](#queue)
+- [Karten-Themes](#karten-themes)
 - [Darstellung & Sounds](#darstellung--sounds)
 - [Nutzer verwalten](#nutzer-verwalten)
 - [Daten & Updates](#daten--updates)
@@ -172,7 +173,13 @@ Pro Booster wird eine Twitch-Kanalpunkte-Belohnung verwaltet (Tab **Verbindung**
   ordnet sie dem aktuell gewählten Booster zu.
 
 Löst ein Zuschauer die Belohnung ein, zieht die App serverseitig genau **einen** zufälligen
-Booster (gewichtet nach Score) und spielt die Pack-Animation im Overlay ab.
+Booster (gewichtet nach Score) und **eine** Karte (gewichtet nach Seltenheit) und spielt die
+Pack-Animation im Overlay ab.
+
+Optional kannst du (unter der Beschreibung) per Checkbox eine **Chat-Nachricht nach dem Ziehen**
+aktivieren – sie wird gesendet, sobald die Animation fertig ist, und kann die gezogene Karte
+benennen. Standard: `@userName hat [Kartenname] aus [Boostername] gezogen.` Die Variablen
+`@userName`, `[Kartenname]` und `[Boostername]` fügst du per Klick ein.
 
 ---
 
@@ -202,12 +209,14 @@ eigenen **Aktiviert**-Schalter – es gibt keinen globalen Hauptschalter mehr.
     bei „Tage" immer um lokal 00:01, sommerzeit-korrekt).
   - **Cooldown pro Viewer** (Sekunden, gilt strikt pro Nutzer).
   - Anpassbare Chat-Nachrichten für **Einlösung**, **erreichtes Limit** und **aktiven Cooldown**.
+    Die Einlösungs-Nachricht kommt **nach der Animation** und kann die Karte benennen
+    (Standard `@userName hat [Kartenname] aus [Boostername] gezogen.`).
 - **Sammlung-Befehl** (Standard `!collection`) – entspricht dem Sammlungs-Showcase.
   Ohne Limit, ohne Cooldown, ohne Zählung.
 
 Alle Nachrichten lassen sich frei bearbeiten. Die verfügbaren **Variablen** (z. B. `@userName`,
-`[Uhrzeit]`, `[Restzeit]`) stehen als anklickbare Chips über dem jeweiligen Textfeld und werden
-per Klick eingefügt.
+`[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) stehen als anklickbare Chips über dem
+jeweiligen Textfeld und werden per Klick eingefügt.
 
 ---
 
@@ -250,6 +259,10 @@ In der Animation werden beide getauschten Karten gezeigt; unter jeder Karte steh
 bisherige, nach dem Tausch der neue Besitzer. Mit der Option **„Erfolgsmeldung im Chat senden"**
 legst du fest, ob zusätzlich die Chat-Nachricht kommt oder nur die Animation laufen soll.
 
+Über **„Test starten"** spielst du die Animation einmal in OBS ab – mit zwei zufälligen Namen und
+Karten. Das funktioniert auch, wenn die Animation noch nicht aktiviert ist, ideal zum Ausprobieren
+von Stil und Timing.
+
 ---
 
 ## Nutzung Befehle
@@ -268,6 +281,22 @@ kurzer Pause zwischen den Einträgen. So überlagern sich auch bei vielen gleich
 keine Animationen. Der Tab zeigt live alle offenen Einträge (wer, was, wann) und das gerade
 laufende. Du kannst die **Queue pausieren** (sammelt dann nur), **einzelne Einträge entfernen**
 oder **alle löschen**.
+
+---
+
+## Karten-Themes
+
+Im Tab **Themes** wählst du per Klick das **Aussehen aller Karten** – die Auswahl gilt sofort für
+Overlay, Sammlung, Tausch-Animation und alle Vorschauen. Mitgeliefert sind mehrere Presets
+(z. B. *Klassik*, *Onyx*, *Carbon*, *Prisma*, *Gold*, *Sunset*, *Mint*, *Ozean*, *Rosé*, *Wald*).
+*Klassik* ist der Standard.
+
+Oben lässt sich per Dropdown die **Vorschaukarte** wählen, damit du siehst, wie ein Theme mit einer
+bestimmten Karte wirkt.
+
+Darunter gibt es einen **Theme-Editor** für ein **eigenes** Design: Hintergrund (2–3 Farben +
+Verlaufswinkel), Glanz und Bildrahmen (Farbe + Deckkraft) frei einstellbar, mit Live-Vorschau.
+Diese Einstellungen wirken **nur auf die Karte** – nichts anderes in App oder Overlay ändert sich.
 
 ---
 
