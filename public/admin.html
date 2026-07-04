@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260701-cleanup1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260703-logo1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -43,7 +43,7 @@
     <div class="admin-shell">
       <aside class="sidebar">
         <div class="brand">
-          <span class="brand-mark">CP</span>
+          <img class="brand-mark" src="/assets/img/logo.png?v=20260704-logo1" alt="Streamer Card Widget Logo">
           <div>
             <strong>Streamer Card</strong>
             <span>Twitch Overlay App</span>
@@ -216,6 +216,7 @@
                 <label class="full-row" data-i18n="label-obs-source">Quellenname Booster<input id="obs-source-name" type="text"></label>
                 <label class="full-row" data-i18n="label-obs-collection-source">Quellenname Kartensammlung<input id="obs-collection-source-name" type="text"></label>
                 <label class="full-row" data-i18n="label-obs-trade-source">Quellenname Tausch-Animation<input id="obs-trade-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-obs-battle-source">Quellenname Kampf-Animation<input id="obs-battle-source-name" type="text"></label>
               </div>
               <div class="button-row">
                 <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
@@ -471,6 +472,8 @@
                       <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
                       <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
                       <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                      <button class="var-chip" type="button" data-insert="[BefehlAnnehmen]">[BefehlAnnehmen]</button>
+                      <button class="var-chip" type="button" data-insert="[BefehlAblehnen]">[BefehlAblehnen]</button>
                     </div>
                   </div>
                   <textarea id="cc-trade-offer-message" rows="2"></textarea>
@@ -648,6 +651,217 @@
                 </div>
               </div>
             </article>
+
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-battle-eyebrow">Kampf</p>
+                  <h3 data-i18n="cc-battle-title">Kampf-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-battle-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battle-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battle-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!battle [Username]</code></p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit, Cooldown &amp; Dauer</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-battle-lineupsize">Karten pro Seite (N)<input id="cc-battle-lineupsize" type="number" min="1" step="1"></label>
+                  <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-battle-maxuses" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-battle-cooldown" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-battle-reset-value" type="number" min="1" step="1"></label>
+                  <label data-i18n="label-cc-reset-unit">Einheit
+                    <select id="cc-battle-reset-unit">
+                      <option value="minutes" data-i18n="opt-minutes">Minuten</option>
+                      <option value="hours" data-i18n="opt-hours">Stunden</option>
+                      <option value="days" data-i18n="opt-days">Tage</option>
+                    </select>
+                  </label>
+                  <label data-i18n="label-cc-battle-timeout">Anfrage offen für (Sek.)<input id="cc-battle-timeout" type="number" min="10" step="1"></label>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-offer">Herausforderung an den Gegner</span>
+                    <div class="var-chips" data-target="cc-battle-offer-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[BefehlAnnehmen]">[BefehlAnnehmen]</button>
+                      <button class="var-chip" type="button" data-insert="[BefehlAblehnen]">[BefehlAblehnen]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-offer-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-usernotfound">Gegner nicht gefunden</span>
+                    <div class="var-chips" data-target="cc-battle-usernotfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Nutzer]">[Nutzer]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-usernotfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-selfchallenge">Sich selbst herausgefordert</span>
+                    <div class="var-chips" data-target="cc-battle-selfchallenge-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-selfchallenge-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-notenoughcards">Zu wenige Karten</span>
+                    <div class="var-chips" data-target="cc-battle-notenoughcards-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-notenoughcards-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-cooldown">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-battle-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
+                      <button class="var-chip" type="button" data-insert="[Cooldownwert]">[Cooldownwert]</button>
+                      <button class="var-chip" type="button" data-insert="[Einheit]">[Einheit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-cooldown-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-limit">Nachricht bei erreichtem Limit</span>
+                    <div class="var-chips" data-target="cc-battle-limit-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-limit-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-timeoutmsg">Nachricht bei Zeitüberschreitung</span>
+                    <div class="var-chips" data-target="cc-battle-timeout-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[Zeit]">[Zeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-timeout-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-busy">Nachricht bei laufendem Kampf</span>
+                    <div class="var-chips" data-target="cc-battle-busy-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-busy-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-battleyes-eyebrow">Kampf annehmen</p>
+                  <h3 data-i18n="cc-battleyes-title">Kampf-Annahme-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-battleyes-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battleyes-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battleyes-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!battleyes</code></p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battleyes-result">Nachricht bei Ergebnis</span>
+                    <div class="var-chips" data-target="cc-battleyes-result-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[SiegeA]">[SiegeA]</button>
+                      <button class="var-chip" type="button" data-insert="[SiegeB]">[SiegeB]</button>
+                      <button class="var-chip" type="button" data-insert="[GewonneneKarte]">[GewonneneKarte]</button>
+                      <button class="var-chip" type="button" data-insert="[BoosterGewonnen]">[BoosterGewonnen]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battleyes-result-message" rows="3"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-battleno-eyebrow">Kampf ablehnen</p>
+                  <h3 data-i18n="cc-battleno-title">Kampf-Ablehnungs-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-battleno-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battleno-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battleno-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!battleno</code></p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battleno-decline">Nachricht bei Ablehnung</span>
+                    <div class="var-chips" data-target="cc-battleno-decline-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battleno-decline-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
           </section>
         </section>
 
@@ -766,6 +980,17 @@
                 <button class="danger-button" id="remove-trade-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
               </div>
             </div>
+            <div class="sound-row" data-sound="battle">
+              <div class="sound-row-info">
+                <strong data-i18n="label-sound-battle">Kampf-Sound</strong>
+                <span class="sound-row-status" id="sound-battle-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
+              </div>
+              <div class="sound-row-actions">
+                <button class="secondary-button" id="play-battle-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
+                <label class="ghost-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-battle" type="file" accept="audio/*"></label>
+                <button class="danger-button" id="remove-battle-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
+              </div>
+            </div>
           </section>
 
           <section class="tool-panel trade-anim-panel">
@@ -804,6 +1029,64 @@
               <button class="secondary-button" id="trade-anim-test" type="button" data-i18n="btn-trade-anim-test">Test starten</button>
             </div>
             <p class="hint" data-i18n="trade-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
+          </section>
+
+          <section class="tool-panel battle-anim-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="battle-anim-eyebrow">Kampf</p>
+                <h2 data-i18n="battle-anim-title">Kampf-Animation</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="battle-anim-hint">Bei einem Kartenduell (!battleyes) wird eine Animation in einer eigenen OBS-Quelle (battle.html) abgespielt. Quellenname & Einrichtung findest du unter „Verbindung".</p>
+            <label class="switch-row">
+              <input id="battle-anim-enabled" type="checkbox">
+              <span data-i18n="label-battle-anim-enabled">Kampf-Animation aktiviert</span>
+            </label>
+            <label class="switch-row compact-switch">
+              <input id="battle-anim-sendchat" type="checkbox">
+              <span data-i18n="label-battle-anim-sendchat">Ergebnis-Nachricht zusätzlich im Chat senden</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-battle-anim-style">Kampfstil
+                <select id="battle-anim-style">
+                  <option value="clash" data-i18n="opt-battle-style-clash">Nahkampf-Clash</option>
+                  <option value="ranged" data-i18n="opt-battle-style-ranged">Fernkampf-Projektile</option>
+                  <option value="hp" data-i18n="opt-battle-style-hp">HP-Leisten-Duell</option>
+                </select>
+              </label>
+              <label data-i18n="label-battle-anim-duration">Dauer
+                <select id="battle-anim-duration">
+                  <option value="short" data-i18n="opt-battle-dur-short">Kurz (~5s)</option>
+                  <option value="medium" data-i18n="opt-battle-dur-medium">Mittel (~8s)</option>
+                  <option value="long" data-i18n="opt-battle-dur-long">Länger (~12s)</option>
+                </select>
+              </label>
+            </div>
+            <div class="button-row">
+              <button class="secondary-button" id="battle-anim-test" type="button" data-i18n="btn-battle-anim-test">Test starten</button>
+            </div>
+            <p class="hint" data-i18n="battle-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
+          </section>
+
+          <section class="tool-panel battle-strength-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="battle-strength-eyebrow">Kampf</p>
+                <h2 data-i18n="battle-strength-title">Kampfstärke je Seltenheit</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="battle-strength-hint">Bestimmt, wie stark eine Karte im Kartenduell ist (unabhängig von den Ziehungs-Gewichten). Höherer Wert = stärker.</p>
+            <div class="form-grid" id="battle-strength-grid">
+              <label data-i18n="label-battle-strength-common">Gewöhnlich<input id="battle-strength-common" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-uncommon">Ungewöhnlich<input id="battle-strength-uncommon" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-rare">Selten<input id="battle-strength-rare" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-epic">Episch<input id="battle-strength-epic" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-legendary">Legendär<input id="battle-strength-legendary" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-holo">Holo<input id="battle-strength-holo" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-variance">Zufalls-Varianz<input id="battle-strength-variance" type="number" min="0" max="3" step="0.05"></label>
+              <label data-i18n="label-battle-strength-hpfactor">HP-Faktor (nur HP-Leisten-Duell)<input id="battle-strength-hpfactor" type="number" min="1" step="1"></label>
+            </div>
           </section>
 
           <section class="tool-panel timing-panel">
@@ -1010,6 +1293,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260701-cleanup1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260703-logo1"></script>
   </body>
 </html>

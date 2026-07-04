@@ -50,14 +50,10 @@ body {
 }
 
 .brand-mark {
-  display: grid;
   width: 46px;
   aspect-ratio: 1;
-  place-items: center;
   border-radius: 10px;
-  color: #241f33;
-  background: linear-gradient(145deg, #8df4d5, #ff83bd);
-  font-weight: 900;
+  object-fit: cover;
   box-shadow: 0 8px 20px rgba(255, 131, 189, .32);
 }
 
@@ -281,7 +277,18 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 22px;
+  margin: 0 -28px 22px;
+  padding: 16px 28px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #f5f3f8;
+  box-shadow: 0 12px 24px -18px rgba(36, 31, 51, .35);
+}
+
+body[data-theme="dark"] .topbar {
+  background: #15121d;
+  box-shadow: 0 12px 24px -18px rgba(0, 0, 0, .5);
 }
 
 .topbar h1,

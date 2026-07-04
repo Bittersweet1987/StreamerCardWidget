@@ -1,9 +1,13 @@
+<p align="center">
+  <img src="public/assets/img/logo.png" alt="Streamer Card Widget Logo" width="160">
+</p>
+
 # 🃏 Streamer Card Widget
 
 Lokale Windows-App für Twitch-Sammelkarten – mit animiertem OBS-Overlay.
 Deine Zuschauer ziehen über **Kanalpunkte** oder **Chat-Befehle** Karten aus Booster-Packs,
-die live in OBS aufgehen, bauen ihre eigene **Sammlung** auf und können Karten sogar
-untereinander **tauschen**.
+die live in OBS aufgehen, bauen ihre eigene **Sammlung** auf, können Karten untereinander
+**tauschen** und sogar gegeneinander **Kartenduelle** austragen.
 
 ### Wie es funktioniert (in Kürze)
 
@@ -35,6 +39,7 @@ untereinander **tauschen**.
 - [Chat-Befehle](#chat-befehle)
 - [Tauschsystem](#tauschsystem)
 - [Tausch-Animation](#tausch-animation)
+- [Kartenduell (Kampf)](#kartenduell-kampf)
 - [Nutzung Befehle](#nutzung-befehle)
 - [Queue](#queue)
 - [Karten-Themes](#karten-themes)
@@ -265,11 +270,46 @@ von Stil und Timing.
 
 ---
 
+## Kartenduell (Kampf)
+
+Zuschauer können ihre Karten gegeneinander antreten lassen (drei Befehle im Tab **Chat Befehle**,
+jeweils einzeln aktivierbar mit eigenem Präfix/Befehlswort):
+
+1. **`!battle [Username]`** – fordert einen anderen Zuschauer heraus. Geprüft wird, ob der Gegner
+   existiert, man sich nicht selbst herausfordert und **beide** mindestens **N verschiedene
+   Kartentypen** besitzen (N ist einstellbar, Standard 3). Eigene Einstellungen: **Karten pro
+   Seite**, **Cooldown**, **Limit** pro Reset (Minuten/Stunden/Tage) und wie lange die Anfrage
+   **offen bleibt** (Standard 120 s).
+2. **`!battleyes`** – der Gegner nimmt an. Beide Seiten bekommen automatisch **N zufällige,
+   verschiedene Karten** aus ihrer Sammlung als Aufstellung. Der Gesamtsieger erhält **eine
+   zufällige Karte aus der Aufstellung des Verlierers** (nur diese eine Karte wechselt den
+   Besitzer). Beiden Spielern wird danach eine Nutzung abgezogen und der Cooldown gesetzt.
+3. **`!battleno`** – der Gegner lehnt ab, keine Karten wechseln den Besitzer.
+
+Antwortet der Gegner nicht rechtzeitig, läuft die Anfrage ab. Es ist immer nur **ein Duell
+gleichzeitig** möglich. Kartenstärke ergibt sich aus der **Seltenheit** (eigene, anpassbare Tabelle
+unter Einstellungen – unabhängig von den Ziehungs-Gewichten, da hier stärkere Karten auch stärker
+im Kampf sein sollen) plus einem Zufallsfaktor pro Runde.
+
+Die **Kampf-Animation** läuft wie die Tausch-Animation in einer eigenen OBS-Browserquelle, mit drei
+wählbaren Kampfstilen:
+
+- **Nahkampf-Clash** – beide Karten stürmen zur Mitte und prallen aufeinander.
+- **Fernkampf-Projektile** – die Karten bleiben stehen und schießen Energie-Geschosse aufeinander.
+- **HP-Leisten-Duell** – jede Karte hat eine eigene Lebensenergie-Leiste und kämpft nacheinander
+  gegen die Aufstellung der Gegenseite (Pokémon-artig): die Rest-HP einer siegreichen Karte bleibt
+  für die nächste Begegnung erhalten, bis eine Seite komplett besiegt ist.
+
+Dauer, eigener Kampf-Sound und die Option „Ergebnis-Nachricht zusätzlich im Chat senden" sind wie
+bei der Tausch-Animation einstellbar, inklusive **„Test starten"**-Button für eine Vorschau.
+
+---
+
 ## Nutzung Befehle
 
-Der Tab **Nutzung Befehle** listet pro Zuschauer, wie oft er **`!pack`** und **`!trade`** genutzt
-hat, samt **verbleibender Nutzungen** bis zum nächsten Reset. Oben stehen die nächsten Pack- und
-Tausch-Resetzeiten. Du kannst nach Nutzern suchen, einzelne Nutzer oder **alle** zurücksetzen.
+Der Tab **Nutzung Befehle** listet pro Zuschauer, wie oft er **`!pack`**, **`!trade`** und
+**`!battle`** genutzt hat, samt **verbleibender Nutzungen** bis zum nächsten Reset. Oben stehen die
+nächsten Reset-Zeiten. Du kannst nach Nutzern suchen, einzelne Nutzer oder **alle** zurücksetzen.
 
 ---
 
@@ -308,7 +348,7 @@ Im Tab **Einstellungen**:
 - **Vorschau** mit Karten-Auswahl.
 - **Sammlungsleiste** und **Kartenrahmen** ein-/ausblenden.
 - **Position Einlöser-Name** im Overlay: Unten / Mitte / Oben.
-- **Sounds** für Öffnen, Reveal und Tausch + **Lautstärke**.
+- **Sounds** für Öffnen, Reveal, Tausch und Kampf + **Lautstärke**.
 - **Timing**: Karte sichtbar (Sek.), Cooldown, verdeckte Karten vor dem Reveal.
 
 Sprache (**DE / EN**) und Modus (**Hell ☀ / Dunkel 🌙**) schaltest du jederzeit über die beiden

@@ -145,6 +145,16 @@ export async function testTradeAnimation(payload) {
   return response.json();
 }
 
+export async function testBattleAnimation(payload) {
+  const response = await fetch("/api/battle/test", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error("Test-Animation konnte nicht gestartet werden.");
+  return response.json();
+}
+
 export async function getBotStatus() {
   const response = await fetch("/api/twitch/bot/status", { cache: "no-store" });
   if (!response.ok) throw new Error("Bot-Status konnte nicht geladen werden.");

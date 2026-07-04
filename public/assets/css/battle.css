@@ -1,0 +1,262 @@
+/* Battle animation overlay. Three selectable combat styles (clash / ranged / hp), length driven
+   by --dur which battle.js sets from the configured duration. The card visuals (.tcg-card) come
+   from overlay.css; this file handles layout, the per-round attack effects and the result screen.
+   Per-round motion (lunge, projectile flight, hit shake) is driven by battle.js via the Web
+   Animations API rather than CSS keyframes, since it needs live element positions/rarity color. */
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+.battle-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.battle-scene {
+  position: absolute;
+  inset: 0;
+  --dur: 8000ms;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4vh;
+  animation: battle-scene-in .4s ease both;
+}
+
+@keyframes battle-scene-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.battle-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-weight: 800;
+  font-size: 1.6rem;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+}
+
+.battle-vs {
+  font-size: 1.1rem;
+  padding: 3px 14px;
+  border-radius: 999px;
+  background: rgba(145, 71, 255, .85);
+}
+
+.battle-arena {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10vw;
+}
+
+.battle-slot {
+  perspective: 1400px;
+}
+
+.battle-anim {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: battle-slot-in .35s ease both;
+}
+
+@keyframes battle-slot-in {
+  0% { transform: translateY(20px) scale(.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.battle-anim .tcg-card {
+  width: 260px;
+  max-width: 20vw;
+  transition: transform .3s ease, filter .3s ease;
+}
+
+.battle-name {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+  padding: 4px 14px;
+  background: rgba(20, 16, 32, .55);
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 22vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.battle-slot.is-round-winner .tcg-card {
+  transform: scale(1.08) translateY(-8px);
+  filter: drop-shadow(0 0 26px rgba(255, 214, 89, .85));
+}
+
+.battle-slot.is-round-loser .tcg-card {
+  transform: scale(.88) translateY(6px);
+  filter: grayscale(.6) brightness(.6);
+}
+
+.battle-slot.is-hit-flash .tcg-card {
+  filter: brightness(1.6) drop-shadow(0 0 22px var(--hit-color, #fff));
+}
+
+/* ---------- Style: clash (both cards lunge to the middle and collide) ---------- */
+.style-clash .battle-arena {
+  gap: 14vw;
+}
+
+.battle-clash-flash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30vw;
+  height: 30vw;
+  transform: translate(-50%, -50%) scale(.3);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--hit-color, #fff) 40%, transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  animation: battle-clash-flash .32s ease-out both;
+}
+
+@keyframes battle-clash-flash {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  30% { opacity: .95; transform: translate(-50%, -50%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+
+/* ---------- Style: ranged (attacker fires a rarity-colored projectile) ---------- */
+.style-ranged .battle-arena {
+  gap: 16vw;
+}
+
+.battle-slot.is-charging .tcg-card {
+  animation: battle-charge-pulse .5s ease-in-out infinite;
+}
+
+@keyframes battle-charge-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35) drop-shadow(0 0 14px rgba(255, 255, 255, .6)); }
+}
+
+.battle-projectile {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--bolt-color, #fff) 55%, transparent 80%);
+  box-shadow: 0 0 18px 6px var(--bolt-color, #fff);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.battle-impact-burst {
+  position: absolute;
+  width: 18vw;
+  height: 18vw;
+  transform: translate(-50%, -50%) scale(.2);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--hit-color, #fff) 45%, transparent 75%);
+  opacity: 0;
+  pointer-events: none;
+  animation: battle-impact-burst .3s ease-out both;
+}
+
+@keyframes battle-impact-burst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  25% { opacity: .95; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); }
+}
+
+/* ---------- Style: hp (persistent health bars deplete round by round) ---------- */
+.style-hp .battle-arena {
+  gap: 10vw;
+}
+
+.battle-hp {
+  width: 220px;
+  max-width: 18vw;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .45);
+  border: 1px solid rgba(255, 255, 255, .25);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.battle-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  transition: width .4s ease;
+}
+
+.battle-hp-b .battle-hp-fill {
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  margin-left: auto;
+}
+
+/* ---------- Result screen ---------- */
+.battle-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: battle-result-in .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes battle-result-in {
+  0% { transform: scale(.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.battle-winner-name {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #ffd659;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, .7);
+}
+
+.battle-score {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+}
+
+.battle-prize {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.battle-prize .tcg-card {
+  width: 220px;
+  max-width: 18vw;
+  filter: drop-shadow(0 0 30px rgba(255, 214, 89, .8));
+  animation: battle-prize-float 1.6s ease-in-out infinite;
+}
+
+@keyframes battle-prize-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.battle-prize-label {
+  font-size: 1rem;
+  color: #fff;
+  background: rgba(20, 16, 32, .55);
+  padding: 4px 14px;
+  border-radius: 999px;
+}

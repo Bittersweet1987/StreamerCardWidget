@@ -28,6 +28,7 @@ import {
   syncShowcaseReward,
   syncTwitchReward,
   testTradeAnimation,
+  testBattleAnimation,
   triggerDraw
 } from "./api.js";
 import {
@@ -43,6 +44,7 @@ import {
   escapeHtml,
   normalizeSettings,
   RARITIES,
+  rarityById,
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
@@ -144,6 +146,24 @@ const I18N = {
   "cc-tradeno-eyebrow": { de: "Tausch ablehnen", en: "Decline trade" },
   "cc-tradeno-title": { de: "Tausch-Ablehnungs-Befehl", en: "Trade decline command" },
   "label-cc-tradeno-decline": { de: "Nachricht bei Ablehnung", en: "Message on decline" },
+  "cc-battle-eyebrow": { de: "Kampf", en: "Battle" },
+  "cc-battle-title": { de: "Kampf-Befehl", en: "Battle command" },
+  "label-cc-battle-lineupsize": { de: "Karten pro Seite (N)", en: "Cards per side (N)" },
+  "label-cc-battle-timeout": { de: "Anfrage offen für (Sek.)", en: "Request open for (sec.)" },
+  "label-cc-battle-offer": { de: "Herausforderung an den Gegner", en: "Challenge to the opponent" },
+  "label-cc-battle-usernotfound": { de: "Gegner nicht gefunden", en: "Opponent not found" },
+  "label-cc-battle-selfchallenge": { de: "Sich selbst herausgefordert", en: "Self-challenge" },
+  "label-cc-battle-notenoughcards": { de: "Zu wenige Karten", en: "Not enough cards" },
+  "label-cc-battle-cooldown": { de: "Nachricht bei aktivem Cooldown", en: "Message when cooldown active" },
+  "label-cc-battle-limit": { de: "Nachricht bei erreichtem Limit", en: "Message when limit reached" },
+  "label-cc-battle-timeoutmsg": { de: "Nachricht bei Zeitüberschreitung", en: "Message on timeout" },
+  "label-cc-battle-busy": { de: "Nachricht bei laufendem Kampf", en: "Message while a battle is running" },
+  "cc-battleyes-eyebrow": { de: "Kampf annehmen", en: "Accept battle" },
+  "cc-battleyes-title": { de: "Kampf-Annahme-Befehl", en: "Battle accept command" },
+  "label-cc-battleyes-result": { de: "Nachricht bei Ergebnis", en: "Result message" },
+  "cc-battleno-eyebrow": { de: "Kampf ablehnen", en: "Decline battle" },
+  "cc-battleno-title": { de: "Kampf-Ablehnungs-Befehl", en: "Battle decline command" },
+  "label-cc-battleno-decline": { de: "Nachricht bei Ablehnung", en: "Message on decline" },
   "cc-pack-eyebrow": { de: "Kartenpack", en: "Card pack" },
   "cc-pack-title": { de: "Pack-Befehl", en: "Pack command" },
   "cc-collection-eyebrow": { de: "Sammlung", en: "Collection" },
@@ -169,6 +189,7 @@ const I18N = {
   "unit-cu-uses": { de: "Nutzungen", en: "uses" },
   "cu-pack-reset": { de: "Pack-Reset", en: "Pack reset" },
   "cu-trade-reset": { de: "Tausch-Reset", en: "Trade reset" },
+  "cu-battle-reset": { de: "Kampf-Reset", en: "Battle reset" },
   "cu-remaining": { de: "übrig", en: "left" },
   "cu-unlimited": { de: "unbegrenzt", en: "unlimited" },
   "notice-cu-reset": { de: "Nutzung zurückgesetzt.", en: "Usage reset." },
@@ -420,6 +441,7 @@ const I18N = {
   "label-sound-reveal": { de: "Reveal-Sound", en: "Reveal sound" },
   "label-sound-trade": { de: "Tausch-Sound", en: "Trade sound" },
   "status-no-sound": { de: "Kein Sound ausgewählt", en: "No sound selected" },
+  "status-default-sound": { de: "Kein eigener Sound – eingebauter Standard-Klang aktiv", en: "No custom sound – built-in default plays" },
   "status-sound-set": { de: "Sound gespeichert", en: "Sound saved" },
   "btn-play": { de: "▶ Abspielen", en: "▶ Play" },
   "btn-choose-file": { de: "Auswählen", en: "Choose file" },
@@ -454,6 +476,46 @@ const I18N = {
   "opt-trade-dur-short": { de: "Kurz (~4s)", en: "Short (~4s)" },
   "opt-trade-dur-medium": { de: "Mittel (~6-7s)", en: "Medium (~6-7s)" },
   "opt-trade-dur-long": { de: "Länger (~9s)", en: "Longer (~9s)" },
+  "label-sound-battle": { de: "Kampf-Sound", en: "Battle sound" },
+  "notice-sound-battle-saved": { de: "Kampf-Sound gespeichert.", en: "Battle sound saved." },
+  "notice-sound-battle-removed": { de: "Kampf-Sound entfernt.", en: "Battle sound removed." },
+  "label-obs-battle-source": { de: "Quellenname Kampf-Animation", en: "Source name battle animation" },
+  "battle-anim-eyebrow": { de: "Kampf", en: "Battle" },
+  "battle-anim-title": { de: "Kampf-Animation", en: "Battle animation" },
+  "battle-anim-hint": {
+    de: "Bei einem Kartenduell (!battleyes) wird eine Animation in einer eigenen OBS-Quelle (battle.html) abgespielt. Quellenname & Einrichtung findest du unter „Verbindung“.",
+    en: "On a card battle (!battleyes) an animation plays in its own OBS source (battle.html). Source name & setup are under “Connection”."
+  },
+  "label-battle-anim-enabled": { de: "Kampf-Animation aktiviert", en: "Battle animation enabled" },
+  "label-battle-anim-sendchat": { de: "Ergebnis-Nachricht zusätzlich im Chat senden", en: "Also send result message in chat" },
+  "btn-battle-anim-test": { de: "Test starten", en: "Run test" },
+  "battle-anim-test-hint": {
+    de: "Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.",
+    en: "Plays the animation once in OBS – with two random names and cards. Works even if the animation isn't enabled yet."
+  },
+  "notice-battle-test-started": { de: "Test-Animation in OBS gestartet.", en: "Test animation started in OBS." },
+  "label-battle-anim-style": { de: "Kampfstil", en: "Combat style" },
+  "label-battle-anim-duration": { de: "Dauer", en: "Duration" },
+  "opt-battle-style-clash": { de: "Nahkampf-Clash", en: "Melee clash" },
+  "opt-battle-style-ranged": { de: "Fernkampf-Projektile", en: "Ranged projectiles" },
+  "opt-battle-style-hp": { de: "HP-Leisten-Duell", en: "HP bar duel" },
+  "opt-battle-dur-short": { de: "Kurz (~5s)", en: "Short (~5s)" },
+  "opt-battle-dur-medium": { de: "Mittel (~8s)", en: "Medium (~8s)" },
+  "opt-battle-dur-long": { de: "Länger (~12s)", en: "Longer (~12s)" },
+  "battle-strength-eyebrow": { de: "Kampf", en: "Battle" },
+  "battle-strength-title": { de: "Kampfstärke je Seltenheit", en: "Battle strength per rarity" },
+  "battle-strength-hint": {
+    de: "Bestimmt, wie stark eine Karte im Kartenduell ist (unabhängig von den Ziehungs-Gewichten). Höherer Wert = stärker.",
+    en: "Determines how strong a card is in a card battle (independent of draw weights). Higher value = stronger."
+  },
+  "label-battle-strength-common": { de: "Gewöhnlich", en: "Common" },
+  "label-battle-strength-uncommon": { de: "Ungewöhnlich", en: "Uncommon" },
+  "label-battle-strength-rare": { de: "Selten", en: "Rare" },
+  "label-battle-strength-epic": { de: "Episch", en: "Epic" },
+  "label-battle-strength-legendary": { de: "Legendär", en: "Legendary" },
+  "label-battle-strength-holo": { de: "Holo", en: "Holo" },
+  "label-battle-strength-variance": { de: "Zufalls-Varianz", en: "Random variance" },
+  "label-battle-strength-hpfactor": { de: "HP-Faktor (nur HP-Leisten-Duell)", en: "HP factor (HP bar duel only)" },
   "error-sound-play-failed": { de: "Sound konnte nicht abgespielt werden:", en: "Sound could not be played:" },
   "notice-saved": {
     de: "Gespeichert. Das Overlay aktualisiert sich automatisch.",
@@ -1091,11 +1153,13 @@ async function setupObsOverlay() {
     const packSourceName = settings.obs?.sourceName || "Streamer Card Widget";
     const collectionSourceName = settings.showcase?.sourceName || "Streamer Card Sammlung";
     const tradeSourceName = settings.tradeAnimation?.sourceName || "Streamer Card Tausch";
+    const battleSourceName = settings.battleAnimation?.sourceName || "Streamer Card Kampf";
     await applyObsBrowserSource(ws, sceneName, packSourceName, currentOriginUrl("/overlay.html"));
     await applyObsBrowserSource(ws, sceneName, collectionSourceName, currentOriginUrl("/collection.html"));
     await applyObsBrowserSource(ws, sceneName, tradeSourceName, currentOriginUrl("/trade.html"));
+    await applyObsBrowserSource(ws, sceneName, battleSourceName, currentOriginUrl("/battle.html"));
 
-    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName} + ${tradeSourceName}`, "ok");
+    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName} + ${tradeSourceName} + ${battleSourceName}`, "ok");
     setPill("#obs-pill", t("pill-obs-connected"), true);
     settings.obs ||= {};
     settings.obs.enabled = true;
@@ -1651,14 +1715,14 @@ function bindUsers() {
   $("#user-list").addEventListener("change", handleUserListChange);
 }
 
-let commandUsage = { users: [], pack: {}, trade: {} };
+let commandUsage = { users: [], pack: {}, trade: {}, battle: {} };
 
 async function loadCommandUsage() {
   try {
     const result = await getCommandUsage();
-    commandUsage = result.usage || { users: [], pack: {}, trade: {} };
+    commandUsage = result.usage || { users: [], pack: {}, trade: {}, battle: {} };
   } catch {
-    commandUsage = { users: [], pack: {}, trade: {} };
+    commandUsage = { users: [], pack: {}, trade: {}, battle: {} };
   }
 }
 
@@ -1677,7 +1741,7 @@ function renderCommandUsage() {
   if (!list) return;
   const info = $("#cu-reset-info");
   if (info) {
-    info.textContent = `${t("cu-pack-reset")}: ${formatResetTime(commandUsage.pack?.nextResetAt)} · ${t("cu-trade-reset")}: ${formatResetTime(commandUsage.trade?.nextResetAt)}`;
+    info.textContent = `${t("cu-pack-reset")}: ${formatResetTime(commandUsage.pack?.nextResetAt)} · ${t("cu-trade-reset")}: ${formatResetTime(commandUsage.trade?.nextResetAt)} · ${t("cu-battle-reset")}: ${formatResetTime(commandUsage.battle?.nextResetAt)}`;
   }
   const filter = ($("#cu-search")?.value || "").trim().toLowerCase();
   const allUsers = [...(commandUsage.users || [])].sort((a, b) => (a.displayName || a.login).localeCompare(b.displayName || b.login));
@@ -1693,7 +1757,7 @@ function renderCommandUsage() {
     <div class="user-card" data-user="${escapeHtml(user.login)}">
       <div class="user-card-header">
         <strong>${escapeHtml(user.displayName || user.login)}</strong>
-        <span class="cu-stats">!pack: <b>${user.packCount || 0}</b> (${escapeHtml(remainingLabel(user.packRemaining))}) · !trade: <b>${user.tradeCount || 0}</b> (${escapeHtml(remainingLabel(user.tradeRemaining))})</span>
+        <span class="cu-stats">!pack: <b>${user.packCount || 0}</b> (${escapeHtml(remainingLabel(user.packRemaining))}) · !trade: <b>${user.tradeCount || 0}</b> (${escapeHtml(remainingLabel(user.tradeRemaining))}) · !battle: <b>${user.battleCount || 0}</b> (${escapeHtml(remainingLabel(user.battleRemaining))})</span>
         <button class="danger-button" type="button" data-action="cu-reset-user" data-user="${escapeHtml(user.login)}">${t("btn-cu-reset-user")}</button>
       </div>
     </div>
@@ -1858,6 +1922,37 @@ function hydrateChatCommands() {
   $("#cc-tradeno-prefix").value = tradeno.prefix || "!";
   $("#cc-tradeno-command").value = tradeno.command || "tradeno";
   $("#cc-tradeno-decline-message").value = tradeno.declineMessage || "";
+
+  const battle = cc.battle || {};
+  $("#cc-battle-enabled").checked = battle.enabled !== false;
+  $("#cc-battle-prefix").value = battle.prefix || "!";
+  $("#cc-battle-command").value = battle.command || "battle";
+  $("#cc-battle-lineupsize").value = battle.lineupSize ?? 3;
+  $("#cc-battle-maxuses").value = battle.maxUses ?? 5;
+  $("#cc-battle-cooldown").value = battle.cooldownSeconds ?? 60;
+  $("#cc-battle-reset-value").value = battle.resetValue ?? 8;
+  $("#cc-battle-reset-unit").value = battle.resetUnit || "hours";
+  $("#cc-battle-timeout").value = battle.requestTimeoutSeconds ?? 120;
+  $("#cc-battle-offer-message").value = battle.offerMessage || "";
+  $("#cc-battle-usernotfound-message").value = battle.userNotFoundMessage || "";
+  $("#cc-battle-selfchallenge-message").value = battle.selfChallengeMessage || "";
+  $("#cc-battle-notenoughcards-message").value = battle.notEnoughCardsMessage || "";
+  $("#cc-battle-cooldown-message").value = battle.cooldownMessage || "";
+  $("#cc-battle-limit-message").value = battle.limitMessage || "";
+  $("#cc-battle-timeout-message").value = battle.timeoutMessage || "";
+  $("#cc-battle-busy-message").value = battle.busyMessage || "";
+
+  const battleyes = cc.battleyes || {};
+  $("#cc-battleyes-enabled").checked = battleyes.enabled !== false;
+  $("#cc-battleyes-prefix").value = battleyes.prefix || "!";
+  $("#cc-battleyes-command").value = battleyes.command || "battleyes";
+  $("#cc-battleyes-result-message").value = battleyes.resultMessage || "";
+
+  const battleno = cc.battleno || {};
+  $("#cc-battleno-enabled").checked = battleno.enabled !== false;
+  $("#cc-battleno-prefix").value = battleno.prefix || "!";
+  $("#cc-battleno-command").value = battleno.command || "battleno";
+  $("#cc-battleno-decline-message").value = battleno.declineMessage || "";
 }
 
 function readChatCommandsFromForm() {
@@ -1910,6 +2005,37 @@ function readChatCommandsFromForm() {
   cc.tradeno.prefix = $("#cc-tradeno-prefix").value || "!";
   cc.tradeno.command = $("#cc-tradeno-command").value.trim() || "tradeno";
   cc.tradeno.declineMessage = $("#cc-tradeno-decline-message").value;
+
+  cc.battle ||= {};
+  cc.battle.enabled = $("#cc-battle-enabled").checked;
+  cc.battle.prefix = $("#cc-battle-prefix").value || "!";
+  cc.battle.command = $("#cc-battle-command").value.trim() || "battle";
+  cc.battle.lineupSize = Math.max(1, Math.round(Number($("#cc-battle-lineupsize").value) || 3));
+  cc.battle.maxUses = Math.max(0, Math.round(Number($("#cc-battle-maxuses").value) || 0));
+  cc.battle.cooldownSeconds = Math.max(0, Math.round(Number($("#cc-battle-cooldown").value) || 0));
+  cc.battle.resetValue = Math.max(1, Math.round(Number($("#cc-battle-reset-value").value) || 1));
+  cc.battle.resetUnit = $("#cc-battle-reset-unit").value || "hours";
+  cc.battle.requestTimeoutSeconds = Math.max(10, Math.round(Number($("#cc-battle-timeout").value) || 120));
+  cc.battle.offerMessage = $("#cc-battle-offer-message").value;
+  cc.battle.userNotFoundMessage = $("#cc-battle-usernotfound-message").value;
+  cc.battle.selfChallengeMessage = $("#cc-battle-selfchallenge-message").value;
+  cc.battle.notEnoughCardsMessage = $("#cc-battle-notenoughcards-message").value;
+  cc.battle.cooldownMessage = $("#cc-battle-cooldown-message").value;
+  cc.battle.limitMessage = $("#cc-battle-limit-message").value;
+  cc.battle.timeoutMessage = $("#cc-battle-timeout-message").value;
+  cc.battle.busyMessage = $("#cc-battle-busy-message").value;
+
+  cc.battleyes ||= {};
+  cc.battleyes.enabled = $("#cc-battleyes-enabled").checked;
+  cc.battleyes.prefix = $("#cc-battleyes-prefix").value || "!";
+  cc.battleyes.command = $("#cc-battleyes-command").value.trim() || "battleyes";
+  cc.battleyes.resultMessage = $("#cc-battleyes-result-message").value;
+
+  cc.battleno ||= {};
+  cc.battleno.enabled = $("#cc-battleno-enabled").checked;
+  cc.battleno.prefix = $("#cc-battleno-prefix").value || "!";
+  cc.battleno.command = $("#cc-battleno-command").value.trim() || "battleno";
+  cc.battleno.declineMessage = $("#cc-battleno-decline-message").value;
 }
 
 function insertVariableIntoField(fieldId, variable) {
@@ -1976,6 +2102,7 @@ function hydrateDesign() {
   updateSoundRow("open");
   updateSoundRow("reveal");
   updateSoundRow("trade");
+  updateSoundRow("battle");
   $("#show-collection").checked = settings.style.showCollection !== false;
   $("#card-borders").checked = settings.style.cardBorders !== false;
   $("#name-position").value = ["bottom", "middle", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
@@ -2000,6 +2127,18 @@ function hydrateDesign() {
   $("#trade-anim-sendchat").checked = settings.tradeAnimation?.sendChat !== false;
   $("#trade-anim-style").value = ["swap", "arc", "flip"].includes(settings.tradeAnimation?.style) ? settings.tradeAnimation.style : "swap";
   $("#trade-anim-duration").value = ["short", "medium", "long"].includes(settings.tradeAnimation?.duration) ? settings.tradeAnimation.duration : "medium";
+  $("#obs-battle-source-name").value = settings.battleAnimation?.sourceName || "Streamer Card Kampf";
+  $("#battle-anim-enabled").checked = settings.battleAnimation?.enabled === true;
+  $("#battle-anim-sendchat").checked = settings.battleAnimation?.sendChat !== false;
+  $("#battle-anim-style").value = ["clash", "ranged", "hp"].includes(settings.battleAnimation?.style) ? settings.battleAnimation.style : "clash";
+  $("#battle-anim-duration").value = ["short", "medium", "long"].includes(settings.battleAnimation?.duration) ? settings.battleAnimation.duration : "medium";
+  const strength = settings.battleStrength || {};
+  for (const rarity of RARITIES) {
+    const input = $(`#battle-strength-${rarity.id}`);
+    if (input) input.value = strength[rarity.id] ?? "";
+  }
+  $("#battle-strength-variance").value = strength.variance ?? 0.6;
+  $("#battle-strength-hpfactor").value = strength.hpFactor ?? 10;
   refreshSettingsPreview();
 }
 
@@ -2012,8 +2151,40 @@ function updateSoundRow(kind) {
     status.textContent = dataUrl ? t("status-sound-set") : t("status-no-sound");
     status.classList.toggle("is-set", Boolean(dataUrl));
   }
-  if (playButton) playButton.disabled = !dataUrl;
+  if (status && !dataUrl) status.textContent = t("status-default-sound");
+  if (playButton) playButton.disabled = false;
   if (removeButton) removeButton.disabled = !dataUrl;
+}
+
+let previewAudioContext;
+
+// Mirrors the built-in fallback tones each overlay plays when no custom sound is uploaded
+// (see playSound() in overlay.js, playTradeSound() in trade.js, playBattleSound() in
+// battle.js), so "Abspielen" previews exactly what viewers actually hear.
+function playDefaultSoundPreview(kind, volume) {
+  previewAudioContext ||= new AudioContext();
+  const ctx = previewAudioContext;
+  const now = ctx.currentTime;
+  const gain = ctx.createGain();
+  gain.connect(ctx.destination);
+  const presets = {
+    open: { freqs: [220, 330], peak: 0.12, dur: 0.44, types: ["sine", "triangle"] },
+    reveal: { freqs: [523.25, 659.25, 783.99], peak: 0.12, dur: 0.44, types: ["sine", "triangle"] },
+    trade: { freqs: [523.25, 659.25, 880], peak: 0.14, dur: 0.6, types: ["sine", "triangle"] },
+    battle: { freqs: [220, 174.6], peak: 0.1, dur: 0.5, types: ["sawtooth", "sawtooth"] }
+  };
+  const preset = presets[kind] || presets.open;
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(preset.peak * volume, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + preset.dur);
+  preset.freqs.forEach((freq, index) => {
+    const osc = ctx.createOscillator();
+    osc.type = preset.types[index % preset.types.length];
+    osc.frequency.setValueAtTime(freq, now + index * 0.07);
+    osc.connect(gain);
+    osc.start(now + index * 0.07);
+    osc.stop(now + preset.dur + index * 0.04);
+  });
 }
 
 function renderFontSelect() {
@@ -2211,9 +2382,27 @@ function bindDesign() {
     scheduleAutoSave();
     showNotice(t("notice-sound-trade-removed"));
   });
+  $("#sound-battle").addEventListener("change", async (event) => {
+    if (!event.target.files?.[0]) return;
+    settings.sounds ||= {};
+    settings.sounds.battle = await readFileAsDataUrl(event.target.files[0]);
+    event.target.value = "";
+    updateSoundRow("battle");
+    scheduleAutoSave();
+    showNotice(t("notice-sound-battle-saved"));
+  });
+  $("#remove-battle-sound").addEventListener("click", () => {
+    settings.sounds ||= {};
+    settings.sounds.battle = "";
+    $("#sound-battle").value = "";
+    updateSoundRow("battle");
+    scheduleAutoSave();
+    showNotice(t("notice-sound-battle-removed"));
+  });
   $("#play-open-sound").addEventListener("click", () => playSoundPreview("open"));
   $("#play-reveal-sound").addEventListener("click", () => playSoundPreview("reveal"));
   $("#play-trade-sound").addEventListener("click", () => playSoundPreview("trade"));
+  $("#play-battle-sound").addEventListener("click", () => playSoundPreview("battle"));
 
   $("#obs-trade-source-name").addEventListener("input", (event) => {
     settings.tradeAnimation ||= {};
@@ -2236,6 +2425,44 @@ function bindDesign() {
     settings.tradeAnimation.duration = event.target.value;
   });
   $("#trade-anim-test").addEventListener("click", handleTradeAnimTest);
+
+  $("#obs-battle-source-name").addEventListener("input", (event) => {
+    settings.battleAnimation ||= {};
+    settings.battleAnimation.sourceName = event.target.value;
+  });
+  $("#battle-anim-enabled").addEventListener("change", (event) => {
+    settings.battleAnimation ||= {};
+    settings.battleAnimation.enabled = event.target.checked;
+  });
+  $("#battle-anim-sendchat").addEventListener("change", (event) => {
+    settings.battleAnimation ||= {};
+    settings.battleAnimation.sendChat = event.target.checked;
+  });
+  $("#battle-anim-style").addEventListener("change", (event) => {
+    settings.battleAnimation ||= {};
+    settings.battleAnimation.style = event.target.value;
+  });
+  $("#battle-anim-duration").addEventListener("change", (event) => {
+    settings.battleAnimation ||= {};
+    settings.battleAnimation.duration = event.target.value;
+  });
+  $("#battle-anim-test").addEventListener("click", handleBattleAnimTest);
+
+  for (const rarity of RARITIES) {
+    const input = $(`#battle-strength-${rarity.id}`);
+    if (input) input.addEventListener("input", (event) => {
+      settings.battleStrength ||= {};
+      settings.battleStrength[rarity.id] = Number(event.target.value) || 1;
+    });
+  }
+  $("#battle-strength-variance").addEventListener("input", (event) => {
+    settings.battleStrength ||= {};
+    settings.battleStrength.variance = Math.max(0, Number(event.target.value) || 0);
+  });
+  $("#battle-strength-hpfactor").addEventListener("input", (event) => {
+    settings.battleStrength ||= {};
+    settings.battleStrength.hpFactor = Math.max(1, Number(event.target.value) || 10);
+  });
 }
 
 async function handleTradeAnimTest() {
@@ -2274,10 +2501,118 @@ async function handleTradeAnimTest() {
   }
 }
 
+function battleStrengthOf(card) {
+  const strengthDefaults = { common: 1, uncommon: 2, rare: 3, epic: 5, legendary: 8, holo: 12 };
+  const rarity = rarityById(card?.rarity).id;
+  const v = Number(settings.battleStrength?.[rarity]);
+  return Number.isFinite(v) && v > 0 ? v : strengthDefaults[rarity] || 1;
+}
+
+// Simulates the same Pokemon-style elimination the server runs for the HP-Leisten-Duell style,
+// so the test button previews a realistic sequence of matchups/hits instead of a single round.
+function simulateHpElimination(lineupA, lineupB, cardsById) {
+  const variance = Number(settings.battleStrength?.variance ?? 0.6);
+  const hpFactor = Number(settings.battleStrength?.hpFactor ?? 10);
+  let idxA = 0, idxB = 0;
+  let hpA = battleStrengthOf(cardsById.get(lineupA[0].cardId)) * hpFactor;
+  let hpB = battleStrengthOf(cardsById.get(lineupB[0].cardId)) * hpFactor;
+  let maxHpA = hpA, maxHpB = hpB;
+  const matchups = [];
+  let cardsLostA = 0, cardsLostB = 0;
+
+  while (idxA < lineupA.length && idxB < lineupB.length) {
+    const strengthA = battleStrengthOf(cardsById.get(lineupA[idxA].cardId));
+    const strengthB = battleStrengthOf(cardsById.get(lineupB[idxB].cardId));
+    let attackerIsA = Math.random() < strengthA / (strengthA + strengthB);
+    const hits = [];
+    let winner = null;
+    for (let safety = 0; safety < 1000 && !winner; safety++) {
+      if (attackerIsA) {
+        const dmg = strengthA * (1 + Math.random() * variance);
+        hpB = Math.max(0, hpB - dmg);
+        hits.push({ attacker: "A", damage: Math.round(dmg * 10) / 10, hpAfter: Math.round(hpB * 10) / 10 });
+        if (hpB <= 0) winner = "A";
+      } else {
+        const dmg = strengthB * (1 + Math.random() * variance);
+        hpA = Math.max(0, hpA - dmg);
+        hits.push({ attacker: "B", damage: Math.round(dmg * 10) / 10, hpAfter: Math.round(hpA * 10) / 10 });
+        if (hpA <= 0) winner = "B";
+      }
+      attackerIsA = !attackerIsA;
+    }
+    matchups.push({ cardA: lineupA[idxA], cardB: lineupB[idxB], maxHpA, maxHpB, hits, winner });
+    if (winner === "A") {
+      cardsLostB++; idxB++;
+      if (idxB < lineupB.length) { hpB = battleStrengthOf(cardsById.get(lineupB[idxB].cardId)) * hpFactor; maxHpB = hpB; }
+    } else {
+      cardsLostA++; idxA++;
+      if (idxA < lineupA.length) { hpA = battleStrengthOf(cardsById.get(lineupA[idxA].cardId)) * hpFactor; maxHpA = hpA; }
+    }
+  }
+  return { matchups, winnerIsA: idxB >= lineupB.length, cardsLostA, cardsLostB };
+}
+
+async function handleBattleAnimTest() {
+  const cards = (settings.deck?.cards || []).filter((card) => card.enabled !== false);
+  const lineupSize = Math.max(1, Math.min(3, Math.floor(cards.length / 2)));
+  if (cards.length < lineupSize * 2) {
+    showNotice(t("notice-trade-test-no-cards"), "error");
+    return;
+  }
+  const pool = [...cards].sort(() => Math.random() - 0.5);
+  const lineupA = pool.slice(0, lineupSize).map((card) => ({ cardId: card.id }));
+  const lineupB = pool.slice(lineupSize, lineupSize * 2).map((card) => ({ cardId: card.id }));
+  let userA = randomUsername();
+  let userB = randomUsername();
+  for (let i = 0; i < 5 && userB === userA; i++) userB = randomUsername();
+
+  const isHpMode = settings.battleAnimation?.style === "hp";
+  let payload;
+  if (isHpMode) {
+    const cardsById = new Map(cards.map((card) => [card.id, card]));
+    const { matchups, winnerIsA, cardsLostA, cardsLostB } = simulateHpElimination(lineupA, lineupB, cardsById);
+    const winsA = cardsLostB, winsB = cardsLostA;
+    const loserLineup = winnerIsA ? lineupB : lineupA;
+    const prizeCard = loserLineup[Math.floor(Math.random() * loserLineup.length)];
+    const prizeCardData = cards.find((card) => card.id === prizeCard.cardId);
+    payload = {
+      userA, userB, lineupA, lineupB, mode: "hp", hpMatchups: matchups, rounds: [],
+      winner: winnerIsA ? "A" : "B", winsA, winsB,
+      winnerUser: winnerIsA ? userA : userB, loserUser: winnerIsA ? userB : userA,
+      prizeCardId: prizeCard.cardId, prizeCardTitle: prizeCardData?.title || ""
+    };
+  } else {
+    const rounds = lineupA.map((cardA, i) => ({
+      cardA, cardB: lineupB[i], winner: Math.random() < 0.5 ? "A" : "B"
+    }));
+    const winsA = rounds.filter((round) => round.winner === "A").length;
+    const winsB = rounds.length - winsA;
+    const winnerIsA = winsA >= winsB;
+    const prizeCard = winnerIsA ? lineupB[Math.floor(Math.random() * lineupB.length)] : lineupA[Math.floor(Math.random() * lineupA.length)];
+    const prizeCardData = cards.find((card) => card.id === prizeCard.cardId);
+    payload = {
+      userA, userB, lineupA, lineupB, mode: "rounds", rounds,
+      winner: winnerIsA ? "A" : "B", winsA, winsB,
+      winnerUser: winnerIsA ? userA : userB, loserUser: winnerIsA ? userB : userA,
+      prizeCardId: prizeCard.cardId, prizeCardTitle: prizeCardData?.title || ""
+    };
+  }
+
+  try {
+    await testBattleAnimation(payload);
+    showNotice(t("notice-battle-test-started"));
+  } catch (error) {
+    showNotice(error.message, "error");
+  }
+}
+
 function playSoundPreview(kind) {
-  const dataUrl = settings.sounds?.[kind];
-  if (!dataUrl) return;
   const volume = Number(settings.style?.volume ?? 65) / 100;
+  const dataUrl = settings.sounds?.[kind];
+  if (!dataUrl) {
+    playDefaultSoundPreview(kind, volume);
+    return;
+  }
   const audio = new Audio(dataUrl);
   audio.volume = Math.min(1, Math.max(0, volume));
   audio.play().catch((error) => showNotice(`${t("error-sound-play-failed")} ${error.message}`, "error"));

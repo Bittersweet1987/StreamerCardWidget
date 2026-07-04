@@ -19,8 +19,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.3.0";
-        public const string ReleaseDate = "2026-07-01";
+        public const string Version = "2.4.0";
+        public const string ReleaseDate = "2026-07-04";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
 
@@ -154,6 +154,9 @@ namespace CardPackWidgetApp
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 9F);
             BackColor = Color.FromArgb(245, 243, 248);
+            // WinForms doesn't default the title bar/taskbar icon to the exe's own embedded icon
+            // (set via /win32icon at compile time) - it has to be assigned explicitly here.
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
             server = new CardPackServer(AppDomain.CurrentDomain.BaseDirectory);
 
@@ -631,6 +634,22 @@ namespace CardPackWidgetApp
                 int clientCount;
                 lock (clientsLock) clientCount = clients.Count;
                 Log("trade", "info", "Test-Animation an Overlays gesendet (" + GetString(body, "userA", "?") + " <-> " + GetString(body, "userB", "?") + "). Verbundene Overlay-Seiten: " + clientCount + ". Falls in OBS nichts passiert: Browserquelle aktualisieren (Cache).");
+                SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/battle/test")
+            {
+                // Preview the battle animation in OBS: the frontend supplies a synthetic lineup/
+                // result, tagged as a test so the overlay plays it even if the animation is off.
+                Dictionary<string, object> body = ParseObject(request.Body);
+                body["eventId"] = "test-" + DateTime.UtcNow.Ticks.ToString();
+                body["test"] = true;
+                string battleJson = json.Serialize(body);
+                Broadcast("battle", battleJson);
+                int clientCount;
+                lock (clientsLock) clientCount = clients.Count;
+                Log("battle", "info", "Test-Animation an Overlays gesendet (" + GetString(body, "userA", "?") + " vs " + GetString(body, "userB", "?") + "). Verbundene Overlay-Seiten: " + clientCount + ". Falls in OBS nichts passiert: Browserquelle aktualisieren (Cache).");
                 SendJson(stream, 200, "{\"ok\":true}");
                 return;
             }
@@ -1262,6 +1281,110 @@ namespace CardPackWidgetApp
             return cards == null ? 0 : CardCount(cards, cardId);
         }
 
+        // Returns every distinct (boosterId, cardId) type the user owns at least one copy of.
+        // Used by the battle system to draw a random, duplicate-free card lineup.
+        internal List<Dictionary<string, string>> GetUserOwnedCardTypes(string login)
+        {
+            var result = new List<Dictionary<string, string>>();
+            string key = NormalizeUser(login).ToLowerInvariant();
+            Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+            foreach (KeyValuePair<string, object> kv in collections)
+            {
+                Dictionary<string, object> booster = kv.Value as Dictionary<string, object>;
+                if (booster == null) continue;
+                object usersObj;
+                if (!booster.TryGetValue("users", out usersObj) || !(usersObj is Dictionary<string, object>)) continue;
+                object uObj;
+                if (!((Dictionary<string, object>)usersObj).TryGetValue(key, out uObj) || !(uObj is Dictionary<string, object>)) continue;
+                object cObj;
+                if (!((Dictionary<string, object>)uObj).TryGetValue("cards", out cObj) || !(cObj is Dictionary<string, object>)) continue;
+                Dictionary<string, object> cards = (Dictionary<string, object>)cObj;
+                foreach (string cardId in cards.Keys)
+                {
+                    if (CardCount(cards, cardId) < 1) continue;
+                    result.Add(new Dictionary<string, string> { { "boosterId", kv.Key }, { "cardId", cardId } });
+                }
+            }
+            return result;
+        }
+
+        // Moves exactly one copy of one card type from loginFrom to loginTo. Returns false if
+        // loginFrom no longer owns the card (e.g. traded away between lineup draw and prize payout).
+        internal bool TransferSingleCard(string boosterId, string cardId, string loginFrom, string displayFrom, string loginTo, string displayTo)
+        {
+            lock (collectionWriteLock)
+            {
+                Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+                Dictionary<string, object> gives = EnsureUserCards(collections, boosterId, loginFrom, displayFrom);
+                if (CardCount(gives, cardId) < 1) return false;
+                Dictionary<string, object> gets = EnsureUserCards(collections, boosterId, loginTo, displayTo);
+                SetCount(gives, cardId, CardCount(gives, cardId) - 1);
+                SetCount(gets, cardId, CardCount(gets, cardId) + 1);
+                File.WriteAllText(CollectionsPath(), json.Serialize(collections), Encoding.UTF8);
+                Broadcast("collections", "{\"updated\":true}");
+                return true;
+            }
+        }
+
+        private static readonly HashSet<string> KnownRarityIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "common", "uncommon", "rare", "epic", "legendary", "holo"
+        };
+
+        // Normalizes a rarity value (English id or German label) to its canonical English id.
+        // Mirrors TwitchBridge.NormalizeRarityId; kept as a separate copy since that one is
+        // private to TwitchBridge and this needs to be usable from CardPackServer.
+        private static string NormalizeRarityIdShared(string rarity)
+        {
+            string r = (rarity ?? "").Trim().ToLowerInvariant();
+            if (KnownRarityIds.Contains(r)) return r;
+            switch (r)
+            {
+                case "gewöhnlich": case "gewoehnlich": return "common";
+                case "ungewöhnlich": case "ungewoehnlich": return "uncommon";
+                case "selten": return "rare";
+                case "episch": return "epic";
+                case "legendär": case "legendaer": return "legendary";
+            }
+            return "common";
+        }
+
+        // Looks up a card's rarity id (normalized, e.g. "legendary") for battle-strength lookups.
+        internal string CardRarity(string cardId)
+        {
+            object[] cards = SettingsCards(ReadSettingsObject());
+            foreach (object co in cards)
+            {
+                Dictionary<string, object> card = co as Dictionary<string, object>;
+                if (card == null) continue;
+                if (GetString(card, "id", "") == cardId) return NormalizeRarityIdShared(GetString(card, "rarity", ""));
+            }
+            return "common";
+        }
+
+        // Looks up a card's title/booster title purely for display purposes (chat messages, animation).
+        internal Dictionary<string, string> CardDisplayInfo(string boosterId, string cardId)
+        {
+            Dictionary<string, object> settings = ReadSettingsObject();
+            object[] cards = SettingsCards(settings);
+            object[] boosters = settings.ContainsKey("boosters") && settings["boosters"] is object[] ? (object[])settings["boosters"] : new object[0];
+            string cardTitle = cardId;
+            string boosterTitle = boosterId;
+            foreach (object co in cards)
+            {
+                Dictionary<string, object> card = co as Dictionary<string, object>;
+                if (card == null) continue;
+                if (GetString(card, "id", "") == cardId) { cardTitle = GetString(card, "title", cardId); break; }
+            }
+            foreach (object bo in boosters)
+            {
+                Dictionary<string, object> booster = bo as Dictionary<string, object>;
+                if (booster == null) continue;
+                if (GetString(booster, "id", "") == boosterId) { boosterTitle = GetString(booster, "title", boosterId); break; }
+            }
+            return new Dictionary<string, string> { { "cardTitle", cardTitle }, { "boosterTitle", boosterTitle } };
+        }
+
         // Performs the full two-sided swap atomically and persists once. A gives cardA (boosterA)
         // and receives cardB (boosterB); B gives cardB and receives cardA. Returns the new counts
         // (A's cardB, B's cardA) or null if either side no longer owns the card being given.
@@ -1659,13 +1782,18 @@ namespace CardPackWidgetApp
         private Dictionary<string, object> activeTrade;
         private System.Threading.Timer tradeTimeoutTimer;
 
+        private readonly object battleLock = new object();
+        private Dictionary<string, object> activeBattle;
+        private System.Threading.Timer battleTimeoutTimer;
+        private static readonly Random BattleRandom = new Random();
+
         private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
         private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
 
         private const string DefaultTradeCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
         private const string DefaultTradeOfferNotOwned = "@userName, du besitzt die Karte [Kartenname] nicht und kannst sie daher nicht anbieten.";
         private const string DefaultTradeUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
-        private const string DefaultTradeOffer = "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Möchtest du diesen annehmen?";
+        private const string DefaultTradeOffer = "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Nimm mit [BefehlAnnehmen] an oder lehne mit [BefehlAblehnen] ab.";
         private const string DefaultTradeTimeout = "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Tauschanfrage beendet.";
         private const string DefaultTradeCooldown = "@userName, leider musst du mit der Tauschanfrage noch bis [Uhrzeit] warten, da der Cooldown von [Cooldownwert] [Einheit] noch aktiv ist.";
         private const string DefaultTradeLimit = "@userName, leider sind deine Tauschanfragen aktuell aufgebraucht. Bitte warte bis [Uhrzeit] Uhr.";
@@ -1673,6 +1801,19 @@ namespace CardPackWidgetApp
         private const string DefaultTradeDecline = "@userNameA, leider hat @userNameB deine Tauschanfrage abgelehnt, damit bleiben dir bis zum [Uhrzeit] noch [Anzahl] Tauschanfragen.";
         private const string DefaultTradeNotOwned = "@userNameB, du besitzt diese Karte leider nicht. Bitte wähle eine andere.";
         private const string DefaultTradeSuccess = "@userNameA tauschte seine Karte [KarteA] aus [BoosterA] erfolgreich mit @userNameB gegen Karte [KarteB] aus [BoosterB]. Damit hat @userNameA nun [AnzahlA] Karten [KarteB] und @userNameB [AnzahlB] Karten [KarteA].";
+
+        private const string DefaultBattleUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
+        private const string DefaultBattleSelfChallenge = "@userName, du kannst nicht dich selbst herausfordern.";
+        private const string DefaultBattleNotEnoughCards = "@userName, für ein Kartenduell braucht ihr beide mindestens [Anzahl] verschiedene Karten.";
+        private const string DefaultBattleCooldown = "@userName, leider musst du mit der Kampfanfrage noch bis [Uhrzeit] warten, da der Cooldown von [Cooldownwert] [Einheit] noch aktiv ist.";
+        private const string DefaultBattleLimit = "@userName, leider sind deine Kampfanfragen aktuell aufgebraucht. Bitte warte bis [Uhrzeit] Uhr.";
+        private const string DefaultBattleBusy = "@userName, es läuft bereits ein Kartenduell. Bitte warte bis dieses abgeschlossen wurde.";
+        private const string DefaultBattleOffer = "@userNameB, @userNameA fordert dich zum Kartenduell heraus! Nimm mit [BefehlAnnehmen] an oder lehne mit [BefehlAblehnen] ab.";
+        private const string DefaultBattleTimeout = "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Duellanfrage beendet.";
+        private const string DefaultBattleDecline = "@userNameA, leider hat @userNameB deine Duellanfrage abgelehnt.";
+        private const string DefaultBattleResult = "@userNameA gewinnt das Kartenduell gegen @userNameB ([SiegeA]:[SiegeB]) und erhält die Karte [GewonneneKarte]!";
+
+        private const double DefaultBattleVariance = 0.6;
 
         public TwitchBridge(CardPackServer server)
         {
@@ -2789,6 +2930,9 @@ namespace CardPackWidgetApp
             Dictionary<string, object> trade = Obj(cc, "trade");
             Dictionary<string, object> tradeYes = Obj(cc, "tradeyes");
             Dictionary<string, object> tradeNo = Obj(cc, "tradeno");
+            Dictionary<string, object> battle = Obj(cc, "battle");
+            Dictionary<string, object> battleYes = Obj(cc, "battleyes");
+            Dictionary<string, object> battleNo = Obj(cc, "battleno");
 
             if (MatchesCommand(text, pack))
             {
@@ -2814,6 +2958,21 @@ namespace CardPackWidgetApp
             if (MatchesCommand(text, trade))
             {
                 if (GetBool(trade, "enabled", true)) HandleTradeCommand(login, displayName, ArgsAfterCommand(text, trade), trade);
+                return;
+            }
+            if (MatchesCommand(text, battleYes))
+            {
+                if (GetBool(battleYes, "enabled", true)) HandleBattleYes(login, displayName, cc);
+                return;
+            }
+            if (MatchesCommand(text, battleNo))
+            {
+                if (GetBool(battleNo, "enabled", true)) HandleBattleNo(login, displayName, cc);
+                return;
+            }
+            if (MatchesCommand(text, battle))
+            {
+                if (GetBool(battle, "enabled", true)) HandleBattleCommand(login, displayName, ArgsAfterCommand(text, battle), battle);
                 return;
             }
         }
@@ -2998,9 +3157,17 @@ namespace CardPackWidgetApp
                 if (tradeTimeoutTimer != null) tradeTimeoutTimer.Dispose();
                 tradeTimeoutTimer = new System.Threading.Timer(delegate { TradeTimedOut(); }, null, timeoutSeconds * 1000, Timeout.Infinite);
 
+                Dictionary<string, object> ccForOffer = Obj(server.ReadSettingsObject(), "chatCommands");
+                Dictionary<string, object> tradeYesCfg = Obj(ccForOffer, "tradeyes");
+                Dictionary<string, object> tradeNoCfg = Obj(ccForOffer, "tradeno");
+                string befehlAnnehmen = GetString(tradeYesCfg, "prefix", "!") + GetString(tradeYesCfg, "command", "tradeyes");
+                string befehlAblehnen = GetString(tradeNoCfg, "prefix", "!") + GetString(tradeNoCfg, "command", "tradeno");
+
                 SendChatMessageSafe(GetString(tradeCfg, "offerMessage", DefaultTradeOffer)
                     .Replace("@userNameB", "@" + partnerRaw)
                     .Replace("@userNameA", "@" + displayName)
+                    .Replace("[BefehlAnnehmen]", befehlAnnehmen)
+                    .Replace("[BefehlAblehnen]", befehlAblehnen)
                     .Replace("[Kartenname]", cardTitle)
                     .Replace("[Boostername]", boosterTitle));
             }
@@ -3179,6 +3346,454 @@ namespace CardPackWidgetApp
             if (tradeTimeoutTimer != null) { tradeTimeoutTimer.Dispose(); tradeTimeoutTimer = null; }
         }
 
+        // ---- Battle system: !battle / !battleyes / !battleno ----
+
+        private void HandleBattleCommand(string login, string displayName, string args, Dictionary<string, object> battleCfg)
+        {
+            string partnerRaw = args.Trim().TrimStart('@');
+            if (partnerRaw.Length == 0) return;
+            string partnerLogin = partnerRaw.ToLowerInvariant();
+
+            int lineupSize = Math.Max(1, GetInt(battleCfg, "lineupSize", 3));
+            int cooldownSeconds = Math.Max(0, GetInt(battleCfg, "cooldownSeconds", 0));
+            int maxUses = Math.Max(0, GetInt(battleCfg, "maxUses", 0));
+            int timeoutSeconds = Math.Max(10, GetInt(battleCfg, "requestTimeoutSeconds", 120));
+            DateTime now = DateTime.UtcNow;
+
+            lock (battleLock)
+            {
+                if (activeBattle != null)
+                {
+                    SendChatMessageSafe(GetString(battleCfg, "busyMessage", DefaultBattleBusy).Replace("@userName", "@" + displayName));
+                    return;
+                }
+
+                if (partnerLogin == login.ToLowerInvariant())
+                {
+                    SendChatMessageSafe(GetString(battleCfg, "selfChallengeMessage", DefaultBattleSelfChallenge).Replace("@userName", "@" + displayName));
+                    return;
+                }
+
+                lock (usageLock)
+                {
+                    EnsureUsageLoaded();
+                    ApplyBattleResetIfDue(battleCfg, now);
+                    Dictionary<string, object> entry = GetOrCreateBattleEntry(login, displayName);
+
+                    DateTime cooldownUntil = ParseDate(GetString(entry, "cooldownUntil", ""));
+                    if (cooldownSeconds > 0 && cooldownUntil > now.AddSeconds(cooldownSeconds)) { cooldownUntil = now.AddSeconds(cooldownSeconds); entry["cooldownUntil"] = cooldownUntil.ToString("o"); }
+                    if (cooldownSeconds > 0 && cooldownUntil > now)
+                    {
+                        string msg = GetString(battleCfg, "cooldownMessage", DefaultBattleCooldown)
+                            .Replace("@userName", "@" + displayName)
+                            .Replace("[Uhrzeit]", FormatLocalTime(cooldownUntil))
+                            .Replace("[Cooldownwert]", cooldownSeconds.ToString())
+                            .Replace("[Einheit]", "Sekunden");
+                        SendChatMessageSafe(msg);
+                        return;
+                    }
+
+                    if (maxUses > 0 && GetInt(entry, "count", 0) >= maxUses)
+                    {
+                        string msg = GetString(battleCfg, "limitMessage", DefaultBattleLimit)
+                            .Replace("@userName", "@" + displayName)
+                            .Replace("[Uhrzeit]", FormatLocalTime(BattleNextReset()));
+                        SendChatMessageSafe(msg);
+                        return;
+                    }
+                }
+
+                if (!server.UserExistsInCollections(partnerLogin))
+                {
+                    SendChatMessageSafe(GetString(battleCfg, "userNotFoundMessage", DefaultBattleUserNotFound)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Nutzer]", partnerRaw));
+                    return;
+                }
+
+                List<Dictionary<string, string>> ownedA = server.GetUserOwnedCardTypes(login);
+                List<Dictionary<string, string>> ownedB = server.GetUserOwnedCardTypes(partnerLogin);
+                if (ownedA.Count < lineupSize || ownedB.Count < lineupSize)
+                {
+                    SendChatMessageSafe(GetString(battleCfg, "notEnoughCardsMessage", DefaultBattleNotEnoughCards)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Anzahl]", lineupSize.ToString()));
+                    return;
+                }
+
+                activeBattle = new Dictionary<string, object>
+                {
+                    { "id", Guid.NewGuid().ToString("N") },
+                    { "fromLogin", login.ToLowerInvariant() },
+                    { "fromUser", displayName },
+                    { "toLogin", partnerLogin },
+                    { "toUser", partnerRaw },
+                    { "lineupSize", lineupSize },
+                    { "expiresAt", now.AddSeconds(timeoutSeconds).ToString("o") }
+                };
+                if (battleTimeoutTimer != null) battleTimeoutTimer.Dispose();
+                battleTimeoutTimer = new System.Threading.Timer(delegate { BattleTimedOut(); }, null, timeoutSeconds * 1000, Timeout.Infinite);
+
+                Dictionary<string, object> ccForOffer = Obj(server.ReadSettingsObject(), "chatCommands");
+                Dictionary<string, object> battleYesCfg = Obj(ccForOffer, "battleyes");
+                Dictionary<string, object> battleNoCfg = Obj(ccForOffer, "battleno");
+                string befehlAnnehmen = GetString(battleYesCfg, "prefix", "!") + GetString(battleYesCfg, "command", "battleyes");
+                string befehlAblehnen = GetString(battleNoCfg, "prefix", "!") + GetString(battleNoCfg, "command", "battleno");
+
+                SendChatMessageSafe(GetString(battleCfg, "offerMessage", DefaultBattleOffer)
+                    .Replace("@userNameB", "@" + partnerRaw)
+                    .Replace("@userNameA", "@" + displayName)
+                    .Replace("[BefehlAnnehmen]", befehlAnnehmen)
+                    .Replace("[BefehlAblehnen]", befehlAblehnen));
+            }
+        }
+
+        private void HandleBattleYes(string login, string displayName, Dictionary<string, object> cc)
+        {
+            Dictionary<string, object> battleCfg = Obj(cc, "battle");
+            Dictionary<string, object> yesCfg = Obj(cc, "battleyes");
+            lock (battleLock)
+            {
+                if (activeBattle == null) return;
+                if (login.ToLowerInvariant() != GetString(activeBattle, "toLogin", "")) return;
+
+                string fromLogin = GetString(activeBattle, "fromLogin", "");
+                string fromUser = GetString(activeBattle, "fromUser", "");
+                int lineupSize = GetInt(activeBattle, "lineupSize", 3);
+
+                List<Dictionary<string, string>> ownedA = server.GetUserOwnedCardTypes(fromLogin);
+                List<Dictionary<string, string>> ownedB = server.GetUserOwnedCardTypes(login);
+                if (ownedA.Count < lineupSize || ownedB.Count < lineupSize)
+                {
+                    // A card type may have been traded away since the challenge was issued.
+                    SendChatMessageSafe(GetString(battleCfg, "notEnoughCardsMessage", DefaultBattleNotEnoughCards)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Anzahl]", lineupSize.ToString()));
+                    ClearActiveBattle();
+                    return;
+                }
+
+                List<Dictionary<string, string>> lineupA = DrawRandomLineup(ownedA, lineupSize);
+                List<Dictionary<string, string>> lineupB = DrawRandomLineup(ownedB, lineupSize);
+
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                Dictionary<string, object> strengthCfg = Obj(settings, "battleStrength");
+                double variance = GetDouble(strengthCfg, "variance", DefaultBattleVariance);
+
+                // The HP-Leisten-Duell animation uses a different resolution mechanic (sequential
+                // Pokemon-style elimination with persisting HP) instead of N independent round
+                // pairs; the other animation styles keep the original "most round wins" mechanic.
+                Dictionary<string, object> battleAnimForStyle = Obj(settings, "battleAnimation");
+                bool useHpElimination = GetString(battleAnimForStyle, "style", "clash") == "hp";
+
+                int winsA = 0, winsB = 0;
+                var rounds = new List<object>();
+                Dictionary<string, object> hpResult = null;
+
+                if (useHpElimination)
+                {
+                    hpResult = ResolveHpElimination(lineupA, lineupB, strengthCfg, variance);
+                    winsA = GetInt(hpResult, "cardsLostB", 0);
+                    winsB = GetInt(hpResult, "cardsLostA", 0);
+                }
+                else
+                {
+                    for (int i = 0; i < lineupSize; i++)
+                    {
+                        bool aWins = RollRound(lineupA[i], lineupB[i], strengthCfg, variance);
+                        if (aWins) winsA++; else winsB++;
+                        rounds.Add(new Dictionary<string, object>
+                        {
+                            { "cardA", lineupA[i] }, { "cardB", lineupB[i] }, { "winner", aWins ? "A" : "B" }
+                        });
+                    }
+
+                    // Sudden death: one more random card each until the tie breaks.
+                    int suddenDeathRounds = 0;
+                    while (winsA == winsB && suddenDeathRounds < 20)
+                    {
+                        List<Dictionary<string, string>> sdA = DrawRandomLineup(ownedA, 1);
+                        List<Dictionary<string, string>> sdB = DrawRandomLineup(ownedB, 1);
+                        bool aWins = RollRound(sdA[0], sdB[0], strengthCfg, variance);
+                        if (aWins) winsA++; else winsB++;
+                        rounds.Add(new Dictionary<string, object>
+                        {
+                            { "cardA", sdA[0] }, { "cardB", sdB[0] }, { "winner", aWins ? "A" : "B" }, { "suddenDeath", true }
+                        });
+                        suddenDeathRounds++;
+                    }
+                }
+
+                bool winnerIsA = useHpElimination ? GetBool(hpResult, "winnerIsA", winsA >= winsB) : winsA > winsB;
+                string winnerLogin = winnerIsA ? fromLogin : login;
+                string winnerUser = winnerIsA ? fromUser : displayName;
+                string loserLogin = winnerIsA ? login : fromLogin;
+                string loserUser = winnerIsA ? displayName : fromUser;
+                List<Dictionary<string, string>> loserLineup = winnerIsA ? lineupB : lineupA;
+
+                // Prize: one random card from the loser's lineup (the one that was actually used).
+                Dictionary<string, string> prizeCard = loserLineup[BattleRandom.Next(loserLineup.Count)];
+                server.TransferSingleCard(prizeCard["boosterId"], prizeCard["cardId"], loserLogin, loserUser, winnerLogin, winnerUser);
+                Dictionary<string, string> prizeInfo = server.CardDisplayInfo(prizeCard["boosterId"], prizeCard["cardId"]);
+
+                int cooldownSeconds = Math.Max(0, GetInt(battleCfg, "cooldownSeconds", 0));
+                DateTime now = DateTime.UtcNow;
+                lock (usageLock)
+                {
+                    EnsureUsageLoaded();
+                    ConsumeBattle(fromLogin, fromUser, cooldownSeconds, now);
+                    ConsumeBattle(login, displayName, cooldownSeconds, now);
+                    SaveUsage();
+                }
+
+                bool animEnabled = GetBool(battleAnimForStyle, "enabled", false);
+                bool sendChat = animEnabled ? GetBool(battleAnimForStyle, "sendChat", true) : true;
+                if (sendChat)
+                {
+                    string msg = GetString(yesCfg, "resultMessage", DefaultBattleResult)
+                        .Replace("@userNameA", "@" + winnerUser)
+                        .Replace("@userNameB", "@" + loserUser)
+                        .Replace("[SiegeA]", winnerIsA ? winsA.ToString() : winsB.ToString())
+                        .Replace("[SiegeB]", winnerIsA ? winsB.ToString() : winsA.ToString())
+                        .Replace("[GewonneneKarte]", prizeInfo["cardTitle"])
+                        .Replace("[BoosterGewonnen]", prizeInfo["boosterTitle"]);
+                    SendChatMessageSafe(msg);
+                }
+
+                var battleEvent = new Dictionary<string, object>
+                {
+                    { "eventId", GetString(activeBattle, "id", Guid.NewGuid().ToString("N")) },
+                    { "userA", fromUser }, { "userB", displayName },
+                    { "lineupA", lineupA }, { "lineupB", lineupB },
+                    { "mode", useHpElimination ? "hp" : "rounds" },
+                    { "rounds", rounds },
+                    { "hpMatchups", useHpElimination ? hpResult["matchups"] : new object[0] },
+                    { "winner", winnerIsA ? "A" : "B" },
+                    { "winsA", winsA }, { "winsB", winsB },
+                    { "prizeCardId", prizeCard["cardId"] }, { "prizeBoosterId", prizeCard["boosterId"] },
+                    { "prizeCardTitle", prizeInfo["cardTitle"] }, { "prizeBoosterTitle", prizeInfo["boosterTitle"] },
+                    { "winnerUser", winnerUser }, { "loserUser", loserUser }
+                };
+                server.Broadcast("battle", server.Serializer.Serialize(battleEvent));
+                server.Log("commands", "info", winnerUser + " gewann das Kartenduell gegen " + loserUser + " (" + Math.Max(winsA, winsB) + ":" + Math.Min(winsA, winsB) + ") und erhielt " + prizeInfo["cardTitle"] + ".");
+                ClearActiveBattle();
+            }
+        }
+
+        private void HandleBattleNo(string login, string displayName, Dictionary<string, object> cc)
+        {
+            Dictionary<string, object> noCfg = Obj(cc, "battleno");
+            lock (battleLock)
+            {
+                if (activeBattle == null) return;
+                if (login.ToLowerInvariant() != GetString(activeBattle, "toLogin", "")) return;
+
+                string fromUser = GetString(activeBattle, "fromUser", "");
+                SendChatMessageSafe(GetString(noCfg, "declineMessage", DefaultBattleDecline)
+                    .Replace("@userNameA", "@" + fromUser)
+                    .Replace("@userNameB", "@" + displayName));
+                ClearActiveBattle();
+            }
+        }
+
+        private void BattleTimedOut()
+        {
+            lock (battleLock)
+            {
+                if (activeBattle == null) return;
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                Dictionary<string, object> battleCfg = Obj(Obj(settings, "chatCommands"), "battle");
+                string fromUser = GetString(activeBattle, "fromUser", "");
+                string toUser = GetString(activeBattle, "toUser", "");
+                int timeoutSeconds = Math.Max(10, GetInt(battleCfg, "requestTimeoutSeconds", 120));
+                SendChatMessageSafe(GetString(battleCfg, "timeoutMessage", DefaultBattleTimeout)
+                    .Replace("@userNameA", "@" + fromUser)
+                    .Replace("@userNameB", "@" + toUser)
+                    .Replace("[Zeit]", timeoutSeconds.ToString()));
+                ClearActiveBattle();
+            }
+        }
+
+        // Draws `count` distinct random card types from `owned` (no replacement within one draw).
+        private static List<Dictionary<string, string>> DrawRandomLineup(List<Dictionary<string, string>> owned, int count)
+        {
+            var pool = new List<Dictionary<string, string>>(owned);
+            var result = new List<Dictionary<string, string>>();
+            for (int i = 0; i < count && pool.Count > 0; i++)
+            {
+                int idx = BattleRandom.Next(pool.Count);
+                result.Add(pool[idx]);
+                pool.RemoveAt(idx);
+            }
+            return result;
+        }
+
+        // One round: strength (from rarity, via the configurable table) times a random variance
+        // factor decides the winner. Returns true if cardA wins.
+        private bool RollRound(Dictionary<string, string> cardA, Dictionary<string, string> cardB, Dictionary<string, object> strengthCfg, double variance)
+        {
+            double strengthA = CardBattleStrength(cardA["cardId"], strengthCfg);
+            double strengthB = CardBattleStrength(cardB["cardId"], strengthCfg);
+            double rollA = strengthA * (1 + BattleRandom.NextDouble() * variance);
+            double rollB = strengthB * (1 + BattleRandom.NextDouble() * variance);
+            return rollA >= rollB;
+        }
+
+        private double CardBattleStrength(string cardId, Dictionary<string, object> strengthCfg)
+        {
+            string rarity = server.CardRarity(cardId);
+            if (strengthCfg != null && strengthCfg.ContainsKey(rarity))
+            {
+                double v;
+                if (Double.TryParse(Convert.ToString(strengthCfg[rarity]), out v) && v > 0) return v;
+            }
+            switch (rarity)
+            {
+                case "uncommon": return 2;
+                case "rare": return 3;
+                case "epic": return 5;
+                case "legendary": return 8;
+                case "holo": return 12;
+                default: return 1;
+            }
+        }
+
+        // Pokemon-style elimination for the "HP-Leisten-Duell" animation: cards fight one matchup
+        // at a time, trading hits (damage = attacker strength x variance) until one card's HP
+        // reaches zero; the surviving card keeps its remaining HP into the next matchup against
+        // the opponent's next bench card. Overall winner = the side that still has a card standing
+        // once the other side runs out. HP per card = battle strength x a configurable factor.
+        private Dictionary<string, object> ResolveHpElimination(List<Dictionary<string, string>> lineupA, List<Dictionary<string, string>> lineupB, Dictionary<string, object> strengthCfg, double variance)
+        {
+            double hpFactor = GetDouble(strengthCfg, "hpFactor", 10);
+            int idxA = 0, idxB = 0;
+            double hpA = CardBattleStrength(lineupA[idxA]["cardId"], strengthCfg) * hpFactor;
+            double hpB = CardBattleStrength(lineupB[idxB]["cardId"], strengthCfg) * hpFactor;
+            double maxHpA = hpA, maxHpB = hpB;
+            var matchups = new List<object>();
+            int cardsLostA = 0, cardsLostB = 0;
+
+            while (idxA < lineupA.Count && idxB < lineupB.Count)
+            {
+                double strengthA = CardBattleStrength(lineupA[idxA]["cardId"], strengthCfg);
+                double strengthB = CardBattleStrength(lineupB[idxB]["cardId"], strengthCfg);
+                bool attackerIsA = BattleRandom.NextDouble() < (strengthA / (strengthA + strengthB));
+                var hits = new List<object>();
+                string matchupWinner = null;
+
+                for (int safety = 0; safety < 1000 && matchupWinner == null; safety++)
+                {
+                    double dmg;
+                    if (attackerIsA)
+                    {
+                        dmg = strengthA * (1 + BattleRandom.NextDouble() * variance);
+                        hpB = Math.Max(0, hpB - dmg);
+                        hits.Add(new Dictionary<string, object> { { "attacker", "A" }, { "damage", Math.Round(dmg, 1) }, { "hpAfter", Math.Round(hpB, 1) } });
+                        if (hpB <= 0) matchupWinner = "A";
+                    }
+                    else
+                    {
+                        dmg = strengthB * (1 + BattleRandom.NextDouble() * variance);
+                        hpA = Math.Max(0, hpA - dmg);
+                        hits.Add(new Dictionary<string, object> { { "attacker", "B" }, { "damage", Math.Round(dmg, 1) }, { "hpAfter", Math.Round(hpA, 1) } });
+                        if (hpA <= 0) matchupWinner = "B";
+                    }
+                    attackerIsA = !attackerIsA;
+                }
+                if (matchupWinner == null) matchupWinner = hpA >= hpB ? "A" : "B"; // safety-cap fallback, practically unreachable
+
+                matchups.Add(new Dictionary<string, object>
+                {
+                    { "cardA", lineupA[idxA] }, { "cardB", lineupB[idxB] },
+                    { "maxHpA", Math.Round(maxHpA, 1) }, { "maxHpB", Math.Round(maxHpB, 1) },
+                    { "hits", hits.ToArray() }, { "winner", matchupWinner }
+                });
+
+                if (matchupWinner == "A")
+                {
+                    cardsLostB++;
+                    idxB++;
+                    if (idxB < lineupB.Count) { hpB = CardBattleStrength(lineupB[idxB]["cardId"], strengthCfg) * hpFactor; maxHpB = hpB; }
+                }
+                else
+                {
+                    cardsLostA++;
+                    idxA++;
+                    if (idxA < lineupA.Count) { hpA = CardBattleStrength(lineupA[idxA]["cardId"], strengthCfg) * hpFactor; maxHpA = hpA; }
+                }
+            }
+
+            return new Dictionary<string, object>
+            {
+                { "matchups", matchups.ToArray() },
+                { "winnerIsA", idxB >= lineupB.Count },
+                { "cardsLostA", cardsLostA }, { "cardsLostB", cardsLostB }
+            };
+        }
+
+        // Increments the battle-usage counter and (re)sets the per-user cooldown.
+        private void ConsumeBattle(string login, string displayName, int cooldownSeconds, DateTime now)
+        {
+            Dictionary<string, object> entry = GetOrCreateBattleEntry(login, displayName);
+            entry["count"] = GetInt(entry, "count", 0) + 1;
+            if (cooldownSeconds > 0) entry["cooldownUntil"] = now.AddSeconds(cooldownSeconds).ToString("o");
+        }
+
+        private void ClearActiveBattle()
+        {
+            activeBattle = null;
+            if (battleTimeoutTimer != null) { battleTimeoutTimer.Dispose(); battleTimeoutTimer = null; }
+        }
+
+        // ---- Battle usage tracking (separate namespace inside command-usage.json) ----
+
+        private Dictionary<string, object> BattleSection()
+        {
+            EnsureUsageLoaded();
+            object obj;
+            if (usageData.TryGetValue("battle", out obj) && obj is Dictionary<string, object>) return (Dictionary<string, object>)obj;
+            Dictionary<string, object> section = new Dictionary<string, object> { { "users", new Dictionary<string, object>() } };
+            usageData["battle"] = section;
+            return section;
+        }
+
+        private Dictionary<string, object> GetOrCreateBattleEntry(string login, string displayName)
+        {
+            Dictionary<string, object> section = BattleSection();
+            Dictionary<string, object> users = section["users"] as Dictionary<string, object>;
+            if (users == null) { users = new Dictionary<string, object>(); section["users"] = users; }
+            string key = login.Trim().ToLowerInvariant();
+            Dictionary<string, object> entry;
+            if (users.ContainsKey(key) && users[key] is Dictionary<string, object>) entry = (Dictionary<string, object>)users[key];
+            else { entry = new Dictionary<string, object> { { "count", 0 } }; users[key] = entry; }
+            entry["displayName"] = displayName;
+            return entry;
+        }
+
+        private void ApplyBattleResetIfDue(Dictionary<string, object> battleCfg, DateTime nowUtc)
+        {
+            Dictionary<string, object> section = BattleSection();
+            DateTime nextReset = ParseDate(GetString(section, "nextGlobalResetAt", ""));
+            DateTime dueLimit = ComputeNextResetAt(battleCfg, nowUtc);
+            if (nextReset != DateTime.MinValue && nextReset > nowUtc && nextReset <= dueLimit) return;
+            Dictionary<string, object> users = section["users"] as Dictionary<string, object>;
+            if (users != null)
+            {
+                foreach (object value in users.Values)
+                {
+                    Dictionary<string, object> entry = value as Dictionary<string, object>;
+                    if (entry != null) entry["count"] = 0;
+                }
+            }
+            section["nextGlobalResetAt"] = ComputeNextResetAt(battleCfg, nowUtc).ToString("o");
+            SaveUsage();
+        }
+
+        private DateTime BattleNextReset()
+        {
+            return ParseDate(GetString(BattleSection(), "nextGlobalResetAt", ""));
+        }
+
         // ---- Trade usage tracking (separate namespace inside command-usage.json) ----
 
         private Dictionary<string, object> TradeSection()
@@ -3311,33 +3926,41 @@ namespace CardPackWidgetApp
             Dictionary<string, object> cc = Obj(settings, "chatCommands");
             int packMax = Math.Max(0, GetInt(Obj(cc, "pack"), "maxUses", 0));
             int tradeMax = Math.Max(0, GetInt(Obj(cc, "trade"), "maxUses", 0));
+            int battleMax = Math.Max(0, GetInt(Obj(cc, "battle"), "maxUses", 0));
             lock (usageLock)
             {
                 EnsureUsageLoaded();
                 Dictionary<string, object> packUsers = usageData["users"] as Dictionary<string, object> ?? new Dictionary<string, object>();
                 Dictionary<string, object> tradeSection = TradeSection();
                 Dictionary<string, object> tradeUsers = tradeSection["users"] as Dictionary<string, object> ?? new Dictionary<string, object>();
+                Dictionary<string, object> battleSection = BattleSection();
+                Dictionary<string, object> battleUsers = battleSection["users"] as Dictionary<string, object> ?? new Dictionary<string, object>();
 
                 var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (string k in packUsers.Keys) keys.Add(k);
                 foreach (string k in tradeUsers.Keys) keys.Add(k);
+                foreach (string k in battleUsers.Keys) keys.Add(k);
 
                 var list = new List<object>();
                 foreach (string key in keys)
                 {
                     Dictionary<string, object> p = packUsers.ContainsKey(key) ? packUsers[key] as Dictionary<string, object> : null;
                     Dictionary<string, object> tr = tradeUsers.ContainsKey(key) ? tradeUsers[key] as Dictionary<string, object> : null;
+                    Dictionary<string, object> bt = battleUsers.ContainsKey(key) ? battleUsers[key] as Dictionary<string, object> : null;
                     int packCount = p != null ? GetInt(p, "count", 0) : 0;
                     int tradeCount = tr != null ? GetInt(tr, "count", 0) : 0;
-                    string display = p != null ? GetString(p, "displayName", key) : (tr != null ? GetString(tr, "displayName", key) : key);
+                    int battleCount = bt != null ? GetInt(bt, "count", 0) : 0;
+                    string display = p != null ? GetString(p, "displayName", key) : (tr != null ? GetString(tr, "displayName", key) : (bt != null ? GetString(bt, "displayName", key) : key));
                     list.Add(new Dictionary<string, object>
                     {
                         { "login", key },
                         { "displayName", display },
                         { "packCount", packCount },
                         { "tradeCount", tradeCount },
+                        { "battleCount", battleCount },
                         { "packRemaining", packMax > 0 ? (object)Math.Max(0, packMax - packCount) : null },
-                        { "tradeRemaining", tradeMax > 0 ? (object)Math.Max(0, tradeMax - tradeCount) : null }
+                        { "tradeRemaining", tradeMax > 0 ? (object)Math.Max(0, tradeMax - tradeCount) : null },
+                        { "battleRemaining", battleMax > 0 ? (object)Math.Max(0, battleMax - battleCount) : null }
                     });
                 }
 
@@ -3345,6 +3968,7 @@ namespace CardPackWidgetApp
                 {
                     { "pack", new Dictionary<string, object> { { "maxUses", packMax }, { "nextResetAt", GetString(usageData, "nextGlobalResetAt", "") } } },
                     { "trade", new Dictionary<string, object> { { "maxUses", tradeMax }, { "nextResetAt", GetString(tradeSection, "nextGlobalResetAt", "") } } },
+                    { "battle", new Dictionary<string, object> { { "maxUses", battleMax }, { "nextResetAt", GetString(battleSection, "nextGlobalResetAt", "") } } },
                     { "users", list.ToArray() }
                 };
             }
@@ -3357,18 +3981,21 @@ namespace CardPackWidgetApp
                 EnsureUsageLoaded();
                 Dictionary<string, object> packUsers = (Dictionary<string, object>)usageData["users"];
                 Dictionary<string, object> tradeUsers = TradeSection()["users"] as Dictionary<string, object>;
+                Dictionary<string, object> battleUsers = BattleSection()["users"] as Dictionary<string, object>;
                 if (String.IsNullOrWhiteSpace(login))
                 {
                     ZeroAllCounts(packUsers);
                     ZeroAllCounts(tradeUsers);
-                    server.Log("commands", "info", "Nutzung (Pack & Tausch) aller User zurueckgesetzt.");
+                    ZeroAllCounts(battleUsers);
+                    server.Log("commands", "info", "Nutzung (Pack, Tausch & Kampf) aller User zurueckgesetzt.");
                 }
                 else
                 {
                     string key = login.Trim().ToLowerInvariant();
                     ZeroCount(packUsers, key);
                     ZeroCount(tradeUsers, key);
-                    server.Log("commands", "info", "Nutzung (Pack & Tausch) von " + login + " zurueckgesetzt.");
+                    ZeroCount(battleUsers, key);
+                    server.Log("commands", "info", "Nutzung (Pack, Tausch & Kampf) von " + login + " zurueckgesetzt.");
                 }
                 SaveUsage();
             }

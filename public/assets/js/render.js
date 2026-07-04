@@ -104,9 +104,21 @@ export function weightedBoosterPick(boosters = []) {
 
 export function normalizeSettings(settings) {
   settings.language ||= "de";
+  // Was previously never defaulted: a settings.json missing this key (e.g. after a partial
+  // save) crashed hydrateDesign() on the first line reading it, which silently aborted
+  // hydration of everything after it (OBS, trade/battle animation, battle strength fields).
+  settings.behavior ||= {};
+  settings.behavior.revealSeconds ??= 3.2;
+  settings.behavior.cooldownSeconds ??= 0.8;
+  settings.behavior.cardBacksBeforeReveal ??= 2;
+  settings.behavior.persistCollections ??= true;
   settings.twitch ||= {};
   settings.twitch.clientId ||= "klgyxuiixy0mfo7ze7goubj5j16g7u";
   settings.style ||= {};
+  // ??= (not ||=): 0 is a deliberate "muted" choice and must survive normalization. Without
+  // this default, a settings.json missing the key silently muted EVERY overlay sound (all
+  // overlays read style.volume and skip playback entirely at 0).
+  settings.style.volume ??= 65;
   settings.style.themeMode ||= "light";
   settings.style.cardTheme = CARD_THEMES.includes(settings.style.cardTheme) ? settings.style.cardTheme : "default";
   settings.style.customTheme ||= {};
@@ -123,6 +135,7 @@ export function normalizeSettings(settings) {
   settings.sounds.open ||= "";
   settings.sounds.reveal ||= "";
   settings.sounds.trade ||= "";
+  settings.sounds.battle ||= "";
 
   // Trade animation: shown in its own OBS browser source (trade.html) when a !tradeyes swap
   // succeeds. Style and length are picked here; an optional chat message is separate.
@@ -132,6 +145,28 @@ export function normalizeSettings(settings) {
   settings.tradeAnimation.duration = ["short", "medium", "long"].includes(settings.tradeAnimation.duration) ? settings.tradeAnimation.duration : "medium";
   settings.tradeAnimation.sendChat = settings.tradeAnimation.sendChat !== false;
   settings.tradeAnimation.sourceName ||= "Streamer Card Tausch";
+
+  // Battle animation: shown in its own OBS browser source (battle.html) when a !battleyes
+  // duel resolves. Style and length are picked here; an optional chat message is separate.
+  settings.battleAnimation ||= {};
+  settings.battleAnimation.enabled = settings.battleAnimation.enabled === true;
+  settings.battleAnimation.style = ["clash", "ranged", "hp"].includes(settings.battleAnimation.style) ? settings.battleAnimation.style : "clash";
+  settings.battleAnimation.duration = ["short", "medium", "long"].includes(settings.battleAnimation.duration) ? settings.battleAnimation.duration : "medium";
+  settings.battleAnimation.sendChat = settings.battleAnimation.sendChat !== false;
+  settings.battleAnimation.sourceName ||= "Streamer Card Kampf";
+
+  // Battle strength: per-rarity power used by the duel round rolls (independent of the draw
+  // weights above, since "common" should be weakest here but is drawn most often).
+  settings.battleStrength ||= {};
+  const BATTLE_STRENGTH_DEFAULTS = { common: 1, uncommon: 2, rare: 3, epic: 5, legendary: 8, holo: 12 };
+  for (const rarity of RARITIES) {
+    const value = Number(settings.battleStrength[rarity.id]);
+    settings.battleStrength[rarity.id] = Number.isFinite(value) && value > 0 ? value : BATTLE_STRENGTH_DEFAULTS[rarity.id];
+  }
+  settings.battleStrength.variance = Number(settings.battleStrength.variance) >= 0 ? Number(settings.battleStrength.variance) : 0.6;
+  // HP for the "HP-Leisten-Duell" elimination style = battle strength x this factor.
+  settings.battleStrength.hpFactor = Number(settings.battleStrength.hpFactor) > 0 ? Number(settings.battleStrength.hpFactor) : 10;
+
   settings.deck ||= {};
   settings.deck.cards ||= [];
   settings.boosters ||= [];
@@ -233,7 +268,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.trade.cardNotFoundMessage ||= "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
   settings.chatCommands.trade.offerNotOwnedMessage ||= "@userName, du besitzt die Karte [Kartenname] nicht und kannst sie daher nicht anbieten.";
   settings.chatCommands.trade.userNotFoundMessage ||= "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
-  settings.chatCommands.trade.offerMessage ||= "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Möchtest du diesen annehmen?";
+  settings.chatCommands.trade.offerMessage ||= "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Nimm mit [BefehlAnnehmen] an oder lehne mit [BefehlAblehnen] ab.";
   settings.chatCommands.trade.timeoutMessage ||= "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Tauschanfrage beendet.";
   settings.chatCommands.trade.cooldownMessage ||= "@userName, leider musst du mit der Tauschanfrage noch bis [Uhrzeit] warten, da der Cooldown von [Cooldownwert] [Einheit] noch aktiv ist.";
   settings.chatCommands.trade.limitMessage ||= "@userName, leider sind deine Tauschanfragen aktuell aufgebraucht. Bitte warte bis [Uhrzeit] Uhr.";
@@ -251,6 +286,38 @@ export function normalizeSettings(settings) {
   settings.chatCommands.tradeno.prefix ||= "!";
   settings.chatCommands.tradeno.command ||= "tradeno";
   settings.chatCommands.tradeno.declineMessage ||= "@userNameA, leider hat @userNameB deine Tauschanfrage abgelehnt, damit bleiben dir bis zum [Uhrzeit] noch [Anzahl] Tauschanfragen.";
+
+  // Battle system: !battle (challenge), !battleyes (accept), !battleno (decline).
+  settings.chatCommands.battle ||= {};
+  settings.chatCommands.battle.enabled = settings.chatCommands.battle.enabled !== false;
+  settings.chatCommands.battle.prefix ||= "!";
+  settings.chatCommands.battle.command ||= "battle";
+  settings.chatCommands.battle.lineupSize = Number(settings.chatCommands.battle.lineupSize) > 0 ? Number(settings.chatCommands.battle.lineupSize) : 3;
+  settings.chatCommands.battle.cooldownSeconds = Number(settings.chatCommands.battle.cooldownSeconds) >= 0 ? Number(settings.chatCommands.battle.cooldownSeconds) : 60;
+  settings.chatCommands.battle.maxUses = Number(settings.chatCommands.battle.maxUses) >= 0 ? Number(settings.chatCommands.battle.maxUses) : 5;
+  settings.chatCommands.battle.resetUnit = ["minutes", "hours", "days"].includes(settings.chatCommands.battle.resetUnit) ? settings.chatCommands.battle.resetUnit : "hours";
+  settings.chatCommands.battle.resetValue = Number(settings.chatCommands.battle.resetValue) > 0 ? Number(settings.chatCommands.battle.resetValue) : 8;
+  settings.chatCommands.battle.requestTimeoutSeconds = Number(settings.chatCommands.battle.requestTimeoutSeconds) > 0 ? Number(settings.chatCommands.battle.requestTimeoutSeconds) : 120;
+  settings.chatCommands.battle.userNotFoundMessage ||= "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
+  settings.chatCommands.battle.selfChallengeMessage ||= "@userName, du kannst nicht dich selbst herausfordern.";
+  settings.chatCommands.battle.notEnoughCardsMessage ||= "@userName, für ein Kartenduell braucht ihr beide mindestens [Anzahl] verschiedene Karten.";
+  settings.chatCommands.battle.offerMessage ||= "@userNameB, @userNameA fordert dich zum Kartenduell heraus! Nimm mit [BefehlAnnehmen] an oder lehne mit [BefehlAblehnen] ab.";
+  settings.chatCommands.battle.timeoutMessage ||= "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Duellanfrage beendet.";
+  settings.chatCommands.battle.cooldownMessage ||= "@userName, leider musst du mit der Kampfanfrage noch bis [Uhrzeit] warten, da der Cooldown von [Cooldownwert] [Einheit] noch aktiv ist.";
+  settings.chatCommands.battle.limitMessage ||= "@userName, leider sind deine Kampfanfragen aktuell aufgebraucht. Bitte warte bis [Uhrzeit] Uhr.";
+  settings.chatCommands.battle.busyMessage ||= "@userName, es läuft bereits ein Kartenduell. Bitte warte bis dieses abgeschlossen wurde.";
+
+  settings.chatCommands.battleyes ||= {};
+  settings.chatCommands.battleyes.enabled = settings.chatCommands.battleyes.enabled !== false;
+  settings.chatCommands.battleyes.prefix ||= "!";
+  settings.chatCommands.battleyes.command ||= "battleyes";
+  settings.chatCommands.battleyes.resultMessage ||= "@userNameA gewinnt das Kartenduell gegen @userNameB ([SiegeA]:[SiegeB]) und erhält die Karte [GewonneneKarte]!";
+
+  settings.chatCommands.battleno ||= {};
+  settings.chatCommands.battleno.enabled = settings.chatCommands.battleno.enabled !== false;
+  settings.chatCommands.battleno.prefix ||= "!";
+  settings.chatCommands.battleno.command ||= "battleno";
+  settings.chatCommands.battleno.declineMessage ||= "@userNameA, leider hat @userNameB deine Duellanfrage abgelehnt.";
 
   if (!settings.boosters.length) {
     const legacy = settings.booster || {};
