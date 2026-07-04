@@ -181,6 +181,8 @@ Löst ein Zuschauer die Belohnung ein, zieht die App serverseitig genau **einen*
 Booster (gewichtet nach Score) und **eine** Karte (gewichtet nach Seltenheit) und spielt die
 Pack-Animation im Overlay ab.
 
+<p align="center"><img src="docs/media/pack-open.gif" alt="Pack-Animation Vorschau" width="480"></p>
+
 Optional kannst du (unter der Beschreibung) per Checkbox eine **Chat-Nachricht nach dem Ziehen**
 aktivieren – sie wird gesendet, sobald die Animation fertig ist, und kann die gezogene Karte
 benennen. Standard: `@userName hat [Kartenname] aus [Boostername] gezogen.` Die Variablen
@@ -200,6 +202,8 @@ Zeigt einem Zuschauer seine komplette Sammlung als Overlay – ebenfalls über K
 
 Beim Einlösen sliden nacheinander alle aktiven Booster mit den Karten dieses Zuschauers durch:
 **gezogene Karten sichtbar, noch nicht gezogene bleiben unbekannt**.
+
+<p align="center"><img src="docs/media/collection-showcase.gif" alt="Sammlungs-Showcase Vorschau" width="480"></p>
 
 ---
 
@@ -264,6 +268,13 @@ In der Animation werden beide getauschten Karten gezeigt; unter jeder Karte steh
 bisherige, nach dem Tausch der neue Besitzer. Mit der Option **„Erfolgsmeldung im Chat senden"**
 legst du fest, ob zusätzlich die Chat-Nachricht kommt oder nur die Animation laufen soll.
 
+<p align="center">
+  <img src="docs/media/trade-swap.gif" alt="Tausch-Animation: Karten-Swap" width="260">
+  <img src="docs/media/trade-arc.gif" alt="Tausch-Animation: Übergabe-Bogen" width="260">
+  <img src="docs/media/trade-flip.gif" alt="Tausch-Animation: Versus-Flip" width="260">
+</p>
+<p align="center"><sub>Karten-Swap · Übergabe-Bogen · Versus-Flip</sub></p>
+
 Über **„Test starten"** spielst du die Animation einmal in OBS ab – mit zwei zufälligen Namen und
 Karten. Das funktioniert auch, wenn die Animation noch nicht aktiviert ist, ideal zum Ausprobieren
 von Stil und Timing.
@@ -302,6 +313,13 @@ wählbaren Kampfstilen:
 
 Dauer, eigener Kampf-Sound und die Option „Ergebnis-Nachricht zusätzlich im Chat senden" sind wie
 bei der Tausch-Animation einstellbar, inklusive **„Test starten"**-Button für eine Vorschau.
+
+<p align="center">
+  <img src="docs/media/battle-clash.gif" alt="Kampf-Animation: Nahkampf-Clash" width="260">
+  <img src="docs/media/battle-ranged.gif" alt="Kampf-Animation: Fernkampf-Projektile" width="260">
+  <img src="docs/media/battle-hp.gif" alt="Kampf-Animation: HP-Leisten-Duell" width="260">
+</p>
+<p align="center"><sub>Nahkampf-Clash · Fernkampf-Projektile · HP-Leisten-Duell</sub></p>
 
 ---
 
