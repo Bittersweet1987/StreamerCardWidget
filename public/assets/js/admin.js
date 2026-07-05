@@ -1126,20 +1126,31 @@ async function testObsConnection() {
   let ws;
   try {
     ws = await connectObs();
-    setStatus("#obs-status", t("pill-obs-connected"), "ok");
-    setPill("#obs-pill", t("pill-obs-connected"), true);
-    settings.obs ||= {};
-    settings.obs.enabled = true;
-    await saveSettings(settings);
-    if (lastObsConnected !== true) addLog("obs", "info", "OBS verbunden.");
-    lastObsConnected = true;
   } catch (error) {
     setStatus("#obs-status", `${t("error-obs-not-connected")} ${error.message}`, "error");
     setPill("#obs-pill", t("pill-obs-default"), false);
     if (lastObsConnected !== false) addLog("obs", "error", `OBS-Verbindung fehlgeschlagen: ${error.message}`);
     lastObsConnected = false;
-  } finally {
     try { ws?.close(); } catch {}
+    return;
+  }
+  // The actual OBS connection succeeded - everything below is bookkeeping (persisting
+  // settings.obs.enabled, closing the socket) and must NOT be able to turn a successful
+  // connection into a reported failure if it hiccups (e.g. a transient fetch error saving
+  // settings previously made this whole check falsely report "OBS not connected").
+  setStatus("#obs-status", t("pill-obs-connected"), "ok");
+  setPill("#obs-pill", t("pill-obs-connected"), true);
+  if (lastObsConnected !== true) addLog("obs", "info", "OBS verbunden.");
+  lastObsConnected = true;
+  try { ws?.close(); } catch {}
+  if (settings.obs?.enabled !== true) {
+    settings.obs ||= {};
+    settings.obs.enabled = true;
+    try {
+      await saveSettings(settings);
+    } catch (saveError) {
+      addLog("obs", "error", `OBS-Status "aktiviert" konnte nicht gespeichert werden: ${saveError.message}`);
+    }
   }
 }
 
