@@ -673,9 +673,11 @@ async function hydrateUpdateTab() {
 let pendingUpdateAssetUrl = null;
 
 async function checkForUpdate({ silent = false } = {}) {
-  if (!appVersionInfo) appVersionInfo = await getVersion();
   if (!silent) setStatus("#update-status", t("update-status-checking"), "neutral");
+  // getVersion must live inside the try: the silent startup call is not awaited by
+  // anyone, so a transient fetch failure here would surface as an unhandled rejection.
   try {
+    if (!appVersionInfo) appVersionInfo = await getVersion();
     const release = await getLatestRelease(appVersionInfo.repo);
     const latestVersion = String(release.tag_name || "").replace(/^v/i, "");
     const installButton = $("#install-update");

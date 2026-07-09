@@ -10,15 +10,33 @@
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
       // exact error + location to the server log, and shows it on screen as a fallback.
       (function () {
-        function report(msg) {
+        // Browser "Failed to fetch" TypeErrors carry no URL, which makes the log entries
+        // useless for finding the culprit. Wrap fetch so every rejection names its request.
+        var origFetch = window.fetch;
+        window.fetch = function (input, init) {
+          var url = (input && input.url) || String(input);
+          var method = (init && init.method) || (input && input.method) || "GET";
+          return origFetch.apply(window, arguments).catch(function (err) {
+            try {
+              if (err && err.message && err.message.indexOf(url) === -1) {
+                err.message = err.message + " -> " + method + " " + url;
+              }
+            } catch (ignored) {}
+            throw err;
+          });
+        };
+        function report(msg, showBar) {
           try {
-            fetch("/api/logs", {
+            // .catch is required: if this log POST itself fails, an uncaught rejection
+            // here would re-trigger the unhandledrejection handler in a loop.
+            origFetch("/api/logs", {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ category: "ui", level: "error", message: String(msg).slice(0, 800) }),
               keepalive: true
-            });
+            }).catch(function () {});
           } catch (e) {}
+          if (!showBar) return;
           try {
             var bar = document.getElementById("boot-error");
             if (!bar) {
@@ -31,10 +49,14 @@
           } catch (e) {}
         }
         window.addEventListener("error", function (e) {
-          report((e.message || "Fehler") + " @ " + (e.filename || "?") + ":" + (e.lineno || 0) + ":" + (e.colno || 0));
+          report((e.message || "Fehler") + " @ " + (e.filename || "?") + ":" + (e.lineno || 0) + ":" + (e.colno || 0), true);
         });
         window.addEventListener("unhandledrejection", function (e) {
-          report("Promise: " + ((e.reason && e.reason.message) || e.reason));
+          var msg = (e.reason && e.reason.message) || String(e.reason);
+          // Transient fetch failures get logged (now including method+URL via the wrapper
+          // above) but must not paint the red "Startfehler" bar - the app keeps working.
+          var isFetchBlip = msg.indexOf("Failed to fetch") !== -1 || msg.indexOf("NetworkError") !== -1;
+          report("Promise: " + msg, !isFetchBlip);
         });
       })();
     </script>
@@ -1293,6 +1315,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260704-obsfix1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260709-fetchlog1"></script>
   </body>
 </html>
