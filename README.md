@@ -341,6 +341,8 @@ Es erfolgt **bewusst keine Chat-Ausgabe** – das Ergebnis erscheint nur im Over
 Die **Anzeigedauer** pro Ansicht ist beim Befehl einstellbar (Standard 8 Sekunden). Unbekannte
 Kartennamen werden stillschweigend ignoriert.
 
+<p align="center"><img src="docs/media/ranking.gif" alt="Ranking-Overlay Vorschau" width="480"></p>
+
 ---
 
 ## Nutzung Befehle
