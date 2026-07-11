@@ -1,4 +1,4 @@
-import { addLog, connectEventStream, getSettings } from "./api.js";
+import { addLog, completeQueueItem, connectEventStream, getSettings } from "./api.js";
 import { applyTheme, cardMarkup, normalizeSettings } from "./render.js";
 
 const stage = document.querySelector("#ranking-stage");
@@ -73,7 +73,7 @@ function listMarkup(entries, valueSuffix = "") {
 async function playCardRanking(event) {
   const card = findCard(event.cardId);
   const owners = Array.isArray(event.owners) ? event.owners : [];
-  if (!owners.length) return; // nobody owns the card yet - nothing to show
+  if (!owners.length) { completeQueueItem(event.eventId); return; } // nobody owns the card yet
   const seconds = Math.max(2, Number(event.displaySeconds) || 8);
 
   const scene = document.createElement("div");
@@ -93,11 +93,12 @@ async function playCardRanking(event) {
   scene.classList.add("is-out");
   await delay(450);
   scene.remove();
+  completeQueueItem(event.eventId);
 }
 
 async function playTradeRanking(event) {
   const entries = Array.isArray(event.entries) ? event.entries : [];
-  if (!entries.length) return; // no completed trades yet
+  if (!entries.length) { completeQueueItem(event.eventId); return; } // no completed trades yet
   const seconds = Math.max(2, Number(event.displaySeconds) || 8);
 
   const scene = document.createElement("div");
@@ -116,6 +117,7 @@ async function playTradeRanking(event) {
   scene.classList.add("is-out");
   await delay(450);
   scene.remove();
+  completeQueueItem(event.eventId);
 }
 
 async function playBattleRanking(event) {
@@ -125,7 +127,7 @@ async function playBattleRanking(event) {
   const phases = ["fights", "wins", "losses", "ratio"]
     .map((key) => ({ key, title: titles[key], entries: lists[key] || [] }))
     .filter((phase) => phase.entries.length > 0);
-  if (!phases.length) return; // no recorded battles yet
+  if (!phases.length) { completeQueueItem(event.eventId); return; } // no recorded battles yet
 
   const scene = document.createElement("div");
   scene.className = "ranking-scene is-battle";
@@ -146,6 +148,7 @@ async function playBattleRanking(event) {
   scene.classList.add("is-out");
   await delay(450);
   scene.remove();
+  completeQueueItem(event.eventId);
 }
 
 async function loadSettings() {

@@ -19,8 +19,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.5.2";
-        public const string ReleaseDate = "2026-07-11";
+        public const string Version = "2.6.0";
+        public const string ReleaseDate = "2026-07-12";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
 
@@ -2000,6 +2000,9 @@ namespace CardPackWidgetApp
         private const string DefaultBattleDecline = "@userNameA, leider hat @userNameB deine Duellanfrage abgelehnt.";
         private const string DefaultBattleResult = "@userNameA gewinnt das Kartenduell gegen @userNameB ([SiegeA]:[SiegeB]) und erhält die Karte [GewonneneKarte]!";
 
+        private const string DefaultCardsEmpty = "@userName, du besitzt noch keine Karten.";
+        private const string DefaultCardsHeader = "@userName, deine Karten:";
+
         private const double DefaultBattleVariance = 0.6;
 
         public TwitchBridge(CardPackServer server)
@@ -2539,6 +2542,13 @@ namespace CardPackWidgetApp
 
         public void Enqueue(string kind, string login, string displayName, string source)
         {
+            Enqueue(kind, login, displayName, source, null);
+        }
+
+        // extra: additional payload the item should carry (e.g. the ranking type/lists), merged
+        // into the queue item so ProcessQueueItem can broadcast it once this item's turn comes up.
+        public void Enqueue(string kind, string login, string displayName, string source, Dictionary<string, object> extra)
+        {
             var item = new Dictionary<string, object>
             {
                 { "id", Guid.NewGuid().ToString("N") },
@@ -2548,6 +2558,10 @@ namespace CardPackWidgetApp
                 { "source", source },
                 { "triggeredAt", DateTime.UtcNow.ToString("o") }
             };
+            if (extra != null)
+            {
+                foreach (KeyValuePair<string, object> kv in extra) item[kv.Key] = kv.Value;
+            }
             lock (queueLock) { actionQueue.Add(item); }
             BroadcastQueue();
             queueSignal.Set();
@@ -2685,6 +2699,15 @@ namespace CardPackWidgetApp
                 }
                 return boosters * (secondsPerBooster * 1000 + 700) + 8000;
             }
+            if (kind == "ranking")
+            {
+                // Battle ranking cycles through up to 4 phases; card/trade ranking show one.
+                // GetInt on the item itself: displaySeconds was stored on it by HandleRankingCommand.
+                int displaySeconds = Math.Max(2, GetInt(item, "displaySeconds", 8));
+                string rankingType = GetString(item, "type", "card");
+                int phases = rankingType == "battle" ? 4 : 1;
+                return phases * (displaySeconds * 1000 + 500) + 8000;
+            }
             // Draw animation is a fixed sequence (~7s) plus reveal time; 30s is a safe ceiling.
             return 30000;
         }
@@ -2751,6 +2774,20 @@ namespace CardPackWidgetApp
             string user = GetString(item, "user", "Viewer");
             string login = GetString(item, "userLogin", user);
             string source = GetString(item, "source", "");
+
+            if (kind == "ranking")
+            {
+                var rankingEvent = new Dictionary<string, object>(item);
+                rankingEvent["eventId"] = GetString(item, "id", DateTime.UtcNow.Ticks.ToString());
+                rankingEvent.Remove("id");
+                rankingEvent.Remove("kind");
+                rankingEvent.Remove("user");
+                rankingEvent.Remove("userLogin");
+                rankingEvent.Remove("source");
+                rankingEvent.Remove("triggeredAt");
+                server.Broadcast("ranking", server.Serializer.Serialize(rankingEvent));
+                return;
+            }
 
             if (kind == "showcollection")
             {
@@ -3080,6 +3117,61 @@ namespace CardPackWidgetApp
             }
         }
 
+        // Twitch chat messages are capped at 500 characters; stay comfortably under that so the
+        // per-chunk header/index prefix never pushes a message over the real limit.
+        private const int MaxChatMessageLength = 450;
+
+        private void HandleCardsCommand(string login, string displayName, Dictionary<string, object> cardsCfg)
+        {
+            List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
+            if (owned.Count == 0)
+            {
+                SendChatMessageSafe(GetString(cardsCfg, "emptyMessage", DefaultCardsEmpty).Replace("@userName", "@" + displayName));
+                return;
+            }
+
+            var names = new List<string>();
+            foreach (Dictionary<string, string> entry in owned)
+            {
+                int count = server.GetCardCount(login, entry["boosterId"], entry["cardId"]);
+                Dictionary<string, string> info = server.CardDisplayInfo(entry["boosterId"], entry["cardId"]);
+                names.Add(count > 1 ? info["cardTitle"] + " x" + count : info["cardTitle"]);
+            }
+            names.Sort(StringComparer.OrdinalIgnoreCase);
+
+            string header = GetString(cardsCfg, "headerMessage", DefaultCardsHeader).Replace("@userName", "@" + displayName);
+            SendCardListChunked(header, names);
+        }
+
+        // Splits the (potentially long) card name list into multiple chat messages that each
+        // stay under Twitch's length limit, numbering them "(1/3)" etc. when there's more than one.
+        private void SendCardListChunked(string header, List<string> names)
+        {
+            int budget = Math.Max(50, MaxChatMessageLength - header.Length - 12);
+            var chunks = new List<string>();
+            string current = "";
+            foreach (string name in names)
+            {
+                string candidate = current.Length == 0 ? name : current + ", " + name;
+                if (candidate.Length > budget && current.Length > 0)
+                {
+                    chunks.Add(current);
+                    current = name;
+                }
+                else
+                {
+                    current = candidate;
+                }
+            }
+            if (current.Length > 0) chunks.Add(current);
+
+            for (int i = 0; i < chunks.Count; i++)
+            {
+                string prefix = chunks.Count > 1 ? header + " (" + (i + 1) + "/" + chunks.Count + ") " : header + " ";
+                SendChatMessageSafe(prefix + chunks[i]);
+            }
+        }
+
         private void SendChatMessageSafe(string message)
         {
             try { SendChatMessage(message); }
@@ -3121,6 +3213,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> battleYes = Obj(cc, "battleyes");
             Dictionary<string, object> battleNo = Obj(cc, "battleno");
             Dictionary<string, object> ranking = Obj(cc, "ranking");
+            Dictionary<string, object> cards = Obj(cc, "cards");
 
             if (MatchesCommand(text, pack))
             {
@@ -3131,6 +3224,13 @@ namespace CardPackWidgetApp
             {
                 // No usage limit, no cooldown, no tracking for the collection command.
                 if (GetBool(collection, "enabled", true)) Enqueue("showcollection", login, displayName, "chat");
+                return;
+            }
+            if (MatchesCommand(text, cards))
+            {
+                // Same "no limit, no cooldown" spirit as !collection - this just lists card names
+                // in chat text instead of showing the collection overlay.
+                if (GetBool(cards, "enabled", true)) HandleCardsCommand(login, displayName, cards);
                 return;
             }
             if (MatchesCommand(text, tradeYes))
@@ -3702,12 +3802,24 @@ namespace CardPackWidgetApp
                         });
                     }
 
-                    // Sudden death: one more random card each until the tie breaks.
+                    // Sudden death: one more random card each until the tie breaks. Must not reuse
+                    // a card already fielded earlier in this same battle (main lineup or a prior
+                    // sudden-death round) while an unused one is still available - otherwise a
+                    // single-copy card could appear to fight more than once in one duel.
+                    var usedIdsA = new HashSet<string>();
+                    foreach (Dictionary<string, string> c in lineupA) usedIdsA.Add(c["cardId"]);
+                    var usedIdsB = new HashSet<string>();
+                    foreach (Dictionary<string, string> c in lineupB) usedIdsB.Add(c["cardId"]);
+
                     int suddenDeathRounds = 0;
                     while (winsA == winsB && suddenDeathRounds < 20)
                     {
-                        List<Dictionary<string, string>> sdA = DrawRandomLineup(ownedA, 1);
-                        List<Dictionary<string, string>> sdB = DrawRandomLineup(ownedB, 1);
+                        List<Dictionary<string, string>> poolA = UnusedCardPool(ownedA, usedIdsA);
+                        List<Dictionary<string, string>> poolB = UnusedCardPool(ownedB, usedIdsB);
+                        List<Dictionary<string, string>> sdA = DrawRandomLineup(poolA, 1);
+                        List<Dictionary<string, string>> sdB = DrawRandomLineup(poolB, 1);
+                        usedIdsA.Add(sdA[0]["cardId"]);
+                        usedIdsB.Add(sdB[0]["cardId"]);
                         bool aWins = RollRound(sdA[0], sdB[0], strengthCfg, variance);
                         if (aWins) winsA++; else winsB++;
                         rounds.Add(new Dictionary<string, object>
@@ -3741,20 +3853,6 @@ namespace CardPackWidgetApp
                     SaveUsage();
                 }
 
-                bool animEnabled = GetBool(battleAnimForStyle, "enabled", false);
-                bool sendChat = animEnabled ? GetBool(battleAnimForStyle, "sendChat", true) : true;
-                if (sendChat)
-                {
-                    string msg = GetString(yesCfg, "resultMessage", DefaultBattleResult)
-                        .Replace("@userNameA", "@" + winnerUser)
-                        .Replace("@userNameB", "@" + loserUser)
-                        .Replace("[SiegeA]", winnerIsA ? winsA.ToString() : winsB.ToString())
-                        .Replace("[SiegeB]", winnerIsA ? winsB.ToString() : winsA.ToString())
-                        .Replace("[GewonneneKarte]", prizeInfo["cardTitle"])
-                        .Replace("[BoosterGewonnen]", prizeInfo["boosterTitle"]);
-                    SendChatMessageSafe(msg);
-                }
-
                 var battleEvent = new Dictionary<string, object>
                 {
                     { "eventId", GetString(activeBattle, "id", Guid.NewGuid().ToString("N")) },
@@ -3771,6 +3869,36 @@ namespace CardPackWidgetApp
                 };
                 server.Broadcast("battle", server.Serializer.Serialize(battleEvent));
                 server.Log("commands", "info", winnerUser + " gewann das Kartenduell gegen " + loserUser + " (" + Math.Max(winsA, winsB) + ":" + Math.Min(winsA, winsB) + ") und erhielt " + prizeInfo["cardTitle"] + ".");
+
+                // The result message is sent AFTER the animation has had time to play out, not
+                // immediately - otherwise chat spoils the winner before the OBS animation reveals
+                // it. This is a time-based estimate (not an ack from the overlay) so it never
+                // blocks this thread from handling the next chat command while a duel animation
+                // (up to ~28s for a long HP-Leisten-Duell) is still playing.
+                bool animEnabled = GetBool(battleAnimForStyle, "enabled", false);
+                bool sendChat = animEnabled ? GetBool(battleAnimForStyle, "sendChat", true) : true;
+                if (sendChat)
+                {
+                    string msg = GetString(yesCfg, "resultMessage", DefaultBattleResult)
+                        .Replace("@userNameA", "@" + winnerUser)
+                        .Replace("@userNameB", "@" + loserUser)
+                        .Replace("[SiegeA]", winnerIsA ? winsA.ToString() : winsB.ToString())
+                        .Replace("[SiegeB]", winnerIsA ? winsB.ToString() : winsA.ToString())
+                        .Replace("[GewonneneKarte]", prizeInfo["cardTitle"])
+                        .Replace("[BoosterGewonnen]", prizeInfo["boosterTitle"]);
+                    int delayMs = animEnabled ? EstimateBattleAnimationMs(useHpElimination, battleAnimForStyle, hpResult) : 0;
+                    if (delayMs > 0)
+                    {
+                        string msgToSend = msg;
+                        int waitMs = delayMs;
+                        Task.Factory.StartNew(delegate { Thread.Sleep(waitMs); SendChatMessageSafe(msgToSend); });
+                    }
+                    else
+                    {
+                        SendChatMessageSafe(msg);
+                    }
+                }
+
                 ClearActiveBattle();
             }
         }
@@ -3807,6 +3935,18 @@ namespace CardPackWidgetApp
                     .Replace("[Zeit]", timeoutSeconds.ToString()));
                 ClearActiveBattle();
             }
+        }
+
+        // Cards from `owned` not yet used in this battle; falls back to the full pool only if
+        // every owned card type has already fought (so sudden death can still proceed).
+        private static List<Dictionary<string, string>> UnusedCardPool(List<Dictionary<string, string>> owned, HashSet<string> usedIds)
+        {
+            var pool = new List<Dictionary<string, string>>();
+            foreach (Dictionary<string, string> c in owned)
+            {
+                if (!usedIds.Contains(c["cardId"])) pool.Add(c);
+            }
+            return pool.Count > 0 ? pool : owned;
         }
 
         // Draws `count` distinct random card types from `owned` (no replacement within one draw).
@@ -3858,6 +3998,38 @@ namespace CardPackWidgetApp
         // reaches zero; the surviving card keeps its remaining HP into the next matchup against
         // the opponent's next bench card. Overall winner = the side that still has a card standing
         // once the other side runs out. HP per card = battle strength x a configurable factor.
+        // Rough estimate of how long the client-side battle animation will take, so the chat
+        // result message can be delayed until after it (mirrors the duration/hit-timing tables
+        // in battle.js; doesn't need to be exact, just generous enough not to arrive early).
+        private int EstimateBattleAnimationMs(bool useHpElimination, Dictionary<string, object> battleAnimCfg, Dictionary<string, object> hpResult)
+        {
+            string duration = GetString(battleAnimCfg, "duration", "medium");
+            if (useHpElimination)
+            {
+                int hitMs = duration == "short" ? 450 : (duration == "long" ? 900 : 650);
+                int totalHits = 0;
+                if (hpResult != null)
+                {
+                    object matchupsObj;
+                    if (hpResult.TryGetValue("matchups", out matchupsObj) && matchupsObj is object[])
+                    {
+                        foreach (object m in (object[])matchupsObj)
+                        {
+                            Dictionary<string, object> matchup = m as Dictionary<string, object>;
+                            if (matchup == null) continue;
+                            object hitsObj;
+                            if (matchup.TryGetValue("hits", out hitsObj) && hitsObj is object[]) totalHits += ((object[])hitsObj).Length;
+                        }
+                    }
+                }
+                int total = hitMs * Math.Max(1, totalHits);
+                if (total > 28000) total = 28000;
+                return total + 3000;
+            }
+            int roundsMs = duration == "short" ? 5000 : (duration == "long" ? 12000 : 8000);
+            return roundsMs + 2500;
+        }
+
         private Dictionary<string, object> ResolveHpElimination(List<Dictionary<string, string>> lineupA, List<Dictionary<string, string>> lineupB, Dictionary<string, object> strengthCfg, double variance)
         {
             double hpFactor = GetDouble(strengthCfg, "hpFactor", 10);
@@ -3956,12 +4128,11 @@ namespace CardPackWidgetApp
                 Dictionary<string, object> lists = server.BuildBattleRanking(5);
                 var battlePayload = new Dictionary<string, object>
                 {
-                    { "eventId", Guid.NewGuid().ToString("N") },
                     { "type", "battle" },
                     { "displaySeconds", displaySeconds },
                     { "lists", lists }
                 };
-                server.Broadcast("ranking", server.Serializer.Serialize(battlePayload));
+                Enqueue("ranking", login, displayName, "chat", battlePayload);
                 server.Log("commands", "info", displayName + " hat das Kampf-Ranking angefordert.");
                 return;
             }
@@ -3971,12 +4142,11 @@ namespace CardPackWidgetApp
                 object[] top = server.BuildTradeRanking(5);
                 var tradePayload = new Dictionary<string, object>
                 {
-                    { "eventId", Guid.NewGuid().ToString("N") },
                     { "type", "trade" },
                     { "displaySeconds", displaySeconds },
                     { "entries", top }
                 };
-                server.Broadcast("ranking", server.Serializer.Serialize(tradePayload));
+                Enqueue("ranking", login, displayName, "chat", tradePayload);
                 server.Log("commands", "info", displayName + " hat das Tausch-Ranking angefordert.");
                 return;
             }
@@ -3987,7 +4157,6 @@ namespace CardPackWidgetApp
             string boosterId = GetString(card, "boosterId", "");
             var cardPayload = new Dictionary<string, object>
             {
-                { "eventId", Guid.NewGuid().ToString("N") },
                 { "type", "card" },
                 { "displaySeconds", displaySeconds },
                 { "cardId", cardId },
@@ -3996,7 +4165,7 @@ namespace CardPackWidgetApp
                 { "boosterTitle", GetString(card, "boosterTitle", "") },
                 { "owners", server.GetTopCardOwners(boosterId, cardId, 5) }
             };
-            server.Broadcast("ranking", server.Serializer.Serialize(cardPayload));
+            Enqueue("ranking", login, displayName, "chat", cardPayload);
             server.Log("commands", "info", displayName + " hat das Ranking fuer Karte \"" + GetString(card, "cardTitle", "") + "\" angefordert.");
         }
 

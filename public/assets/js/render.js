@@ -330,6 +330,15 @@ export function normalizeSettings(settings) {
   settings.ranking ||= {};
   settings.ranking.sourceName ||= "Streamer Card Ranking";
 
+  // Cards: !karten / !cards - lists the caller's owned cards as plain chat text (split into
+  // multiple messages server-side if needed). No limit, no cooldown, same spirit as !collection.
+  settings.chatCommands.cards ||= {};
+  settings.chatCommands.cards.enabled = settings.chatCommands.cards.enabled !== false;
+  settings.chatCommands.cards.prefix ||= "!";
+  settings.chatCommands.cards.command ||= "karten";
+  settings.chatCommands.cards.headerMessage ||= "@userName, deine Karten:";
+  settings.chatCommands.cards.emptyMessage ||= "@userName, du besitzt noch keine Karten.";
+
   if (!settings.boosters.length) {
     const legacy = settings.booster || {};
     settings.boosters = [{

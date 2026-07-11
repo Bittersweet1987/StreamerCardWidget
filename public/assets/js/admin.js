@@ -177,6 +177,14 @@ const I18N = {
   "cc-pack-title": { de: "Pack-Befehl", en: "Pack command" },
   "cc-collection-eyebrow": { de: "Sammlung", en: "Collection" },
   "cc-collection-title": { de: "Sammlung-Befehl", en: "Collection command" },
+  "cc-cards-eyebrow": { de: "Karten", en: "Cards" },
+  "cc-cards-title": { de: "Karten-Befehl", en: "Cards command" },
+  "cc-cards-hint": {
+    de: "Listet alle eigenen Kartennamen als Chat-Text auf (mit Anzahl bei Mehrfachbesitz). Wird bei Bedarf automatisch auf mehrere Nachrichten aufgeteilt, um Twitchs Zeichenlimit einzuhalten.",
+    en: "Lists all of the caller's card names as chat text (with a count when owned more than once). Automatically split across multiple messages if needed to stay under Twitch's character limit."
+  },
+  "label-cc-cards-header": { de: "Einleitung vor der Kartenliste", en: "Intro before the card list" },
+  "label-cc-cards-empty": { de: "Nachricht ohne eigene Karten", en: "Message when the user owns no cards" },
   "label-cc-prefix": { de: "Präfix", en: "Prefix" },
   "label-cc-command": { de: "Befehlswort", en: "Command word" },
   "label-cc-maxuses": { de: "Max. Nutzungen pro Viewer", en: "Max uses per viewer" },
@@ -1994,6 +2002,13 @@ function hydrateChatCommands() {
   $("#cc-collection-prefix").value = cc.collection.prefix || "!";
   $("#cc-collection-command").value = cc.collection.command || "collection";
 
+  const cardsCmd = cc.cards || {};
+  $("#cc-cards-enabled").checked = cardsCmd.enabled !== false;
+  $("#cc-cards-prefix").value = cardsCmd.prefix || "!";
+  $("#cc-cards-command").value = cardsCmd.command || "karten";
+  $("#cc-cards-header-message").value = cardsCmd.headerMessage || "";
+  $("#cc-cards-empty-message").value = cardsCmd.emptyMessage || "";
+
   const trade = cc.trade || {};
   $("#cc-trade-enabled").checked = trade.enabled !== false;
   $("#cc-trade-prefix").value = trade.prefix || "!";
@@ -2082,6 +2097,13 @@ function readChatCommandsFromForm() {
   cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
   cc.collection.prefix = $("#cc-collection-prefix").value || "!";
   cc.collection.command = $("#cc-collection-command").value.trim() || "collection";
+
+  cc.cards ||= {};
+  cc.cards.enabled = $("#cc-cards-enabled").checked;
+  cc.cards.prefix = $("#cc-cards-prefix").value || "!";
+  cc.cards.command = $("#cc-cards-command").value.trim() || "karten";
+  cc.cards.headerMessage = $("#cc-cards-header-message").value;
+  cc.cards.emptyMessage = $("#cc-cards-empty-message").value;
 
   cc.trade ||= {};
   cc.trade.enabled = $("#cc-trade-enabled").checked;

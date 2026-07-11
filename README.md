@@ -223,6 +223,10 @@ eigenen **Aktiviert**-Schalter – es gibt keinen globalen Hauptschalter mehr.
     (Standard `@userName hat [Kartenname] aus [Boostername] gezogen.`).
 - **Sammlung-Befehl** (Standard `!collection`) – entspricht dem Sammlungs-Showcase.
   Ohne Limit, ohne Cooldown, ohne Zählung.
+- **Karten-Befehl** (Standard `!karten`) – listet alle eigenen Kartennamen direkt im Chat auf
+  (mit Anzahl bei Mehrfachbesitz, z. B. „Card A x3"). Wird die Liste zu lang für eine einzelne
+  Twitch-Chat-Nachricht, teilt die App sie automatisch auf mehrere Nachrichten auf
+  (nummeriert „(1/2)" usw.). Ebenfalls ohne Limit, ohne Cooldown.
 
 Alle Nachrichten lassen sich frei bearbeiten. Die verfügbaren **Variablen** (z. B. `@userName`,
 `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) stehen als anklickbare Chips über dem
@@ -314,6 +318,8 @@ wählbaren Kampfstilen:
 
 Dauer, eigener Kampf-Sound und die Option „Ergebnis-Nachricht zusätzlich im Chat senden" sind wie
 bei der Tausch-Animation einstellbar, inklusive **„Test starten"**-Button für eine Vorschau.
+Die Ergebnis-Nachricht im Chat kommt bewusst **erst, nachdem die Animation durchgelaufen ist** –
+so verrät der Chat nicht vorab, wer gewinnt.
 
 <p align="center">
   <img src="docs/media/battle-clash.gif" alt="Kampf-Animation: Nahkampf-Clash" width="260">
@@ -358,10 +364,10 @@ nächsten Reset-Zeiten. Du kannst nach Nutzern suchen, einzelne Nutzer oder **al
 
 ## Queue
 
-Alle ausgelösten Aktionen – Kanalpunkt-Einlösungen **und** Chat-Befehle – laufen über eine
-gemeinsame **Warteschlange** (Tab **Queue**) und werden streng nacheinander abgearbeitet, mit
-kurzer Pause zwischen den Einträgen. So überlagern sich auch bei vielen gleichzeitigen Auslösern
-keine Animationen. Der Tab zeigt live alle offenen Einträge (wer, was, wann) und das gerade
+Alle ausgelösten Aktionen – Kanalpunkt-Einlösungen, Chat-Befehle **und Ranking-Anzeigen** – laufen
+über eine gemeinsame **Warteschlange** (Tab **Queue**) und werden streng nacheinander abgearbeitet,
+mit kurzer Pause zwischen den Einträgen. So überlagern sich auch bei vielen gleichzeitigen
+Auslösern keine Animationen. Der Tab zeigt live alle offenen Einträge (wer, was, wann) und das gerade
 laufende. Du kannst die **Queue pausieren** (sammelt dann nur), **einzelne Einträge entfernen**
 oder **alle löschen**.
 
