@@ -12,6 +12,7 @@ import {
   getCommandUsage,
   getFonts,
   getLatestRelease,
+  getReleases,
   getQueueItems,
   removeQueueItem,
   setQueuePaused,
@@ -239,6 +240,12 @@ const I18N = {
   "btn-check-update": { de: "Nach Updates suchen", en: "Check for updates" },
   "btn-goto-update": { de: "Zum Update", en: "Go to update" },
   "btn-install-update": { de: "Installieren", en: "Install" },
+  "update-changelog-eyebrow": { de: "Änderungen", en: "Changes" },
+  "update-changelog-title": { de: "Was ist neu seit deiner Version", en: "What's new since your version" },
+  "update-changelog-loading": { de: "Wird geladen…", en: "Loading…" },
+  "update-changelog-none": { de: "Du hast bereits die neueste Version.", en: "You're already on the latest version." },
+  "update-changelog-empty": { de: "Keine Details zu diesem Release verfügbar.", en: "No details available for this release." },
+  "update-changelog-error": { de: "Änderungen konnten nicht geladen werden:", en: "Could not load changes:" },
   "confirm-install-update": {
     de: "Update jetzt installieren? Die App startet dabei neu. Deine Einstellungen, Sammlungen und die Twitch/OBS-Verbindung bleiben erhalten.",
     en: "Install the update now? The app will restart. Your settings, collections and Twitch/OBS connection are kept."
@@ -702,6 +709,78 @@ async function checkForUpdate({ silent = false } = {}) {
     }
   } catch (error) {
     if (!silent) setStatus("#update-status", `${t("update-status-error")} ${error.message}`, "error");
+  }
+  // Independent of whether an update is available: show what changed in every release newer
+  // than the installed version, so a user several versions behind sees the full picture.
+  loadChangelog();
+}
+
+// Pulls "- bullet" lines out of a release's markdown body, grouped under whichever "## Heading"
+// (if any) precedes them - our release notes are always written as short bullet lists under
+// optional section headings, so this stays readable without a full markdown renderer.
+function parseReleaseBullets(body) {
+  const lines = String(body || "").split(/\r?\n/);
+  const groups = [];
+  let current = { heading: "", items: [] };
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (line.startsWith("## ")) {
+      if (current.items.length) groups.push(current);
+      current = { heading: line.replace(/^##\s*/, ""), items: [] };
+    } else if (line.startsWith("- ")) {
+      current.items.push(line.slice(2).trim());
+    }
+  }
+  if (current.items.length) groups.push(current);
+  return groups;
+}
+
+// Strips the light markdown used in our release notes (bold, inline code) down to plain text
+// with minimal HTML, since this is rendered outside a full markdown pipeline.
+function renderReleaseNoteText(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`(.+?)`/g, "<code>$1</code>");
+}
+
+async function loadChangelog() {
+  const container = $("#update-changelog");
+  if (!container || !appVersionInfo) return;
+  container.innerHTML = `<p class="hint">${t("update-changelog-loading")}</p>`;
+  try {
+    const releases = await getReleases(appVersionInfo.repo);
+    const newer = releases
+      .filter((release) => !release.draft)
+      .map((release) => ({ ...release, versionNumber: String(release.tag_name || "").replace(/^v/i, "") }))
+      .filter((release) => compareVersions(release.versionNumber, appVersionInfo.version) > 0)
+      .sort((a, b) => compareVersions(b.versionNumber, a.versionNumber));
+
+    if (!newer.length) {
+      container.innerHTML = `<p class="hint">${t("update-changelog-none")}</p>`;
+      return;
+    }
+
+    container.innerHTML = newer.map((release) => {
+      const groups = parseReleaseBullets(release.body);
+      const date = release.published_at ? new Date(release.published_at).toLocaleDateString() : "";
+      const body = groups.length
+        ? groups.map((group) => `
+            ${group.heading ? `<p class="changelog-group-title">${escapeHtml(group.heading)}</p>` : ""}
+            <ul class="changelog-list">${group.items.map((item) => `<li>${renderReleaseNoteText(item)}</li>`).join("")}</ul>
+          `).join("")
+        : `<p class="hint">${t("update-changelog-empty")}</p>`;
+      return `
+        <div class="changelog-entry">
+          <div class="changelog-entry-head">
+            <strong>v${escapeHtml(release.versionNumber)}</strong>
+            ${date ? `<span class="changelog-date">${escapeHtml(date)}</span>` : ""}
+          </div>
+          ${body}
+        </div>
+      `;
+    }).join("");
+  } catch (error) {
+    container.innerHTML = `<p class="hint">${t("update-changelog-error")} ${escapeHtml(error.message)}</p>`;
   }
 }
 

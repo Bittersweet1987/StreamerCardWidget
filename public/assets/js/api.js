@@ -306,3 +306,13 @@ export async function getLatestRelease(repo) {
   if (!response.ok) throw new Error(`GitHub antwortete mit Status ${response.status}.`);
   return response.json();
 }
+
+// Up to 100 most recent releases (newest first) - used to build the "everything new since your
+// version" changelog. 100 is far more than this project will ever have, so no pagination needed.
+export async function getReleases(repo) {
+  const response = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=100`, {
+    headers: { accept: "application/vnd.github+json" }
+  });
+  if (!response.ok) throw new Error(`GitHub antwortete mit Status ${response.status}.`);
+  return response.json();
+}
