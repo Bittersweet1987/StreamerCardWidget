@@ -75,7 +75,10 @@ Zugriff mit `TryGetValue`/`ContainsKey`. Kompiliert die App läuft → EXE ist *
 - `assets/js/render.js` — geteilt (Overlay + Admin): `normalizeSettings` (alle Defaults!), `cardMarkup`,
   `applyTheme`, `CARD_THEMES` + `customThemeCss`, Rarity-Gewichte (`weightedPick`).
 - `overlay.html`/`overlay.js` — Pack-Animation. `collection.html`/`collection.js` — Sammlungs-Showcase.
-  `trade.html`/`trade.js` — Tausch-Animation (3 Stile). Alle lauschen per `connectEventStream`.
+  `trade.html`/`trade.js` — Tausch-Animation (3 Stile). `battle.html`/`battle.js` — Kampf-Animation
+  (3 Kampfstile). `ranking.html`/`ranking.js` — Ranking-Overlay (`!ranking <Karte>`/`!ranking battle`,
+  keine Chat-Ausgabe; Kampf-Statistik persistent in `data/battle-stats.json`). Alle lauschen per
+  `connectEventStream`.
 - `assets/css/components.css` — Karten-Look inkl. **Karten-Themes** (`[data-card-theme="…"]` setzt `--card-*`
   Variablen; Default = Fallback). `admin.css`, `overlay.css`, `collection.css`, `trade.css`.
 

@@ -1349,6 +1349,137 @@ namespace CardPackWidgetApp
             return "common";
         }
 
+        // ---- Ranking support: persistent battle statistics + top-owner queries ----
+
+        private readonly object battleStatsLock = new object();
+
+        private string BattleStatsPath()
+        {
+            return Path.Combine(dataDir, "battle-stats.json");
+        }
+
+        // Permanently records one finished duel. Deliberately separate from the usage counters in
+        // command-usage.json: those exist only for cooldown/limit enforcement and reset periodically,
+        // while ranking statistics must accumulate forever.
+        internal void RecordBattleResult(string winnerLogin, string winnerDisplay, string loserLogin, string loserDisplay)
+        {
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(BattleStatsPath(), "{}"));
+                object usersObj;
+                Dictionary<string, object> users;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>) users = (Dictionary<string, object>)usersObj;
+                else { users = new Dictionary<string, object>(); stats["users"] = users; }
+                BumpBattleStat(users, winnerLogin, winnerDisplay, true);
+                BumpBattleStat(users, loserLogin, loserDisplay, false);
+                File.WriteAllText(BattleStatsPath(), json.Serialize(stats), Encoding.UTF8);
+            }
+        }
+
+        private static void BumpBattleStat(Dictionary<string, object> users, string login, string display, bool won)
+        {
+            string key = NormalizeUser(login).ToLowerInvariant();
+            object o;
+            Dictionary<string, object> entry;
+            if (users.TryGetValue(key, out o) && o is Dictionary<string, object>) entry = (Dictionary<string, object>)o;
+            else { entry = new Dictionary<string, object>(); users[key] = entry; }
+            if (!String.IsNullOrWhiteSpace(display)) entry["displayName"] = display;
+            entry["fights"] = GetIntStat(entry, "fights") + 1;
+            if (won) entry["wins"] = GetIntStat(entry, "wins") + 1;
+            else entry["losses"] = GetIntStat(entry, "losses") + 1;
+        }
+
+        private static int GetIntStat(Dictionary<string, object> entry, string key)
+        {
+            object o;
+            int v;
+            if (entry.TryGetValue(key, out o) && Int32.TryParse(Convert.ToString(o), out v)) return v;
+            return 0;
+        }
+
+        // Builds the four ranked top lists for "!ranking battle": most fights, most wins, most
+        // losses and best win/loss ratio (wins / max(1, losses), so an undefeated player ranks).
+        internal Dictionary<string, object> BuildBattleRanking(int limit)
+        {
+            var entries = new List<Dictionary<string, object>>();
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(BattleStatsPath(), "{}"));
+                object usersObj;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>)
+                {
+                    foreach (KeyValuePair<string, object> kv in (Dictionary<string, object>)usersObj)
+                    {
+                        Dictionary<string, object> e = kv.Value as Dictionary<string, object>;
+                        if (e == null) continue;
+                        int fights = GetIntStat(e, "fights");
+                        if (fights < 1) continue;
+                        int wins = GetIntStat(e, "wins");
+                        int losses = GetIntStat(e, "losses");
+                        entries.Add(new Dictionary<string, object>
+                        {
+                            { "user", GetString(e, "displayName", kv.Key) },
+                            { "fights", fights }, { "wins", wins }, { "losses", losses },
+                            { "ratio", Math.Round(wins / (double)Math.Max(1, losses), 2) }
+                        });
+                    }
+                }
+            }
+            return new Dictionary<string, object>
+            {
+                { "fights", TopByField(entries, "fights", limit) },
+                { "wins", TopByField(entries, "wins", limit) },
+                { "losses", TopByField(entries, "losses", limit) },
+                { "ratio", TopByField(entries, "ratio", limit) }
+            };
+        }
+
+        private static object[] TopByField(List<Dictionary<string, object>> entries, string field, int limit)
+        {
+            var sorted = new List<Dictionary<string, object>>(entries);
+            sorted.Sort(delegate(Dictionary<string, object> a, Dictionary<string, object> b)
+            {
+                return Convert.ToDouble(b[field]).CompareTo(Convert.ToDouble(a[field]));
+            });
+            var top = new List<object>();
+            for (int i = 0; i < sorted.Count && i < limit; i++)
+            {
+                top.Add(new Dictionary<string, object> { { "user", sorted[i]["user"] }, { "value", sorted[i][field] } });
+            }
+            return top.ToArray();
+        }
+
+        // Top owners of one card type for "!ranking <Kartenname>", sorted by copies owned.
+        internal object[] GetTopCardOwners(string boosterId, string cardId, int limit)
+        {
+            var owners = new List<Dictionary<string, object>>();
+            Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+            object bObj;
+            if (collections.TryGetValue(boosterId, out bObj) && bObj is Dictionary<string, object>)
+            {
+                object usersObj;
+                if (((Dictionary<string, object>)bObj).TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>)
+                {
+                    foreach (KeyValuePair<string, object> kv in (Dictionary<string, object>)usersObj)
+                    {
+                        Dictionary<string, object> userData = kv.Value as Dictionary<string, object>;
+                        if (userData == null) continue;
+                        object cObj;
+                        if (!userData.TryGetValue("cards", out cObj) || !(cObj is Dictionary<string, object>)) continue;
+                        int count = CardCount((Dictionary<string, object>)cObj, cardId);
+                        if (count < 1) continue;
+                        owners.Add(new Dictionary<string, object> { { "user", GetString(userData, "displayName", kv.Key) }, { "count", count } });
+                    }
+                }
+            }
+            owners.Sort(delegate(Dictionary<string, object> a, Dictionary<string, object> b)
+            {
+                return Convert.ToInt32(b["count"]).CompareTo(Convert.ToInt32(a["count"]));
+            });
+            if (owners.Count > limit) owners.RemoveRange(limit, owners.Count - limit);
+            return owners.ToArray();
+        }
+
         // Looks up a card's rarity id (normalized, e.g. "legendary") for battle-strength lookups.
         internal string CardRarity(string cardId)
         {
@@ -2933,6 +3064,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> battle = Obj(cc, "battle");
             Dictionary<string, object> battleYes = Obj(cc, "battleyes");
             Dictionary<string, object> battleNo = Obj(cc, "battleno");
+            Dictionary<string, object> ranking = Obj(cc, "ranking");
 
             if (MatchesCommand(text, pack))
             {
@@ -2973,6 +3105,11 @@ namespace CardPackWidgetApp
             if (MatchesCommand(text, battle))
             {
                 if (GetBool(battle, "enabled", true)) HandleBattleCommand(login, displayName, ArgsAfterCommand(text, battle), battle);
+                return;
+            }
+            if (MatchesCommand(text, ranking))
+            {
+                if (GetBool(ranking, "enabled", true)) HandleRankingCommand(login, displayName, ArgsAfterCommand(text, ranking), ranking);
                 return;
             }
         }
@@ -3535,6 +3672,7 @@ namespace CardPackWidgetApp
                 Dictionary<string, string> prizeCard = loserLineup[BattleRandom.Next(loserLineup.Count)];
                 server.TransferSingleCard(prizeCard["boosterId"], prizeCard["cardId"], loserLogin, loserUser, winnerLogin, winnerUser);
                 Dictionary<string, string> prizeInfo = server.CardDisplayInfo(prizeCard["boosterId"], prizeCard["cardId"]);
+                server.RecordBattleResult(winnerLogin, winnerUser, loserLogin, loserUser);
 
                 int cooldownSeconds = Math.Max(0, GetInt(battleCfg, "cooldownSeconds", 0));
                 DateTime now = DateTime.UtcNow;
@@ -3743,6 +3881,51 @@ namespace CardPackWidgetApp
         {
             activeBattle = null;
             if (battleTimeoutTimer != null) { battleTimeoutTimer.Dispose(); battleTimeoutTimer = null; }
+        }
+
+        // ---- Ranking command: !ranking battle / !ranking <Kartenname> ----
+
+        // Deliberately silent in chat (by design): the result is shown exclusively in the
+        // dedicated OBS ranking overlay. Unknown card names are silently ignored too.
+        private void HandleRankingCommand(string login, string displayName, string args, Dictionary<string, object> rankingCfg)
+        {
+            string arg = args.Trim();
+            if (arg.Length == 0) return;
+            int displaySeconds = Math.Max(2, GetInt(rankingCfg, "displaySeconds", 8));
+            string lower = arg.ToLowerInvariant();
+
+            if (lower == "battle" || lower == "kampf" || lower == "battles")
+            {
+                Dictionary<string, object> lists = server.BuildBattleRanking(5);
+                var battlePayload = new Dictionary<string, object>
+                {
+                    { "eventId", Guid.NewGuid().ToString("N") },
+                    { "type", "battle" },
+                    { "displaySeconds", displaySeconds },
+                    { "lists", lists }
+                };
+                server.Broadcast("ranking", server.Serializer.Serialize(battlePayload));
+                server.Log("commands", "info", displayName + " hat das Kampf-Ranking angefordert.");
+                return;
+            }
+
+            Dictionary<string, object> card = server.ResolveCardByName(arg);
+            if (!Convert.ToBoolean(card["found"])) return;
+            string cardId = GetString(card, "cardId", "");
+            string boosterId = GetString(card, "boosterId", "");
+            var cardPayload = new Dictionary<string, object>
+            {
+                { "eventId", Guid.NewGuid().ToString("N") },
+                { "type", "card" },
+                { "displaySeconds", displaySeconds },
+                { "cardId", cardId },
+                { "boosterId", boosterId },
+                { "cardTitle", GetString(card, "cardTitle", "") },
+                { "boosterTitle", GetString(card, "boosterTitle", "") },
+                { "owners", server.GetTopCardOwners(boosterId, cardId, 5) }
+            };
+            server.Broadcast("ranking", server.Serializer.Serialize(cardPayload));
+            server.Log("commands", "info", displayName + " hat das Ranking fuer Karte \"" + GetString(card, "cardTitle", "") + "\" angefordert.");
         }
 
         // ---- Battle usage tracking (separate namespace inside command-usage.json) ----

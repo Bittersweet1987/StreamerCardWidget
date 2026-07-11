@@ -319,6 +319,17 @@ export function normalizeSettings(settings) {
   settings.chatCommands.battleno.command ||= "battleno";
   settings.chatCommands.battleno.declineMessage ||= "@userNameA, leider hat @userNameB deine Duellanfrage abgelehnt.";
 
+  // Ranking: !ranking battle / !ranking <Kartenname>. Silent in chat by design - the result is
+  // rendered exclusively in the dedicated OBS ranking overlay (ranking.html).
+  settings.chatCommands.ranking ||= {};
+  settings.chatCommands.ranking.enabled = settings.chatCommands.ranking.enabled !== false;
+  settings.chatCommands.ranking.prefix ||= "!";
+  settings.chatCommands.ranking.command ||= "ranking";
+  settings.chatCommands.ranking.displaySeconds = Number(settings.chatCommands.ranking.displaySeconds) > 0 ? Number(settings.chatCommands.ranking.displaySeconds) : 8;
+
+  settings.ranking ||= {};
+  settings.ranking.sourceName ||= "Streamer Card Ranking";
+
   if (!settings.boosters.length) {
     const legacy = settings.booster || {};
     settings.boosters = [{

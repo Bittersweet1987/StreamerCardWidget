@@ -40,6 +40,7 @@ die live in OBS aufgehen, bauen ihre eigene **Sammlung** auf, können Karten unt
 - [Tauschsystem](#tauschsystem)
 - [Tausch-Animation](#tausch-animation)
 - [Kartenduell (Kampf)](#kartenduell-kampf)
+- [Ranking](#ranking)
 - [Nutzung Befehle](#nutzung-befehle)
 - [Queue](#queue)
 - [Karten-Themes](#karten-themes)
@@ -323,6 +324,25 @@ bei der Tausch-Animation einstellbar, inklusive **„Test starten"**-Button für
 
 ---
 
+## Ranking
+
+Über den **Ranking-Befehl** (Standard `!ranking`, Präfix/Befehlswort im Tab **Chat Befehle**
+anpassbar) können Zuschauer Bestenlisten in einer **eigenen OBS-Browserquelle** anzeigen lassen
+(Verbindung → *Quellenname Ranking*, wird über **OBS Szene aktualisieren** automatisch angelegt).
+Es erfolgt **bewusst keine Chat-Ausgabe** – das Ergebnis erscheint nur im Overlay.
+
+- **`!ranking [Kartenname]`** – zeigt links die Karte und rechts die **Top 5 Besitzer** dieser
+  Karte (absteigend nach Anzahl, mit Platzierungssymbolen 🥇🥈🥉).
+- **`!ranking battle`** – zeigt nacheinander vier Bestenlisten aus den Kartenduellen:
+  **meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote** (je Top 5).
+  Die Kampf-Statistik wird ab dem ersten Duell dauerhaft mitgeführt (`data/battle-stats.json`)
+  und ist unabhängig von den zurücksetzbaren Nutzungszählern.
+
+Die **Anzeigedauer** pro Ansicht ist beim Befehl einstellbar (Standard 8 Sekunden). Unbekannte
+Kartennamen werden stillschweigend ignoriert.
+
+---
+
 ## Nutzung Befehle
 
 Der Tab **Nutzung Befehle** listet pro Zuschauer, wie oft er **`!pack`**, **`!trade`** und
@@ -390,7 +410,8 @@ Alles liegt updatesicher im Ordner `data\`:
 - `cards.json` – deine Karten
 - `boosters.json` – deine Booster
 - `collections.json` – Sammlungen je Zuschauer
-- `command-usage.json` – Nutzungszähler & Cooldowns der Chat-Befehle (Pack & Tausch)
+- `command-usage.json` – Nutzungszähler & Cooldowns der Chat-Befehle (Pack, Tausch & Kampf)
+- `battle-stats.json` – dauerhafte Kampf-Statistik (Kämpfe/Siege/Niederlagen) fürs Ranking
 - `twitch.json` / `twitch-bot.json` / `obs.json` – Zugangsdaten (getrennt gespeichert)
 
 > Der Ereignis-Log (Tab **Log**) ist nur eine Live-Diagnose und wird bei **jedem App-Start

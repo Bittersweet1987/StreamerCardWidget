@@ -164,6 +164,14 @@ const I18N = {
   "cc-battleno-eyebrow": { de: "Kampf ablehnen", en: "Decline battle" },
   "cc-battleno-title": { de: "Kampf-Ablehnungs-Befehl", en: "Battle decline command" },
   "label-cc-battleno-decline": { de: "Nachricht bei Ablehnung", en: "Message on decline" },
+  "cc-ranking-eyebrow": { de: "Ranking", en: "Ranking" },
+  "cc-ranking-title": { de: "Ranking-Befehl", en: "Ranking command" },
+  "label-cc-ranking-seconds": { de: "Anzeigedauer (Sek.)", en: "Display duration (sec.)" },
+  "cc-ranking-hint": {
+    de: "Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle“ wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Die Anzeigedauer gilt pro Ansicht.",
+    en: "Shows the ranking exclusively in its own OBS source (Connection → Ranking source name) – deliberately no chat output. For “battle” the display cycles through: most fights → most wins → most defeats → best win/loss ratio (top 5 each). The display duration applies per view."
+  },
+  "label-obs-ranking-source": { de: "Quellenname Ranking", en: "Source name ranking" },
   "cc-pack-eyebrow": { de: "Kartenpack", en: "Card pack" },
   "cc-pack-title": { de: "Pack-Befehl", en: "Pack command" },
   "cc-collection-eyebrow": { de: "Sammlung", en: "Collection" },
@@ -1167,12 +1175,14 @@ async function setupObsOverlay() {
     const collectionSourceName = settings.showcase?.sourceName || "Streamer Card Sammlung";
     const tradeSourceName = settings.tradeAnimation?.sourceName || "Streamer Card Tausch";
     const battleSourceName = settings.battleAnimation?.sourceName || "Streamer Card Kampf";
+    const rankingSourceName = settings.ranking?.sourceName || "Streamer Card Ranking";
     await applyObsBrowserSource(ws, sceneName, packSourceName, currentOriginUrl("/overlay.html"));
     await applyObsBrowserSource(ws, sceneName, collectionSourceName, currentOriginUrl("/collection.html"));
     await applyObsBrowserSource(ws, sceneName, tradeSourceName, currentOriginUrl("/trade.html"));
     await applyObsBrowserSource(ws, sceneName, battleSourceName, currentOriginUrl("/battle.html"));
+    await applyObsBrowserSource(ws, sceneName, rankingSourceName, currentOriginUrl("/ranking.html"));
 
-    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName} + ${tradeSourceName} + ${battleSourceName}`, "ok");
+    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName} + ${tradeSourceName} + ${battleSourceName} + ${rankingSourceName}`, "ok");
     setPill("#obs-pill", t("pill-obs-connected"), true);
     settings.obs ||= {};
     settings.obs.enabled = true;
@@ -1966,6 +1976,12 @@ function hydrateChatCommands() {
   $("#cc-battleno-prefix").value = battleno.prefix || "!";
   $("#cc-battleno-command").value = battleno.command || "battleno";
   $("#cc-battleno-decline-message").value = battleno.declineMessage || "";
+
+  const ranking = cc.ranking || {};
+  $("#cc-ranking-enabled").checked = ranking.enabled !== false;
+  $("#cc-ranking-prefix").value = ranking.prefix || "!";
+  $("#cc-ranking-command").value = ranking.command || "ranking";
+  $("#cc-ranking-seconds").value = ranking.displaySeconds ?? 8;
 }
 
 function readChatCommandsFromForm() {
@@ -2049,6 +2065,12 @@ function readChatCommandsFromForm() {
   cc.battleno.prefix = $("#cc-battleno-prefix").value || "!";
   cc.battleno.command = $("#cc-battleno-command").value.trim() || "battleno";
   cc.battleno.declineMessage = $("#cc-battleno-decline-message").value;
+
+  cc.ranking ||= {};
+  cc.ranking.enabled = $("#cc-ranking-enabled").checked;
+  cc.ranking.prefix = $("#cc-ranking-prefix").value || "!";
+  cc.ranking.command = $("#cc-ranking-command").value.trim() || "ranking";
+  cc.ranking.displaySeconds = Math.max(2, Math.round(Number($("#cc-ranking-seconds").value) || 8));
 }
 
 function insertVariableIntoField(fieldId, variable) {
@@ -2141,6 +2163,7 @@ function hydrateDesign() {
   $("#trade-anim-style").value = ["swap", "arc", "flip"].includes(settings.tradeAnimation?.style) ? settings.tradeAnimation.style : "swap";
   $("#trade-anim-duration").value = ["short", "medium", "long"].includes(settings.tradeAnimation?.duration) ? settings.tradeAnimation.duration : "medium";
   $("#obs-battle-source-name").value = settings.battleAnimation?.sourceName || "Streamer Card Kampf";
+  $("#obs-ranking-source-name").value = settings.ranking?.sourceName || "Streamer Card Ranking";
   $("#battle-anim-enabled").checked = settings.battleAnimation?.enabled === true;
   $("#battle-anim-sendchat").checked = settings.battleAnimation?.sendChat !== false;
   $("#battle-anim-style").value = ["clash", "ranged", "hp"].includes(settings.battleAnimation?.style) ? settings.battleAnimation.style : "clash";
@@ -2442,6 +2465,10 @@ function bindDesign() {
   $("#obs-battle-source-name").addEventListener("input", (event) => {
     settings.battleAnimation ||= {};
     settings.battleAnimation.sourceName = event.target.value;
+  });
+  $("#obs-ranking-source-name").addEventListener("input", (event) => {
+    settings.ranking ||= {};
+    settings.ranking.sourceName = event.target.value;
   });
   $("#battle-anim-enabled").addEventListener("change", (event) => {
     settings.battleAnimation ||= {};

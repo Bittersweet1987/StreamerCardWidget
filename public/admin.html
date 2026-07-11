@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260704-obsfix1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260710-ranking1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -239,6 +239,7 @@
                 <label class="full-row" data-i18n="label-obs-collection-source">Quellenname Kartensammlung<input id="obs-collection-source-name" type="text"></label>
                 <label class="full-row" data-i18n="label-obs-trade-source">Quellenname Tausch-Animation<input id="obs-trade-source-name" type="text"></label>
                 <label class="full-row" data-i18n="label-obs-battle-source">Quellenname Kampf-Animation<input id="obs-battle-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-obs-ranking-source">Quellenname Ranking<input id="obs-ranking-source-name" type="text"></label>
               </div>
               <div class="button-row">
                 <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
@@ -884,6 +885,30 @@
                 </div>
               </div>
             </article>
+
+            <article class="reward-entry command-card">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-ranking-eyebrow">Ranking</p>
+                  <h3 data-i18n="cc-ranking-title">Ranking-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-ranking-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-ranking-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-ranking-command" type="text"></label>
+                  <label data-i18n="label-cc-ranking-seconds">Anzeigedauer (Sek.)<input id="cc-ranking-seconds" type="number" min="2" step="1"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!ranking [Kartenname]</code> oder <code>!ranking battle</code></p>
+                <p class="hint" data-i18n="cc-ranking-hint">Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle" wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Die Anzeigedauer gilt pro Ansicht.</p>
+              </div>
+            </article>
           </section>
         </section>
 
@@ -1315,6 +1340,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260709-fetchlog1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260710-ranking1"></script>
   </body>
 </html>
