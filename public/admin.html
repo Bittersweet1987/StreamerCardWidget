@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260712-cards1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260712-cards2">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -443,28 +443,14 @@
                   <label data-i18n="label-cc-prefix">Präfix<input id="cc-collection-prefix" type="text" maxlength="1"></label>
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-collection-command" type="text"></label>
                 </div>
+                <p class="hint" data-i18n="cc-collection-hint">Zeigt die Sammlung als Overlay in OBS. Zusätzlich kann der Befehl die eigenen Kartennamen direkt im Chat auflisten (mit Anzahl bei Mehrfachbesitz) – wird bei Bedarf automatisch auf mehrere Nachrichten aufgeteilt, um Twitchs Zeichenlimit einzuhalten.</p>
               </div>
-            </article>
-
-            <article class="reward-entry command-card">
-              <header class="command-card-head">
-                <div>
-                  <p class="eyebrow" data-i18n="cc-cards-eyebrow">Karten</p>
-                  <h3 data-i18n="cc-cards-title">Karten-Befehl</h3>
-                </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-cards-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
-              </header>
 
               <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-cards-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-cards-command" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-cards-hint">Listet alle eigenen Kartennamen als Chat-Text auf (mit Anzahl bei Mehrfachbesitz). Wird bei Bedarf automatisch auf mehrere Nachrichten aufgeteilt, um Twitchs Zeichenlimit einzuhalten.</p>
+                <label class="switch-row compact-switch">
+                  <input id="cc-collection-chatoutput-enabled" type="checkbox">
+                  <span data-i18n="label-cc-collection-chatoutput">Kartennamen zusätzlich im Chat auflisten</span>
+                </label>
               </div>
 
               <div class="field-group">
@@ -473,21 +459,21 @@
                 <div class="message-field">
                   <div class="message-field-head">
                     <span class="message-field-label" data-i18n="label-cc-cards-header">Einleitung vor der Kartenliste</span>
-                    <div class="var-chips" data-target="cc-cards-header-message">
+                    <div class="var-chips" data-target="cc-collection-header-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                     </div>
                   </div>
-                  <textarea id="cc-cards-header-message" rows="2"></textarea>
+                  <textarea id="cc-collection-header-message" rows="2"></textarea>
                 </div>
 
                 <div class="message-field">
                   <div class="message-field-head">
                     <span class="message-field-label" data-i18n="label-cc-cards-empty">Nachricht ohne eigene Karten</span>
-                    <div class="var-chips" data-target="cc-cards-empty-message">
+                    <div class="var-chips" data-target="cc-collection-empty-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                     </div>
                   </div>
-                  <textarea id="cc-cards-empty-message" rows="2"></textarea>
+                  <textarea id="cc-collection-empty-message" rows="2"></textarea>
                 </div>
               </div>
             </article>
@@ -1396,6 +1382,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260712-cards1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260712-cards2"></script>
   </body>
 </html>

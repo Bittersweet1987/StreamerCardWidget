@@ -177,12 +177,11 @@ const I18N = {
   "cc-pack-title": { de: "Pack-Befehl", en: "Pack command" },
   "cc-collection-eyebrow": { de: "Sammlung", en: "Collection" },
   "cc-collection-title": { de: "Sammlung-Befehl", en: "Collection command" },
-  "cc-cards-eyebrow": { de: "Karten", en: "Cards" },
-  "cc-cards-title": { de: "Karten-Befehl", en: "Cards command" },
-  "cc-cards-hint": {
-    de: "Listet alle eigenen Kartennamen als Chat-Text auf (mit Anzahl bei Mehrfachbesitz). Wird bei Bedarf automatisch auf mehrere Nachrichten aufgeteilt, um Twitchs Zeichenlimit einzuhalten.",
-    en: "Lists all of the caller's card names as chat text (with a count when owned more than once). Automatically split across multiple messages if needed to stay under Twitch's character limit."
+  "cc-collection-hint": {
+    de: "Zeigt die Sammlung als Overlay in OBS. Zusätzlich kann der Befehl die eigenen Kartennamen direkt im Chat auflisten (mit Anzahl bei Mehrfachbesitz) – wird bei Bedarf automatisch auf mehrere Nachrichten aufgeteilt, um Twitchs Zeichenlimit einzuhalten.",
+    en: "Shows the collection as an OBS overlay. It can also list the caller's card names directly in chat (with a count when owned more than once) – automatically split across multiple messages if needed to stay under Twitch's character limit."
   },
+  "label-cc-collection-chatoutput": { de: "Kartennamen zusätzlich im Chat auflisten", en: "Also list card names in chat" },
   "label-cc-cards-header": { de: "Einleitung vor der Kartenliste", en: "Intro before the card list" },
   "label-cc-cards-empty": { de: "Nachricht ohne eigene Karten", en: "Message when the user owns no cards" },
   "label-cc-prefix": { de: "Präfix", en: "Prefix" },
@@ -2001,13 +2000,9 @@ function hydrateChatCommands() {
   $("#cc-pack-cooldown-message").value = cc.pack.cooldownMessage || "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
   $("#cc-collection-prefix").value = cc.collection.prefix || "!";
   $("#cc-collection-command").value = cc.collection.command || "collection";
-
-  const cardsCmd = cc.cards || {};
-  $("#cc-cards-enabled").checked = cardsCmd.enabled !== false;
-  $("#cc-cards-prefix").value = cardsCmd.prefix || "!";
-  $("#cc-cards-command").value = cardsCmd.command || "karten";
-  $("#cc-cards-header-message").value = cardsCmd.headerMessage || "";
-  $("#cc-cards-empty-message").value = cardsCmd.emptyMessage || "";
+  $("#cc-collection-chatoutput-enabled").checked = cc.collection.chatOutputEnabled !== false;
+  $("#cc-collection-header-message").value = cc.collection.headerMessage || "";
+  $("#cc-collection-empty-message").value = cc.collection.emptyMessage || "";
 
   const trade = cc.trade || {};
   $("#cc-trade-enabled").checked = trade.enabled !== false;
@@ -2097,13 +2092,9 @@ function readChatCommandsFromForm() {
   cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
   cc.collection.prefix = $("#cc-collection-prefix").value || "!";
   cc.collection.command = $("#cc-collection-command").value.trim() || "collection";
-
-  cc.cards ||= {};
-  cc.cards.enabled = $("#cc-cards-enabled").checked;
-  cc.cards.prefix = $("#cc-cards-prefix").value || "!";
-  cc.cards.command = $("#cc-cards-command").value.trim() || "karten";
-  cc.cards.headerMessage = $("#cc-cards-header-message").value;
-  cc.cards.emptyMessage = $("#cc-cards-empty-message").value;
+  cc.collection.chatOutputEnabled = $("#cc-collection-chatoutput-enabled").checked;
+  cc.collection.headerMessage = $("#cc-collection-header-message").value;
+  cc.collection.emptyMessage = $("#cc-collection-empty-message").value;
 
   cc.trade ||= {};
   cc.trade.enabled = $("#cc-trade-enabled").checked;

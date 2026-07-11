@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.6.0";
+        public const string Version = "2.6.1";
         public const string ReleaseDate = "2026-07-12";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
@@ -3121,12 +3121,14 @@ namespace CardPackWidgetApp
         // per-chunk header/index prefix never pushes a message over the real limit.
         private const int MaxChatMessageLength = 450;
 
-        private void HandleCardsCommand(string login, string displayName, Dictionary<string, object> cardsCfg)
+        // Part of !collection's chat output (alongside the overlay showcase) - lists every card
+        // the caller owns as plain text, split across multiple messages if needed.
+        private void HandleCardsCommand(string login, string displayName, Dictionary<string, object> collectionCfg)
         {
             List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
             if (owned.Count == 0)
             {
-                SendChatMessageSafe(GetString(cardsCfg, "emptyMessage", DefaultCardsEmpty).Replace("@userName", "@" + displayName));
+                SendChatMessageSafe(GetString(collectionCfg, "emptyMessage", DefaultCardsEmpty).Replace("@userName", "@" + displayName));
                 return;
             }
 
@@ -3139,7 +3141,7 @@ namespace CardPackWidgetApp
             }
             names.Sort(StringComparer.OrdinalIgnoreCase);
 
-            string header = GetString(cardsCfg, "headerMessage", DefaultCardsHeader).Replace("@userName", "@" + displayName);
+            string header = GetString(collectionCfg, "headerMessage", DefaultCardsHeader).Replace("@userName", "@" + displayName);
             SendCardListChunked(header, names);
         }
 
@@ -3213,7 +3215,6 @@ namespace CardPackWidgetApp
             Dictionary<string, object> battleYes = Obj(cc, "battleyes");
             Dictionary<string, object> battleNo = Obj(cc, "battleno");
             Dictionary<string, object> ranking = Obj(cc, "ranking");
-            Dictionary<string, object> cards = Obj(cc, "cards");
 
             if (MatchesCommand(text, pack))
             {
@@ -3222,15 +3223,14 @@ namespace CardPackWidgetApp
             }
             if (MatchesCommand(text, collection))
             {
-                // No usage limit, no cooldown, no tracking for the collection command.
-                if (GetBool(collection, "enabled", true)) Enqueue("showcollection", login, displayName, "chat");
-                return;
-            }
-            if (MatchesCommand(text, cards))
-            {
-                // Same "no limit, no cooldown" spirit as !collection - this just lists card names
-                // in chat text instead of showing the collection overlay.
-                if (GetBool(cards, "enabled", true)) HandleCardsCommand(login, displayName, cards);
+                // No usage limit, no cooldown, no tracking for the collection command. Besides
+                // the overlay showcase, it can also list the caller's card names in chat text
+                // (own toggle, on by default) - useful when no OBS source is being watched.
+                if (GetBool(collection, "enabled", true))
+                {
+                    Enqueue("showcollection", login, displayName, "chat");
+                    if (GetBool(collection, "chatOutputEnabled", true)) HandleCardsCommand(login, displayName, collection);
+                }
                 return;
             }
             if (MatchesCommand(text, tradeYes))

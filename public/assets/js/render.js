@@ -254,6 +254,11 @@ export function normalizeSettings(settings) {
   settings.chatCommands.collection.enabled = settings.chatCommands.collection.enabled !== false;
   settings.chatCommands.collection.prefix ||= "!";
   settings.chatCommands.collection.command ||= "collection";
+  // Besides the overlay showcase, !collection can also list the caller's card names as chat
+  // text (own toggle, on by default).
+  settings.chatCommands.collection.chatOutputEnabled = settings.chatCommands.collection.chatOutputEnabled !== false;
+  settings.chatCommands.collection.headerMessage ||= "@userName, deine Karten:";
+  settings.chatCommands.collection.emptyMessage ||= "@userName, du besitzt noch keine Karten.";
 
   // Trade system: !trade (offer), !tradeyes (accept), !tradeno (decline).
   settings.chatCommands.trade ||= {};
@@ -330,14 +335,6 @@ export function normalizeSettings(settings) {
   settings.ranking ||= {};
   settings.ranking.sourceName ||= "Streamer Card Ranking";
 
-  // Cards: !karten / !cards - lists the caller's owned cards as plain chat text (split into
-  // multiple messages server-side if needed). No limit, no cooldown, same spirit as !collection.
-  settings.chatCommands.cards ||= {};
-  settings.chatCommands.cards.enabled = settings.chatCommands.cards.enabled !== false;
-  settings.chatCommands.cards.prefix ||= "!";
-  settings.chatCommands.cards.command ||= "karten";
-  settings.chatCommands.cards.headerMessage ||= "@userName, deine Karten:";
-  settings.chatCommands.cards.emptyMessage ||= "@userName, du besitzt noch keine Karten.";
 
   if (!settings.boosters.length) {
     const legacy = settings.booster || {};

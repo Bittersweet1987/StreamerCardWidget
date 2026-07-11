@@ -222,11 +222,11 @@ eigenen **Aktiviert**-Schalter – es gibt keinen globalen Hauptschalter mehr.
     Die Einlösungs-Nachricht kommt **nach der Animation** und kann die Karte benennen
     (Standard `@userName hat [Kartenname] aus [Boostername] gezogen.`).
 - **Sammlung-Befehl** (Standard `!collection`) – entspricht dem Sammlungs-Showcase.
-  Ohne Limit, ohne Cooldown, ohne Zählung.
-- **Karten-Befehl** (Standard `!karten`) – listet alle eigenen Kartennamen direkt im Chat auf
-  (mit Anzahl bei Mehrfachbesitz, z. B. „Card A x3"). Wird die Liste zu lang für eine einzelne
-  Twitch-Chat-Nachricht, teilt die App sie automatisch auf mehrere Nachrichten auf
-  (nummeriert „(1/2)" usw.). Ebenfalls ohne Limit, ohne Cooldown.
+  Ohne Limit, ohne Cooldown, ohne Zählung. Zusätzlich (per Schalter „Kartennamen zusätzlich im
+  Chat auflisten", standardmäßig an) listet der Befehl alle eigenen Kartennamen direkt im Chat
+  auf (mit Anzahl bei Mehrfachbesitz, z. B. „Card A x3"). Wird die Liste zu lang für eine
+  einzelne Twitch-Chat-Nachricht, teilt die App sie automatisch auf mehrere Nachrichten auf
+  (nummeriert „(1/2)" usw.).
 
 Alle Nachrichten lassen sich frei bearbeiten. Die verfügbaren **Variablen** (z. B. `@userName`,
 `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) stehen als anklickbare Chips über dem
