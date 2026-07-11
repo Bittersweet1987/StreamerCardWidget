@@ -19,7 +19,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.5.1";
+        public const string Version = "2.5.2";
         public const string ReleaseDate = "2026-07-11";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
