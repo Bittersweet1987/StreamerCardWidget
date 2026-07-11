@@ -2076,7 +2076,6 @@ function readChatCommandsFromForm() {
 function insertVariableIntoField(fieldId, variable) {
   const field = $(`#${fieldId}`);
   if (!field) return;
-  if (field.value.includes(variable)) return;
   const start = field.selectionStart ?? field.value.length;
   const end = field.selectionEnd ?? field.value.length;
   field.value = `${field.value.slice(0, start)}${variable}${field.value.slice(end)}`;
