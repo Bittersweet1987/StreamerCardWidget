@@ -337,6 +337,9 @@ Es erfolgt **bewusst keine Chat-Ausgabe** – das Ergebnis erscheint nur im Over
   **meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote** (je Top 5).
   Die Kampf-Statistik wird ab dem ersten Duell dauerhaft mitgeführt (`data/battle-stats.json`)
   und ist unabhängig von den zurücksetzbaren Nutzungszählern.
+- **`!ranking tausch`** – zeigt die **Top 5 Nutzer mit den meisten abgeschlossenen Tauschen**.
+  Ebenfalls dauerhaft mitgeführt (`data/trade-stats.json`), unabhängig vom zurücksetzbaren
+  Tausch-Kontingent.
 
 Die **Anzeigedauer** pro Ansicht ist beim Befehl einstellbar (Standard 8 Sekunden). Unbekannte
 Kartennamen werden stillschweigend ignoriert.
@@ -414,6 +417,7 @@ Alles liegt updatesicher im Ordner `data\`:
 - `collections.json` – Sammlungen je Zuschauer
 - `command-usage.json` – Nutzungszähler & Cooldowns der Chat-Befehle (Pack, Tausch & Kampf)
 - `battle-stats.json` – dauerhafte Kampf-Statistik (Kämpfe/Siege/Niederlagen) fürs Ranking
+- `trade-stats.json` – dauerhafte Tausch-Statistik (Anzahl abgeschlossener Tausche) fürs Ranking
 - `twitch.json` / `twitch-bot.json` / `obs.json` – Zugangsdaten (getrennt gespeichert)
 
 > Der Ereignis-Log (Tab **Log**) ist nur eine Live-Diagnose und wird bei **jedem App-Start

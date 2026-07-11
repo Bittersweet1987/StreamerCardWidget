@@ -49,6 +49,7 @@ async function runQueue() {
     const event = queue.shift();
     try {
       if (event.type === "battle") await playBattleRanking(event);
+      else if (event.type === "trade") await playTradeRanking(event);
       else await playCardRanking(event);
     } catch (error) {
       addLog("ranking", "error", `Ranking-Anzeige fehlgeschlagen: ${error.message}`);
@@ -85,6 +86,29 @@ async function playCardRanking(event) {
         <h2>${escapeForOverlay(event.cardTitle || "")}</h2>
       </div>
       ${listMarkup(owners, "×")}
+    </div>
+  `;
+  stage.append(scene);
+  await delay(seconds * 1000);
+  scene.classList.add("is-out");
+  await delay(450);
+  scene.remove();
+}
+
+async function playTradeRanking(event) {
+  const entries = Array.isArray(event.entries) ? event.entries : [];
+  if (!entries.length) return; // no completed trades yet
+  const seconds = Math.max(2, Number(event.displaySeconds) || 8);
+
+  const scene = document.createElement("div");
+  scene.className = "ranking-scene is-trade";
+  scene.innerHTML = `
+    <div class="ranking-list-pane">
+      <div class="ranking-heading">
+        <span class="ranking-eyebrow">${settings?.language === "en" ? "Trade ranking" : "Tausch-Ranking"}</span>
+        <h2>${settings?.language === "en" ? "Most trades" : "Meiste Tausche"}</h2>
+      </div>
+      ${listMarkup(entries)}
     </div>
   `;
   stage.append(scene);

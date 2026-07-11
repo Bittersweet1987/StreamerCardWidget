@@ -1397,6 +1397,62 @@ namespace CardPackWidgetApp
             return 0;
         }
 
+        private string TradeStatsPath()
+        {
+            return Path.Combine(dataDir, "trade-stats.json");
+        }
+
+        // Permanently records one completed trade for both participants, for "!ranking tausch".
+        // Separate from command-usage.json (which only tracks the resettable cooldown quota).
+        internal void RecordTradeCompleted(string loginA, string displayA, string loginB, string displayB)
+        {
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TradeStatsPath(), "{}"));
+                object usersObj;
+                Dictionary<string, object> users;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>) users = (Dictionary<string, object>)usersObj;
+                else { users = new Dictionary<string, object>(); stats["users"] = users; }
+                BumpTradeStat(users, loginA, displayA);
+                BumpTradeStat(users, loginB, displayB);
+                File.WriteAllText(TradeStatsPath(), json.Serialize(stats), Encoding.UTF8);
+            }
+        }
+
+        private static void BumpTradeStat(Dictionary<string, object> users, string login, string display)
+        {
+            string key = NormalizeUser(login).ToLowerInvariant();
+            object o;
+            Dictionary<string, object> entry;
+            if (users.TryGetValue(key, out o) && o is Dictionary<string, object>) entry = (Dictionary<string, object>)o;
+            else { entry = new Dictionary<string, object>(); users[key] = entry; }
+            if (!String.IsNullOrWhiteSpace(display)) entry["displayName"] = display;
+            entry["trades"] = GetIntStat(entry, "trades") + 1;
+        }
+
+        // Top N users by completed trade count, for "!ranking tausch".
+        internal object[] BuildTradeRanking(int limit)
+        {
+            var entries = new List<Dictionary<string, object>>();
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TradeStatsPath(), "{}"));
+                object usersObj;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>)
+                {
+                    foreach (KeyValuePair<string, object> kv in (Dictionary<string, object>)usersObj)
+                    {
+                        Dictionary<string, object> e = kv.Value as Dictionary<string, object>;
+                        if (e == null) continue;
+                        int trades = GetIntStat(e, "trades");
+                        if (trades < 1) continue;
+                        entries.Add(new Dictionary<string, object> { { "user", GetString(e, "displayName", kv.Key) }, { "trades", trades } });
+                    }
+                }
+            }
+            return TopByField(entries, "trades", limit);
+        }
+
         // Builds the four ranked top lists for "!ranking battle": most fights, most wins, most
         // losses and best win/loss ratio (wins / max(1, losses), so an undefeated player ranks).
         internal Dictionary<string, object> BuildBattleRanking(int limit)
@@ -3367,6 +3423,7 @@ namespace CardPackWidgetApp
                     ConsumeTrade(login, displayName, cooldownSeconds, now);
                     SaveUsage();
                 }
+                server.RecordTradeCompleted(fromLogin, fromUser, login, displayName);
 
                 // Trade animation (own OBS source) + optional chat message. When the animation is
                 // enabled, the streamer can choose whether the chat success message is still sent.
@@ -3906,6 +3963,21 @@ namespace CardPackWidgetApp
                 };
                 server.Broadcast("ranking", server.Serializer.Serialize(battlePayload));
                 server.Log("commands", "info", displayName + " hat das Kampf-Ranking angefordert.");
+                return;
+            }
+
+            if (lower == "tausch" || lower == "trade" || lower == "trades")
+            {
+                object[] top = server.BuildTradeRanking(5);
+                var tradePayload = new Dictionary<string, object>
+                {
+                    { "eventId", Guid.NewGuid().ToString("N") },
+                    { "type", "trade" },
+                    { "displaySeconds", displaySeconds },
+                    { "entries", top }
+                };
+                server.Broadcast("ranking", server.Serializer.Serialize(tradePayload));
+                server.Log("commands", "info", displayName + " hat das Tausch-Ranking angefordert.");
                 return;
             }
 

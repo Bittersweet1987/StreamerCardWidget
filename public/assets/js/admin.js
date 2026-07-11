@@ -168,8 +168,8 @@ const I18N = {
   "cc-ranking-title": { de: "Ranking-Befehl", en: "Ranking command" },
   "label-cc-ranking-seconds": { de: "Anzeigedauer (Sek.)", en: "Display duration (sec.)" },
   "cc-ranking-hint": {
-    de: "Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle“ wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Die Anzeigedauer gilt pro Ansicht.",
-    en: "Shows the ranking exclusively in its own OBS source (Connection → Ranking source name) – deliberately no chat output. For “battle” the display cycles through: most fights → most wins → most defeats → best win/loss ratio (top 5 each). The display duration applies per view."
+    de: "Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle“ wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „tausch“ erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.",
+    en: "Shows the ranking exclusively in its own OBS source (Connection → Ranking source name) – deliberately no chat output. For “battle” the display cycles through: most fights → most wins → most defeats → best win/loss ratio (top 5 each). For “trade” it shows the 5 users with the most completed trades. The display duration applies per view."
   },
   "label-obs-ranking-source": { de: "Quellenname Ranking", en: "Source name ranking" },
   "cc-pack-eyebrow": { de: "Kartenpack", en: "Card pack" },
