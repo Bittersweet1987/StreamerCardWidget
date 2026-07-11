@@ -3167,11 +3167,18 @@ namespace CardPackWidgetApp
             }
             if (current.Length > 0) chunks.Add(current);
 
-            for (int i = 0; i < chunks.Count; i++)
+            // Chunks are sent from a background thread with a pause in between: Twitch answers
+            // 200 even for messages it silently drops (is_sent=false), and firing several chat
+            // messages back-to-back reliably triggers that drop for everything after the first.
+            Task.Factory.StartNew(delegate
             {
-                string prefix = chunks.Count > 1 ? header + " (" + (i + 1) + "/" + chunks.Count + ") " : header + " ";
-                SendChatMessageSafe(prefix + chunks[i]);
-            }
+                for (int i = 0; i < chunks.Count; i++)
+                {
+                    if (i > 0) Thread.Sleep(1500);
+                    string prefix = chunks.Count > 1 ? header + " (" + (i + 1) + "/" + chunks.Count + ") " : header + " ";
+                    SendChatMessageSafe(prefix + chunks[i]);
+                }
+            });
         }
 
         private void SendChatMessageSafe(string message)
@@ -3194,7 +3201,21 @@ namespace CardPackWidgetApp
                 { "sender_id", senderId },
                 { "message", message }
             };
-            TwitchJson("POST", "https://api.twitch.tv/helix/chat/messages", GetString(chat, "clientId", ""), GetString(chat, "accessToken", ""), body);
+            Dictionary<string, object> response = TwitchJson("POST", "https://api.twitch.tv/helix/chat/messages", GetString(chat, "clientId", ""), GetString(chat, "accessToken", ""), body);
+            // Helix returns 200 even for messages Twitch silently drops (spam/rate filter);
+            // whether it actually reached chat is only visible in is_sent/drop_reason.
+            object dataObj;
+            if (response.TryGetValue("data", out dataObj) && dataObj is object[] && ((object[])dataObj).Length > 0)
+            {
+                Dictionary<string, object> entry = ((object[])dataObj)[0] as Dictionary<string, object>;
+                if (entry != null && !GetBool(entry, "is_sent", true))
+                {
+                    object dropObj;
+                    Dictionary<string, object> drop = entry.TryGetValue("drop_reason", out dropObj) ? dropObj as Dictionary<string, object> : null;
+                    string reason = drop != null ? GetString(drop, "code", "") + " " + GetString(drop, "message", "") : "unbekannt";
+                    server.Log("twitch", "warn", "Chat-Nachricht von Twitch verworfen (" + reason.Trim() + "): " + (message.Length > 80 ? message.Substring(0, 80) + "..." : message));
+                }
+            }
         }
 
         // ---- Command parsing + per-user usage/cooldown tracking ----

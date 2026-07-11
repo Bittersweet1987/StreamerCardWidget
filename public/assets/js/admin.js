@@ -303,6 +303,17 @@ const I18N = {
   "cards-eyebrow": { de: "Deck", en: "Deck" },
   "cards-title": { de: "Karten verwalten", en: "Manage cards" },
   "btn-add-card": { de: "Karte hinzufügen", en: "Add card" },
+  "btn-import-card": { de: "Karte importieren", en: "Import card" },
+  "btn-export-card": { de: "Exportieren", en: "Export" },
+  "btn-import-booster": { de: "Booster importieren", en: "Import booster" },
+  "btn-export-booster": { de: "Booster exportieren", en: "Export booster" },
+  "notice-card-exported": { de: "Karte als Datei exportiert.", en: "Card exported as a file." },
+  "notice-card-imported": { de: "Karte importiert. Bitte einem Booster zuordnen, damit sie gezogen werden kann.", en: "Card imported. Assign it to a booster so it can be drawn." },
+  "notice-booster-exported": { de: "Booster inkl. Karten als Datei exportiert.", en: "Booster incl. cards exported as a file." },
+  "notice-booster-imported": { de: "Booster inkl. Karten importiert.", en: "Booster incl. cards imported." },
+  "error-import-invalid": { de: "Die Datei konnte nicht gelesen werden (kein gültiges JSON).", en: "The file could not be read (not valid JSON)." },
+  "error-import-not-card": { de: "Die Datei ist kein Karten-Export dieser App.", en: "The file is not a card export from this app." },
+  "error-import-not-booster": { de: "Die Datei ist kein Booster-Export dieser App.", en: "The file is not a booster export from this app." },
   "cards-live-preview": { de: "Live Vorschau", en: "Live preview" },
   "aria-select-card": { de: "Karte auswählen", en: "Select card" },
   "label-card-title": { de: "Titel", en: "Title" },
@@ -667,6 +678,118 @@ function blankBooster() {
     customEvents: [],
     cardIds: []
   };
+}
+
+// ---- Card/booster export & import (plain JSON files incl. base64 images) ----
+
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  // The anchor must be attached to the document - some engines (incl. the embedded WebView)
+  // ignore programmatic clicks on detached elements.
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function exportFilename(prefix, title) {
+  const safe = String(title || "export").replace(/[^\p{L}\p{N} _-]/gu, "").trim().replaceAll(" ", "-") || "export";
+  return `${prefix}-${safe}.json`;
+}
+
+// Only data: image URLs survive an import - anything else (external URLs, scripts) is dropped.
+function safeImportImage(value) {
+  return typeof value === "string" && value.startsWith("data:image/") ? value : "";
+}
+
+function importedCardFromData(card) {
+  return {
+    id: createId("card"),
+    title: typeof card.title === "string" && card.title.trim() ? card.title : "Importierte Karte",
+    subtitle: typeof card.subtitle === "string" ? card.subtitle : "Stream Card",
+    rarity: RARITIES.some((rarity) => rarity.id === card.rarity) ? card.rarity : "common",
+    accent: typeof card.accent === "string" ? card.accent : "#ff78bb",
+    enabled: card.enabled !== false,
+    image: safeImportImage(card.image),
+    // Booster assignment is deliberately NOT imported - card exports are meant to move a
+    // single card between installations; the importer assigns it to a booster manually.
+    boosterIds: []
+  };
+}
+
+function exportCard(card) {
+  const { id, boosterIds, ...portable } = card;
+  downloadJson(exportFilename("karte", card.title), { type: "streamercard-card", version: 1, card: portable });
+  showNotice(t("notice-card-exported"));
+}
+
+async function importCardFromFile(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { showNotice(t("error-import-invalid"), "error"); return; }
+  if (data?.type !== "streamercard-card" || !data.card || typeof data.card !== "object") {
+    showNotice(t("error-import-not-card"), "error");
+    return;
+  }
+  const imported = importedCardFromData(data.card);
+  settings.deck.cards.push(imported);
+  selectedCardId = imported.id;
+  renderCards();
+  scheduleAutoSave();
+  showNotice(t("notice-card-imported"));
+}
+
+function exportSelectedBooster() {
+  const booster = selectedBooster();
+  if (!booster) return;
+  const assigned = new Set(booster.cardIds || []);
+  // Card ids stay in the file so the booster->card mapping survives; they are remapped to
+  // fresh ids on import. Twitch reward ids/custom events are channel-specific and stripped.
+  const cards = settings.deck.cards
+    .filter((card) => assigned.has(card.id))
+    .map(({ boosterIds, ...portable }) => portable);
+  const { rewardIds, customEvents, ...portableBooster } = booster;
+  downloadJson(exportFilename("booster", booster.title), { type: "streamercard-booster", version: 1, booster: portableBooster, cards });
+  showNotice(t("notice-booster-exported"));
+}
+
+async function importBoosterFromFile(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { showNotice(t("error-import-invalid"), "error"); return; }
+  if (data?.type !== "streamercard-booster" || !data.booster || typeof data.booster !== "object") {
+    showNotice(t("error-import-not-booster"), "error");
+    return;
+  }
+  const idMap = new Map();
+  for (const card of Array.isArray(data.cards) ? data.cards : []) {
+    if (!card || typeof card !== "object") continue;
+    const imported = importedCardFromData(card);
+    idMap.set(card.id, imported.id);
+    settings.deck.cards.push(imported);
+  }
+  const source = data.booster;
+  const booster = {
+    id: createId("booster"),
+    title: typeof source.title === "string" && source.title.trim() ? source.title : "Importierter Booster",
+    subtitle: typeof source.subtitle === "string" ? source.subtitle : "Pack",
+    image: safeImportImage(source.image),
+    accent: typeof source.accent === "string" ? source.accent : "#ff78bb",
+    score: Number(source.score) > 0 ? Number(source.score) : 100,
+    rewardNames: Array.isArray(source.rewardNames) ? source.rewardNames.filter((name) => typeof name === "string") : [],
+    rewardIds: [],
+    customEvents: [],
+    cardIds: (Array.isArray(source.cardIds) ? source.cardIds : []).map((id) => idMap.get(id)).filter(Boolean).slice(0, 9)
+  };
+  settings.boosters.push(booster);
+  selectedBoosterId = booster.id;
+  hydrateBooster();
+  renderCards();
+  renderOverview();
+  scheduleAutoSave();
+  showNotice(t("notice-booster-imported"));
 }
 
 function randomUsername() {
@@ -1421,6 +1544,7 @@ function renderCards() {
             <label class="switch-row compact-switch"><input data-field="enabled" type="checkbox" ${card.enabled !== false ? "checked" : ""}><span>${t("label-card-enabled")}</span></label>
             <label class="secondary-button file-label">${t("label-card-image")}<input data-action="image" type="file" accept="image/*"></label>
               <button class="ghost-button" data-action="duplicate" type="button">${t("btn-duplicate")}</button>
+              <button class="ghost-button" data-action="export" type="button">${t("btn-export-card")}</button>
               <button class="ghost-button" data-action="clear-image" type="button">${t("btn-remove-image")}</button>
               <button class="danger-button" data-action="delete" type="button" ${settings.deck.cards.length <= 1 ? "disabled" : ""}>${t("btn-delete")}</button>
           </div>
@@ -1465,6 +1589,10 @@ async function handleCardListClick(event) {
     settings.deck.cards.push(copy);
     selectedCardId = copy.id;
     renderCards();
+  }
+  if (action === "export") {
+    const card = settings.deck.cards.find((item) => item.id === cardId);
+    if (card) exportCard(card);
   }
   if (action === "delete" && settings.deck.cards.length > 1) {
     settings.deck.cards = settings.deck.cards.filter((card) => card.id !== cardId);
@@ -1561,6 +1689,12 @@ function bindBooster() {
     selectedBoosterId = booster.id;
     hydrateBooster();
     renderOverview();
+  });
+  $("#export-booster").addEventListener("click", exportSelectedBooster);
+  $("#import-booster").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) await importBoosterFromFile(file);
   });
   $("#booster-list").addEventListener("click", (event) => {
     const button = event.target.closest("[data-booster-id]");
@@ -2755,6 +2889,11 @@ function bindGlobalActions() {
     settings.deck.cards.push(card);
     selectedCardId = card.id;
     renderCards();
+  });
+  $("#import-card").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) await importCardFromFile(file);
   });
   $("#save-settings").addEventListener("click", async () => {
     await saveSettings(settings);

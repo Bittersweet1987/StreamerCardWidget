@@ -130,6 +130,15 @@ Ein **Booster** ist ein Karten-Pack mit einer eigenen Kanalpunkte-Belohnung.
    Bereits einem anderen Booster zugeordnete Karten sind ausgegraut – jede Karte gehört zu genau einem Booster.
 4. Speichern nicht vergessen (Button **Speichern** oben rechts).
 
+### Booster exportieren & importieren
+
+Über **Booster exportieren** (in der Booster-Ansicht) wird der ausgewählte Booster als
+JSON-Datei gespeichert – **inklusive aller zugeordneten Karten samt Bildern**. Die Datei kann
+auf einem anderen PC über **Booster importieren** eingelesen werden: Booster und Karten werden
+dort neu angelegt und die **Zuordnung der Karten zum Booster bleibt erhalten**.
+Twitch-spezifische Verknüpfungen (Belohnungs-IDs) werden beim Import bewusst nicht übernommen,
+da sie nur im Kanal des Exportierenden gültig sind.
+
 ---
 
 ## Karten anlegen
@@ -145,6 +154,14 @@ Ein **Booster** ist ein Karten-Pack mit einer eigenen Kanalpunkte-Belohnung.
    Ordne sie anschließend im Tab **Booster** einem Pack zu, sonst werden sie nie gezogen.
 
 > Die **Sternzahl ergibt sich automatisch aus der Seltenheit** – sie wird nicht pro Karte gesetzt.
+
+### Karten exportieren & importieren
+
+Jede Karte hat einen **Exportieren**-Button: die Karte wird als JSON-Datei gespeichert –
+**inklusive Bild**, sodass sie z. B. auf einem anderen PC von einem anderen Nutzer über
+**Karte importieren** (oben im Tab) eingelesen werden kann. Eine Booster-Zuordnung wird dabei
+bewusst **nicht** übernommen – die importierte Karte muss wie eine neue Karte einem Booster
+zugeordnet werden.
 
 ---
 

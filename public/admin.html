@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260712-cards2">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260713-exportimport1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -1236,7 +1236,10 @@
               <p class="eyebrow" data-i18n="cards-eyebrow">Deck</p>
               <h2 data-i18n="cards-title">Karten verwalten</h2>
             </div>
-            <button class="primary-button" id="add-card" type="button" data-i18n="btn-add-card">Karte hinzufügen</button>
+            <div class="button-row">
+              <label class="secondary-button file-label" data-i18n="btn-import-card">Karte importieren<input id="import-card" type="file" accept=".json,application/json"></label>
+              <button class="primary-button" id="add-card" type="button" data-i18n="btn-add-card">Karte hinzufügen</button>
+            </div>
           </div>
           <div class="cards-layout">
             <div class="card-list" id="card-list"></div>
@@ -1253,7 +1256,10 @@
               <p class="eyebrow" data-i18n="booster-eyebrow">Packs</p>
               <h2 data-i18n="booster-title">Booster verwalten</h2>
             </div>
-            <button class="primary-button" id="add-booster" type="button" data-i18n="btn-add-booster">Booster hinzufügen</button>
+            <div class="button-row">
+              <label class="secondary-button file-label" data-i18n="btn-import-booster">Booster importieren<input id="import-booster" type="file" accept=".json,application/json"></label>
+              <button class="primary-button" id="add-booster" type="button" data-i18n="btn-add-booster">Booster hinzufügen</button>
+            </div>
           </div>
           <div class="booster-layout">
             <div class="booster-list" id="booster-list"></div>
@@ -1273,6 +1279,7 @@
               </div>
               <div class="button-row">
                 <button class="ghost-button" id="remove-booster-image" type="button" data-i18n="btn-remove-booster-image">Booster-Bild entfernen</button>
+                <button class="secondary-button" id="export-booster" type="button" data-i18n="btn-export-booster">Booster exportieren</button>
                 <button class="danger-button" id="delete-booster" type="button" data-i18n="btn-delete-booster">Booster löschen</button>
               </div>
               <div class="assigned-heading">
@@ -1382,6 +1389,6 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260712-cards2"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260713-exportimport1"></script>
   </body>
 </html>
