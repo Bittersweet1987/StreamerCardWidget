@@ -868,6 +868,23 @@ async function checkForUpdate({ silent = false } = {}) {
   loadChangelog();
 }
 
+// Release notes can carry both languages in one body, delimited by invisible HTML comments
+// ("<!-- DE -->" / "<!-- EN -->" on their own line) - GitHub renders those as nothing, so the
+// release page still reads fine without the markers cluttering it. Picks the block matching
+// the given language; releases without any markers (all pre-bilingual ones) are treated as a
+// single German block and shown as-is regardless of the requested language.
+function extractLanguageBody(body, lang) {
+  const text = String(body || "");
+  const enMarker = "<!-- EN -->";
+  const deMarker = "<!-- DE -->";
+  const enIndex = text.indexOf(enMarker);
+  if (enIndex === -1) return text;
+  const deIndex = text.indexOf(deMarker);
+  const deBody = deIndex !== -1 && deIndex < enIndex ? text.slice(deIndex + deMarker.length, enIndex) : text.slice(0, enIndex);
+  const enBody = text.slice(enIndex + enMarker.length);
+  return lang === "en" ? enBody : deBody;
+}
+
 // Pulls "- bullet" lines out of a release's markdown body, grouped under whichever "## Heading"
 // (if any) precedes them - our release notes are always written as short bullet lists under
 // optional section headings, so this stays readable without a full markdown renderer.
@@ -914,7 +931,7 @@ async function loadChangelog() {
     }
 
     container.innerHTML = newer.map((release) => {
-      const groups = parseReleaseBullets(release.body);
+      const groups = parseReleaseBullets(extractLanguageBody(release.body, settings.language));
       const date = release.published_at ? new Date(release.published_at).toLocaleDateString() : "";
       const body = groups.length
         ? groups.map((group) => `
