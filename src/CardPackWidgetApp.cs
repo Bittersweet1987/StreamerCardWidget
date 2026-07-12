@@ -19,8 +19,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.6.2";
-        public const string ReleaseDate = "2026-07-13";
+        public const string Version = "2.7.0";
+        public const string ReleaseDate = "2026-07-12";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
 
@@ -217,6 +217,12 @@ namespace CardPackWidgetApp
         private readonly List<SseClient> clients;
         private readonly object clientsLock;
         private readonly object collectionWriteLock = new object();
+        // Guards settings.json/boosters.json/cards.json/twitch.json/obs.json against concurrent
+        // read/write from overlapping requests (e.g. a debounced auto-save firing while a manual
+        // "Speichern" click is still in flight) - without it, two threads racing File.WriteAllText
+        // on the same file throw "being used by another process", which used to abort the whole
+        // request silently and now surfaces as a real but confusing save failure to the user.
+        private readonly object settingsWriteLock = new object();
         private readonly TwitchBridge twitchBridge;
         private readonly EventLog eventLog;
         private TcpListener listener;
@@ -383,11 +389,15 @@ namespace CardPackWidgetApp
         private void HandleClient(TcpClient client)
         {
             bool keepOpen = false;
+            NetworkStream stream = null;
             try
             {
-                client.ReceiveTimeout = 10000;
-                client.SendTimeout = 10000;
-                NetworkStream stream = client.GetStream();
+                // settings.json can be several MB (base64 card/booster images), so give slow
+                // machines/loaded systems real headroom instead of the previous 10s, which could
+                // trip mid-upload and surface only as an opaque "Failed to fetch" in the browser.
+                client.ReceiveTimeout = 30000;
+                client.SendTimeout = 30000;
+                stream = client.GetStream();
                 HttpRequest request = ReadRequest(stream);
                 if (request == null)
                 {
@@ -410,8 +420,23 @@ namespace CardPackWidgetApp
                     ServeStatic(request, stream);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                // A bare swallow here used to drop the connection with zero response on ANY
+                // handler exception (e.g. a bad settings.json write) - from the browser that
+                // looks like "Failed to fetch" with no error detail at all. Log it and, if we
+                // still have a live stream, try to hand back a real 500 so the client sees why.
+                Log("server", "error", "Anfrage fehlgeschlagen: " + ex.Message);
+                try
+                {
+                    if (stream != null)
+                    {
+                        SendJson(stream, 500, json.Serialize(new Dictionary<string, object> { { "ok", false }, { "error", ex.Message } }));
+                    }
+                }
+                catch
+                {
+                }
             }
             finally
             {
@@ -1349,6 +1374,16 @@ namespace CardPackWidgetApp
             return "common";
         }
 
+        // Canonical rarity order (common -> holo), used to sort card lists by rarity.
+        private static readonly string[] RarityOrder = { "common", "uncommon", "rare", "epic", "legendary", "holo" };
+
+        internal static int GetRarityRank(string rarity)
+        {
+            string id = NormalizeRarityIdShared(rarity);
+            int index = Array.IndexOf(RarityOrder, id);
+            return index < 0 ? RarityOrder.Length : index;
+        }
+
         // ---- Ranking support: persistent battle statistics + top-owner queries ----
 
         private readonly object battleStatsLock = new object();
@@ -1557,11 +1592,12 @@ namespace CardPackWidgetApp
             object[] boosters = settings.ContainsKey("boosters") && settings["boosters"] is object[] ? (object[])settings["boosters"] : new object[0];
             string cardTitle = cardId;
             string boosterTitle = boosterId;
+            string rarity = "common";
             foreach (object co in cards)
             {
                 Dictionary<string, object> card = co as Dictionary<string, object>;
                 if (card == null) continue;
-                if (GetString(card, "id", "") == cardId) { cardTitle = GetString(card, "title", cardId); break; }
+                if (GetString(card, "id", "") == cardId) { cardTitle = GetString(card, "title", cardId); rarity = GetString(card, "rarity", "common"); break; }
             }
             foreach (object bo in boosters)
             {
@@ -1569,7 +1605,7 @@ namespace CardPackWidgetApp
                 if (booster == null) continue;
                 if (GetString(booster, "id", "") == boosterId) { boosterTitle = GetString(booster, "title", boosterId); break; }
             }
-            return new Dictionary<string, string> { { "cardTitle", cardTitle }, { "boosterTitle", boosterTitle } };
+            return new Dictionary<string, string> { { "cardTitle", cardTitle }, { "boosterTitle", boosterTitle }, { "rarity", rarity } };
         }
 
         // Performs the full two-sided swap atomically and persists once. A gives cardA (boosterA)
@@ -1712,23 +1748,26 @@ namespace CardPackWidgetApp
 
         internal Dictionary<string, object> ReadSettingsObject()
         {
-            Dictionary<string, object> settings = ParseObject(ReadFile(SettingsPath(), "{}"));
-            settings["twitch"] = ParseObject(ReadFile(TwitchConfigPath(), "{}"));
-            settings["twitchBot"] = ParseObject(ReadFile(TwitchBotConfigPath(), "{}"));
-            settings["obs"] = ParseObject(ReadFile(ObsConfigPath(), "{}"));
-            if (File.Exists(BoostersPath()))
+            lock (settingsWriteLock)
             {
-                settings["boosters"] = ParseArray(ReadFile(BoostersPath(), "[]"));
+                Dictionary<string, object> settings = ParseObject(ReadFile(SettingsPath(), "{}"));
+                settings["twitch"] = ParseObject(ReadFile(TwitchConfigPath(), "{}"));
+                settings["twitchBot"] = ParseObject(ReadFile(TwitchBotConfigPath(), "{}"));
+                settings["obs"] = ParseObject(ReadFile(ObsConfigPath(), "{}"));
+                if (File.Exists(BoostersPath()))
+                {
+                    settings["boosters"] = ParseArray(ReadFile(BoostersPath(), "[]"));
+                }
+                if (File.Exists(CardsPath()))
+                {
+                    Dictionary<string, object> deck = settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>
+                        ? (Dictionary<string, object>)settings["deck"]
+                        : new Dictionary<string, object>();
+                    deck["cards"] = ParseArray(ReadFile(CardsPath(), "[]"));
+                    settings["deck"] = deck;
+                }
+                return settings;
             }
-            if (File.Exists(CardsPath()))
-            {
-                Dictionary<string, object> deck = settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>
-                    ? (Dictionary<string, object>)settings["deck"]
-                    : new Dictionary<string, object>();
-                deck["cards"] = ParseArray(ReadFile(CardsPath(), "[]"));
-                settings["deck"] = deck;
-            }
-            return settings;
         }
 
         internal void WriteSettingsObject(Dictionary<string, object> settings)
@@ -1738,57 +1777,60 @@ namespace CardPackWidgetApp
 
         internal void WriteSettingsObject(Dictionary<string, object> settings, bool preserveTwitchSecrets)
         {
-            // Twitch/OBS now live in their own files (see MigrateTwitchAndObsConfig), so they
-            // are written separately and kept out of settings.json entirely. preserveTwitchSecrets
-            // still applies to the dedicated twitch.json write: a settings.json save (e.g. a
-            // fresh /api/settings POST without a "twitch" key) must not blank out the saved token.
-            if (settings.ContainsKey("twitch") && settings["twitch"] is Dictionary<string, object>)
+            lock (settingsWriteLock)
             {
-                Dictionary<string, object> twitch = (Dictionary<string, object>)settings["twitch"];
-                if (preserveTwitchSecrets) PreserveTwitchSecrets(twitch, ParseObject(ReadFile(TwitchConfigPath(), "{}")));
-                File.WriteAllText(TwitchConfigPath(), json.Serialize(twitch), Encoding.UTF8);
-            }
-            if (settings.ContainsKey("twitchBot") && settings["twitchBot"] is Dictionary<string, object>)
-            {
-                Dictionary<string, object> twitchBot = (Dictionary<string, object>)settings["twitchBot"];
-                if (preserveTwitchSecrets) PreserveTwitchSecrets(twitchBot, ParseObject(ReadFile(TwitchBotConfigPath(), "{}")));
-                File.WriteAllText(TwitchBotConfigPath(), json.Serialize(twitchBot), Encoding.UTF8);
-            }
-            if (settings.ContainsKey("obs") && settings["obs"] is Dictionary<string, object>)
-            {
-                File.WriteAllText(ObsConfigPath(), json.Serialize(settings["obs"]), Encoding.UTF8);
-            }
-            // Boosters and cards live in their own files so updates / new rarities never
-            // overwrite user-created content (same rationale as twitch.json/obs.json).
-            if (settings.ContainsKey("boosters") && settings["boosters"] is object[])
-            {
-                File.WriteAllText(BoostersPath(), json.Serialize(settings["boosters"]), Encoding.UTF8);
-            }
-            if (settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>)
-            {
-                Dictionary<string, object> deck = (Dictionary<string, object>)settings["deck"];
-                if (deck.ContainsKey("cards") && deck["cards"] is object[])
+                // Twitch/OBS now live in their own files (see MigrateTwitchAndObsConfig), so they
+                // are written separately and kept out of settings.json entirely. preserveTwitchSecrets
+                // still applies to the dedicated twitch.json write: a settings.json save (e.g. a
+                // fresh /api/settings POST without a "twitch" key) must not blank out the saved token.
+                if (settings.ContainsKey("twitch") && settings["twitch"] is Dictionary<string, object>)
                 {
-                    File.WriteAllText(CardsPath(), json.Serialize(deck["cards"]), Encoding.UTF8);
+                    Dictionary<string, object> twitch = (Dictionary<string, object>)settings["twitch"];
+                    if (preserveTwitchSecrets) PreserveTwitchSecrets(twitch, ParseObject(ReadFile(TwitchConfigPath(), "{}")));
+                    File.WriteAllText(TwitchConfigPath(), json.Serialize(twitch), Encoding.UTF8);
                 }
-            }
+                if (settings.ContainsKey("twitchBot") && settings["twitchBot"] is Dictionary<string, object>)
+                {
+                    Dictionary<string, object> twitchBot = (Dictionary<string, object>)settings["twitchBot"];
+                    if (preserveTwitchSecrets) PreserveTwitchSecrets(twitchBot, ParseObject(ReadFile(TwitchBotConfigPath(), "{}")));
+                    File.WriteAllText(TwitchBotConfigPath(), json.Serialize(twitchBot), Encoding.UTF8);
+                }
+                if (settings.ContainsKey("obs") && settings["obs"] is Dictionary<string, object>)
+                {
+                    File.WriteAllText(ObsConfigPath(), json.Serialize(settings["obs"]), Encoding.UTF8);
+                }
+                // Boosters and cards live in their own files so updates / new rarities never
+                // overwrite user-created content (same rationale as twitch.json/obs.json).
+                if (settings.ContainsKey("boosters") && settings["boosters"] is object[])
+                {
+                    File.WriteAllText(BoostersPath(), json.Serialize(settings["boosters"]), Encoding.UTF8);
+                }
+                if (settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>)
+                {
+                    Dictionary<string, object> deck = (Dictionary<string, object>)settings["deck"];
+                    if (deck.ContainsKey("cards") && deck["cards"] is object[])
+                    {
+                        File.WriteAllText(CardsPath(), json.Serialize(deck["cards"]), Encoding.UTF8);
+                    }
+                }
 
-            // Serialize settings.json from a shallow copy so the externalized sections are kept out
-            // of settings.json without mutating the caller's dict (callers may return it to the client).
-            Dictionary<string, object> toStore = new Dictionary<string, object>(settings);
-            toStore.Remove("twitch");
-            toStore.Remove("twitchBot");
-            toStore.Remove("obs");
-            toStore.Remove("boosters");
-            if (toStore.ContainsKey("deck") && toStore["deck"] is Dictionary<string, object>)
-            {
-                Dictionary<string, object> deckCopy = new Dictionary<string, object>((Dictionary<string, object>)toStore["deck"]);
-                deckCopy.Remove("cards");
-                toStore["deck"] = deckCopy;
+                // Serialize settings.json from a shallow copy so the externalized sections are kept out
+                // of settings.json without mutating the caller's dict (callers may return it to the client).
+                Dictionary<string, object> toStore = new Dictionary<string, object>(settings);
+                toStore.Remove("twitch");
+                toStore.Remove("twitchBot");
+                toStore.Remove("obs");
+                toStore.Remove("boosters");
+                if (toStore.ContainsKey("deck") && toStore["deck"] is Dictionary<string, object>)
+                {
+                    Dictionary<string, object> deckCopy = new Dictionary<string, object>((Dictionary<string, object>)toStore["deck"]);
+                    deckCopy.Remove("cards");
+                    toStore["deck"] = deckCopy;
+                }
+                toStore["version"] = 1;
+                toStore["updatedAt"] = DateTime.UtcNow.ToString("o");
+                File.WriteAllText(SettingsPath(), json.Serialize(toStore), Encoding.UTF8);
             }
-            toStore["version"] = 1;
-            toStore["updatedAt"] = DateTime.UtcNow.ToString("o");
-            File.WriteAllText(SettingsPath(), json.Serialize(toStore), Encoding.UTF8);
             Broadcast("settings", "{\"updatedAt\":\"" + EscapeJson(DateTime.UtcNow.ToString("o")) + "\"}");
         }
 
@@ -1940,6 +1982,32 @@ namespace CardPackWidgetApp
         private CancellationTokenSource cancel;
         private bool eventSubConnected;
         private string lastError;
+
+        // Twitch's EventSub WebSocket has at-least-once delivery: the same notification
+        // (e.g. a channel-point redemption) can arrive twice. Without de-duplication, that
+        // meant a redemption could get queued and fulfilled - and its chat message sent -
+        // twice. Twitch's own recommendation is to de-dupe by metadata.message_id.
+        private readonly object seenMessageIdsLock = new object();
+        private readonly Dictionary<string, DateTime> seenMessageIds = new Dictionary<string, DateTime>();
+
+        private bool IsDuplicateEventSubMessage(string messageId)
+        {
+            if (String.IsNullOrEmpty(messageId)) return false;
+            lock (seenMessageIdsLock)
+            {
+                DateTime cutoff = DateTime.UtcNow.AddMinutes(-10);
+                var stale = new List<string>();
+                foreach (KeyValuePair<string, DateTime> kv in seenMessageIds)
+                {
+                    if (kv.Value < cutoff) stale.Add(kv.Key);
+                }
+                foreach (string id in stale) seenMessageIds.Remove(id);
+
+                if (seenMessageIds.ContainsKey(messageId)) return true;
+                seenMessageIds[messageId] = DateTime.UtcNow;
+                return false;
+            }
+        }
         private readonly object stateLock = new object();
 
         private ClientWebSocket chatSocket;
@@ -1980,7 +2048,7 @@ namespace CardPackWidgetApp
         private const string DefaultTradeCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
         private const string DefaultTradeOfferNotOwned = "@userName, du besitzt die Karte [Kartenname] nicht und kannst sie daher nicht anbieten.";
         private const string DefaultTradeUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
-        private const string DefaultTradeOffer = "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Nimm mit [BefehlAnnehmen] an oder lehne mit [BefehlAblehnen] ab.";
+        private const string DefaultTradeOffer = "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Nimm mit [BefehlAnnehmen] \"Kartenname\" an oder lehne mit [BefehlAblehnen] ab.";
         private const string DefaultTradeTimeout = "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Tauschanfrage beendet.";
         private const string DefaultTradeCooldown = "@userName, leider musst du mit der Tauschanfrage noch bis [Uhrzeit] warten, da der Cooldown von [Cooldownwert] [Einheit] noch aktiv ist.";
         private const string DefaultTradeLimit = "@userName, leider sind deine Tauschanfragen aktuell aufgebraucht. Bitte warte bis [Uhrzeit] Uhr.";
@@ -2197,7 +2265,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> result;
             if (String.IsNullOrWhiteSpace(rewardId))
             {
-                result = TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                result = CreateOrAdoptReward(twitch, baseUrl, title, payload, isPaused, ref rewardId);
             }
             else
             {
@@ -2213,7 +2281,7 @@ namespace CardPackWidgetApp
                     // had it tracked locally. Re-create it instead of failing the whole sync.
                     if (ex.Message.IndexOf("was not found", StringComparison.OrdinalIgnoreCase) < 0) throw;
                     payload.Remove("is_paused");
-                    result = TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                    result = CreateOrAdoptReward(twitch, baseUrl, title, payload, isPaused, ref rewardId);
                 }
             }
 
@@ -2354,6 +2422,15 @@ namespace CardPackWidgetApp
             }
 
             if (type != "notification") return;
+            // Twitch guarantees at-least-once delivery - the same message_id can arrive more than
+            // once (e.g. after a brief disconnect/reconnect). Drop repeats before they can queue
+            // a second draw/showcase or send a duplicate chat message.
+            string messageId = GetString(metadata, "message_id", "");
+            if (IsDuplicateEventSubMessage(messageId))
+            {
+                server.Log("twitch", "info", "Doppelte EventSub-Nachricht ignoriert (message_id " + messageId + ").");
+                return;
+            }
             Dictionary<string, object> subscription = Obj(payload, "subscription");
             if (GetString(subscription, "type", "") != "channel.channel_points_custom_reward_redemption.add") return;
             Dictionary<string, object> ev = Obj(payload, "event");
@@ -2379,6 +2456,12 @@ namespace CardPackWidgetApp
                 server.Log("draw", "info", "Belohnung \"" + rewardTitle + "\" (ID " + rewardId + ") eingeloest, aber weder als Kartenpack- noch als Sammlung-Belohnung hinterlegt - ignoriert.");
                 return;
             }
+
+            // Diagnostic: if a duplicate chat message is reported again, compare this redemption
+            // id / message_id against the other occurrence's log line - same ids would mean our
+            // de-dup missed a case, different ids would mean Twitch genuinely sent two distinct
+            // redemption events (e.g. the reward button was pressed twice).
+            server.Log("draw", "info", "Draw-Redemption: redemptionId=" + GetString(ev, "id", "") + ", message_id=" + messageId + ", user=" + user + ".");
 
             Enqueue("draw", login, user, "channelpoints");
         }
@@ -2604,19 +2687,35 @@ namespace CardPackWidgetApp
         // Called by the overlay (POST /api/queue/complete) once it has finished playing the
         // animation for a given event. Releases the queue worker so it can proceed to the
         // 500ms gap and then the next item.
+        // If more than one overlay page is showing the same source at once (e.g. the pack source
+        // open in both OBS AND Meld Studio simultaneously), each one independently plays the
+        // animation and independently posts /api/queue/complete for the same eventId. Without
+        // this guard, every extra ack would re-send the post-draw chat message, duplicating it.
+        private readonly object completionLock = new object();
+        private string lastCompletedEventId;
+
         public void CompleteQueueItem(string eventId, string cardTitle, string boosterTitle)
         {
             if (String.IsNullOrEmpty(eventId)) return;
             if (eventId != awaitingEventId) return;
-            // The animation just finished and the overlay reported which card was drawn, so the
-            // post-animation chat message (channel points and/or !pack) can now be sent by name.
-            try
+            bool isFirstAck;
+            lock (completionLock)
             {
-                Dictionary<string, object> item;
-                lock (queueLock) item = currentQueueItem;
-                if (item != null && GetString(item, "kind", "") == "draw") SendDrawPostMessage(item, cardTitle, boosterTitle);
+                isFirstAck = lastCompletedEventId != eventId;
+                lastCompletedEventId = eventId;
             }
-            catch { }
+            if (isFirstAck)
+            {
+                // The animation just finished and the overlay reported which card was drawn, so
+                // the post-animation chat message (channel points and/or !pack) can now be sent by name.
+                try
+                {
+                    Dictionary<string, object> item;
+                    lock (queueLock) item = currentQueueItem;
+                    if (item != null && GetString(item, "kind", "") == "draw") SendDrawPostMessage(item, cardTitle, boosterTitle);
+                }
+                catch { }
+            }
             completionSignal.Set();
         }
 
@@ -2684,20 +2783,43 @@ namespace CardPackWidgetApp
             string kind = GetString(item, "kind", "");
             if (kind == "showcollection")
             {
+                // The showcase overlay "page-flips" through a booster's cards 9 at a time (see
+                // collection.js CARDS_PER_PAGE) instead of showing them all at once, so a booster
+                // with many cards takes several page-hold intervals, not just one. This must match
+                // that client-side page count, or the timeout undercounts and the server gives up
+                // waiting for the completion ack while the overlay is still mid page-flip - which
+                // then shows as "done" in the Queue tab while the animation keeps playing.
+                const int cardsPerPage = 9;
                 Dictionary<string, object> settings = server.ReadSettingsObject();
-                int boosters = 1;
+                int totalPages = 0;
+                int boosterCount = 0;
                 object boostersObj;
                 if (settings.TryGetValue("boosters", out boostersObj) && boostersObj is object[])
                 {
-                    boosters = Math.Max(1, ((object[])boostersObj).Length);
+                    foreach (object bo in (object[])boostersObj)
+                    {
+                        Dictionary<string, object> booster = bo as Dictionary<string, object>;
+                        if (booster == null) continue;
+                        int cardCount = 0;
+                        object cardIdsObj;
+                        if (booster.TryGetValue("cardIds", out cardIdsObj) && cardIdsObj is object[])
+                        {
+                            cardCount = ((object[])cardIdsObj).Length;
+                        }
+                        if (cardCount == 0) continue;
+                        boosterCount++;
+                        totalPages += (int)Math.Ceiling(cardCount / (double)cardsPerPage);
+                    }
                 }
-                int secondsPerBooster = 12;
+                if (totalPages == 0) { totalPages = 1; boosterCount = 1; }
+                int secondsPerPage = 12;
                 object showcaseObj;
                 if (settings.TryGetValue("showcase", out showcaseObj) && showcaseObj is Dictionary<string, object>)
                 {
-                    secondsPerBooster = Math.Max(2, GetInt((Dictionary<string, object>)showcaseObj, "secondsPerBooster", 12));
+                    secondsPerPage = Math.Max(2, GetInt((Dictionary<string, object>)showcaseObj, "secondsPerBooster", 12));
                 }
-                return boosters * (secondsPerBooster * 1000 + 700) + 8000;
+                // Per page: hold time + ~300ms flip transition. Per booster: ~1s slide in/out.
+                return totalPages * (secondsPerPage * 1000 + 300) + boosterCount * 1000 + 8000;
             }
             if (kind == "ranking")
             {
@@ -2708,18 +2830,42 @@ namespace CardPackWidgetApp
                 int phases = rankingType == "battle" ? 4 : 1;
                 return phases * (displaySeconds * 1000 + 500) + 8000;
             }
+            if (kind == "trade")
+            {
+                // Longest configured trade animation duration ("long" ~9s) plus a safety margin.
+                return 20000;
+            }
+            if (kind == "battle")
+            {
+                // HP-Leisten-Duell is explicitly capped at ~28s client-side (see battle.js
+                // maxTotalMs); clash/ranged rounds are shorter. Generous ceiling either way.
+                return 40000;
+            }
             // Draw animation is a fixed sequence (~7s) plus reveal time; 30s is a safe ceiling.
             return 30000;
         }
 
+        private readonly object queueWorkerStartLock = new object();
+
+        // Start() (and RestartQuietly(), called after every reward sync/delete) can run on
+        // multiple concurrent request threads. The previous "if (queueWorkerStarted) return;"
+        // check-then-set was not atomic, so two overlapping calls could both pass the check
+        // before either flipped the flag, spawning TWO independent QueueLoop threads. Both then
+        // shared the same awaitingEventId/completionSignal fields, so one thread's dequeue could
+        // stomp the other's - e.g. showcollection waiting for its ack while a second thread
+        // immediately dequeued and broadcast the next draw, playing both animations at once.
+        // A real lock makes "start the worker" atomic, guaranteeing exactly one QueueLoop ever runs.
         private void StartQueueWorkerOnce()
         {
-            if (queueWorkerStarted) return;
-            queueWorkerStarted = true;
-            queueRunning = true;
-            var worker = new Thread(QueueLoop);
-            worker.IsBackground = true;
-            worker.Start();
+            lock (queueWorkerStartLock)
+            {
+                if (queueWorkerStarted) return;
+                queueWorkerStarted = true;
+                queueRunning = true;
+                var worker = new Thread(QueueLoop);
+                worker.IsBackground = true;
+                worker.Start();
+            }
         }
 
         private void QueueLoop()
@@ -2800,6 +2946,23 @@ namespace CardPackWidgetApp
                     { "source", source }
                 };
                 server.Broadcast("showcollection", server.Serializer.Serialize(showEvent));
+                return;
+            }
+
+            if (kind == "trade" || kind == "battle")
+            {
+                // trade/battle carry their full event payload (cards, users, result...) as "extra"
+                // on Enqueue - strip the queue-internal bookkeeping fields and broadcast the rest
+                // as-is, same pattern as "ranking" above.
+                var animEvent = new Dictionary<string, object>(item);
+                animEvent["eventId"] = GetString(item, "id", DateTime.UtcNow.Ticks.ToString());
+                animEvent.Remove("id");
+                animEvent.Remove("kind");
+                animEvent.Remove("user");
+                animEvent.Remove("userLogin");
+                animEvent.Remove("source");
+                animEvent.Remove("triggeredAt");
+                server.Broadcast(kind, server.Serializer.Serialize(animEvent));
                 return;
             }
 
@@ -3072,6 +3235,15 @@ namespace CardPackWidgetApp
             }
 
             if (type != "notification") return;
+            // Same at-least-once delivery caveat as the redemption socket (see
+            // IsDuplicateEventSubMessage) - without this, a redelivered chat message could run
+            // !pack/!tradeyes/etc. twice.
+            string messageId = GetString(metadata, "message_id", "");
+            if (IsDuplicateEventSubMessage(messageId))
+            {
+                server.Log("twitch", "info", "Doppelte Chat-EventSub-Nachricht ignoriert (message_id " + messageId + ").");
+                return;
+            }
             Dictionary<string, object> subscription = Obj(payload, "subscription");
             if (GetString(subscription, "type", "") != "channel.chat.message") return;
             Dictionary<string, object> ev = Obj(payload, "event");
@@ -3132,14 +3304,21 @@ namespace CardPackWidgetApp
                 return;
             }
 
-            var names = new List<string>();
+            var entries = new List<KeyValuePair<string, string>>();
             foreach (Dictionary<string, string> entry in owned)
             {
                 int count = server.GetCardCount(login, entry["boosterId"], entry["cardId"]);
                 Dictionary<string, string> info = server.CardDisplayInfo(entry["boosterId"], entry["cardId"]);
-                names.Add(count > 1 ? info["cardTitle"] + " x" + count : info["cardTitle"]);
+                string name = count > 1 ? info["cardTitle"] + " x" + count : info["cardTitle"];
+                entries.Add(new KeyValuePair<string, string>(info["cardTitle"], name));
             }
-            names.Sort(StringComparer.OrdinalIgnoreCase);
+            // Sorted alphabetically by card name (A -> Z).
+            entries.Sort(delegate (KeyValuePair<string, string> a, KeyValuePair<string, string> b)
+            {
+                return StringComparer.OrdinalIgnoreCase.Compare(a.Key, b.Key);
+            });
+            var names = new List<string>();
+            foreach (KeyValuePair<string, string> entry in entries) names.Add(entry.Value);
 
             string header = GetString(collectionCfg, "headerMessage", DefaultCardsHeader).Replace("@userName", "@" + displayName);
             SendCardListChunked(header, names);
@@ -3167,16 +3346,26 @@ namespace CardPackWidgetApp
             }
             if (current.Length > 0) chunks.Add(current);
 
+            server.Log("draw", "info", "SendCardListChunked: " + chunks.Count + " Nachricht(en) vorbereitet, budget=" + budget + ".");
+
             // Chunks are sent from a background thread with a pause in between: Twitch answers
             // 200 even for messages it silently drops (is_sent=false), and firing several chat
             // messages back-to-back reliably triggers that drop for everything after the first.
             Task.Factory.StartNew(delegate
             {
-                for (int i = 0; i < chunks.Count; i++)
+                try
                 {
-                    if (i > 0) Thread.Sleep(1500);
-                    string prefix = chunks.Count > 1 ? header + " (" + (i + 1) + "/" + chunks.Count + ") " : header + " ";
-                    SendChatMessageSafe(prefix + chunks[i]);
+                    for (int i = 0; i < chunks.Count; i++)
+                    {
+                        if (i > 0) Thread.Sleep(1500);
+                        string prefix = chunks.Count > 1 ? header + " (" + (i + 1) + "/" + chunks.Count + ") " : header + " ";
+                        server.Log("draw", "info", "SendCardListChunked: sende Teil " + (i + 1) + "/" + chunks.Count + ".");
+                        SendChatMessageSafe(prefix + chunks[i]);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    server.Log("draw", "error", "SendCardListChunked-Hintergrundtask fehlgeschlagen: " + ex.Message);
                 }
             });
         }
@@ -3250,7 +3439,11 @@ namespace CardPackWidgetApp
                 if (GetBool(collection, "enabled", true))
                 {
                     Enqueue("showcollection", login, displayName, "chat");
-                    if (GetBool(collection, "chatOutputEnabled", true)) HandleCardsCommand(login, displayName, collection);
+                    if (GetBool(collection, "chatOutputEnabled", true))
+                    {
+                        try { HandleCardsCommand(login, displayName, collection); }
+                        catch (Exception ex) { server.Log("draw", "error", "HandleCardsCommand fehlgeschlagen: " + ex.Message + " | " + ex.StackTrace); }
+                    }
                 }
                 return;
             }
@@ -3567,7 +3760,6 @@ namespace CardPackWidgetApp
 
                 var tradeEvent = new Dictionary<string, object>
                 {
-                    { "eventId", GetString(activeTrade, "id", Guid.NewGuid().ToString("N")) },
                     { "userA", fromUser },
                     { "userB", displayName },
                     { "cardAId", cardAId },
@@ -3577,7 +3769,10 @@ namespace CardPackWidgetApp
                     { "newCountA", result["aNewCardB"] },
                     { "newCountB", result["bNewCardA"] }
                 };
-                server.Broadcast("trade", server.Serializer.Serialize(tradeEvent));
+                // Routed through the same queue as draw/showcollection/ranking so the trade
+                // animation never overlaps another - it used to broadcast directly, which let it
+                // play at the same time as an in-progress pack-opening or collection showcase.
+                Enqueue("trade", fromLogin, fromUser, "chat", tradeEvent);
                 server.Log("commands", "info", fromUser + " tauschte " + cardATitle + " mit " + displayName + " gegen " + cardBTitle + ".");
                 ClearActiveTrade();
             }
@@ -3876,7 +4071,6 @@ namespace CardPackWidgetApp
 
                 var battleEvent = new Dictionary<string, object>
                 {
-                    { "eventId", GetString(activeBattle, "id", Guid.NewGuid().ToString("N")) },
                     { "userA", fromUser }, { "userB", displayName },
                     { "lineupA", lineupA }, { "lineupB", lineupB },
                     { "mode", useHpElimination ? "hp" : "rounds" },
@@ -3888,7 +4082,10 @@ namespace CardPackWidgetApp
                     { "prizeCardTitle", prizeInfo["cardTitle"] }, { "prizeBoosterTitle", prizeInfo["boosterTitle"] },
                     { "winnerUser", winnerUser }, { "loserUser", loserUser }
                 };
-                server.Broadcast("battle", server.Serializer.Serialize(battleEvent));
+                // Routed through the same queue as draw/showcollection/ranking so the battle
+                // animation never overlaps another - it used to broadcast directly, which let it
+                // play at the same time as an in-progress pack-opening or collection showcase.
+                Enqueue("battle", fromLogin, fromUser, "chat", battleEvent);
                 server.Log("commands", "info", winnerUser + " gewann das Kartenduell gegen " + loserUser + " (" + Math.Max(winsA, winsB) + ":" + Math.Min(winsA, winsB) + ") und erhielt " + prizeInfo["cardTitle"] + ".");
 
                 // The result message is sent AFTER the animation has had time to play out, not
@@ -4573,7 +4770,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> result;
             if (String.IsNullOrWhiteSpace(rewardId))
             {
-                result = TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                result = CreateOrAdoptReward(twitch, baseUrl, title, payload, isPaused, ref rewardId);
             }
             else
             {
@@ -4587,7 +4784,7 @@ namespace CardPackWidgetApp
                 {
                     if (ex.Message.IndexOf("was not found", StringComparison.OrdinalIgnoreCase) < 0) throw;
                     payload.Remove("is_paused");
-                    result = TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                    result = CreateOrAdoptReward(twitch, baseUrl, title, payload, isPaused, ref rewardId);
                 }
             }
 
@@ -4630,6 +4827,56 @@ namespace CardPackWidgetApp
         private Dictionary<string, object> TwitchSettings()
         {
             return EnsureObject(server.ReadSettingsObject(), "twitch");
+        }
+
+        // Attempts to create a reward; if Twitch rejects it with CREATE_CUSTOM_REWARD_DUPLICATE_REWARD
+        // (a same-titled reward already exists - e.g. after a settings reset or reinstall that lost
+        // track of the reward id), adopts the existing manageable reward via PATCH instead of failing.
+        // outRewardId is updated to the adopted id so the caller persists the right one.
+        private Dictionary<string, object> CreateOrAdoptReward(Dictionary<string, object> twitch, string baseUrl, string title,
+            Dictionary<string, object> payload, bool isPaused, ref string outRewardId)
+        {
+            try
+            {
+                return TwitchJson("POST", baseUrl, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+            }
+            catch (InvalidOperationException ex)
+            {
+                if (ex.Message.IndexOf("CREATE_CUSTOM_REWARD_DUPLICATE_REWARD", StringComparison.OrdinalIgnoreCase) < 0) throw;
+                string existingId = FindManageableRewardIdByTitle(twitch, title);
+                if (String.IsNullOrWhiteSpace(existingId))
+                {
+                    throw new InvalidOperationException(
+                        "Twitch meldet bereits eine Belohnung mit dem Titel \"" + title + "\", die von dieser App nicht verwaltet " +
+                        "werden kann (z. B. von einer anderen Anwendung angelegt). Bitte im Twitch-Dashboard umbenennen/löschen " +
+                        "oder hier einen anderen Titel wählen.", ex);
+                }
+                payload["is_paused"] = isPaused;
+                Dictionary<string, object> result = TwitchJson("PATCH", baseUrl + "&id=" + Uri.EscapeDataString(existingId),
+                    GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                outRewardId = existingId;
+                return result;
+            }
+        }
+
+        // Looks up a reward we can still manage (created by this or another app using the same
+        // client id) by its exact title - used to self-heal CREATE_CUSTOM_REWARD_DUPLICATE_REWARD
+        // when Twitch already has a same-titled reward we lost track of locally. Returns null if
+        // no manageable reward has that title (e.g. it belongs to a different, unrelated app).
+        private string FindManageableRewardIdByTitle(Dictionary<string, object> twitch, string title)
+        {
+            string url = "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" +
+                Uri.EscapeDataString(GetString(twitch, "broadcasterId", "")) +
+                "&only_manageable_rewards=true";
+            Dictionary<string, object> result = TwitchGet(url, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""));
+            object[] rewards = result.ContainsKey("data") && result["data"] is object[] ? (object[])result["data"] : new object[0];
+            foreach (object item in rewards)
+            {
+                Dictionary<string, object> reward = item as Dictionary<string, object>;
+                if (reward != null && String.Equals(GetString(reward, "title", ""), title, StringComparison.OrdinalIgnoreCase))
+                    return GetString(reward, "id", "");
+            }
+            return null;
         }
 
         private Dictionary<string, object> TwitchGet(string url, string clientId, string token)

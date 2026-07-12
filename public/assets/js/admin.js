@@ -43,6 +43,7 @@ import {
   DEFAULT_RARITY_COLORS,
   DEFAULT_RARITY_WEIGHTS,
   escapeHtml,
+  MAX_BOOSTER_CARDS,
   normalizeSettings,
   RARITIES,
   rarityById,
@@ -272,6 +273,8 @@ const I18N = {
   "pill-twitch-connected": { de: "Twitch", en: "Twitch" },
   "pill-twitch-connected-fallback": { de: "verbunden", en: "connected" },
   "pill-obs-connected": { de: "OBS verbunden", en: "OBS connected" },
+  "pill-meld-default": { de: "Meld nicht verbunden", en: "Meld not connected" },
+  "pill-meld-connected": { de: "Meld verbunden", en: "Meld connected" },
   "topbar-eyebrow": { de: "Lokale Verwaltung", en: "Local management" },
   "topbar-title": { de: "Kartenpacks", en: "Card packs" },
   "btn-save": { de: "Speichern", en: "Save" },
@@ -358,8 +361,7 @@ const I18N = {
   "error-delete-last-booster": { de: "Der letzte Booster kann nicht gelöscht werden.", en: "The last booster can't be deleted." },
   "notice-booster-deleted": { de: "Booster gelöscht.", en: "Booster deleted." },
   "label-assigned-cards": { de: "Zugewiesene Karten", en: "Assigned cards" },
-  "hint-card-taken": { de: "Bereits zugewiesen zu", en: "Already assigned to" },
-  "warn-max-cards": { de: "Maximal 9 Karten pro Booster.", en: "Maximum 9 cards per booster." },
+  "warn-max-cards": { de: `Maximal ${MAX_BOOSTER_CARDS} Karten pro Booster.`, en: `Maximum ${MAX_BOOSTER_CARDS} cards per booster.` },
   "twitch-title": { de: "Verbindung", en: "Connection" },
   "status-not-connected": { de: "Nicht verbunden", en: "Not connected" },
   "status-connected-as": { de: "Verbunden als", en: "Connected as" },
@@ -412,14 +414,35 @@ const I18N = {
     de: "OBS Szene und Browserquelle wurden erstellt oder aktualisiert.",
     en: "OBS scene and browser source were created or updated."
   },
+  "status-testing-meld": { de: "Teste Meld Studio...", en: "Testing Meld Studio..." },
+  "error-meld-not-connected": { de: "Meld Studio nicht verbunden:", en: "Meld Studio not connected:" },
+  "status-setting-up-meld": { de: "Aktualisiere Meld Studio...", en: "Updating Meld Studio..." },
+  "status-meld-updated": { de: "Meld Studio aktualisiert:", en: "Meld Studio updated:" },
+  "error-meld-setup-failed": { de: "Meld Studio Update fehlgeschlagen:", en: "Meld Studio update failed:" },
+  "error-meld-scene-missing": { de: "Szene nicht in Meld Studio gefunden:", en: "Scene not found in Meld Studio:" },
+  "error-meld-source-missing": { de: "Quelle nicht in Meld Studio gefunden:", en: "Source not found in Meld Studio:" },
+  "notice-meld-scene-updated": {
+    de: "Meld Studio Szene und Quellen wurden aktualisiert.",
+    en: "Meld Studio scene and sources were updated."
+  },
   "label-obs-check": { de: "OBS WebSocket Verbindung prüfen", en: "Check OBS WebSocket connection" },
   "label-obs-password": { de: "Passwort", en: "Password" },
+  "label-meld-check": { de: "Meld Studio WebSocket Verbindung prüfen", en: "Check Meld Studio WebSocket connection" },
   "btn-obs-info": { de: "Hilfe anzeigen", en: "Show help" },
   "btn-obs-info-hide": { de: "Hilfe ausblenden", en: "Hide help" },
+  "btn-meld-info": { de: "Hilfe anzeigen", en: "Show help" },
+  "btn-meld-info-hide": { de: "Hilfe ausblenden", en: "Hide help" },
+  "btn-test-meld": { de: "Meld testen", en: "Test Meld" },
+  "btn-setup-meld": { de: "Meld Szene / Quellen aktualisieren", en: "Update Meld scene & sources" },
+  "meld-info-text": {
+    de: "Öffne in Meld Studio die Einstellungen → „Erweitert“ und aktiviere den WebSocket-Server (Standard-Port 13376). Lege Szene und Quellen mit den Namen aus dem Abschnitt „Szene & Quellen“ oben einmalig manuell in Meld Studio an — diese Namen werden hier zum Zuordnen verwendet. Meld Studio kann Szenen/Quellen nicht per API erstellen, nur bereits vorhandene aktualisieren.",
+    en: "In Meld Studio open Settings → “Advanced” and enable the WebSocket server (default port 13376). Create the scene and sources with the names from the “Scene & sources” section above once, manually, in Meld Studio — those names are used here to match them up. Meld Studio's API cannot create scenes/sources, only update existing ones."
+  },
   "obs-info-text": {
     de: "Öffne in OBS das Menü „Werkzeuge“ → „WebSocket-Servereinstellungen“. Aktiviere dort „WebSocket-Server aktivieren“. Den Port (Standard 4455) und das Passwort findest du über „Verbindungsinformationen anzeigen“. Trage Host (meist 127.0.0.1), Port und Passwort dann hier ein.",
     en: "In OBS open the “Tools” menu → “WebSocket Server Settings”. Enable “Enable WebSocket server”. You'll find the port (default 4455) and password via “Show Connect Info”. Then enter host (usually 127.0.0.1), port and password here."
   },
+  "obs-scenes-title": { de: "Szene & Quellen", en: "Scene & sources" },
   "label-obs-scene": { de: "Szenenname", en: "Scene name" },
   "label-obs-source": { de: "Quellenname Booster", en: "Source name booster" },
   "label-obs-collection-source": { de: "Quellenname Kartensammlung", en: "Source name card collection" },
@@ -449,7 +472,6 @@ const I18N = {
   "label-card-borders": { de: "Kartenrahmen anzeigen", en: "Show card borders" },
   "label-name-position": { de: "Position Einlöser-Name", en: "Redeemer name position" },
   "option-name-bottom": { de: "Unten", en: "Bottom" },
-  "option-name-middle": { de: "Mitte", en: "Middle" },
   "option-name-top": { de: "Oben", en: "Top" },
   "label-preview-card": { de: "Vorschaukarte", en: "Preview card" },
   "label-reveal-seconds": { de: "Karte sichtbar in Sekunden", en: "Card visible (seconds)" },
@@ -467,7 +489,7 @@ const I18N = {
   "label-showcase-reward-cost": { de: "Kosten", en: "Cost" },
   "label-showcase-cooldown": { de: "Globaler Cooldown (Sek.)", en: "Global cooldown (sec.)" },
   "label-showcase-bg-color": { de: "Hintergrundfarbe", en: "Background color" },
-  "label-showcase-seconds": { de: "Sekunden pro Booster", en: "Seconds per booster" },
+  "label-showcase-seconds": { de: "Sekunden pro Seite (Umblättern)", en: "Seconds per page (page-flip)" },
   "status-showcase-saving": { de: "Showcase-Belohnung wird gespeichert...", en: "Saving showcase reward..." },
   "notice-showcase-saved": { de: "Showcase-Belohnung gespeichert.", en: "Showcase reward saved." },
   "label-sound-open": { de: "Öffnen-Sound", en: "Open sound" },
@@ -752,7 +774,8 @@ function exportSelectedBooster() {
     .filter((card) => assigned.has(card.id))
     .map(({ boosterIds, ...portable }) => portable);
   const { rewardIds, customEvents, ...portableBooster } = booster;
-  downloadJson(exportFilename("booster", booster.title), { type: "streamercard-booster", version: 1, booster: portableBooster, cards });
+  const nameParts = [booster.title, booster.subtitle].filter((part) => typeof part === "string" && part.trim());
+  downloadJson(exportFilename("booster", nameParts.join("_")), { type: "streamercard-booster", version: 1, booster: portableBooster, cards });
   showNotice(t("notice-booster-exported"));
 }
 
@@ -781,7 +804,7 @@ async function importBoosterFromFile(file) {
     rewardNames: Array.isArray(source.rewardNames) ? source.rewardNames.filter((name) => typeof name === "string") : [],
     rewardIds: [],
     customEvents: [],
-    cardIds: (Array.isArray(source.cardIds) ? source.cardIds : []).map((id) => idMap.get(id)).filter(Boolean).slice(0, 9)
+    cardIds: (Array.isArray(source.cardIds) ? source.cardIds : []).map((id) => idMap.get(id)).filter(Boolean).slice(0, MAX_BOOSTER_CARDS)
   };
   settings.boosters.push(booster);
   selectedBoosterId = booster.id;
@@ -1373,6 +1396,21 @@ async function testObsConnection() {
   }
 }
 
+// OBS/Meld both cache the overlay page hard, often ignoring Cache-Control and even an explicit
+// "refresh cache" command (OBS) or a same-value property set (Meld, which may not re-navigate at
+// all if the url string is unchanged). The one thing that reliably defeats ANY cache, regardless
+// of how the browser source's engine behaves, is a URL that actually differs - so every source
+// URL configured here is tagged with the installed app version. Reopening this dialog after an
+// update always produces a brand-new URL, forcing a genuinely fresh load every time.
+async function sourceUrl(pathname) {
+  if (!appVersionInfo) {
+    try { appVersionInfo = await getVersion(); } catch { appVersionInfo = null; }
+  }
+  const url = new URL(currentOriginUrl(pathname));
+  if (appVersionInfo?.version) url.searchParams.set("v", appVersionInfo.version);
+  return url.toString();
+}
+
 async function setupObsOverlay() {
   setStatus("#obs-status", t("status-setting-up-obs"), "neutral");
   let ws;
@@ -1385,11 +1423,11 @@ async function setupObsOverlay() {
     const tradeSourceName = settings.tradeAnimation?.sourceName || "Streamer Card Tausch";
     const battleSourceName = settings.battleAnimation?.sourceName || "Streamer Card Kampf";
     const rankingSourceName = settings.ranking?.sourceName || "Streamer Card Ranking";
-    await applyObsBrowserSource(ws, sceneName, packSourceName, currentOriginUrl("/overlay.html"));
-    await applyObsBrowserSource(ws, sceneName, collectionSourceName, currentOriginUrl("/collection.html"));
-    await applyObsBrowserSource(ws, sceneName, tradeSourceName, currentOriginUrl("/trade.html"));
-    await applyObsBrowserSource(ws, sceneName, battleSourceName, currentOriginUrl("/battle.html"));
-    await applyObsBrowserSource(ws, sceneName, rankingSourceName, currentOriginUrl("/ranking.html"));
+    await applyObsBrowserSource(ws, sceneName, packSourceName, await sourceUrl("/overlay.html"));
+    await applyObsBrowserSource(ws, sceneName, collectionSourceName, await sourceUrl("/collection.html"));
+    await applyObsBrowserSource(ws, sceneName, tradeSourceName, await sourceUrl("/trade.html"));
+    await applyObsBrowserSource(ws, sceneName, battleSourceName, await sourceUrl("/battle.html"));
+    await applyObsBrowserSource(ws, sceneName, rankingSourceName, await sourceUrl("/ranking.html"));
 
     setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName} + ${tradeSourceName} + ${battleSourceName} + ${rankingSourceName}`, "ok");
     setPill("#obs-pill", t("pill-obs-connected"), true);
@@ -1411,7 +1449,10 @@ async function applyObsBrowserSource(ws, sceneName, sourceName, url) {
   }
   const inputs = await obsRequest(ws, "GetInputList");
   const exists = (inputs.inputs || []).some((input) => input.inputName === sourceName);
-  const inputSettings = { url, width: 1920, height: 1080, fps: 60, shutdown: false, restart_when_active: true, reroute_audio: false };
+  // reroute_audio = "Control audio via OBS" - must be on so sound effects (pack open/reveal
+  // etc.) get mixed through OBS's own audio pipeline instead of playing on the host's default
+  // output device, which OBS/the stream can't capture.
+  const inputSettings = { url, width: 1920, height: 1080, fps: 60, shutdown: false, restart_when_active: true, reroute_audio: true };
   if (!exists) {
     try {
       await obsRequest(ws, "CreateInput", { sceneName, inputName: sourceName, inputKind: "browser_source", inputSettings, sceneItemEnabled: true });
@@ -1437,6 +1478,146 @@ async function applyObsBrowserSource(ws, sceneName, sourceName, url) {
       boundsType: "OBS_BOUNDS_STRETCH", boundsWidth: 1920, boundsHeight: 1080
     }
   });
+  // OBS's embedded browser caches the overlay page hard regardless of Cache-Control - without
+  // this, every JS/CSS change requires the user to manually right-click the source in OBS and
+  // pick "Refresh cache of current page". PressInputPropertiesButton triggers that exact button
+  // remotely via obs-websocket, so clicking "erstellen/aktualisieren" here does it automatically.
+  // Non-fatal: older OBS/browser-source builds may not expose this property, don't fail the sync.
+  try {
+    await obsRequest(ws, "PressInputPropertiesButton", { inputName: sourceName, propertyName: "refreshnocache" });
+  } catch {
+    // ignored - the source was still created/updated correctly above
+  }
+}
+
+// ---- Meld Studio integration ----
+// Meld Studio exposes a Qt QWebChannel WebSocket API (default ws://127.0.0.1:13376) that can
+// only READ the current session and UPDATE existing scenes/sources - it has no "create scene"
+// or "create source" call. So unlike OBS, the user must create the scene and browser sources
+// once manually in Meld Studio; this just finds them by name and updates their URL, and
+// switches to the configured scene.
+
+function openMeldSocket(timeoutMs = 2800) {
+  return new Promise((resolve, reject) => {
+    const meld = settings.meld || {};
+    const ws = new WebSocket(`ws://${meld.host || "127.0.0.1"}:${meld.port || 13376}`);
+    const timer = setTimeout(() => {
+      try { ws.close(); } catch {}
+      reject(new Error("Timeout bei Meld Studio."));
+    }, timeoutMs);
+    ws.addEventListener("open", () => {
+      clearTimeout(timer);
+      resolve(ws);
+    });
+    ws.addEventListener("error", () => {
+      clearTimeout(timer);
+      reject(new Error("Meld Studio WebSocket nicht erreichbar."));
+    });
+  });
+}
+
+function connectMeld(timeoutMs = 4000) {
+  return new Promise((resolve, reject) => {
+    openMeldSocket().then((ws) => {
+      const transport = { send: (data) => ws.send(data) };
+      ws.addEventListener("message", (event) => transport.onmessage?.({ data: event.data }));
+      ws.addEventListener("close", () => reject(new Error("Meld Studio hat die Verbindung geschlossen.")));
+      const timer = setTimeout(() => reject(new Error("Meld Studio hat nicht rechtzeitig geantwortet.")), timeoutMs);
+      // eslint-disable-next-line no-undef
+      new QWebChannel(transport, (channel) => {
+        clearTimeout(timer);
+        if (!channel.objects.meld) {
+          reject(new Error("Meld Studio API-Objekt nicht gefunden."));
+          return;
+        }
+        resolve({ ws, meld: channel.objects.meld });
+      });
+    }).catch(reject);
+  });
+}
+
+function findMeldItem(meld, type, name) {
+  const items = meld.session?.items || {};
+  for (const id of Object.keys(items)) {
+    const item = items[id];
+    if (item?.type === type && item?.name === name) return { id, item };
+  }
+  return null;
+}
+
+let lastMeldConnected = null;
+
+async function testMeldConnection() {
+  setStatus("#meld-status", t("status-testing-meld"), "neutral");
+  let ws;
+  try {
+    const connection = await connectMeld();
+    ws = connection.ws;
+  } catch (error) {
+    setStatus("#meld-status", `${t("error-meld-not-connected")} ${error.message}`, "error");
+    setPill("#meld-pill", t("pill-meld-default"), false);
+    if (lastMeldConnected !== false) addLog("meld", "error", `Meld Studio Verbindung fehlgeschlagen: ${error.message}`);
+    lastMeldConnected = false;
+    try { ws?.close(); } catch {}
+    return;
+  }
+  setStatus("#meld-status", t("pill-meld-connected"), "ok");
+  setPill("#meld-pill", t("pill-meld-connected"), true);
+  if (lastMeldConnected !== true) addLog("meld", "info", "Meld Studio verbunden.");
+  lastMeldConnected = true;
+  try { ws?.close(); } catch {}
+  if (settings.meld?.enabled !== true) {
+    settings.meld ||= {};
+    settings.meld.enabled = true;
+    try {
+      await saveSettings(settings);
+    } catch (saveError) {
+      addLog("meld", "error", `Meld-Status "aktiviert" konnte nicht gespeichert werden: ${saveError.message}`);
+    }
+  }
+}
+
+async function setupMeldOverlay() {
+  setStatus("#meld-status", t("status-setting-up-meld"), "neutral");
+  let ws;
+  try {
+    await saveSettings(settings);
+    const connection = await connectMeld();
+    ws = connection.ws;
+    const meld = connection.meld;
+
+    const sceneName = settings.obs?.sceneName || "Streamer Card Overlay";
+    const sources = [
+      [settings.obs?.sourceName || "Streamer Card Widget", await sourceUrl("/overlay.html")],
+      [settings.showcase?.sourceName || "Streamer Card Sammlung", await sourceUrl("/collection.html")],
+      [settings.tradeAnimation?.sourceName || "Streamer Card Tausch", await sourceUrl("/trade.html")],
+      [settings.battleAnimation?.sourceName || "Streamer Card Kampf", await sourceUrl("/battle.html")],
+      [settings.ranking?.sourceName || "Streamer Card Ranking", await sourceUrl("/ranking.html")]
+    ];
+
+    const scene = findMeldItem(meld, "scene", sceneName);
+    if (!scene) throw new Error(`${t("error-meld-scene-missing")} "${sceneName}"`);
+
+    const updatedNames = [];
+    for (const [sourceName, url] of sources) {
+      const layer = findMeldItem(meld, "layer", sourceName);
+      if (!layer) throw new Error(`${t("error-meld-source-missing")} "${sourceName}"`);
+      meld.setProperty(layer.id, "url", url);
+      updatedNames.push(sourceName);
+    }
+    meld.showScene(scene.id);
+
+    setStatus("#meld-status", `${t("status-meld-updated")} ${sceneName} / ${updatedNames.join(" + ")}`, "ok");
+    setPill("#meld-pill", t("pill-meld-connected"), true);
+    settings.meld ||= {};
+    settings.meld.enabled = true;
+    await saveSettings(settings);
+    showNotice(t("notice-meld-scene-updated"));
+  } catch (error) {
+    setStatus("#meld-status", `${t("error-meld-setup-failed")} ${error.message}`, "error");
+  } finally {
+    try { ws?.close(); } catch {}
+  }
 }
 
 async function handleShowcaseSync() {
@@ -1634,7 +1815,8 @@ function renderBoosterList() {
   $("#booster-list").innerHTML = settings.boosters.map((booster) => `
     <button class="booster-list-item ${booster.id === selectedBoosterId ? "is-selected" : ""}" data-booster-id="${booster.id}" type="button">
       <span>${escapeHtml(booster.title)}</span>
-      <small>${(booster.cardIds || []).length}/9 ${t("unit-cards")}</small>
+      ${booster.subtitle ? `<span class="booster-list-subtitle">${escapeHtml(booster.subtitle)}</span>` : ""}
+      <small>${(booster.cardIds || []).length}/${MAX_BOOSTER_CARDS} ${t("unit-cards")}</small>
     </button>
   `).join("");
 }
@@ -1651,18 +1833,21 @@ function renderBoosterCards() {
   const booster = selectedBooster();
   const assigned = new Set(booster.cardIds || []);
   const owner = ownerBoosterByCardId();
-  $("#assigned-count").textContent = `${assigned.size}/9`;
-  $("#assigned-cards").innerHTML = settings.deck.cards.map((card) => {
-    const takenBy = owner.get(card.id);
-    const lockedByOther = takenBy && takenBy.id !== booster.id;
-    return `
-      <label class="assignment-tile${lockedByOther ? " is-locked" : ""}" ${lockedByOther ? `title="${escapeHtml(t("hint-card-taken"))} ${escapeHtml(takenBy.title || "")}"` : ""}>
-        <input type="checkbox" data-card-assignment="${card.id}" ${assigned.has(card.id) ? "checked" : ""} ${lockedByOther ? "disabled" : ""}>
+  $("#assigned-count").textContent = `${assigned.size}/${MAX_BOOSTER_CARDS}`;
+  // Cards already assigned to a different booster are hidden entirely rather than shown
+  // disabled - keeps the list short and focused on cards that could actually be picked here.
+  $("#assigned-cards").innerHTML = settings.deck.cards
+    .filter((card) => {
+      const takenBy = owner.get(card.id);
+      return !takenBy || takenBy.id === booster.id;
+    })
+    .map((card) => `
+      <label class="assignment-tile">
+        <input type="checkbox" data-card-assignment="${card.id}" ${assigned.has(card.id) ? "checked" : ""}>
         ${cardMarkup(card, { compact: true })}
         <span>${escapeHtml(card.title)}</span>
       </label>
-    `;
-  }).join("");
+    `).join("");
 }
 
 function renderBoosters() {
@@ -1728,7 +1913,7 @@ function bindBooster() {
     const card = settings.deck.cards.find((item) => item.id === cardId);
     const ids = new Set(booster.cardIds || []);
     if (event.target.checked) {
-      if (ids.size >= 9 && !ids.has(cardId)) {
+      if (ids.size >= MAX_BOOSTER_CARDS && !ids.has(cardId)) {
         event.target.checked = false;
         showNotice(t("warn-max-cards"), "warn");
         return;
@@ -1740,7 +1925,7 @@ function bindBooster() {
       ids.delete(cardId);
       if (card?.boosterIds) card.boosterIds = card.boosterIds.filter((id) => id !== booster.id);
     }
-    booster.cardIds = [...ids].slice(0, 9);
+    booster.cardIds = [...ids].slice(0, MAX_BOOSTER_CARDS);
     renderBoosters();
     renderOverview();
   });
@@ -2365,7 +2550,7 @@ function hydrateDesign() {
   updateSoundRow("battle");
   $("#show-collection").checked = settings.style.showCollection !== false;
   $("#card-borders").checked = settings.style.cardBorders !== false;
-  $("#name-position").value = ["bottom", "middle", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
+  $("#name-position").value = ["bottom", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
   for (const rarity of RARITIES) {
     const input = $(`#rarity-color-${rarity.id}`);
     if (input) input.value = settings.rarityColors?.[rarity.id] || DEFAULT_RARITY_COLORS[rarity.id];
@@ -2379,6 +2564,9 @@ function hydrateDesign() {
   $("#obs-host").value = settings.obs?.host || "127.0.0.1";
   $("#obs-port").value = settings.obs?.port || 4455;
   $("#obs-password").value = settings.obs?.password || "";
+  $("#meld-enabled").checked = settings.meld?.enabled === true;
+  $("#meld-host").value = settings.meld?.host || "127.0.0.1";
+  $("#meld-port").value = settings.meld?.port || 13376;
   $("#obs-scene-name").value = settings.obs?.sceneName || "Streamer Card Overlay";
   $("#obs-source-name").value = settings.obs?.sourceName || "Streamer Card Widget";
   $("#obs-collection-source-name").value = settings.showcase?.sourceName || "Streamer Card Sammlung";
@@ -2591,6 +2779,29 @@ function bindDesign() {
     const show = box.hidden;
     box.hidden = !show;
     toggle.textContent = show ? t("btn-obs-info-hide") : t("btn-obs-info");
+  });
+  // Meld Studio reuses the same scene/source name fields as OBS (settings.obs.sceneName,
+  // settings.obs.sourceName, settings.showcase.sourceName, etc.) - only host/port/enabled
+  // are Meld-specific, since a user picks one tool or the other for the same overlay setup.
+  const meldFields = {
+    "#meld-enabled": ["enabled", "checkbox"],
+    "#meld-host": ["host"],
+    "#meld-port": ["port", "number"]
+  };
+  for (const [selector, [field, type]] of Object.entries(meldFields)) {
+    $(selector).addEventListener("input", (event) => {
+      settings.meld ||= {};
+      settings.meld[field] = type === "checkbox" ? event.target.checked : type === "number" ? Number(event.target.value) : event.target.value;
+    });
+  }
+  $("#test-meld").addEventListener("click", testMeldConnection);
+  $("#setup-meld").addEventListener("click", setupMeldOverlay);
+  $("#meld-info-toggle").addEventListener("click", () => {
+    const box = $("#meld-info");
+    const toggle = $("#meld-info-toggle");
+    const show = box.hidden;
+    box.hidden = !show;
+    toggle.textContent = show ? t("btn-meld-info-hide") : t("btn-meld-info");
   });
   $("#sound-open").addEventListener("change", async (event) => {
     if (!event.target.files?.[0]) return;
@@ -2886,7 +3097,7 @@ function playSoundPreview(kind) {
 function bindGlobalActions() {
   $("#add-card").addEventListener("click", () => {
     const card = blankCard();
-    settings.deck.cards.push(card);
+    settings.deck.cards.unshift(card);
     selectedCardId = card.id;
     renderCards();
   });
@@ -3129,10 +3340,12 @@ async function init() {
     await refreshTwitchStatus();
     await refreshBotStatus();
     if (settings.obs?.enabled) testObsConnection();
+    if (settings.meld?.enabled) testMeldConnection();
     setInterval(refreshTwitchStatus, 20000);
     setInterval(refreshBotStatus, 20000);
     setInterval(() => {
       if (settings.obs?.enabled) testObsConnection();
+      if (settings.meld?.enabled) testMeldConnection();
     }, 20000);
     connectEventStream({
       queue: (data) => {

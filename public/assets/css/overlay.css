@@ -96,6 +96,45 @@ body {
   width: 238px;
 }
 
+/* Shows how many copies of this card the viewer had before the draw, then pops to the new
+   total once the card is revealed - top-right corner of the card, like a notification badge. */
+.draw-count-bubble {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  z-index: 8;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  color: #fff;
+  background: linear-gradient(135deg, var(--pack-accent, #ff78bb), #6a55ff);
+  box-shadow: 0 10px 20px rgba(36, 31, 51, .32);
+  font-weight: 900;
+  font-size: 16px;
+  opacity: 0;
+  transform: scale(.6);
+  transition: opacity .3s ease, transform .3s ease;
+}
+
+.phase-reveal .draw-count-bubble {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.draw-count-bubble.is-counting {
+  animation: draw-count-pop .42s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+@keyframes draw-count-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
 .pack-top,
 .pack-bottom {
   width: 324px;
@@ -217,29 +256,29 @@ body {
   transform: translateY(330px) scale(.82);
 }
 
-.collection-row {
+.rarity-summary {
   position: absolute;
-  right: 0;
-  bottom: 125px;
-  left: 0;
+  top: 50%;
+  right: 8px;
   z-index: 30;
   display: flex;
-  align-items: end;
-  justify-content: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
+  width: 176px;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(24px);
+  transform: translate(16px, -50%);
 }
 
-.phase-reveal .collection-row {
+.phase-reveal .rarity-summary {
   visibility: visible;
-  animation: row-in .5s ease .12s forwards;
+  animation: rarity-summary-in .5s ease .12s forwards;
 }
 
-.collection-label {
-  align-self: center;
-  max-width: 150px;
+.rarity-summary .collection-label {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-bottom: 2px;
   overflow: hidden;
   padding: 8px 13px;
   border-radius: 999px;
@@ -251,41 +290,35 @@ body {
   white-space: nowrap;
 }
 
-.collection-slot {
-  position: relative;
-  width: 58px;
+.rarity-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(36, 31, 51, .68);
+  box-shadow: 0 8px 16px rgba(36, 31, 51, .2);
 }
 
-.collection-slot .tcg-card {
-  width: 58px;
-  border-width: 3px;
-  border-radius: 8px;
-}
-
-.count-bubble {
-  position: absolute;
-  right: -8px;
-  top: -9px;
-  z-index: 4;
-  min-width: 26px;
-  height: 22px;
-  padding: 2px 6px;
-  border: 2px solid #fff;
-  border-radius: 999px;
+.rarity-summary-count {
+  min-width: 40px;
   color: #fff;
-  background: var(--accent);
-  box-shadow: 0 8px 16px rgba(36, 31, 51, .24);
-  font-size: 12px;
   font-weight: 900;
-  line-height: 16px;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Bottom (default): below the collection row, with a clear gap to the collection. */
+.rarity-summary-label {
+  color: rgba(255, 255, 255, .88);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Bottom (default): tight (~5px) gap directly below the card. */
 .draw-copy {
   position: absolute;
   right: 0;
-  bottom: 48px;
+  bottom: 172px;
   left: 0;
   z-index: 32;
   display: flex;
@@ -316,21 +349,6 @@ body {
   transform: translateY(0);
 }
 
-/* Middle: centered in the gap between the card and the (lowered) collection row. */
-.opening-scene.name-middle .collection-row {
-  bottom: 92px;
-}
-
-.opening-scene.name-middle .draw-copy {
-  top: auto;
-  bottom: 212px;
-  transform: translateY(10px);
-}
-
-.opening-scene.name-middle.phase-enter .draw-copy {
-  transform: translateY(0);
-}
-
 /* Top: just above the pack/card, with only a small gap. */
 .opening-scene.name-top .draw-copy {
   top: 72px;
@@ -350,8 +368,8 @@ body {
   to { transform: translateX(-50%) translateY(0) rotate(0deg); }
 }
 
-@keyframes row-in {
-  to { opacity: 1; transform: translateY(0); }
+@keyframes rarity-summary-in {
+  to { opacity: 1; transform: translate(0, -50%); }
 }
 
 @keyframes scene-out {
@@ -371,8 +389,8 @@ body {
     scale: .84;
   }
 
-  .collection-slot,
-  .collection-slot .tcg-card {
-    width: 42px;
+  .rarity-summary {
+    width: 140px;
+    right: 4px;
   }
 }

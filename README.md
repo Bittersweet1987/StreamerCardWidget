@@ -110,8 +110,27 @@ Die App spricht direkt mit dem **OBS WebSocket** (Standard-Port `4455`).
 1. In OBS: **Werkzeuge → WebSocket-Servereinstellungen** → *WebSocket-Server aktivieren*.
    Port und Passwort findest du dort unter *Verbindungsinformationen anzeigen*.
    (In der App gibt es bei **Verbindung → OBS** denselben Hinweis per „Hilfe anzeigen".)
-2. Host (meist `127.0.0.1`), Port und Passwort in **Verbindung → OBS** eintragen.
-3. Auf **OBS Szene aktualisieren** klicken – die App legt Szene und Browserquelle automatisch an.
+2. Host (meist `127.0.0.1`), Port und Passwort in **Verbindung → OBS → WebSocket** eintragen.
+3. Szenen- und Quellennamen im Abschnitt **Verbindung → OBS → Szene & Quellen** festlegen und auf
+   **OBS Szene / Quellen erstellen / aktualisieren** klicken – die App legt Szene und
+   Browserquellen automatisch an bzw. aktualisiert sie.
+
+---
+
+## Meld Studio einrichten
+
+Alternativ zu OBS lässt sich die App auch mit **Meld Studio** verbinden (Standard-Port `13376`).
+Meld Studios API kann Szenen und Quellen anders als OBS **nicht automatisch erstellen** – sie
+müssen einmalig manuell in Meld Studio angelegt werden; die App aktualisiert danach nur noch
+deren Browser-URL und wechselt zur passenden Szene.
+
+1. In Meld Studio: **Einstellungen → Erweitert** → WebSocket-Server aktivieren (Standard-Port `13376`).
+2. In Meld Studio manuell eine Szene sowie je eine Browser-Quelle pro Animation anlegen – mit
+   genau den Namen, die auch im Abschnitt **Verbindung → OBS → Szene & Quellen** eingetragen sind
+   (diese Namen gelten für OBS *und* Meld Studio gemeinsam).
+3. Host und Port in **Verbindung → Meld Studio** eintragen, mit **Meld testen** die Verbindung prüfen.
+4. Auf **Meld Szene / Quellen aktualisieren** klicken – die App trägt bei den vorhandenen
+   Meld-Quellen die richtige Browser-URL ein und wechselt zur konfigurierten Szene.
 
 ---
 
@@ -126,8 +145,8 @@ Ein **Booster** ist ein Karten-Pack mit einer eigenen Kanalpunkte-Belohnung.
    - **Akzentfarbe** – Farbe des Packs.
    - **Score (Gewichtung)** – wie häufig dieser Booster gezogen wird, wenn die Belohnung
      mehreren Boostern zugeordnet ist (höher = häufiger).
-3. **Karten zuordnen**: In der Booster-Ansicht die gewünschten Karten anhaken (max. **9** pro Booster).
-   Bereits einem anderen Booster zugeordnete Karten sind ausgegraut – jede Karte gehört zu genau einem Booster.
+3. **Karten zuordnen**: In der Booster-Ansicht die gewünschten Karten anhaken (max. **100** pro Booster).
+   Bereits einem anderen Booster zugeordnete Karten werden ausgeblendet – jede Karte gehört zu genau einem Booster.
 4. Speichern nicht vergessen (Button **Speichern** oben rechts).
 
 ### Booster exportieren & importieren

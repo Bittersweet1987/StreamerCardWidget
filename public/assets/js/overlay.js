@@ -1,5 +1,5 @@
 import { addLog, completeQueueItem, connectEventStream, getCollections, getSettings, persistCollectionSnapshot } from "./api.js";
-import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, weightedBoosterPick, weightedPick } from "./render.js";
+import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES, weightedBoosterPick, weightedPick } from "./render.js";
 
 const stage = document.querySelector("#stage");
 const status = document.querySelector("#status");
@@ -117,22 +117,26 @@ function collectionCounts(collection, user, login) {
   return userData.cards || {};
 }
 
-function createCollectionRow(booster, collection, user, login) {
+function createRaritySummary(booster, collection, user, login) {
   if (settings.style?.showCollection === false) return "";
-  const cards = cardsForBooster(settings, booster).slice(0, 9);
+  const cards = cardsForBooster(settings, booster);
   const counts = collectionCounts(collection, user, login);
+  const rows = RARITIES.map((rarity) => {
+    const rarityCards = cards.filter((card) => (card.rarity || "common") === rarity.id);
+    if (!rarityCards.length) return null;
+    const owned = rarityCards.filter((card) => Number(counts[card.id] || 0) > 0).length;
+    return { label: rarity.label, owned, total: rarityCards.length };
+  }).filter(Boolean);
+  if (!rows.length) return "";
   return `
-    <div class="collection-row">
+    <div class="rarity-summary">
       <span class="collection-label">${overlayText("collectionLabel", settings.language)}</span>
-      ${cards.map((card) => {
-        const count = Number(counts[card.id] || 0);
-        return `
-          <div class="collection-slot ${count > 0 ? "is-owned" : "is-missing"}">
-            ${cardMarkup(card, { compact: true, hidden: count <= 0 })}
-            ${count > 0 ? `<span class="count-bubble">x${count}</span>` : ""}
-          </div>
-        `;
-      }).join("")}
+      ${rows.map((row) => `
+        <div class="rarity-summary-row">
+          <span class="rarity-summary-count">${row.owned}/${row.total}</span>
+          <span class="rarity-summary-label">${escapeForOverlay(row.label)}</span>
+        </div>
+      `).join("")}
     </div>
   `;
 }
@@ -189,24 +193,29 @@ async function runOpening(request = {}) {
   const user = request.user || request.displayName || "Viewer";
   const login = request.userLogin || request.login || user;
   const collection = await readCollection(booster);
+  const countBefore = Number(collectionCounts(collection, user, login)[card.id] || 0);
   incrementCollection(collection, user, login, card.id);
+  const countAfter = countBefore + 1;
   if (settings.behavior?.persistCollections !== false) {
     await persistCollectionSnapshot(collection, booster.id, "");
   }
   // The server now logs the draw (it picks the card), so no duplicate log entry from here.
 
   const scene = document.createElement("section");
-  const namePos = ["bottom", "middle", "top"].includes(settings.style?.namePosition) ? settings.style.namePosition : "bottom";
+  const namePos = ["bottom", "top"].includes(settings.style?.namePosition) ? settings.style.namePosition : "bottom";
   scene.className = `opening-scene name-${namePos}`;
   scene.innerHTML = `
     <div class="draw-copy"><span>${escapeForOverlay(user)}</span></div>
     <div class="opening-rig" style="--pack-accent:${booster.accent || "#ff78bb"}">
       <div class="pack-shadow" aria-hidden="true"></div>
-      <div class="card-wrap">${cardMarkup(card)}</div>
+      <div class="card-wrap">
+        ${cardMarkup(card)}
+        <div class="draw-count-bubble"><span class="draw-count-value">${countBefore}</span></div>
+      </div>
       <div class="pack-bottom">${packFace(booster)}</div>
       <div class="pack-top">${packFace(booster)}</div>
     </div>
-    ${createCollectionRow(booster, collection, user, login)}
+    ${createRaritySummary(booster, collection, user, login)}
   `;
 
   stage.append(scene);
@@ -229,7 +238,17 @@ async function runOpening(request = {}) {
   playSound("reveal");
   await delay(2450);
   scene.classList.add("phase-reveal");
-  await delay(Number(settings.behavior?.revealSeconds || 3.2) * 1000);
+  // A beat after the card is fully visible, count up from the pre-draw total to the new one.
+  await delay(350);
+  const bubble = scene.querySelector(".draw-count-bubble");
+  const bubbleValue = scene.querySelector(".draw-count-value");
+  if (bubble && bubbleValue && countAfter !== countBefore) {
+    bubble.classList.add("is-counting");
+    bubbleValue.textContent = countAfter;
+    await delay(420);
+    bubble.classList.remove("is-counting");
+  }
+  await delay(Math.max(0, Number(settings.behavior?.revealSeconds || 3.2) * 1000 - 350 - 420));
   scene.classList.add("phase-exit");
   await delay(700);
   scene.remove();

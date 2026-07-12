@@ -416,6 +416,8 @@ button:disabled {
 }
 
 .obs-panel,
+.obs-scenes-panel,
+.meld-panel,
 .sound-panel,
 .timing-panel {
   margin-top: 18px;
@@ -875,6 +877,7 @@ body[data-theme="dark"] .showcase-entry {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: fit-content;
   min-height: 40px;
   color: #3f3950;
 }
@@ -950,6 +953,11 @@ body[data-theme="dark"] .showcase-entry {
   font-weight: 900;
 }
 
+.booster-list-item .booster-list-subtitle {
+  color: #746f82;
+  font-weight: 600;
+}
+
 .booster-list-item small {
   color: #746f82;
   font-weight: 800;
@@ -973,6 +981,9 @@ body[data-theme="dark"] .showcase-entry {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 10px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 #user-search,
@@ -1196,16 +1207,6 @@ body[data-theme="dark"] .showcase-entry {
   white-space: normal;
 }
 
-.assignment-tile.is-locked {
-  opacity: .45;
-  cursor: not-allowed;
-  background: #f2eef8;
-}
-
-.assignment-tile.is-locked .tcg-card {
-  filter: grayscale(1);
-}
-
 .file-field {
   min-height: 94px;
   padding: 12px;
@@ -1418,7 +1419,8 @@ body[data-theme="dark"] .eyebrow,
 body[data-theme="dark"] .hint,
 body[data-theme="dark"] label,
 body[data-theme="dark"] .metrics span,
-body[data-theme="dark"] .booster-list-item small {
+body[data-theme="dark"] .booster-list-item small,
+body[data-theme="dark"] .booster-list-item .booster-list-subtitle {
   color: #bdb2d2;
 }
 

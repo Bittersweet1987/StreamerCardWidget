@@ -2,6 +2,9 @@ export function clamp(value, min, max) {
   return Math.min(max, Math.max(min, Number(value) || 0));
 }
 
+// Safety cap against runaway/corrupt data, not a design limit — raise here if ever needed.
+export const MAX_BOOSTER_CARDS = 100;
+
 export function linesToArray(value) {
   return String(value || "")
     .split(/\r?\n/)
@@ -130,7 +133,7 @@ export function normalizeSettings(settings) {
   settings.style.customTheme.sheen = clamp(settings.style.customTheme.sheen ?? 30, 0, 70);
   settings.style.customTheme.artColor ||= "#ffffff";
   settings.style.customTheme.artOpacity = clamp(settings.style.customTheme.artOpacity ?? 45, 0, 100);
-  settings.style.namePosition = ["bottom", "middle", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
+  settings.style.namePosition = ["bottom", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
   settings.sounds ||= {};
   settings.sounds.open ||= "";
   settings.sounds.reveal ||= "";
@@ -192,6 +195,11 @@ export function normalizeSettings(settings) {
   };
   settings.obs.sceneName ||= "Streamer Card Overlay";
   settings.obs.sourceName ||= "Streamer Card Widget";
+  settings.meld ||= {
+    enabled: false,
+    host: "127.0.0.1",
+    port: 13376
+  };
 
   // Collection showcase: a dedicated channel-point reward that, when redeemed, slides through
   // every active booster showing the redeemer's owned + still-unknown cards in its own OBS source.
@@ -273,7 +281,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.trade.cardNotFoundMessage ||= "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
   settings.chatCommands.trade.offerNotOwnedMessage ||= "@userName, du besitzt die Karte [Kartenname] nicht und kannst sie daher nicht anbieten.";
   settings.chatCommands.trade.userNotFoundMessage ||= "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
-  settings.chatCommands.trade.offerMessage ||= "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Nimm mit [BefehlAnnehmen] an oder lehne mit [BefehlAblehnen] ab.";
+  settings.chatCommands.trade.offerMessage ||= "@userNameB, dir wird ein Tausch von @userNameA der Karte [Kartenname] aus der Sammlung [Boostername] angeboten. Nimm mit [BefehlAnnehmen] \"Kartenname\" an oder lehne mit [BefehlAblehnen] ab.";
   settings.chatCommands.trade.timeoutMessage ||= "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Tauschanfrage beendet.";
   settings.chatCommands.trade.cooldownMessage ||= "@userName, leider musst du mit der Tauschanfrage noch bis [Uhrzeit] warten, da der Cooldown von [Cooldownwert] [Einheit] noch aktiv ist.";
   settings.chatCommands.trade.limitMessage ||= "@userName, leider sind deine Tauschanfragen aktuell aufgebraucht. Bitte warte bis [Uhrzeit] Uhr.";
@@ -348,7 +356,7 @@ export function normalizeSettings(settings) {
       rewardIds: settings.trigger?.rewardIds || [],
       customEvents: settings.trigger?.customEvents || [],
       score: 100,
-      cardIds: settings.deck.cards.slice(0, 9).map((card) => card.id)
+      cardIds: settings.deck.cards.slice(0, MAX_BOOSTER_CARDS).map((card) => card.id)
     }];
   }
 
@@ -363,7 +371,10 @@ export function normalizeSettings(settings) {
     booster.rewardCost = Number(booster.rewardCost || 1);
     booster.rewardPrompt ||= "";
     booster.score = Number(booster.score ?? 100);
-    booster.cardIds = (booster.cardIds || []).slice(0, 9);
+    if (Array.isArray(booster.cardIds) && booster.cardIds.length > MAX_BOOSTER_CARDS) {
+      console.warn(`Booster "${booster.title}" hatte mehr als ${MAX_BOOSTER_CARDS} Karten zugewiesen — wurde beim Laden gekuerzt.`);
+    }
+    booster.cardIds = (booster.cardIds || []).slice(0, MAX_BOOSTER_CARDS);
   }
 
   for (const card of settings.deck.cards) {
@@ -381,7 +392,7 @@ export function normalizeSettings(settings) {
 }
 
 export function cardsForBooster(settings, booster) {
-  const ids = new Set((booster?.cardIds || []).slice(0, 9));
+  const ids = new Set((booster?.cardIds || []).slice(0, MAX_BOOSTER_CARDS));
   return (settings.deck?.cards || []).filter((card) => ids.has(card.id));
 }
 

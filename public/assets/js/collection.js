@@ -1,5 +1,5 @@
 import { completeQueueItem, connectEventStream, getCollections, getSettings } from "./api.js";
-import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText } from "./render.js";
+import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES } from "./render.js";
 
 const stage = document.querySelector("#showcase-stage");
 const status = document.querySelector("#status");
@@ -33,9 +33,33 @@ function countsFor(collection, user, login) {
   return data.cards || {};
 }
 
-function panelMarkup(booster, counts, user) {
-  const cards = cardsForBooster(settings, booster).slice(0, 9);
-  const owned = cards.filter((card) => Number(counts[card.id] || 0) > 0).length;
+function sortByRarity(cards) {
+  const rank = new Map(RARITIES.map((rarity, index) => [rarity.id, index]));
+  return [...cards].sort((a, b) => (rank.get(a.rarity) ?? RARITIES.length) - (rank.get(b.rarity) ?? RARITIES.length));
+}
+
+// The overlay can't be scrolled (it's a passive OBS/Meld source, not interactive), so a booster
+// with more cards than fit on one page "flips" through pages instead - like turning a book page.
+const CARDS_PER_PAGE = 9;
+
+function chunk(array, size) {
+  const pages = [];
+  for (let i = 0; i < array.length; i += size) pages.push(array.slice(i, i + size));
+  return pages.length ? pages : [[]];
+}
+
+function headerMarkup(booster, owned, total, user, pageIndex, pageCount) {
+  const pageSuffix = pageCount > 1 ? ` · ${pageIndex + 1}/${pageCount}` : "";
+  return `
+    <header class="showcase-head">
+      <span class="showcase-user">${escapeForOverlay(user)}</span>
+      <strong class="showcase-booster-title">${escapeForOverlay(booster.title || "Booster")}</strong>
+      <span class="showcase-progress">${owned} / ${total}${pageSuffix}</span>
+    </header>
+  `;
+}
+
+function gridMarkup(cards, counts) {
   const slots = cards.map((card) => {
     const count = Number(counts[card.id] || 0);
     return `
@@ -45,14 +69,10 @@ function panelMarkup(booster, counts, user) {
       </div>
     `;
   }).join("");
-  return `
-    <header class="showcase-head">
-      <span class="showcase-user">${escapeForOverlay(user)}</span>
-      <strong class="showcase-booster-title">${escapeForOverlay(booster.title || "Booster")}</strong>
-      <span class="showcase-progress">${owned} / ${cards.length}</span>
-    </header>
-    <div class="showcase-grid">${slots}</div>
-  `;
+  // Pad a partial last page with empty slots so the grid keeps a stable 3x3 size across
+  // page-flips instead of shrinking/jumping when the final page has fewer cards.
+  const padding = Math.max(0, CARDS_PER_PAGE - cards.length);
+  return slots + `<div class="showcase-slot showcase-slot-empty"></div>`.repeat(padding);
 }
 
 async function runShowcase(request = {}) {
@@ -61,20 +81,41 @@ async function runShowcase(request = {}) {
   const user = request.user || request.displayName || "Viewer";
   const login = request.userLogin || request.login || user;
   const collections = await getCollections();
-  const seconds = Math.max(2, Number(settings.showcase?.secondsPerBooster || 12));
+  // Seconds per page (not per booster) - a booster with several pages simply takes
+  // proportionally longer in total, one page-flip at a time.
+  const secondsPerPage = Math.max(2, Number(settings.showcase?.secondsPerBooster || 12));
 
   for (let i = 0; i < boosters.length; i++) {
     const booster = boosters[i];
     const counts = countsFor(collections?.[booster.id] || {}, user, login);
+    const cards = sortByRarity(cardsForBooster(settings, booster));
+    const owned = cards.filter((card) => Number(counts[card.id] || 0) > 0).length;
+    const pages = chunk(cards, CARDS_PER_PAGE);
+
     const panel = document.createElement("section");
     panel.className = "showcase-panel";
     panel.style.setProperty("--pack-accent", booster.accent || "#ff78bb");
-    panel.innerHTML = panelMarkup(booster, counts, user);
+    panel.innerHTML = `${headerMarkup(booster, owned, cards.length, user, 0, pages.length)}<div class="showcase-grid">${gridMarkup(pages[0], counts)}</div>`;
     stage.append(panel);
 
     // Slide in from the right.
     requestAnimationFrame(() => panel.classList.add("is-in"));
-    await delay(seconds * 1000);
+
+    for (let p = 0; p < pages.length; p++) {
+      if (p > 0) {
+        const grid = panel.querySelector(".showcase-grid");
+        const progress = panel.querySelector(".showcase-progress");
+        grid.classList.add("is-flipping");
+        await delay(260);
+        grid.innerHTML = gridMarkup(pages[p], counts);
+        if (progress) progress.textContent = `${owned} / ${cards.length} · ${p + 1}/${pages.length}`;
+        // Let the browser paint the new content while still faded out, otherwise the
+        // fade-back-in transition below can get coalesced away with the class add above.
+        await new Promise(requestAnimationFrame);
+        grid.classList.remove("is-flipping");
+      }
+      await delay(secondsPerPage * 1000);
+    }
 
     // Slide out to the left (the next panel slides in over this same gap).
     panel.classList.remove("is-in");

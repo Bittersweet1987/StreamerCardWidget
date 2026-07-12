@@ -1,4 +1,4 @@
-import { addLog, connectEventStream, getSettings } from "./api.js";
+import { addLog, completeQueueItem, connectEventStream, getSettings } from "./api.js";
 import { applyTheme, cardMarkup, normalizeSettings, rarityColor } from "./render.js";
 
 const stage = document.querySelector("#battle-stage");
@@ -83,8 +83,14 @@ function playBattleSound(kind) {
 }
 
 function enqueueBattle(event = {}) {
-  // A test event always previews (so it can be checked before enabling); real events obey the toggle.
-  if (event.test !== true && settings?.battleAnimation?.enabled !== true) return;
+  // A test event always previews (so it can be checked before enabling); real events obey the
+  // toggle. Real events are gated by the server-side queue (see runQueue's finally below) - if
+  // the animation is off, the event is dropped here but must still be acked immediately,
+  // otherwise the queue would sit out the full timeout waiting for an ack that never comes.
+  if (event.test !== true && settings?.battleAnimation?.enabled !== true) {
+    completeQueueItem(event.eventId);
+    return;
+  }
   queue.push(event);
   if (!running) runQueue();
 }
@@ -92,7 +98,12 @@ function enqueueBattle(event = {}) {
 async function runQueue() {
   running = true;
   while (queue.length) {
-    await playBattle(queue.shift());
+    const event = queue.shift();
+    try {
+      await playBattle(event);
+    } finally {
+      completeQueueItem(event.eventId);
+    }
     await delay(400);
   }
   running = false;

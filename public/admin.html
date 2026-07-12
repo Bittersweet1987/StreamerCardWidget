@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260713-exportimport1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260714-nomiddle1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -109,6 +109,7 @@
         <div class="sidebar-status">
           <div class="connection-pill" id="twitch-pill" data-i18n="pill-twitch-default">Twitch nicht verbunden</div>
           <div class="connection-pill" id="obs-pill" data-i18n="pill-obs-default">OBS nicht verbunden</div>
+          <div class="connection-pill" id="meld-pill" data-i18n="pill-meld-default">Meld nicht verbunden</div>
         </div>
       </aside>
 
@@ -234,6 +235,20 @@
                 <label>Host<input id="obs-host" type="text"></label>
                 <label>Port<input id="obs-port" type="number" min="1"></label>
                 <label data-i18n="label-obs-password">Passwort<input id="obs-password" type="password"></label>
+              </div>
+              <div class="button-row">
+                <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
+              </div>
+            </section>
+
+            <section class="tool-panel obs-scenes-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">OBS</p>
+                  <h2 data-i18n="obs-scenes-title">Szene &amp; Quellen</h2>
+                </div>
+              </div>
+              <div class="form-grid">
                 <label class="full-row" data-i18n="label-obs-scene">Szenenname<input id="obs-scene-name" type="text"></label>
                 <label class="full-row" data-i18n="label-obs-source">Quellenname Booster<input id="obs-source-name" type="text"></label>
                 <label class="full-row" data-i18n="label-obs-collection-source">Quellenname Kartensammlung<input id="obs-collection-source-name" type="text"></label>
@@ -242,8 +257,33 @@
                 <label class="full-row" data-i18n="label-obs-ranking-source">Quellenname Ranking<input id="obs-ranking-source-name" type="text"></label>
               </div>
               <div class="button-row">
-                <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
                 <button class="primary-button" id="setup-obs" type="button" data-i18n="btn-setup-obs">OBS Szene / Quellen erstellen / aktualisieren</button>
+              </div>
+            </section>
+
+            <section class="tool-panel meld-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Meld Studio</p>
+                  <h2>WebSocket</h2>
+                </div>
+                <button class="ghost-button" id="meld-info-toggle" type="button" data-i18n="btn-meld-info">Hilfe anzeigen</button>
+              </div>
+              <div class="info-box" id="meld-info" hidden>
+                <p data-i18n="meld-info-text">Öffne in Meld Studio die Einstellungen → „Erweitert" und aktiviere den WebSocket-Server (Standard-Port 13376). Lege Szene und Quellen mit den Namen aus dem Abschnitt „Szene &amp; Quellen" oben einmalig manuell in Meld Studio an — diese Namen werden hier zum Zuordnen verwendet.</p>
+              </div>
+              <div class="status-line" id="meld-status" data-i18n="status-not-tested">Nicht getestet</div>
+              <label class="switch-row">
+                <input id="meld-enabled" type="checkbox">
+                <span data-i18n="label-meld-check">Meld Studio WebSocket Verbindung prüfen</span>
+              </label>
+              <div class="form-grid">
+                <label>Host<input id="meld-host" type="text"></label>
+                <label>Port<input id="meld-port" type="number" min="1"></label>
+              </div>
+              <div class="button-row">
+                <button class="secondary-button" id="test-meld" type="button" data-i18n="btn-test-meld">Meld testen</button>
+                <button class="primary-button" id="setup-meld" type="button" data-i18n="btn-setup-meld">Meld Szene / Quellen aktualisieren</button>
               </div>
             </section>
           </div>
@@ -328,7 +368,7 @@
                 <label data-i18n="label-showcase-reward-cost">Kosten<input id="showcase-reward-cost" type="number" min="1" step="1"></label>
                 <label data-i18n="label-showcase-cooldown">Globaler Cooldown (Sek.)<input id="showcase-cooldown" type="number" min="0" step="1"></label>
                 <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="showcase-bg-color" type="color"></label>
-                <label data-i18n="label-showcase-seconds">Sekunden pro Booster<input id="showcase-seconds" type="number" min="2" step="1"></label>
+                <label data-i18n="label-showcase-seconds">Sekunden pro Seite (Umblättern)<input id="showcase-seconds" type="number" min="2" step="1"></label>
                 <label class="full-row" data-i18n="label-reward-prompt">Beschreibung<input id="showcase-prompt" type="text"></label>
               </div>
               <div class="button-row">
@@ -973,7 +1013,6 @@
             <div class="form-grid">
               <label data-i18n="label-name-position">Position Einlöser-Name<select id="name-position">
                 <option value="bottom" data-i18n="option-name-bottom">Unten</option>
-                <option value="middle" data-i18n="option-name-middle">Mitte</option>
                 <option value="top" data-i18n="option-name-top">Oben</option>
               </select></label>
             </div>
@@ -1389,6 +1428,7 @@
       </main>
     </div>
 
-    <script type="module" src="/assets/js/admin.js?v=20260713-exportimport1"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260714-nomiddle1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260714-nomiddle1"></script>
   </body>
 </html>

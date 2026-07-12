@@ -66,8 +66,17 @@
 .showcase-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   gap: 18px 22px;
   justify-items: center;
+  transition: opacity .26s ease, transform .26s ease;
+}
+
+/* Page-flip between a booster's card pages - the overlay can't be scrolled (no viewer input),
+   so more than one page's worth of cards cycle through in place instead. */
+.showcase-grid.is-flipping {
+  opacity: 0;
+  transform: perspective(900px) rotateY(-8deg) scale(.97);
 }
 
 .showcase-slot {
@@ -82,6 +91,12 @@
 
 .showcase-slot.is-missing {
   opacity: .92;
+}
+
+/* Invisible filler so a partial last page keeps the same 3x3 footprint as full pages. */
+.showcase-slot-empty {
+  width: 150px;
+  aspect-ratio: 5 / 7;
 }
 
 .count-bubble {
