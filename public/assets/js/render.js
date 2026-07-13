@@ -312,6 +312,10 @@ export function pickDefault(lang, entryKey) {
 
 export function normalizeSettings(settings) {
   settings.language = SUPPORTED_LANGUAGES.includes(settings.language) ? settings.language : "de";
+  // Random, stable per-install id for the anonymous community stats counter - unrelated to
+  // Twitch identity, just lets the stats server tell "this install's current card/booster
+  // count" apart from another install's without knowing who anyone is.
+  settings.statsInstallId ||= (crypto.randomUUID ? crypto.randomUUID() : `install-${Date.now()}-${Math.random()}`);
   // Was previously never defaulted: a settings.json missing this key (e.g. after a partial
   // save) crashed hydrateDesign() on the first line reading it, which silently aborted
   // hydration of everything after it (OBS, trade/battle animation, battle strength fields).

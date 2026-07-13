@@ -86,13 +86,38 @@ async function loadCommunityStats() {
   }
 }
 
-async function reportStatsEvent(type, id) {
+async function reportTwitchConnected(broadcasterId) {
+  if (!broadcasterId) return;
   try {
     await fetch(`${STATS_ENDPOINT}/event`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(id ? { type, id } : { type })
+      body: JSON.stringify({ type: "connect", id: await hashForStats(broadcasterId) })
     });
+  } catch {
+    // Anonymous, best-effort - never surface this to the user.
+  }
+}
+
+// Reports this install's CURRENT card/booster totals (not just newly-created ones), so the
+// aggregate stat is always accurate to "how many exist right now" - a repeated call from
+// autosave just overwrites the same per-install entry instead of double-counting, and it also
+// picks up cards/boosters that already existed before this feature shipped, on the next save.
+async function syncCommunityCounts() {
+  if (!settings?.statsInstallId) return;
+  try {
+    await fetch(`${STATS_ENDPOINT}/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        installId: settings.statsInstallId,
+        cards: settings.deck?.cards?.length || 0,
+        boosters: settings.boosters?.length || 0
+      })
+    });
+    if (settings.twitch?.broadcasterId) reportTwitchConnected(settings.twitch.broadcasterId);
+    statsLoaded = false;
+    loadCommunityStats();
   } catch {
     // Anonymous, best-effort - never surface this to the user.
   }
@@ -1208,13 +1233,6 @@ const I18N = {
   },
   "stats-eyebrow": { de: "Community", en: "Community", fr: "Communauté", es: "Comunidad", th: "ชุมชน" },
   "stats-title": { de: "Nutzung insgesamt", en: "Overall usage", fr: "Utilisation globale", es: "Uso general", th: "การใช้งานทั้งหมด" },
-  "stats-hint": {
-    de: "Anonyme Zählung über alle Installationen dieser App (nur ab Version 2.9.0, keine persönlichen Daten).",
-    en: "Anonymous count across every installation of this app (only from version 2.9.0 onward, no personal data).",
-    fr: "Comptage anonyme sur toutes les installations de cette application (uniquement à partir de la version 2.9.0, aucune donnée personnelle).",
-    es: "Recuento anónimo en todas las instalaciones de esta app (solo a partir de la versión 2.9.0, sin datos personales).",
-    th: "การนับแบบไม่ระบุตัวตนจากการติดตั้งแอปนี้ทั้งหมด (เฉพาะตั้งแต่เวอร์ชัน 2.9.0 เป็นต้นไป ไม่มีข้อมูลส่วนบุคคล)"
-  },
   "stats-users-label": { de: "Nutzer der App", en: "App users", fr: "Utilisateurs de l'application", es: "Usuarios de la app", th: "ผู้ใช้แอป" },
   "stats-boosters-label": { de: "Bisher erstellte Booster", en: "Boosters created so far", fr: "Boosters créés jusqu'ici", es: "Sobres creados hasta ahora", th: "บูสเตอร์ที่สร้างแล้ว" },
   "stats-cards-label": { de: "Bisher erstellte Karten", en: "Cards created so far", fr: "Cartes créées jusqu'ici", es: "Cartas creadas hasta ahora", th: "การ์ดที่สร้างแล้ว" },
@@ -2624,6 +2642,7 @@ function scheduleAutoSave() {
   autoSaveTimer = setTimeout(async () => {
     try {
       await saveSettings(settings);
+      syncCommunityCounts();
     } catch (error) {
       showNotice(error.message, "error");
     }
@@ -3190,8 +3209,7 @@ function pollTwitchStatusAfterLogin() {
         clearInterval(twitchPollTimer);
         await refreshTwitchStatus();
         showNotice(t("notice-twitch-connected"));
-        const broadcasterId = result.status.broadcasterId;
-        if (broadcasterId) reportStatsEvent("connect", await hashForStats(broadcasterId));
+        reportTwitchConnected(result.status.broadcasterId);
         return;
       }
     } catch {
@@ -3867,7 +3885,6 @@ function bindBooster() {
     selectedBoosterId = booster.id;
     hydrateBooster();
     renderOverview();
-    reportStatsEvent("booster");
   });
   $("#export-booster").addEventListener("click", exportSelectedBooster);
   $("#import-booster").addEventListener("change", async (event) => {
@@ -5273,7 +5290,6 @@ function bindGlobalActions() {
     settings.deck.cards.unshift(card);
     selectedCardId = card.id;
     renderCards();
-    reportStatsEvent("card");
   });
   $("#import-card").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
@@ -5282,6 +5298,7 @@ function bindGlobalActions() {
   });
   $("#save-settings").addEventListener("click", async () => {
     await saveSettings(settings);
+    syncCommunityCounts();
     showNotice(t("notice-saved"));
   });
   $("#test-random").addEventListener("click", () => {
