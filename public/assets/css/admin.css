@@ -691,6 +691,43 @@ body[data-theme="dark"] input[type="range"]::-moz-range-track {
   background: #4d415f;
 }
 
+.stats-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stats-tile {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid #e4deec;
+  border-radius: 10px;
+  background: #f7f4fc;
+  text-align: center;
+}
+
+.stats-tile strong {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #241f33;
+}
+
+.stats-tile span {
+  font-size: .78rem;
+  font-weight: 800;
+  color: #746f82;
+}
+
+body[data-theme="dark"] .stats-tile {
+  background: #211b2d;
+  border-color: #3a314d;
+}
+
+body[data-theme="dark"] .stats-tile strong {
+  color: #fff;
+}
+
 .pattern-block {
   display: grid;
   gap: 14px;

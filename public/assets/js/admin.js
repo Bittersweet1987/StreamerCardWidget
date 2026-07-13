@@ -60,6 +60,43 @@ let autoSaveTimer;
 let autoSaveReady = false;
 let collections = {};
 const DEFAULT_TWITCH_CLIENT_ID = "klgyxuiixy0mfo7ze7goubj5j16g7u";
+// Anonymous usage counter (Cloudflare Worker + KV, see tools/stats-worker.js). Best-effort only -
+// failures here must never affect the app itself, so every call swallows its own errors.
+const STATS_ENDPOINT = "https://streamercard-stats.schirmer-marco.workers.dev";
+
+async function hashForStats(text) {
+  const data = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+let statsLoaded = false;
+async function loadCommunityStats() {
+  if (statsLoaded) return;
+  try {
+    const res = await fetch(`${STATS_ENDPOINT}/stats`);
+    if (!res.ok) throw new Error(String(res.status));
+    const data = await res.json();
+    if ($("#stats-users")) $("#stats-users").textContent = data.users ?? "–";
+    if ($("#stats-boosters")) $("#stats-boosters").textContent = data.boosters ?? "–";
+    if ($("#stats-cards")) $("#stats-cards").textContent = data.cards ?? "–";
+    statsLoaded = true;
+  } catch {
+    // Best-effort - tiles just keep showing the "–" placeholder.
+  }
+}
+
+async function reportStatsEvent(type, id) {
+  try {
+    await fetch(`${STATS_ENDPOINT}/event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(id ? { type, id } : { type })
+    });
+  } catch {
+    // Anonymous, best-effort - never surface this to the user.
+  }
+}
 const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions user:read:chat user:write:chat";
 const TWITCH_BOT_SCOPES = "user:read:chat user:write:chat";
 
@@ -1169,6 +1206,18 @@ const I18N = {
     es: "El overlay debe estar abierto en OBS o un navegador para ver la animación.",
     th: "โอเวอร์เลย์ต้องเปิดอยู่ใน OBS หรือเบราว์เซอร์เพื่อดูแอนิเมชัน"
   },
+  "stats-eyebrow": { de: "Community", en: "Community", fr: "Communauté", es: "Comunidad", th: "ชุมชน" },
+  "stats-title": { de: "Nutzung insgesamt", en: "Overall usage", fr: "Utilisation globale", es: "Uso general", th: "การใช้งานทั้งหมด" },
+  "stats-hint": {
+    de: "Anonyme Zählung über alle Installationen dieser App (nur ab Version 2.9.0, keine persönlichen Daten).",
+    en: "Anonymous count across every installation of this app (only from version 2.9.0 onward, no personal data).",
+    fr: "Comptage anonyme sur toutes les installations de cette application (uniquement à partir de la version 2.9.0, aucune donnée personnelle).",
+    es: "Recuento anónimo en todas las instalaciones de esta app (solo a partir de la versión 2.9.0, sin datos personales).",
+    th: "การนับแบบไม่ระบุตัวตนจากการติดตั้งแอปนี้ทั้งหมด (เฉพาะตั้งแต่เวอร์ชัน 2.9.0 เป็นต้นไป ไม่มีข้อมูลส่วนบุคคล)"
+  },
+  "stats-users-label": { de: "Nutzer der App", en: "App users", fr: "Utilisateurs de l'application", es: "Usuarios de la app", th: "ผู้ใช้แอป" },
+  "stats-boosters-label": { de: "Bisher erstellte Booster", en: "Boosters created so far", fr: "Boosters créés jusqu'ici", es: "Sobres creados hasta ahora", th: "บูสเตอร์ที่สร้างแล้ว" },
+  "stats-cards-label": { de: "Bisher erstellte Karten", en: "Cards created so far", fr: "Cartes créées jusqu'ici", es: "Cartas creadas hasta ahora", th: "การ์ดที่สร้างแล้ว" },
   "ov-template-eyebrow": { de: "Vorlage", en: "Template",
     fr: "Modèle",
     es: "Plantilla",
@@ -3141,6 +3190,8 @@ function pollTwitchStatusAfterLogin() {
         clearInterval(twitchPollTimer);
         await refreshTwitchStatus();
         showNotice(t("notice-twitch-connected"));
+        const broadcasterId = result.status.broadcasterId;
+        if (broadcasterId) reportStatsEvent("connect", await hashForStats(broadcasterId));
         return;
       }
     } catch {
@@ -3816,6 +3867,7 @@ function bindBooster() {
     selectedBoosterId = booster.id;
     hydrateBooster();
     renderOverview();
+    reportStatsEvent("booster");
   });
   $("#export-booster").addEventListener("click", exportSelectedBooster);
   $("#import-booster").addEventListener("change", async (event) => {
@@ -5221,6 +5273,7 @@ function bindGlobalActions() {
     settings.deck.cards.unshift(card);
     selectedCardId = card.id;
     renderCards();
+    reportStatsEvent("card");
   });
   $("#import-card").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
@@ -5454,6 +5507,7 @@ async function init() {
     renderUsers();
     await hydrateUpdateTab();
     checkForUpdate({ silent: true });
+    loadCommunityStats();
     autoSaveReady = true;
     $(".workspace").addEventListener("input", scheduleAutoSave);
     $(".workspace").addEventListener("input", (event) => {

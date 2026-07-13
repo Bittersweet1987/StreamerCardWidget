@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260716-relv1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260716-statsv1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -131,6 +131,29 @@
 
         <section class="tab-panel is-active" data-panel="overview">
           <section class="notice" id="update-banner" data-tone="warn" hidden></section>
+          <section class="tool-panel stats-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="stats-eyebrow">Community</p>
+                <h2 data-i18n="stats-title">Nutzung insgesamt</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="stats-hint">Anonyme Zählung über alle Installationen dieser App (nur ab Version 2.9.0, keine persönlichen Daten).</p>
+            <div class="stats-tiles" id="stats-tiles">
+              <div class="stats-tile">
+                <strong id="stats-users">–</strong>
+                <span data-i18n="stats-users-label">Nutzer der App</span>
+              </div>
+              <div class="stats-tile">
+                <strong id="stats-boosters">–</strong>
+                <span data-i18n="stats-boosters-label">Bisher erstellte Booster</span>
+              </div>
+              <div class="stats-tile">
+                <strong id="stats-cards">–</strong>
+                <span data-i18n="stats-cards-label">Bisher erstellte Karten</span>
+              </div>
+            </div>
+          </section>
           <div class="overview-grid">
             <section class="tool-panel">
               <div class="section-heading">
@@ -1536,7 +1559,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260716-relv1"></script>
-    <script type="module" src="/assets/js/admin.js?v=20260716-relv1"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260716-statsv1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260716-statsv1"></script>
   </body>
 </html>
