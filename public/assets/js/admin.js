@@ -73,8 +73,8 @@ async function hashForStats(text) {
 }
 
 let statsLoaded = false;
-async function loadCommunityStats() {
-  if (statsLoaded) return;
+async function loadCommunityStats(force) {
+  if (statsLoaded && !force) return;
   try {
     const res = await fetch(`${STATS_ENDPOINT}/stats`);
     if (!res.ok) throw new Error(String(res.status));
@@ -2662,6 +2662,7 @@ function scheduleAutoSave() {
     try {
       await saveSettings(settings);
       syncCommunityCounts();
+      loadCommunityStats(true);
     } catch (error) {
       showNotice(error.message, "error");
     }
@@ -5342,7 +5343,8 @@ function bindGlobalActions() {
   });
   $("#save-settings").addEventListener("click", async () => {
     await saveSettings(settings);
-    syncCommunityCounts(true);
+    await syncCommunityCounts(true);
+    loadCommunityStats(true);
     showNotice(t("notice-saved"));
   });
   $("#test-random").addEventListener("click", () => {
