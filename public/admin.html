@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260715-changelogen1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260716-resetv1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -89,10 +89,13 @@
         <div class="sidebar-settings">
           <div class="seg-field">
             <span class="seg-label" data-i18n="label-language">Sprache</span>
-            <div class="seg-toggle" id="language-toggle" role="radiogroup" aria-label="Sprache">
-              <button type="button" class="seg-option" data-value="de" role="radio">DE</button>
-              <button type="button" class="seg-option" data-value="en" role="radio">EN</button>
-            </div>
+            <select id="language-select" class="lang-select" aria-label="Sprache">
+              <option value="de">🇩🇪 Deutsch</option>
+              <option value="en">🇬🇧 English</option>
+              <option value="fr">🇫🇷 Français</option>
+              <option value="es">🇪🇸 Español</option>
+              <option value="th">🇹🇭 ไทย</option>
+            </select>
           </div>
           <div class="seg-field">
             <span class="seg-label" data-i18n="label-theme-mode">Modus</span>
@@ -145,26 +148,21 @@
                 <label data-i18n="label-test-card">Karte<select id="test-card"></select></label>
               </div>
               <div class="button-row">
-                <button class="primary-button" id="test-random" type="button" data-i18n="btn-test-random">Demo zufällig ausführen</button>
-                <button class="secondary-button" id="test-selected" type="button" data-i18n="btn-test-selected">Gewählte Karte öffnen</button>
+                <button class="update-button" id="test-random" type="button" data-i18n="btn-test-random">Demo zufällig ausführen</button>
+                <button class="update-button" id="test-selected" type="button" data-i18n="btn-test-selected">Gewählte Karte öffnen</button>
               </div>
               <p class="hint" data-i18n="hint-overlay-required">Das Overlay muss in OBS oder in einem Browser geöffnet sein, damit du die Animation siehst.</p>
             </section>
-
             <section class="tool-panel">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow" data-i18n="ov-status-eyebrow">Status</p>
-                  <h2 data-i18n="ov-deck-title">Deck-Übersicht</h2>
+                  <p class="eyebrow" data-i18n="ov-template-eyebrow">Vorlage</p>
+                  <h2 data-i18n="ov-template-title">Blanko-Karte</h2>
                 </div>
               </div>
-              <div class="metrics">
-                <div><strong id="metric-card-count">0</strong><span data-i18n="metric-cards-label">Karten</span></div>
-                <div><strong id="metric-enabled">0</strong><span data-i18n="metric-enabled-label">aktiv</span></div>
-              </div>
+              <p class="hint" data-i18n="ov-template-hint">Lädt eine transparente PNG-Datei genau in der Form des inneren Kartenbild-Bereichs (mit abgerundeten Ecken) - als Vorlage für Photoshop, Gimp &amp; Co. Einfach bemalen und als Kartenbild wieder hochladen.</p>
               <div class="button-row">
-                <button class="secondary-button" id="reset-collections" type="button" data-i18n="btn-reset-collections">Sammlungen leeren</button>
-                <button class="danger-button" id="reset-settings" type="button" data-i18n="btn-reset-settings">Beispielwerte laden</button>
+                <button class="update-button" id="download-blank-template" type="button" data-i18n="btn-download-blank-template">Blanko-Karte herunterladen (PNG)</button>
               </div>
             </section>
           </div>
@@ -193,9 +191,9 @@
               </div>
               <div class="status-line" id="twitch-status" data-i18n="status-not-connected">Nicht verbunden</div>
               <div class="button-row">
-                <button class="primary-button" id="connect-twitch" type="button" data-i18n="btn-connect-twitch">Mit Twitch anmelden</button>
-                <button class="secondary-button" id="refresh-twitch-status" type="button" data-i18n="btn-refresh-twitch-status">Status prüfen</button>
-                <button class="ghost-button" id="disconnect-twitch" type="button" data-i18n="btn-disconnect-twitch">Abmelden</button>
+                <button class="twitch-button" id="connect-twitch" type="button" data-i18n="btn-connect-twitch">Mit Twitch anmelden</button>
+                <button class="update-button" id="refresh-twitch-status" type="button" data-i18n="btn-refresh-twitch-status">Status prüfen</button>
+                <button class="danger-button" id="disconnect-twitch" type="button" data-i18n="btn-disconnect-twitch">Abmelden</button>
               </div>
             </section>
 
@@ -209,9 +207,9 @@
               <p class="hint" data-i18n="bot-trigger-hint">Optional: separater Bot-Account zum Lesen und Senden von Chat-Nachrichten. Wenn nicht verbunden, wird die Haupt-Twitch-Verbindung dafür verwendet.</p>
               <div class="status-line" id="twitch-bot-status" data-i18n="status-not-connected">Nicht verbunden</div>
               <div class="button-row">
-                <button class="primary-button" id="connect-twitch-bot" type="button" data-i18n="btn-connect-twitch-bot">Bot mit Twitch anmelden</button>
-                <button class="secondary-button" id="refresh-twitch-bot-status" type="button" data-i18n="btn-refresh-twitch-status">Status prüfen</button>
-                <button class="ghost-button" id="disconnect-twitch-bot" type="button" data-i18n="btn-disconnect-twitch">Abmelden</button>
+                <button class="twitch-button" id="connect-twitch-bot" type="button" data-i18n="btn-connect-twitch-bot">Bot mit Twitch anmelden</button>
+                <button class="update-button" id="refresh-twitch-bot-status" type="button" data-i18n="btn-refresh-twitch-status">Status prüfen</button>
+                <button class="danger-button" id="disconnect-twitch-bot" type="button" data-i18n="btn-disconnect-twitch">Abmelden</button>
               </div>
             </section>
 
@@ -237,7 +235,7 @@
                 <label data-i18n="label-obs-password">Passwort<input id="obs-password" type="password"></label>
               </div>
               <div class="button-row">
-                <button class="secondary-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
+                <button class="update-button" id="test-obs" type="button" data-i18n="btn-test-obs">OBS testen</button>
               </div>
             </section>
 
@@ -282,7 +280,27 @@
                 <label>Port<input id="meld-port" type="number" min="1"></label>
               </div>
               <div class="button-row">
-                <button class="secondary-button" id="test-meld" type="button" data-i18n="btn-test-meld">Meld testen</button>
+                <button class="update-button" id="test-meld" type="button" data-i18n="btn-test-meld">Meld testen</button>
+              </div>
+            </section>
+
+            <section class="tool-panel meld-scenes-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Meld Studio</p>
+                  <h2 data-i18n="meld-scenes-title">Szene &amp; Quellen</h2>
+                </div>
+              </div>
+              <p class="hint" data-i18n="meld-scenes-hint">Unabhängig von OBS: lege hier die Szenen- und Quellennamen fest, die in Meld Studio verwendet werden.</p>
+              <div class="form-grid">
+                <label class="full-row" data-i18n="label-meld-scene">Szenenname<input id="meld-scene-name" type="text"></label>
+                <label class="full-row" data-i18n="label-meld-source">Quellenname Booster<input id="meld-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-meld-collection-source">Quellenname Kartensammlung<input id="meld-collection-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-meld-trade-source">Quellenname Tausch-Animation<input id="meld-trade-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-meld-battle-source">Quellenname Kampf-Animation<input id="meld-battle-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-meld-ranking-source">Quellenname Ranking<input id="meld-ranking-source-name" type="text"></label>
+              </div>
+              <div class="button-row">
                 <button class="primary-button" id="setup-meld" type="button" data-i18n="btn-setup-meld">Meld Szene / Quellen aktualisieren</button>
               </div>
             </section>
@@ -389,8 +407,24 @@
               </div>
             </div>
             <p class="hint" data-i18n="cc-intro">Lege fest, mit welchen Chat-Befehlen Zuschauer ein Pack ziehen oder ihre Sammlung anzeigen können. Jeder Befehl lässt sich einzeln aktivieren.</p>
+            <p class="hint" data-i18n="cc-reset-hint">Setzt nur die Vorschlagstexte zurück (in der aktuell gewählten Sprache) - Befehlswörter, Limits und Cooldowns bleiben unverändert.</p>
+            <div class="button-row">
+              <button class="danger-button" id="reset-message-defaults" type="button" data-i18n="btn-reset-message-defaults">Alle Texte zurücksetzen</button>
+            </div>
 
-            <article class="reward-entry command-card">
+            <nav class="cc-jump-nav">
+              <a href="#cc-section-pack" data-i18n="cc-pack-title">Pack-Befehl</a>
+              <a href="#cc-section-collection" data-i18n="cc-collection-title">Sammlung-Befehl</a>
+              <a href="#cc-section-trade" data-i18n="cc-trade-title">Tausch-Befehl</a>
+              <a href="#cc-section-tradeyes" data-i18n="cc-tradeyes-title">Tausch-Annahme-Befehl</a>
+              <a href="#cc-section-tradeno" data-i18n="cc-tradeno-title">Tausch-Ablehnungs-Befehl</a>
+              <a href="#cc-section-battle" data-i18n="cc-battle-title">Kampf-Befehl</a>
+              <a href="#cc-section-battleyes" data-i18n="cc-battleyes-title">Kampf-Annahme-Befehl</a>
+              <a href="#cc-section-battleno" data-i18n="cc-battleno-title">Kampf-Ablehnungs-Befehl</a>
+              <a href="#cc-section-ranking" data-i18n="cc-ranking-title">Ranking-Befehl</a>
+            </nav>
+
+            <article class="reward-entry command-card" id="cc-section-pack">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-pack-eyebrow">Kartenpack</p>
@@ -465,7 +499,7 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card">
+            <article class="reward-entry command-card" id="cc-section-collection">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-collection-eyebrow">Sammlung</p>
@@ -518,7 +552,7 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card">
+            <article class="reward-entry command-card" id="cc-section-trade">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-trade-eyebrow">Tausch</p>
@@ -656,7 +690,7 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card">
+            <article class="reward-entry command-card" id="cc-section-tradeyes">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-tradeyes-eyebrow">Tausch annehmen</p>
@@ -709,7 +743,7 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card">
+            <article class="reward-entry command-card" id="cc-section-tradeno">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-tradeno-eyebrow">Tausch ablehnen</p>
@@ -747,7 +781,7 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card">
+            <article class="reward-entry command-card" id="cc-section-battle">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-battle-eyebrow">Kampf</p>
@@ -882,7 +916,7 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card">
+            <article class="reward-entry command-card" id="cc-section-battleyes">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-battleyes-eyebrow">Kampf annehmen</p>
@@ -922,7 +956,7 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card">
+            <article class="reward-entry command-card" id="cc-section-battleno">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-battleno-eyebrow">Kampf ablehnen</p>
@@ -958,7 +992,7 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card">
+            <article class="reward-entry command-card" id="cc-section-ranking">
               <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-ranking-eyebrow">Ranking</p>
@@ -1024,7 +1058,7 @@
                 <p class="eyebrow" data-i18n="rarity-colors-eyebrow">Karten</p>
                 <h2 data-i18n="rarity-colors-title">Rahmenfarben je Rarität</h2>
               </div>
-              <button class="ghost-button" id="reset-rarity-colors" type="button" data-i18n="btn-reset-rarity-colors">Auf Standard zurücksetzen</button>
+              <button class="danger-button" id="reset-rarity-colors" type="button" data-i18n="btn-reset-rarity-colors">Auf Standard zurücksetzen</button>
             </div>
             <div class="form-grid">
               <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-color-common" type="color" data-rarity-color="common"></label>
@@ -1042,7 +1076,7 @@
                 <p class="eyebrow" data-i18n="rarity-weights-eyebrow">Karten</p>
                 <h2 data-i18n="rarity-weights-title">Gewichtung je Rarität</h2>
               </div>
-              <button class="ghost-button" id="reset-rarity-weights" type="button" data-i18n="btn-reset-rarity-weights">Auf Standard zurücksetzen</button>
+              <button class="danger-button" id="reset-rarity-weights" type="button" data-i18n="btn-reset-rarity-weights">Auf Standard zurücksetzen</button>
             </div>
             <p class="hint" data-i18n="rarity-weights-hint">Höhere Werte werden häufiger gezogen.</p>
             <div class="form-grid">
@@ -1072,7 +1106,7 @@
               </div>
               <div class="sound-row-actions">
                 <button class="secondary-button" id="play-open-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
-                <label class="ghost-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-open" type="file" accept="audio/*"></label>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-open" type="file" accept="audio/*"></label>
                 <button class="danger-button" id="remove-open-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
               </div>
             </div>
@@ -1083,7 +1117,7 @@
               </div>
               <div class="sound-row-actions">
                 <button class="secondary-button" id="play-reveal-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
-                <label class="ghost-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-reveal" type="file" accept="audio/*"></label>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-reveal" type="file" accept="audio/*"></label>
                 <button class="danger-button" id="remove-reveal-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
               </div>
             </div>
@@ -1094,7 +1128,7 @@
               </div>
               <div class="sound-row-actions">
                 <button class="secondary-button" id="play-trade-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
-                <label class="ghost-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-trade" type="file" accept="audio/*"></label>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-trade" type="file" accept="audio/*"></label>
                 <button class="danger-button" id="remove-trade-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
               </div>
             </div>
@@ -1105,7 +1139,7 @@
               </div>
               <div class="sound-row-actions">
                 <button class="secondary-button" id="play-battle-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
-                <label class="ghost-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-battle" type="file" accept="audio/*"></label>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-battle" type="file" accept="audio/*"></label>
                 <button class="danger-button" id="remove-battle-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
               </div>
             </div>
@@ -1144,7 +1178,7 @@
               </label>
             </div>
             <div class="button-row">
-              <button class="secondary-button" id="trade-anim-test" type="button" data-i18n="btn-trade-anim-test">Test starten</button>
+              <button class="update-button" id="trade-anim-test" type="button" data-i18n="btn-trade-anim-test">Test starten</button>
             </div>
             <p class="hint" data-i18n="trade-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
           </section>
@@ -1182,7 +1216,7 @@
               </label>
             </div>
             <div class="button-row">
-              <button class="secondary-button" id="battle-anim-test" type="button" data-i18n="btn-battle-anim-test">Test starten</button>
+              <button class="update-button" id="battle-anim-test" type="button" data-i18n="btn-battle-anim-test">Test starten</button>
             </div>
             <p class="hint" data-i18n="battle-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
           </section>
@@ -1230,6 +1264,75 @@
             </div>
           </div>
           <p class="hint" data-i18n="themes-hint">Wähle das Aussehen aller Karten per Klick. Die Auswahl gilt sofort für Overlay, Sammlung und Vorschauen.</p>
+          <section class="tool-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="pattern-eyebrow">Muster</p>
+                <h3 data-i18n="pattern-title">Eigene Muster</h3>
+              </div>
+            </div>
+            <p class="hint" data-i18n="pattern-hint">Lade eine kleine, kachelbare Bilddatei hoch (z.B. PNG mit Transparenz) - sie wird wiederholt über die Karte bzw. den Booster gelegt. Ohne eigenes Bild bleibt es beim gewählten Theme.</p>
+            <div class="pattern-block">
+              <label class="switch-row compact-switch">
+                <input id="card-pattern-enabled" type="checkbox">
+                <span data-i18n="label-card-pattern-enabled">Kartenmuster anzeigen</span>
+              </label>
+              <label class="slider-field" data-i18n="label-card-pattern-size">
+                Musterkachel-Größe (px)
+                <input id="card-pattern-size" type="range" min="10" max="300" step="5">
+              </label>
+              <div class="button-row">
+                <label class="upload-button file-label" data-i18n="label-card-pattern-image">Eigenes Kartenmuster<input id="card-pattern-image" type="file" accept="image/*"></label>
+                <button class="danger-button" id="remove-card-pattern-image" type="button" data-i18n="btn-remove-card-pattern-image">Eigenes Kartenmuster entfernen</button>
+              </div>
+            </div>
+            <div class="pattern-block">
+              <label class="switch-row compact-switch">
+                <input id="booster-pattern-enabled" type="checkbox">
+                <span data-i18n="label-booster-pattern-enabled">Booster-Muster anzeigen</span>
+              </label>
+              <label class="slider-field" data-i18n="label-booster-pattern-size">
+                Musterkachel-Größe (px)
+                <input id="booster-pattern-size" type="range" min="10" max="300" step="5">
+              </label>
+              <div class="button-row">
+                <label class="upload-button file-label" data-i18n="label-booster-pattern-image">Eigenes Booster-Muster<input id="booster-pattern-image" type="file" accept="image/*"></label>
+                <button class="danger-button" id="remove-booster-pattern-image" type="button" data-i18n="btn-remove-booster-pattern-image">Eigenes Booster-Muster entfernen</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="tool-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="imagefit-eyebrow">Bilder</p>
+                <h3 data-i18n="imagefit-title">Bild-Anpassung</h3>
+              </div>
+            </div>
+            <p class="hint" data-i18n="imagefit-hint">Legt fest, wie die hochgeladenen Karten- bzw. Booster-Bilder eingepasst werden.</p>
+            <div class="form-grid">
+              <label data-i18n="label-card-image-fit">Kartenbild
+                <select id="card-image-fit">
+                  <option value="frame" data-i18n="opt-fit-frame">Im Rahmen (bisher)</option>
+                  <option value="full" data-i18n="opt-fit-full">Volle Karte</option>
+                  <option value="top" data-i18n="opt-fit-top">Volle Karte, oben orientiert</option>
+                  <option value="bottom" data-i18n="opt-fit-bottom">Volle Karte, unten orientiert</option>
+                  <option value="left" data-i18n="opt-fit-left">Volle Karte, links orientiert</option>
+                  <option value="right" data-i18n="opt-fit-right">Volle Karte, rechts orientiert</option>
+                </select>
+              </label>
+              <label data-i18n="label-booster-image-fit">Booster-Bild
+                <select id="booster-image-fit">
+                  <option value="center" data-i18n="opt-fit-center">Zentriert (bisher)</option>
+                  <option value="top" data-i18n="opt-fit-top-booster">Oben orientiert</option>
+                  <option value="bottom" data-i18n="opt-fit-bottom-booster">Unten orientiert</option>
+                  <option value="left" data-i18n="opt-fit-left-booster">Links orientiert</option>
+                  <option value="right" data-i18n="opt-fit-right-booster">Rechts orientiert</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
           <label class="theme-preview-picker" data-i18n="label-theme-preview-card">Vorschaukarte<select id="theme-preview-card"></select></label>
           <div class="themes-grid" id="themes-grid"></div>
 
@@ -1276,7 +1379,7 @@
               <h2 data-i18n="cards-title">Karten verwalten</h2>
             </div>
             <div class="button-row">
-              <label class="secondary-button file-label" data-i18n="btn-import-card">Karte importieren<input id="import-card" type="file" accept=".json,application/json"></label>
+              <label class="upload-button file-label" data-i18n="btn-import-card">Karte importieren<input id="import-card" type="file" accept=".json,application/json"></label>
               <button class="primary-button" id="add-card" type="button" data-i18n="btn-add-card">Karte hinzufügen</button>
             </div>
           </div>
@@ -1284,6 +1387,7 @@
             <div class="card-list" id="card-list"></div>
             <aside class="tool-panel sticky-preview">
               <p class="eyebrow" data-i18n="cards-live-preview">Live Vorschau</p>
+              <p class="hint" data-i18n="cards-live-preview-hint">Klicke links auf eine Kartenminiatur, um sie hier anzuzeigen.</p>
               <div id="selected-card-preview"></div>
             </aside>
           </div>
@@ -1296,7 +1400,7 @@
               <h2 data-i18n="booster-title">Booster verwalten</h2>
             </div>
             <div class="button-row">
-              <label class="secondary-button file-label" data-i18n="btn-import-booster">Booster importieren<input id="import-booster" type="file" accept=".json,application/json"></label>
+              <label class="upload-button file-label" data-i18n="btn-import-booster">Booster importieren<input id="import-booster" type="file" accept=".json,application/json"></label>
               <button class="primary-button" id="add-booster" type="button" data-i18n="btn-add-booster">Booster hinzufügen</button>
             </div>
           </div>
@@ -1310,14 +1414,18 @@
                 </div>
               </div>
               <div class="form-grid">
+                <label class="switch-row compact-switch">
+                  <input id="booster-enabled" type="checkbox">
+                  <span data-i18n="label-booster-enabled">Booster aktiv</span>
+                </label>
                 <label data-i18n="label-booster-title">Titel<input id="booster-title" type="text"></label>
                 <label data-i18n="label-booster-subtitle">Untertitel<input id="booster-subtitle" type="text"></label>
                 <label data-i18n="label-booster-score">Booster-Score<input id="booster-score" type="number" min="1" step="1"></label>
                 <label data-i18n="label-booster-accent">Akzentfarbe<input id="booster-accent" type="color"></label>
-                <label class="file-field" data-i18n="label-booster-image">Booster-Bild<input id="booster-image" type="file" accept="image/*"></label>
+                <label class="upload-button file-label" data-i18n="label-booster-image">Booster-Bild<input id="booster-image" type="file" accept="image/*"></label>
               </div>
               <div class="button-row">
-                <button class="ghost-button" id="remove-booster-image" type="button" data-i18n="btn-remove-booster-image">Booster-Bild entfernen</button>
+                <button class="danger-button" id="remove-booster-image" type="button" data-i18n="btn-remove-booster-image">Booster-Bild entfernen</button>
                 <button class="secondary-button" id="export-booster" type="button" data-i18n="btn-export-booster">Booster exportieren</button>
                 <button class="danger-button" id="delete-booster" type="button" data-i18n="btn-delete-booster">Booster löschen</button>
               </div>
@@ -1375,8 +1483,8 @@
             </div>
             <div class="status-line" id="update-status" data-i18n="update-status-idle">Noch nicht geprüft.</div>
             <div class="button-row">
-              <button class="primary-button" id="check-update" type="button" data-i18n="btn-check-update">Nach Updates suchen</button>
-              <button class="primary-button" id="install-update" type="button" hidden data-i18n="btn-install-update">Installieren</button>
+              <button class="update-button" id="check-update" type="button" data-i18n="btn-check-update">Nach Updates suchen</button>
+              <button class="update-button" id="install-update" type="button" hidden data-i18n="btn-install-update">Installieren</button>
             </div>
           </section>
 
@@ -1428,7 +1536,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260715-changelogen1"></script>
-    <script type="module" src="/assets/js/admin.js?v=20260715-changelogen1"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260716-resetv1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260716-resetv1"></script>
   </body>
 </html>

@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -19,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.7.0";
-        public const string ReleaseDate = "2026-07-12";
+        public const string Version = "2.8.0";
+        public const string ReleaseDate = "2026-07-16";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
 
@@ -531,6 +533,26 @@ namespace CardPackWidgetApp
                     { "releaseDate", AppInfo.ReleaseDate },
                     { "repo", AppInfo.GitHubRepo }
                 }));
+                return;
+            }
+
+            if (request.Method == "GET" && request.Path == "/api/blank-card-template")
+            {
+                try
+                {
+                    byte[] png = GenerateBlankCardArtTemplatePng();
+                    SendBytes(stream, 200, "image/png", png, "no-store",
+                        "attachment; filename=\"Kartenvorlage.png\"");
+                }
+                catch (Exception ex)
+                {
+                    Log("template", "error", "Blanko-Kartenvorlage konnte nicht erzeugt werden: " + ex.Message);
+                    SendJson(stream, 500, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", false },
+                        { "error", ex.Message }
+                    }));
+                }
                 return;
             }
 
@@ -1926,6 +1948,49 @@ namespace CardPackWidgetApp
             return Path.Combine(defaultsDir, "settings.json");
         }
 
+        // ---- Blanko-Kartenvorlage (PNG-Zuschnitt des inneren Kartenbild-Bereichs) ----
+        // Entspricht genau dem Bereich, den .card-art (components.css) tatsächlich zeigt:
+        // inset 13% oben / 10% links+rechts / 18% unten der Kartenfläche, Eckenradius
+        // proportional zu --card-art's 16px auf einer 320px-Karte. Transparent außerhalb
+        // der abgerundeten Ecken, damit man direkt in der richtigen Form weiterarbeiten kann.
+        private static byte[] GenerateBlankCardArtTemplatePng()
+        {
+            const int width = 800;
+            const int height = 966;
+            const int radius = 50;
+            using (var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb))
+            {
+                using (Graphics g = Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.Clear(Color.Transparent);
+                    var rect = new Rectangle(0, 0, width, height);
+                    using (GraphicsPath path = RoundedRectPath(rect, radius))
+                    using (Brush brush = new SolidBrush(Color.White))
+                    {
+                        g.FillPath(brush, path);
+                    }
+                }
+                using (var ms = new MemoryStream())
+                {
+                    bmp.Save(ms, ImageFormat.Png);
+                    return ms.ToArray();
+                }
+            }
+        }
+
+        private static GraphicsPath RoundedRectPath(Rectangle rect, int radius)
+        {
+            int d = radius * 2;
+            var path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
         private void SendJson(NetworkStream stream, int status, string jsonText)
         {
             SendText(stream, status, "application/json; charset=utf-8", jsonText, "no-store");
@@ -1938,12 +2003,18 @@ namespace CardPackWidgetApp
 
         private void SendBytes(NetworkStream stream, int status, string contentType, byte[] body, string cacheControl)
         {
+            SendBytes(stream, status, contentType, body, cacheControl, null);
+        }
+
+        private void SendBytes(NetworkStream stream, int status, string contentType, byte[] body, string cacheControl, string contentDisposition)
+        {
             string statusText = StatusText(status);
             string headers =
                 "HTTP/1.1 " + status + " " + statusText + "\r\n" +
                 "Content-Type: " + contentType + "\r\n" +
                 "Content-Length: " + body.Length + "\r\n" +
                 "Cache-Control: " + cacheControl + "\r\n" +
+                (String.IsNullOrEmpty(contentDisposition) ? "" : "Content-Disposition: " + contentDisposition + "\r\n") +
                 "Connection: close\r\n\r\n";
             byte[] headerBytes = Encoding.UTF8.GetBytes(headers);
             stream.Write(headerBytes, 0, headerBytes.Length);
@@ -2478,6 +2549,7 @@ namespace CardPackWidgetApp
             {
                 Dictionary<string, object> booster = item as Dictionary<string, object>;
                 if (booster == null) continue;
+                if (!GetBool(booster, "enabled", true)) continue;
                 object[] cardIds = booster.ContainsKey("cardIds") && booster["cardIds"] is object[] ? (object[])booster["cardIds"] : new object[0];
                 if (cardIds.Length == 0) continue;
                 if (!BoosterHasEnabledCard(settings, cardIds)) continue;

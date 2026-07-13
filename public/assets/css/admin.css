@@ -91,8 +91,13 @@ body {
 .ghost-button,
 .primary-button,
 .secondary-button,
-.danger-button {
+.danger-button,
+.update-button,
+.upload-button,
+.twitch-button {
+  height: 40px;
   min-height: 40px;
+  white-space: nowrap;
   border: 0;
   border-radius: 8px;
   font-weight: 800;
@@ -214,6 +219,24 @@ body {
   color: #241f33;
 }
 
+.lang-select {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+  font-weight: 800;
+  font-size: .8rem;
+  cursor: pointer;
+}
+
+.lang-select option {
+  color: #241f33;
+  background: #fff;
+}
+
 .sidebar-status {
   display: grid;
   gap: 8px;
@@ -318,18 +341,21 @@ body[data-theme="dark"] .topbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 10px 10px;
+  row-gap: 14px;
 }
 
 .primary-button {
   padding: 0 16px;
   color: #fff;
-  background: #e84f94;
+  background: #2fb872;
 }
 
 .secondary-button,
 .ghost-button,
-.danger-button {
+.danger-button,
+.update-button,
+.upload-button {
   padding: 0 14px;
 }
 
@@ -347,6 +373,63 @@ body[data-theme="dark"] .topbar {
 .danger-button {
   color: #fff;
   background: #b43f61;
+}
+
+.update-button {
+  color: #fff;
+  background: #3f8fe0;
+}
+
+.upload-button {
+  color: #fff;
+  background: #1fb3bd;
+}
+
+.twitch-button {
+  color: #fff;
+  background: #9146ff;
+}
+
+.cc-jump-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 10px;
+  border: 1px solid #e4deec;
+  border-radius: 10px;
+  background: #f7f4fc;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.cc-jump-nav a {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: #241f33;
+  font-size: .78rem;
+  font-weight: 800;
+  text-decoration: none;
+  border: 1px solid #ded9e8;
+  white-space: nowrap;
+}
+
+.cc-jump-nav a:hover {
+  background: #8df4d5;
+  border-color: #8df4d5;
+}
+
+body[data-theme="dark"] .cc-jump-nav {
+  background: #211b2d;
+  border-color: #4d415f;
+}
+
+body[data-theme="dark"] .cc-jump-nav a {
+  background: #2c2438;
+  color: #fff;
+  border-color: #4d415f;
 }
 
 button:disabled {
@@ -473,6 +556,15 @@ button:disabled {
   gap: 18px;
 }
 
+/* Sections placed straight inside a tab (not already spaced by a grid/flex layout like
+   .overview-grid or .connection-layout) used to sit flush against each other - regardless of
+   what kind of element came right before (a wrapper div, another section, ...). */
+.tab-panel > * + .tool-panel,
+.tab-panel > * + .reward-entry,
+.tab-panel > * + .command-card {
+  margin-top: 18px;
+}
+
 .tool-panel,
 .preview-band,
 .card-editor {
@@ -542,8 +634,87 @@ input[type="color"] {
 }
 
 input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 24px;
+  height: 24px;
   padding: 0;
-  accent-color: #e84f94;
+  border: 0;
+  background: transparent;
+  accent-color: #3f8fe0;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #3f8fe0 var(--range-progress, 50%), #e4deec var(--range-progress, 50%));
+}
+
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e4deec;
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #3f8fe0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #3f8fe0;
+  box-shadow: 0 2px 6px rgba(43, 33, 79, .28);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #3f8fe0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(43, 33, 79, .28);
+}
+
+body[data-theme="dark"] input[type="range"]::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, #3f8fe0 var(--range-progress, 50%), #4d415f var(--range-progress, 50%));
+}
+
+body[data-theme="dark"] input[type="range"]::-moz-range-track {
+  background: #4d415f;
+}
+
+.pattern-block {
+  display: grid;
+  gap: 14px;
+}
+
+.pattern-block + .pattern-block {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e4deec;
+}
+
+body[data-theme="dark"] .pattern-block + .pattern-block {
+  border-top-color: #3a314d;
+}
+
+.slider-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.slider-field input[type="range"] {
+  flex: 0 1 200px;
+  min-width: 0;
 }
 
 .hint {
@@ -858,9 +1029,32 @@ body[data-theme="dark"] .showcase-entry {
   display: grid;
   width: 100%;
   place-items: center;
+  gap: 6px;
   border: 0;
+  border-radius: 10px;
   background: transparent;
   cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+
+.select-card:hover,
+.select-card:focus-visible {
+  background: rgba(141, 244, 213, .16);
+  transform: translateY(-2px);
+}
+
+.select-card::after {
+  content: "🔍 " attr(data-hint);
+  font-size: .68rem;
+  font-weight: 800;
+  color: #746f82;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.select-card:hover::after,
+.select-card:focus-visible::after {
+  opacity: 1;
 }
 
 .card-fields {
@@ -905,7 +1099,9 @@ body[data-theme="dark"] .showcase-entry {
 
 .sticky-preview {
   position: sticky;
-  top: 22px;
+  /* .topbar is itself sticky at top:0 with height ~94px + z-index:30 - a smaller offset here
+     leaves the preview's top edge tucked behind the topbar as the page scrolls. */
+  top: 116px;
   display: grid;
   justify-items: center;
 }
@@ -947,6 +1143,10 @@ body[data-theme="dark"] .showcase-entry {
 .booster-list-item.is-selected {
   border-color: #8df4d5;
   outline: 3px solid rgba(141, 244, 213, .42);
+}
+
+.booster-list-item.is-disabled {
+  opacity: .55;
 }
 
 .booster-list-item span {
@@ -1205,13 +1405,6 @@ body[data-theme="dark"] .showcase-entry {
   min-width: 0;
   overflow-wrap: break-word;
   white-space: normal;
-}
-
-.file-field {
-  min-height: 94px;
-  padding: 12px;
-  border: 1px dashed #c9c0da;
-  border-radius: 8px;
 }
 
 .settings-preview {
