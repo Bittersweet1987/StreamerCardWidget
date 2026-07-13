@@ -6,43 +6,24 @@
 //   POST /sync   { "installId": "<zufällige, pro Installation stabile ID>", "cards": 12, "boosters": 3 }
 //   GET  /stats  -> { "users": 3, "boosters": 28, "cards": 370 }
 //
-// /sync wird bei jedem Speichern in der App aufgerufen und meldet den AKTUELLEN Gesamtbestand
-// dieser Installation (nicht nur Neuanlagen) - dadurch ist ein wiederholter Aufruf idempotent
-// (überschreibt einfach denselben Eintrag) statt bei jedem Speichern erneut hochzuzählen, und
-// bereits vor dem Update vorhandene Karten/Booster werden beim ersten Speichern automatisch
-// mit erfasst.
+// Wichtig fürs Cloudflare-KV-Freikontingent (100k Reads, aber nur 1.000 Writes UND 1.000
+// List-Operationen pro Tag): /stats liest ausschließlich einen einzigen, gepflegten
+// Aggregat-Eintrag ("agg") - kein list()/get()-pro-Key mehr über alle Installationen. /sync
+// und /event aktualisieren dieses Aggregat per Differenz (Delta), nicht durch Neu-Aufsummieren.
 
-async function countPrefix(env, prefix) {
-  let cursor;
-  let total = 0;
-  do {
-    const page = await env.STATS.list({ prefix, cursor });
-    total += page.keys.length;
-    cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor);
-  return total;
-}
-
-async function sumInstallTotals(env) {
-  let cursor;
-  let cards = 0;
-  let boosters = 0;
-  do {
-    const page = await env.STATS.list({ prefix: "install:", cursor });
-    for (const key of page.keys) {
-      const raw = await env.STATS.get(key.name);
-      if (!raw) continue;
-      try {
-        const parsed = JSON.parse(raw);
-        cards += Number(parsed.cards) || 0;
-        boosters += Number(parsed.boosters) || 0;
-      } catch {
-        // ignore malformed entries
-      }
-    }
-    cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor);
-  return { cards, boosters };
+async function readAgg(env) {
+  const raw = await env.STATS.get("agg");
+  if (!raw) return { users: 0, cards: 0, boosters: 0 };
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      users: Number(parsed.users) || 0,
+      cards: Number(parsed.cards) || 0,
+      boosters: Number(parsed.boosters) || 0
+    };
+  } catch {
+    return { users: 0, cards: 0, boosters: 0 };
+  }
 }
 
 function cors(response) {
@@ -61,8 +42,8 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/stats") {
-      const [users, totals] = await Promise.all([countPrefix(env, "user:"), sumInstallTotals(env)]);
-      return cors(Response.json({ users, boosters: totals.boosters, cards: totals.cards }));
+      const agg = await readAgg(env);
+      return cors(Response.json(agg));
     }
 
     if (request.method === "POST" && url.pathname === "/event") {
@@ -77,9 +58,16 @@ export default {
       }
       const id = String(body.id || "").slice(0, 128);
       if (!id) return cors(new Response("Missing id", { status: 400 }));
-      // Storing the hashed id itself dedupes automatically: re-connecting the same
-      // account just overwrites the same key instead of creating a new one.
-      await env.STATS.put(`user:${id}`, "1");
+
+      // Only counts (and only writes) the FIRST time a given hashed id is seen - a
+      // reconnect of the same account is a no-op, so this can be called often for free.
+      const existing = await env.STATS.get(`user:${id}`);
+      if (!existing) {
+        const agg = await readAgg(env);
+        agg.users += 1;
+        await env.STATS.put(`user:${id}`, "1");
+        await env.STATS.put("agg", JSON.stringify(agg));
+      }
       return cors(Response.json({ ok: true }));
     }
 
@@ -94,7 +82,31 @@ export default {
       if (!installId) return cors(new Response("Missing installId", { status: 400 }));
       const cards = Math.max(0, Number(body.cards) || 0);
       const boosters = Math.max(0, Number(body.boosters) || 0);
-      await env.STATS.put(`install:${installId}`, JSON.stringify({ cards, boosters }));
+
+      const installKey = `install:${installId}`;
+      const prevRaw = await env.STATS.get(installKey);
+      let prevCards = 0;
+      let prevBoosters = 0;
+      if (prevRaw) {
+        try {
+          const prev = JSON.parse(prevRaw);
+          prevCards = Number(prev.cards) || 0;
+          prevBoosters = Number(prev.boosters) || 0;
+        } catch {
+          // treat as 0/0
+        }
+      }
+
+      // No change since last sync for this install - skip both writes entirely.
+      if (prevCards === cards && prevBoosters === boosters) {
+        return cors(Response.json({ ok: true, unchanged: true }));
+      }
+
+      const agg = await readAgg(env);
+      agg.cards += cards - prevCards;
+      agg.boosters += boosters - prevBoosters;
+      await env.STATS.put(installKey, JSON.stringify({ cards, boosters }));
+      await env.STATS.put("agg", JSON.stringify(agg));
       return cors(Response.json({ ok: true }));
     }
 

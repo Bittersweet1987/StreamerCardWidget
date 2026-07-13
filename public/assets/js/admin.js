@@ -60,9 +60,11 @@ let autoSaveTimer;
 let autoSaveReady = false;
 let collections = {};
 const DEFAULT_TWITCH_CLIENT_ID = "klgyxuiixy0mfo7ze7goubj5j16g7u";
-// Anonymous usage counter (Cloudflare Worker + KV, see tools/stats-worker.js). Best-effort only -
+// Anonymous usage counter (own VPS server, see tools/stats-server.js). Best-effort only -
 // failures here must never affect the app itself, so every call swallows its own errors.
-const STATS_ENDPOINT = "https://streamercard-stats.schirmer-marco.workers.dev";
+const STATS_ENDPOINT = "https://streamercards.bittersweetscripts.de";
+const STATS_SYNC_MIN_INTERVAL_MS = 5 * 60 * 1000;
+let lastStatsSyncAt = 0;
 
 async function hashForStats(text) {
   const data = new TextEncoder().encode(text);
@@ -103,8 +105,11 @@ async function reportTwitchConnected(broadcasterId) {
 // aggregate stat is always accurate to "how many exist right now" - a repeated call from
 // autosave just overwrites the same per-install entry instead of double-counting, and it also
 // picks up cards/boosters that already existed before this feature shipped, on the next save.
-async function syncCommunityCounts() {
+async function syncCommunityCounts(force) {
   if (!settings?.statsInstallId) return;
+  const now = Date.now();
+  if (!force && now - lastStatsSyncAt < STATS_SYNC_MIN_INTERVAL_MS) return;
+  lastStatsSyncAt = now;
   try {
     await fetch(`${STATS_ENDPOINT}/sync`, {
       method: "POST",
@@ -5337,7 +5342,7 @@ function bindGlobalActions() {
   });
   $("#save-settings").addEventListener("click", async () => {
     await saveSettings(settings);
-    syncCommunityCounts();
+    syncCommunityCounts(true);
     showNotice(t("notice-saved"));
   });
   $("#test-random").addEventListener("click", () => {
