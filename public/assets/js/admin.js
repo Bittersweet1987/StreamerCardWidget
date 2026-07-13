@@ -1070,6 +1070,20 @@ const I18N = {
     es: "Novedades desde tu versión",
     th: "มีอะไรใหม่ตั้งแต่เวอร์ชันของคุณ"
   },
+  "btn-show-all-changelog": {
+    de: "Alle Versionen anzeigen",
+    en: "Show all versions",
+    fr: "Afficher toutes les versions",
+    es: "Mostrar todas las versiones",
+    th: "แสดงทุกเวอร์ชัน"
+  },
+  "btn-show-recent-changelog": {
+    de: "Nur neuere Versionen anzeigen",
+    en: "Show only newer versions",
+    fr: "Afficher uniquement les versions récentes",
+    es: "Mostrar solo versiones más recientes",
+    th: "แสดงเฉพาะเวอร์ชันใหม่กว่า"
+  },
   "update-changelog-loading": { de: "Wird geladen…", en: "Loading…",
     fr: "Chargement…",
     es: "Cargando…",
@@ -2908,9 +2922,15 @@ function renderReleaseNoteText(text) {
     .replace(/`(.+?)`/g, "<code>$1</code>");
 }
 
-// Cached so a later language switch can re-render the changelog in the new language without
-// hitting the GitHub API again (releases don't change while the app is open).
+// Cached so a later language switch (or the "show all versions" toggle) can re-render the
+// changelog without hitting the GitHub API again (releases don't change while the app is open).
 let cachedNewerReleases = null;
+let cachedAllReleases = null;
+let showingFullChangelogHistory = false;
+
+function currentChangelogList() {
+  return showingFullChangelogHistory ? cachedAllReleases : cachedNewerReleases;
+}
 
 function renderChangelog(newer) {
   const container = $("#update-changelog");
@@ -2955,7 +2975,8 @@ async function loadChangelog() {
     // changelog instead of an empty "you're up to date" placeholder, so there's always
     // something to read until an actual update appears.
     cachedNewerReleases = newer.length ? newer : all.slice(0, 1);
-    renderChangelog(cachedNewerReleases);
+    cachedAllReleases = all;
+    renderChangelog(currentChangelogList());
   } catch (error) {
     container.innerHTML = `<p class="hint">${t("update-changelog-error")} ${escapeHtml(error.message)}</p>`;
   }
@@ -2990,6 +3011,11 @@ function hideUpdateBanner() {
 function bindUpdateTab() {
   $("#check-update").addEventListener("click", () => checkForUpdate());
   $("#install-update").addEventListener("click", installPendingUpdate);
+  $("#toggle-changelog-history").addEventListener("click", () => {
+    showingFullChangelogHistory = !showingFullChangelogHistory;
+    $("#toggle-changelog-history").textContent = t(showingFullChangelogHistory ? "btn-show-recent-changelog" : "btn-show-all-changelog");
+    if (currentChangelogList()) renderChangelog(currentChangelogList());
+  });
   const banner = $("#update-banner");
   if (banner) {
     banner.addEventListener("click", (event) => {
@@ -4939,7 +4965,7 @@ function bindDesign() {
     renderAll();
     refreshSettingsPreview();
     scheduleAutoSave();
-    if (cachedNewerReleases) renderChangelog(cachedNewerReleases);
+    if (currentChangelogList()) renderChangelog(currentChangelogList());
   });
   const behaviorFields = {
     "#reveal-seconds": "revealSeconds",
