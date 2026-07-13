@@ -2946,11 +2946,15 @@ async function loadChangelog() {
   container.innerHTML = `<p class="hint">${t("update-changelog-loading")}</p>`;
   try {
     const releases = await getReleases(appVersionInfo.repo);
-    cachedNewerReleases = releases
+    const all = releases
       .filter((release) => !release.draft)
       .map((release) => ({ ...release, versionNumber: String(release.tag_name || "").replace(/^v/i, "") }))
-      .filter((release) => compareVersions(release.versionNumber, appVersionInfo.version) > 0)
       .sort((a, b) => compareVersions(b.versionNumber, a.versionNumber));
+    const newer = all.filter((release) => compareVersions(release.versionNumber, appVersionInfo.version) > 0);
+    // Nothing newer than the installed version: keep showing the latest release's own
+    // changelog instead of an empty "you're up to date" placeholder, so there's always
+    // something to read until an actual update appears.
+    cachedNewerReleases = newer.length ? newer : all.slice(0, 1);
     renderChangelog(cachedNewerReleases);
   } catch (error) {
     container.innerHTML = `<p class="hint">${t("update-changelog-error")} ${escapeHtml(error.message)}</p>`;
