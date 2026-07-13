@@ -2908,24 +2908,18 @@ function renderReleaseNoteText(text) {
     .replace(/`(.+?)`/g, "<code>$1</code>");
 }
 
-async function loadChangelog() {
+// Cached so a later language switch can re-render the changelog in the new language without
+// hitting the GitHub API again (releases don't change while the app is open).
+let cachedNewerReleases = null;
+
+function renderChangelog(newer) {
   const container = $("#update-changelog");
-  if (!container || !appVersionInfo) return;
-  container.innerHTML = `<p class="hint">${t("update-changelog-loading")}</p>`;
-  try {
-    const releases = await getReleases(appVersionInfo.repo);
-    const newer = releases
-      .filter((release) => !release.draft)
-      .map((release) => ({ ...release, versionNumber: String(release.tag_name || "").replace(/^v/i, "") }))
-      .filter((release) => compareVersions(release.versionNumber, appVersionInfo.version) > 0)
-      .sort((a, b) => compareVersions(b.versionNumber, a.versionNumber));
-
-    if (!newer.length) {
-      container.innerHTML = `<p class="hint">${t("update-changelog-none")}</p>`;
-      return;
-    }
-
-    container.innerHTML = newer.map((release) => {
+  if (!container) return;
+  if (!newer.length) {
+    container.innerHTML = `<p class="hint">${t("update-changelog-none")}</p>`;
+    return;
+  }
+  container.innerHTML = newer.map((release) => {
       const groups = parseReleaseBullets(extractLanguageBody(release.body, settings.language));
       const date = release.published_at ? new Date(release.published_at).toLocaleDateString() : "";
       const body = groups.length
@@ -2944,6 +2938,20 @@ async function loadChangelog() {
         </div>
       `;
     }).join("");
+}
+
+async function loadChangelog() {
+  const container = $("#update-changelog");
+  if (!container || !appVersionInfo) return;
+  container.innerHTML = `<p class="hint">${t("update-changelog-loading")}</p>`;
+  try {
+    const releases = await getReleases(appVersionInfo.repo);
+    cachedNewerReleases = releases
+      .filter((release) => !release.draft)
+      .map((release) => ({ ...release, versionNumber: String(release.tag_name || "").replace(/^v/i, "") }))
+      .filter((release) => compareVersions(release.versionNumber, appVersionInfo.version) > 0)
+      .sort((a, b) => compareVersions(b.versionNumber, a.versionNumber));
+    renderChangelog(cachedNewerReleases);
   } catch (error) {
     container.innerHTML = `<p class="hint">${t("update-changelog-error")} ${escapeHtml(error.message)}</p>`;
   }
@@ -4927,6 +4935,7 @@ function bindDesign() {
     renderAll();
     refreshSettingsPreview();
     scheduleAutoSave();
+    if (cachedNewerReleases) renderChangelog(cachedNewerReleases);
   });
   const behaviorFields = {
     "#reveal-seconds": "revealSeconds",
