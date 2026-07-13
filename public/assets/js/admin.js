@@ -2785,21 +2785,31 @@ async function checkForUpdate({ silent = false } = {}) {
   loadChangelog();
 }
 
-// Release notes can carry both languages in one body, delimited by invisible HTML comments
-// ("<!-- DE -->" / "<!-- EN -->" on their own line) - GitHub renders those as nothing, so the
-// release page still reads fine without the markers cluttering it. Picks the block matching
-// the given language; releases without any markers (all pre-bilingual ones) are treated as a
-// single German block and shown as-is regardless of the requested language.
+// Release notes can carry up to 5 languages in one body, delimited by invisible HTML comments
+// ("<!-- DE -->", "<!-- EN -->", "<!-- FR -->", "<!-- ES -->", "<!-- TH -->" each on their own
+// line) - GitHub renders those as nothing, so the release page still reads fine without the
+// markers cluttering it. Picks the block matching the given language, falling back to EN then
+// DE if that language's block isn't present in this particular release. Releases without any
+// markers (all pre-bilingual ones) are treated as a single German block and shown as-is
+// regardless of the requested language.
 function extractLanguageBody(body, lang) {
   const text = String(body || "");
-  const enMarker = "<!-- EN -->";
-  const deMarker = "<!-- DE -->";
-  const enIndex = text.indexOf(enMarker);
-  if (enIndex === -1) return text;
-  const deIndex = text.indexOf(deMarker);
-  const deBody = deIndex !== -1 && deIndex < enIndex ? text.slice(deIndex + deMarker.length, enIndex) : text.slice(0, enIndex);
-  const enBody = text.slice(enIndex + enMarker.length);
-  return lang === "en" ? enBody : deBody;
+  const markers = ["DE", "EN", "FR", "ES", "TH"];
+  const positions = markers
+    .map((code) => ({ code, index: text.indexOf(`<!-- ${code} -->`) }))
+    .filter((entry) => entry.index !== -1)
+    .sort((a, b) => a.index - b.index);
+  if (!positions.length) return text;
+
+  const blocks = {};
+  for (let i = 0; i < positions.length; i++) {
+    const start = positions[i].index + `<!-- ${positions[i].code} -->`.length;
+    const end = i + 1 < positions.length ? positions[i + 1].index : text.length;
+    blocks[positions[i].code.toLowerCase()] = text.slice(start, end);
+  }
+
+  const wanted = String(lang || "de").toLowerCase();
+  return blocks[wanted] ?? blocks.en ?? blocks.de ?? text;
 }
 
 // Pulls "- bullet" lines out of a release's markdown body, grouped under whichever "## Heading"
