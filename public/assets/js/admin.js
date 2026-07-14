@@ -3797,6 +3797,17 @@ function refreshPreviews() {
   renderOverview();
 }
 
+let refreshPreviewsTimer = null;
+// renderBoosters()/renderOverview() rebuild <img> markup (full base64 data URIs) for every card
+// in the collection. Calling that on each keystroke while editing a text field - across ~140
+// cards with embedded images - forces the renderer to re-decode all of them repeatedly and can
+// balloon memory over a long editing session. Debounce so a burst of keystrokes only triggers
+// one rebuild, matching the pattern already used for scheduleAutoSave.
+function refreshPreviewsDebounced() {
+  clearTimeout(refreshPreviewsTimer);
+  refreshPreviewsTimer = setTimeout(refreshPreviews, 300);
+}
+
 function updateCard(cardId, field, value, inputType) {
   const card = settings.deck.cards.find((item) => item.id === cardId);
   if (!card) return;
@@ -3804,7 +3815,7 @@ function updateCard(cardId, field, value, inputType) {
   else card[field] = value;
   const editor = $(`.card-editor[data-card-id="${cardId}"]`);
   if (editor) editor.querySelector(".select-card").innerHTML = cardMarkup(card, { compact: true });
-  refreshPreviews();
+  refreshPreviewsDebounced();
 }
 
 async function handleCardListClick(event) {
