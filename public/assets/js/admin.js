@@ -3759,36 +3759,59 @@ function renderOverview() {
   }
 }
 
-function renderCards() {
-  $("#card-list").innerHTML = settings.deck.cards.map((card, index) => {
-    const active = card.id === selectedCardId ? " is-selected" : "";
-    return `
-      <article class="card-editor${active}" data-card-id="${card.id}">
-        <button class="select-card" type="button" aria-label="${t("aria-select-card")}" title="${t("aria-select-card")}" data-hint="${t("hint-select-card")}">${cardMarkup(card, { compact: true })}</button>
-        <div class="card-fields">
-          <div class="inline-fields">
-            <label>${t("label-card-title")}<input data-field="title" type="text" value="${escapeHtml(card.title || "")}"></label>
-            <label>${t("label-card-rarity")}<select data-field="rarity">${RARITIES.map((rarity) => `
-              <option value="${rarity.id}" ${rarity.id === card.rarity ? "selected" : ""}>${t(`rarity-${rarity.id}`)}</option>
-            `).join("")}</select></label>
-          </div>
-          <div class="inline-fields">
-            <label>${t("label-card-accent")}<input data-field="accent" type="color" value="${escapeHtml(card.accent || "#ff78bb")}"></label>
-          </div>
-          <div class="card-actions">
-            <label class="switch-row compact-switch"><input data-field="enabled" type="checkbox" ${card.enabled !== false ? "checked" : ""}><span>${t("label-card-enabled")}</span></label>
-            <label class="upload-button file-label">${t("label-card-image")}<input data-action="image" type="file" accept="image/*"></label>
-              <button class="ghost-button" data-action="duplicate" type="button">${t("btn-duplicate")}</button>
-              <button class="ghost-button" data-action="export" type="button">${t("btn-export-card")}</button>
-              <button class="danger-button" data-action="clear-image" type="button">${t("btn-remove-image")}</button>
-              <button class="danger-button" data-action="delete" type="button" ${settings.deck.cards.length <= 1 ? "disabled" : ""}>${t("btn-delete")}</button>
-          </div>
+function cardEditorMarkup(card, index) {
+  const active = card.id === selectedCardId ? " is-selected" : "";
+  return `
+    <article class="card-editor${active}" data-card-id="${card.id}">
+      <button class="select-card" type="button" aria-label="${t("aria-select-card")}" title="${t("aria-select-card")}" data-hint="${t("hint-select-card")}">${cardMarkup(card, { compact: true })}</button>
+      <div class="card-fields">
+        <div class="inline-fields">
+          <label>${t("label-card-title")}<input data-field="title" type="text" value="${escapeHtml(card.title || "")}"></label>
+          <label>${t("label-card-rarity")}<select data-field="rarity">${RARITIES.map((rarity) => `
+            <option value="${rarity.id}" ${rarity.id === card.rarity ? "selected" : ""}>${t(`rarity-${rarity.id}`)}</option>
+          `).join("")}</select></label>
         </div>
-        <span class="order-badge">${index + 1}</span>
-      </article>
-    `;
-  }).join("");
+        <div class="inline-fields">
+          <label>${t("label-card-accent")}<input data-field="accent" type="color" value="${escapeHtml(card.accent || "#ff78bb")}"></label>
+        </div>
+        <div class="card-actions">
+          <label class="switch-row compact-switch"><input data-field="enabled" type="checkbox" ${card.enabled !== false ? "checked" : ""}><span>${t("label-card-enabled")}</span></label>
+          <label class="upload-button file-label">${t("label-card-image")}<input data-action="image" type="file" accept="image/*"></label>
+            <button class="ghost-button" data-action="duplicate" type="button">${t("btn-duplicate")}</button>
+            <button class="ghost-button" data-action="export" type="button">${t("btn-export-card")}</button>
+            <button class="danger-button" data-action="clear-image" type="button">${t("btn-remove-image")}</button>
+            <button class="danger-button" data-action="delete" type="button" ${settings.deck.cards.length <= 1 ? "disabled" : ""}>${t("btn-delete")}</button>
+        </div>
+      </div>
+      <span class="order-badge">${index + 1}</span>
+    </article>
+  `;
+}
+
+function renderCards() {
+  $("#card-list").innerHTML = settings.deck.cards.map((card, index) => cardEditorMarkup(card, index)).join("");
   refreshPreviews();
+}
+
+// Inserting a brand-new card via full renderCards() re-decodes every existing card's base64
+// image markup again (cardEditorMarkup + refreshPreviews' renderBoosters/renderOverview all
+// rebuild image markup for the WHOLE collection). Across ~140 cards, repeatedly clicking
+// "Karte hinzufügen" without touching any existing card's DOM was still enough to balloon the
+// WebView2 renderer's memory and crash it. Only prepend the new card's own node and patch the
+// existing nodes' order-badge/delete-disabled state in place, leaving their <img> nodes intact.
+function insertCardEditor(card) {
+  const list = $("#card-list");
+  list.insertAdjacentHTML("afterbegin", cardEditorMarkup(card, 0));
+  const editors = list.querySelectorAll(".card-editor");
+  editors.forEach((editor, index) => {
+    if (index === 0) return;
+    const badge = editor.querySelector(".order-badge");
+    if (badge) badge.textContent = String(index + 1);
+    const deleteButton = editor.querySelector("[data-action='delete']");
+    if (deleteButton) deleteButton.disabled = settings.deck.cards.length <= 1;
+    editor.classList.toggle("is-selected", editor.dataset.cardId === selectedCardId);
+  });
+  refreshPreviewsDebounced();
 }
 
 function refreshPreviews() {
@@ -5345,7 +5368,7 @@ function bindGlobalActions() {
     const card = blankCard();
     settings.deck.cards.unshift(card);
     selectedCardId = card.id;
-    renderCards();
+    insertCardEditor(card);
   });
   $("#import-card").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
