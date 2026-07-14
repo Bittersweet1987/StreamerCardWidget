@@ -36,6 +36,7 @@ import {
   CARD_THEMES,
   cardMarkup,
   cardsForBooster,
+  compressImageDataUrl,
   createId,
   customThemeCss,
   DEFAULT_RARITY_COLORS,
@@ -747,6 +748,13 @@ const I18N = {
     fr: "Affiche la collection en overlay OBS. Peut aussi lister les noms de cartes du demandeur directement dans le chat (avec un décompte si possédées plusieurs fois) – automatiquement scindé en plusieurs messages si besoin pour rester sous la limite de caractères de Twitch.",
     es: "Muestra la colección como overlay de OBS. También puede listar los nombres de las cartas del usuario directamente en el chat (con un contador si posee más de una) – se divide automáticamente en varios mensajes si es necesario para no superar el límite de caracteres de Twitch.",
     th: "แสดงคอลเลกชันเป็นโอเวอร์เลย์ OBS นอกจากนี้ยังสามารถแสดงรายชื่อการ์ดของผู้เรียกในแชทได้โดยตรง (พร้อมจำนวนหากมีมากกว่าหนึ่งใบ) และแบ่งเป็นหลายข้อความอัตโนมัติหากจำเป็นเพื่อไม่ให้เกินขีดจำกัดตัวอักษรของ Twitch"
+  },
+  "cc-collection-seconds-hint": {
+    de: "Gilt für die Sammlungs-Anzeige in OBS, egal ob über Kanalpunkte oder Chat-Befehl ausgelöst – die Einstellung ist an beiden Stellen dieselbe.",
+    en: "Applies to the collection display in OBS regardless of whether it's triggered via channel points or a chat command – this is the same setting in both places.",
+    fr: "S'applique à l'affichage de la collection dans OBS, que ce soit via les points de chaîne ou une commande de chat – c'est le même réglage aux deux endroits.",
+    es: "Se aplica a la visualización de la colección en OBS, ya sea activada por puntos de canal o por un comando de chat – es el mismo ajuste en ambos lugares.",
+    th: "มีผลกับการแสดงคอลเลกชันใน OBS ไม่ว่าจะถูกเรียกผ่านแชนแนลพอยท์หรือคำสั่งแชท – เป็นการตั้งค่าเดียวกันทั้งสองที่"
   },
   "label-cc-collection-chatoutput": { de: "Kartennamen zusätzlich im Chat auflisten", en: "Also list card names in chat",
     fr: "Lister aussi les noms de cartes dans le chat",
@@ -2574,6 +2582,13 @@ const I18N = {
     fr: "Enregistré. L'overlay se met à jour automatiquement.",
     es: "Guardado. El overlay se actualiza automáticamente.",
     th: "บันทึกแล้ว โอเวอร์เลย์จะอัปเดตอัตโนมัติ"
+  },
+  "notice-images-resized": {
+    de: "Bestehende Karten-/Booster-Bilder wurden auf 500×700px verkleinert.",
+    en: "Existing card/booster images were resized to 500×700px.",
+    fr: "Les images de cartes/boosters existantes ont été redimensionnées en 500×700px.",
+    es: "Las imágenes de cartas/sobres existentes se redimensionaron a 500×700px.",
+    th: "รูปการ์ด/บูสเตอร์ที่มีอยู่ถูกปรับขนาดเป็น 500×700px"
   }
 };
 
@@ -2655,18 +2670,40 @@ function bindSegToggle(id, onChange) {
   });
 }
 
+let autoSaveInFlight = false;
+let autoSaveQueued = false;
+
+// scheduleAutoSave()'s 650ms timer only debounces WHEN a save starts, not whether one is
+// already running. settings (with every card's base64 image) can serialize to 10MB+; if the
+// user keeps editing while a previous save's request is still in flight (e.g. slow network to
+// the stats VPS), each new timer fires ANOTHER overlapping save holding its own full copy of
+// that string, which is what was ballooning the WebView2 heap to multiple GB. Only one save may
+// be in flight at a time; a save requested while one is running is deferred until it finishes.
 function scheduleAutoSave() {
   if (!autoSaveReady || !settings) return;
   clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(async () => {
-    try {
-      await saveSettings(settings);
-      syncCommunityCounts();
-      loadCommunityStats(true);
-    } catch (error) {
-      showNotice(error.message, "error");
+  autoSaveTimer = setTimeout(runAutoSave, 650);
+}
+
+async function runAutoSave() {
+  if (autoSaveInFlight) {
+    autoSaveQueued = true;
+    return;
+  }
+  autoSaveInFlight = true;
+  try {
+    await saveSettings(settings);
+    syncCommunityCounts();
+    loadCommunityStats(true);
+  } catch (error) {
+    showNotice(error.message, "error");
+  } finally {
+    autoSaveInFlight = false;
+    if (autoSaveQueued) {
+      autoSaveQueued = false;
+      scheduleAutoSave();
     }
-  }, 650);
+  }
 }
 
 function selectedCard() {
@@ -3110,6 +3147,14 @@ function bindTabs() {
         startQueuePolling();
       } else {
         clearInterval(queuePollTimer);
+      }
+      if (button.dataset.tab === "booster" && boostersDirty) {
+        boostersDirty = false;
+        renderBoosters();
+      }
+      if (button.dataset.tab === "overview" && overviewDirty) {
+        overviewDirty = false;
+        renderOverview();
       }
     });
   });
@@ -3731,6 +3776,11 @@ function bindShowcase() {
       settings.showcase[field] = type === "checkbox" ? event.target.checked : type === "number" ? Number(event.target.value) : event.target.value;
     });
   }
+  // "#showcase-seconds" and "#cc-collection-seconds" (Chat Befehle) both read/write the same
+  // settings.showcase.secondsPerBooster - keep the other input's displayed value in step.
+  $("#showcase-seconds").addEventListener("input", (event) => {
+    if ($("#cc-collection-seconds")) $("#cc-collection-seconds").value = event.target.value;
+  });
   $("#showcase-info-toggle").addEventListener("click", () => {
     const box = $("#showcase-info");
     const toggle = $("#showcase-info-toggle");
@@ -3814,10 +3864,26 @@ function insertCardEditor(card) {
   refreshPreviewsDebounced();
 }
 
+// renderBoosters()/renderOverview() rebuild <img> markup with the FULL base64 image data for
+// every card/booster in the collection - with ~190 real cards each carrying an actual uploaded
+// image, that's tens of MB of string churn on every single call. Rebuilding them while the user
+// is busy typing in the (separate) Karten tab, where neither is even visible, was the main driver
+// of the WebView2 "Out of Memory" crash: only rebuild whichever of these tabs is currently
+// visible, and mark the other one dirty so it rebuilds once when the user actually switches to it.
+let boostersDirty = false;
+let overviewDirty = false;
+
+function isTabActive(tabName) {
+  const panel = $(`.tab-panel[data-panel="${tabName}"]`);
+  return Boolean(panel && panel.classList.contains("is-active"));
+}
+
 function refreshPreviews() {
   $("#selected-card-preview").innerHTML = selectedCard() ? cardMarkup(selectedCard()) : "";
-  renderBoosters();
-  renderOverview();
+  if (isTabActive("booster")) renderBoosters();
+  else boostersDirty = true;
+  if (isTabActive("overview")) renderOverview();
+  else overviewDirty = true;
 }
 
 let refreshPreviewsTimer = null;
@@ -3890,7 +3956,7 @@ async function handleCardListChange(event) {
   if (field) updateCard(cardId, field, event.target.type === "checkbox" ? event.target.checked : event.target.value, event.target.type);
   if (action === "image" && event.target.files?.[0]) {
     const card = settings.deck.cards.find((item) => item.id === cardId);
-    card.image = await readFileAsDataUrl(event.target.files[0]);
+    card.image = await compressImageDataUrl(await readFileAsDataUrl(event.target.files[0]));
     event.target.value = "";
     const editorNode = $(`.card-editor[data-card-id="${cardId}"]`);
     if (editorNode) editorNode.querySelector(".select-card").innerHTML = cardMarkup(card, { compact: true });
@@ -4043,7 +4109,7 @@ function bindBooster() {
   });
   $("#booster-image").addEventListener("change", async (event) => {
     if (!event.target.files?.[0]) return;
-    selectedBooster().image = await readFileAsDataUrl(event.target.files[0]);
+    selectedBooster().image = await compressImageDataUrl(await readFileAsDataUrl(event.target.files[0]));
     // Re-selecting a file with the same name doesn't change the input's value, so
     // browsers won't fire "change" again next time unless we reset it now.
     event.target.value = "";
@@ -4440,6 +4506,10 @@ function hydrateChatCommands() {
   $("#cc-collection-chatoutput-enabled").checked = cc.collection.chatOutputEnabled !== false;
   $("#cc-collection-header-message").value = cc.collection.headerMessage || "";
   $("#cc-collection-empty-message").value = cc.collection.emptyMessage || "";
+  // Same underlying value as "#showcase-seconds" in Kanalpunkte (settings.showcase.secondsPerBooster)
+  // - the showcase overlay's page-flip timing is one setting regardless of which trigger (channel
+  // point reward or chat command) started it, so both fields must always show/write the same number.
+  $("#cc-collection-seconds").value = settings.showcase?.secondsPerBooster || 12;
 
   const trade = cc.trade || {};
   $("#cc-trade-enabled").checked = trade.enabled !== false;
@@ -4716,6 +4786,13 @@ function bindChatCommands() {
   $("#reset-message-defaults").addEventListener("click", () => {
     if (!window.confirm(t("confirm-reset-message-defaults"))) return;
     resetAllMessageDefaults();
+  });
+  // Same underlying settings.showcase.secondsPerBooster as "#showcase-seconds" in Kanalpunkte -
+  // keep that field's displayed value in step.
+  $("#cc-collection-seconds").addEventListener("input", (event) => {
+    settings.showcase ||= {};
+    settings.showcase.secondsPerBooster = Number(event.target.value);
+    if ($("#showcase-seconds")) $("#showcase-seconds").value = event.target.value;
   });
 }
 
@@ -5377,9 +5454,11 @@ function bindGlobalActions() {
   });
   $("#save-settings").addEventListener("click", async () => {
     await saveSettings(settings);
-    await syncCommunityCounts(true);
-    loadCommunityStats(true);
     showNotice(t("notice-saved"));
+    // Community stats sync is a best-effort network round trip to the VPS - don't make the
+    // user wait for it before showing the save confirmation.
+    syncCommunityCounts(true);
+    loadCommunityStats(true);
   });
   $("#test-random").addEventListener("click", () => {
     const user = randomUsername();
@@ -5572,6 +5651,37 @@ function renderAll() {
   }
 }
 
+// Downscales every card/booster image already stored in settings to the same 500x700 cap that
+// new uploads get, one time after load. Runs in the background so startup isn't blocked; only
+// triggers a re-render/save if something actually shrank (a fresh install with already-small
+// images is a no-op every time it runs).
+async function migrateImageSizes() {
+  let changed = false;
+  for (const card of settings.deck.cards) {
+    if (!card.image) continue;
+    const resized = await compressImageDataUrl(card.image);
+    if (resized !== card.image) {
+      card.image = resized;
+      changed = true;
+    }
+  }
+  for (const booster of settings.boosters) {
+    if (!booster.image) continue;
+    const resized = await compressImageDataUrl(booster.image);
+    if (resized !== booster.image) {
+      booster.image = resized;
+      changed = true;
+    }
+  }
+  if (changed) {
+    renderCards();
+    renderBoosterList();
+    hydrateBooster();
+    await saveSettings(settings);
+    showNotice(t("notice-images-resized"));
+  }
+}
+
 async function init() {
   // Bind the navigation and controls FIRST, before any data loading. This way the UI (tab
   // switching, buttons) always works even if loading/normalizing the settings later fails -
@@ -5600,6 +5710,7 @@ async function init() {
     selectedCardId = settings.deck.cards[0]?.id;
     selectedBoosterId = settings.boosters[0]?.id;
     renderAll();
+    migrateImageSizes();
     await loadUsers();
     renderUsers();
     await hydrateUpdateTab();

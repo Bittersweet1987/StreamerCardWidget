@@ -540,6 +540,10 @@
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-collection-command" type="text"></label>
                 </div>
                 <p class="hint" data-i18n="cc-collection-hint">Zeigt die Sammlung als Overlay in OBS. Zusätzlich kann der Befehl die eigenen Kartennamen direkt im Chat auflisten (mit Anzahl bei Mehrfachbesitz) – wird bei Bedarf automatisch auf mehrere Nachrichten aufgeteilt, um Twitchs Zeichenlimit einzuhalten.</p>
+                <div class="form-grid">
+                  <label data-i18n="label-showcase-seconds">Sekunden pro Seite (Umblättern)<input id="cc-collection-seconds" type="number" min="2" step="1"></label>
+                </div>
+                <p class="hint" data-i18n="cc-collection-seconds-hint">Gilt für die Sammlungs-Anzeige in OBS, egal ob über Kanalpunkte oder Chat-Befehl ausgelöst – die Einstellung ist an beiden Stellen dieselbe.</p>
               </div>
 
               <div class="field-group">
@@ -1560,6 +1564,6 @@
     </div>
 
     <script src="/assets/js/vendor/qwebchannel.min.js?v=20260716-changelogall1"></script>
-    <script type="module" src="/assets/js/admin.js?v=20260716-addcardmemfix"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260716-memfixes"></script>
   </body>
 </html>

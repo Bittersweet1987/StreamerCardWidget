@@ -25,6 +25,32 @@ export function readFileAsDataUrl(file) {
   });
 }
 
+// Downscales an uploaded image to a sane maximum size before it's stored as base64 in
+// settings.json. Card/booster art was previously kept at whatever resolution the user uploaded
+// it at (often several MB each as base64) - with ~200 cards that adds up to a settings.json many
+// times larger than necessary, which is what makes every save slow and what the WebView2
+// renderer has to hold in memory for every card mounted in the admin UI. Stays PNG (not JPEG) so
+// transparent card-art cutouts aren't given a solid background.
+export function compressImageDataUrl(dataUrl, maxWidth = 500, maxHeight = 700) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width, maxHeight / img.height);
+      if (scale >= 1) {
+        resolve(dataUrl);
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 export function createId(prefix = "card") {
   if (crypto.randomUUID) return crypto.randomUUID();
   return `${prefix}-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
@@ -654,12 +680,10 @@ export function cardStars(rarity = "common") {
 export function cardMarkup(card, options = {}) {
   const hidden = options.hidden ? " is-hidden-card" : "";
   const compact = options.compact ? " is-compact-card" : "";
-  // loading="lazy" defers decode/rasterization of offscreen images - with hundreds of cards
-  // mounted at once in the admin card/booster lists, decoding every base64 image up front is
-  // what exhausts the WebView2 renderer's memory. Harmless for the OBS overlay, where only a
-  // handful of cards are ever visible at a time anyway.
+  // NOTE: do not add loading="lazy" here - it broke card reveal animations in OBS's Browser
+  // Source (CEF), which doesn't fire the load in time for the overlay's viewport there.
   const image = card?.image
-    ? `<img src="${escapeHtml(card.image)}" alt="" loading="lazy">`
+    ? `<img src="${escapeHtml(card.image)}" alt="">`
     : `<div class="fallback-art">${escapeHtml((card?.title || "?").slice(0, 1))}</div>`;
   const accent = card?.accent || "#ff78bb";
   const title = card?.title || "Mystery";
@@ -694,7 +718,7 @@ export function cardMarkup(card, options = {}) {
 
 export function boosterMarkup(booster = {}) {
   const image = booster.image
-    ? `<img src="${escapeHtml(booster.image)}" alt="" loading="lazy">`
+    ? `<img src="${escapeHtml(booster.image)}" alt="">`
     : `<div class="fallback-booster">${escapeHtml(booster.title || "Pack")}</div>`;
   return `
     <article class="booster-pack" data-image-fit="${activeBoosterImageFit}" style="--pack-accent:${booster.accent || "#ff78bb"}">
