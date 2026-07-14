@@ -654,8 +654,12 @@ export function cardStars(rarity = "common") {
 export function cardMarkup(card, options = {}) {
   const hidden = options.hidden ? " is-hidden-card" : "";
   const compact = options.compact ? " is-compact-card" : "";
+  // loading="lazy" defers decode/rasterization of offscreen images - with hundreds of cards
+  // mounted at once in the admin card/booster lists, decoding every base64 image up front is
+  // what exhausts the WebView2 renderer's memory. Harmless for the OBS overlay, where only a
+  // handful of cards are ever visible at a time anyway.
   const image = card?.image
-    ? `<img src="${escapeHtml(card.image)}" alt="">`
+    ? `<img src="${escapeHtml(card.image)}" alt="" loading="lazy">`
     : `<div class="fallback-art">${escapeHtml((card?.title || "?").slice(0, 1))}</div>`;
   const accent = card?.accent || "#ff78bb";
   const title = card?.title || "Mystery";
@@ -690,7 +694,7 @@ export function cardMarkup(card, options = {}) {
 
 export function boosterMarkup(booster = {}) {
   const image = booster.image
-    ? `<img src="${escapeHtml(booster.image)}" alt="">`
+    ? `<img src="${escapeHtml(booster.image)}" alt="" loading="lazy">`
     : `<div class="fallback-booster">${escapeHtml(booster.title || "Pack")}</div>`;
   return `
     <article class="booster-pack" data-image-fit="${activeBoosterImageFit}" style="--pack-accent:${booster.accent || "#ff78bb"}">
