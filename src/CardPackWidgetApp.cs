@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.9.4";
-        public const string ReleaseDate = "2026-07-14";
+        public const string Version = "2.10.0";
+        public const string ReleaseDate = "2026-07-15";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
     }
 
@@ -424,11 +424,16 @@ namespace CardPackWidgetApp
             }
             catch (Exception ex)
             {
-                // A bare swallow here used to drop the connection with zero response on ANY
-                // handler exception (e.g. a bad settings.json write) - from the browser that
-                // looks like "Failed to fetch" with no error detail at all. Log it and, if we
-                // still have a live stream, try to hand back a real 500 so the client sees why.
-                Log("server", "error", "Anfrage fehlgeschlagen: " + ex.Message);
+                // A connection that never sent a complete request (idle keep-alive dropped by the
+                // OS, a browser's speculative pre-connect, a stray port probe, ...) times out or
+                // resets inside ReadRequest's blocking ReadByte() loop above - that's normal TCP
+                // noise for a raw listener, not a real application error, and logging it as one
+                // just alarms the user in the Log tab for nothing actionable. Real request-handling
+                // failures (HandleApi/ServeStatic) still get logged as errors below.
+                SocketException socketEx = ex as SocketException ?? ex.InnerException as SocketException;
+                bool isBenignConnectionNoise = socketEx != null &&
+                    (socketEx.SocketErrorCode == SocketError.TimedOut || socketEx.SocketErrorCode == SocketError.ConnectionReset || socketEx.SocketErrorCode == SocketError.ConnectionAborted);
+                if (!isBenignConnectionNoise) Log("server", "error", "Anfrage fehlgeschlagen: " + ex.Message);
                 try
                 {
                     if (stream != null)
@@ -797,6 +802,16 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (request.Method == "GET" && request.Path == "/api/pity")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "pity", twitchBridge.GetPityState() }
+                }));
+                return;
+            }
+
             if (request.Method == "POST" && request.Path == "/api/command-usage/reset")
             {
                 Dictionary<string, object> body = ParseObject(request.Body);
@@ -1072,6 +1087,11 @@ namespace CardPackWidgetApp
             return Path.Combine(dataDir, "command-usage.json");
         }
 
+        internal string PityStatePath()
+        {
+            return Path.Combine(dataDir, "pity.json");
+        }
+
         internal string ReadFileText(string path, string fallback)
         {
             return ReadFile(path, fallback);
@@ -1275,8 +1295,9 @@ namespace CardPackWidgetApp
             }
 
             string target = name.Trim();
+            string targetLower = target.ToLowerInvariant();
             string bestTitle = "";
-            int bestDistance = Int32.MaxValue;
+            double bestScore = 0;
             foreach (object co in cards)
             {
                 Dictionary<string, object> card = co as Dictionary<string, object>;
@@ -1297,11 +1318,32 @@ namespace CardPackWidgetApp
                     }
                     return result;
                 }
-                int d = LevenshteinDistance(title.Trim().ToLowerInvariant(), target.ToLowerInvariant());
-                if (d < bestDistance) { bestDistance = d; bestTitle = title; }
+                double score = TitleSimilarity(title.Trim().ToLowerInvariant(), targetLower);
+                if (score > bestScore) { bestScore = score; bestTitle = title; }
             }
-            result["suggestion"] = bestTitle;
+            // Only offer a suggestion once it's a plausible typo/partial match - a raw "closest of
+            // all cards" (the old behavior) happily proposed a totally unrelated short title just
+            // because it needed fewer character edits than a long, otherwise-very-close title.
+            result["suggestion"] = bestScore >= 0.45 ? bestTitle : "";
             return result;
+        }
+
+        // Similarity in [0,1], 1 = identical. Plain Levenshtein distance is unnormalized (a typo
+        // in a long title scores "worse" than an unrelated but short title) and ignores that users
+        // often type only part of a card's name - both of which made "did you mean" suggestions
+        // feel essentially random. This normalizes by length and gives a straight substring match
+        // (typing part of the real name) a strong boost over an edit-distance-only comparison.
+        private static double TitleSimilarity(string title, string target)
+        {
+            if (title.Length == 0 || target.Length == 0) return 0;
+            if (title.Contains(target) || target.Contains(title))
+            {
+                double coverage = (double)Math.Min(title.Length, target.Length) / Math.Max(title.Length, target.Length);
+                return 0.75 + 0.25 * coverage;
+            }
+            int distance = LevenshteinDistance(title, target);
+            int maxLen = Math.Max(title.Length, target.Length);
+            return 1.0 - (double)distance / maxLen;
         }
 
         internal bool UserExistsInCollections(string login)
@@ -1654,6 +1696,24 @@ namespace CardPackWidgetApp
                 File.WriteAllText(CollectionsPath(), json.Serialize(collections), Encoding.UTF8);
                 Broadcast("collections", "{\"updated\":true}");
                 return new Dictionary<string, object> { { "aNewCardB", aNewCardB }, { "bNewCardA", bNewCardA } };
+            }
+        }
+
+        // Removes "count" copies of a card from a viewer's collection (used by "!dust") - always
+        // keeps at least 1 copy; returns false without changing anything if the viewer doesn't
+        // have enough duplicates to spare.
+        internal bool RemoveCardCopies(string login, string displayName, string boosterId, string cardId, int count)
+        {
+            lock (collectionWriteLock)
+            {
+                Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+                Dictionary<string, object> cards = EnsureUserCards(collections, boosterId, login, displayName);
+                int current = CardCount(cards, cardId);
+                if (current - count < 1) return false;
+                SetCount(cards, cardId, current - count);
+                File.WriteAllText(CollectionsPath(), json.Serialize(collections), Encoding.UTF8);
+                Broadcast("collections", "{\"updated\":true}");
+                return true;
             }
         }
 
@@ -2100,6 +2160,47 @@ namespace CardPackWidgetApp
 
         private readonly object usageLock = new object();
         private Dictionary<string, object> usageData;
+
+        // ---- Pity system: guarantees a minimum rarity after N consecutive draws (any trigger)
+        // that didn't reach it. Per-login state persisted independently of command-usage.json
+        // (which resets on its own schedule) - pity only resets by actually landing the
+        // guaranteed rarity, naturally or forced.
+        //   streak: consecutive draws (any trigger) that did NOT reach the guaranteed rarity.
+        //   bank: leftover "!dust" points beyond what was needed to fill streak up to the
+        //     threshold - each grants one additional forced-guarantee draw beyond the next one,
+        //     consumed one at a time, independent of the streak/threshold cycle continuing normally.
+        private readonly object pityLock = new object();
+        private Dictionary<string, object> pityState;
+
+        private void EnsurePityLoaded()
+        {
+            if (pityState != null) return;
+            pityState = ParseObject(server.ReadFileText(server.PityStatePath(), "{}"));
+        }
+
+        private Dictionary<string, object> GetPityEntry(string login)
+        {
+            lock (pityLock)
+            {
+                EnsurePityLoaded();
+                object existing;
+                if (pityState.TryGetValue(login, out existing) && existing is Dictionary<string, object>) return (Dictionary<string, object>)existing;
+                // Back-compat: earlier versions stored a bare streak integer per login.
+                int legacyStreak = existing != null ? GetInt(pityState, login, 0) : 0;
+                return new Dictionary<string, object> { { "streak", legacyStreak }, { "bank", 0 } };
+            }
+        }
+
+        private void SavePityEntry(string login, Dictionary<string, object> entry)
+        {
+            lock (pityLock)
+            {
+                EnsurePityLoaded();
+                pityState[login] = entry;
+                try { File.WriteAllText(server.PityStatePath(), server.Serializer.Serialize(pityState), Encoding.UTF8); }
+                catch (Exception ex) { server.Log("draw", "error", "Pity-Speicherung fehlgeschlagen: " + ex.Message); }
+            }
+        }
         private bool usageLoaded;
         private System.Threading.Timer resetTimer;
         private volatile bool resetTimerStarted;
@@ -2127,6 +2228,10 @@ namespace CardPackWidgetApp
         private const string DefaultTradeDecline = "@userNameA, leider hat @userNameB deine Tauschanfrage abgelehnt, damit bleiben dir bis zum [Uhrzeit] noch [Anzahl] Tauschanfragen.";
         private const string DefaultTradeNotOwned = "@userNameB, du besitzt diese Karte leider nicht. Bitte wähle eine andere.";
         private const string DefaultTradeSuccess = "@userNameA tauschte seine Karte [KarteA] aus [BoosterA] erfolgreich mit @userNameB gegen Karte [KarteB] aus [BoosterB]. Damit hat @userNameA nun [AnzahlA] Karten [KarteB] und @userNameB [AnzahlB] Karten [KarteA].";
+        private const string DefaultDustUsage = "@userName, Nutzung: !dust <Kartenname> <Anzahl>";
+        private const string DefaultDustCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
+        private const string DefaultDustNotEnough = "@userName, du hast nicht genug Duplikate von [Kartenname] (du besitzt [Besitz], mindestens 1 muss dir erhalten bleiben).";
+        private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Pity-Punkte). Noch [PityRest] Ziehungen bis zur garantierten Seltenheit.";
 
         private const string DefaultBattleUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
         private const string DefaultBattleSelfChallenge = "@userName, du kannst nicht dich selbst herausfordern.";
@@ -2153,6 +2258,7 @@ namespace CardPackWidgetApp
         {
             StartQueueWorkerOnce();
             StartResetTimerOnce();
+            StartAutoHelpTimerOnce();
             Dictionary<string, object> twitch = TwitchSettings();
             if (!String.IsNullOrWhiteSpace(GetString(twitch, "accessToken", "")))
             {
@@ -2623,7 +2729,10 @@ namespace CardPackWidgetApp
 
         // Picks one enabled card from the booster, weighted by rarity weight (mirrors the overlay's
         // weightedPick). Returns null only if the booster has no eligible cards.
-        private Dictionary<string, object> PickCardFromBooster(Dictionary<string, object> settings, string boosterId)
+        // minRarityFilter (used by the pity system, see ProcessQueueItem): when set, restricts the
+        // pool to cards at or above that rarity first - falls back to the unrestricted pool if the
+        // booster happens to have no card that rare, so a pity-guaranteed draw never comes up empty.
+        private Dictionary<string, object> PickCardFromBooster(Dictionary<string, object> settings, string boosterId, string minRarityFilter = null)
         {
             Dictionary<string, object> booster = FindBooster(settings, boosterId);
             if (booster == null) return null;
@@ -2655,6 +2764,28 @@ namespace CardPackWidgetApp
                 total += w;
             }
             if (pool.Count == 0) return null;
+
+            if (!String.IsNullOrEmpty(minRarityFilter))
+            {
+                int minRank = CardPackServer.GetRarityRank(minRarityFilter);
+                var filteredPool = new List<Dictionary<string, object>>();
+                var filteredWeights = new List<double>();
+                double filteredTotal = 0;
+                for (int i = 0; i < pool.Count; i++)
+                {
+                    if (CardPackServer.GetRarityRank(GetString(pool[i], "rarity", "common")) < minRank) continue;
+                    filteredPool.Add(pool[i]);
+                    filteredWeights.Add(poolWeights[i]);
+                    filteredTotal += poolWeights[i];
+                }
+                if (filteredPool.Count > 0)
+                {
+                    pool = filteredPool;
+                    poolWeights = filteredWeights;
+                    total = filteredTotal;
+                }
+            }
+
             double cursor;
             lock (RandomSource) cursor = RandomSource.NextDouble() * total;
             for (int i = 0; i < pool.Count; i++)
@@ -3052,7 +3183,33 @@ namespace CardPackWidgetApp
                 }
                 Dictionary<string, object> settings = server.ReadSettingsObject();
                 Dictionary<string, object> booster = FindBooster(settings, boosterId);
-                Dictionary<string, object> card = PickCardFromBooster(settings, boosterId);
+
+                // Pity system: guarantees at least "minRarity" once a viewer has had "threshold"
+                // consecutive draws (via either channel points or the chat command - this is the
+                // single place both paths funnel through) that didn't reach it, OR immediately if
+                // they have banked "!dust" credit left over (see HandleDustCommand).
+                Dictionary<string, object> pityCfg = Obj(settings, "pity");
+                bool pityEnabled = GetBool(pityCfg, "enabled", false);
+                string pityMinRarity = GetString(pityCfg, "minRarity", "rare");
+                int pityThreshold = Math.Max(1, GetInt(pityCfg, "threshold", 10));
+
+                Dictionary<string, object> pityEntry = pityEnabled ? GetPityEntry(login) : null;
+                int pityStreak = pityEntry != null ? GetInt(pityEntry, "streak", 0) : 0;
+                int pityBank = pityEntry != null ? GetInt(pityEntry, "bank", 0) : 0;
+                bool viaThreshold = pityEnabled && pityStreak >= pityThreshold;
+                bool viaBank = pityEnabled && !viaThreshold && pityBank > 0;
+                bool forcePity = viaThreshold || viaBank;
+
+                Dictionary<string, object> card = PickCardFromBooster(settings, boosterId, forcePity ? pityMinRarity : null);
+
+                if (pityEnabled)
+                {
+                    bool metPity = card != null && CardPackServer.GetRarityRank(GetString(card, "rarity", "common")) >= CardPackServer.GetRarityRank(pityMinRarity);
+                    if (viaBank) pityEntry["bank"] = pityBank - 1;
+                    pityEntry["streak"] = metPity ? 0 : pityStreak + 1;
+                    SavePityEntry(login, pityEntry);
+                }
+
                 string cardId = card != null ? GetString(card, "id", "") : "";
                 string cardTitle = card != null ? GetString(card, "title", "") : "";
                 string boosterTitle = booster != null ? GetString(booster, "title", "") : "";
@@ -3479,16 +3636,117 @@ namespace CardPackWidgetApp
             }
         }
 
+        // ---- Automatic "which commands are available" help message: fires after N minutes
+        // and/or N chat messages since the last time it was sent (whichever is enabled/reached
+        // first), listing every currently-enabled command with its short description. ----
+        private readonly object autoHelpLock = new object();
+        private int autoHelpMessageCounter;
+        private DateTime autoHelpLastSentAt = DateTime.UtcNow;
+
+        // Called on every incoming chat message - only handles the message-count side (the time
+        // side is handled by the independent timer below, since a chat-message-driven check would
+        // never fire the time trigger during a quiet chat with 0 chat activity).
+        private void CheckAutoHelp(Dictionary<string, object> settings, Dictionary<string, object> cc)
+        {
+            Dictionary<string, object> autoHelp = Obj(settings, "autoHelp");
+            if (!GetBool(autoHelp, "enabled", false)) return;
+            int intervalMessages = Math.Max(0, GetInt(autoHelp, "intervalMessages", 0));
+            if (intervalMessages <= 0) return;
+
+            bool shouldSend;
+            lock (autoHelpLock)
+            {
+                autoHelpMessageCounter++;
+                shouldSend = autoHelpMessageCounter >= intervalMessages;
+                if (shouldSend)
+                {
+                    autoHelpMessageCounter = 0;
+                    autoHelpLastSentAt = DateTime.UtcNow;
+                }
+            }
+            if (shouldSend) SendAutoHelpMessage(settings, cc, autoHelp);
+        }
+
+        // Runs on a fixed timer (see StartAutoHelpTimerOnce) independent of chat activity, so the
+        // "after X minutes" trigger fires even during a completely quiet chat.
+        private void CheckAutoHelpTimer()
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> cc = Obj(settings, "chatCommands");
+            Dictionary<string, object> autoHelp = Obj(settings, "autoHelp");
+            if (!GetBool(autoHelp, "enabled", false)) return;
+            int intervalMinutes = Math.Max(0, GetInt(autoHelp, "intervalMinutes", 0));
+            if (intervalMinutes <= 0) return;
+
+            bool shouldSend;
+            lock (autoHelpLock)
+            {
+                shouldSend = (DateTime.UtcNow - autoHelpLastSentAt).TotalMinutes >= intervalMinutes;
+                if (shouldSend)
+                {
+                    autoHelpMessageCounter = 0;
+                    autoHelpLastSentAt = DateTime.UtcNow;
+                }
+            }
+            if (shouldSend) SendAutoHelpMessage(settings, cc, autoHelp);
+        }
+
+        private void SendAutoHelpMessage(Dictionary<string, object> settings, Dictionary<string, object> cc, Dictionary<string, object> autoHelp)
+        {
+            string list = BuildAutoHelpCommandList(cc);
+            if (String.IsNullOrWhiteSpace(list)) return;
+            string message = GetString(autoHelp, "message", DefaultAutoHelpMessage).Replace("[Befehle]", list);
+            SendChatMessageSafe(message);
+        }
+
+        private bool autoHelpTimerStarted;
+        private System.Threading.Timer autoHelpTimer;
+
+        private void StartAutoHelpTimerOnce()
+        {
+            if (autoHelpTimerStarted) return;
+            autoHelpTimerStarted = true;
+            // autoHelpLastSentAt is initialized to "now" at app start, so the first check 30s in
+            // won't immediately fire even with a short configured interval - matches user
+            // expectation of "after X minutes [of being enabled]", not "instantly on next tick".
+            autoHelpTimer = new System.Threading.Timer(delegate
+            {
+                try { CheckAutoHelpTimer(); }
+                catch (Exception ex) { server.Log("twitch", "error", "Auto-Hilfe-Timer fehlgeschlagen: " + ex.Message); }
+            }, null, 30000, 30000);
+        }
+
+        private const string DefaultAutoHelpMessage = "📋 Verfügbare Befehle: [Befehle]";
+
+        // Lists every enabled, user-initiated command (not the yes/no follow-up commands, which
+        // only make sense once a trade/battle is already pending) with its short description.
+        private string BuildAutoHelpCommandList(Dictionary<string, object> cc)
+        {
+            var parts = new List<string>();
+            foreach (string key in new[] { "pack", "dust", "collection", "trade", "battle", "ranking" })
+            {
+                Dictionary<string, object> command = Obj(cc, key);
+                if (!GetBool(command, "enabled", key != "dust")) continue;
+                string prefix = GetString(command, "prefix", "!");
+                string word = GetString(command, "command", key);
+                string helpText = GetString(command, "helpText", "").Trim();
+                parts.Add(helpText.Length > 0 ? prefix + word + " - " + helpText : prefix + word);
+            }
+            return String.Join(" | ", parts);
+        }
+
         // ---- Command parsing + per-user usage/cooldown tracking ----
 
         private void ProcessChatMessage(string login, string displayName, string text)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> cc = Obj(settings, "chatCommands");
+            CheckAutoHelp(settings, cc);
             text = text.Trim();
             if (text.Length == 0) return;
 
             Dictionary<string, object> pack = Obj(cc, "pack");
+            Dictionary<string, object> dust = Obj(cc, "dust");
             Dictionary<string, object> collection = Obj(cc, "collection");
             Dictionary<string, object> trade = Obj(cc, "trade");
             Dictionary<string, object> tradeYes = Obj(cc, "tradeyes");
@@ -3501,6 +3759,11 @@ namespace CardPackWidgetApp
             if (MatchesCommand(text, pack))
             {
                 if (GetBool(pack, "enabled", true)) HandlePackCommand(login, displayName, pack);
+                return;
+            }
+            if (MatchesCommand(text, dust))
+            {
+                if (GetBool(dust, "enabled", false)) HandleDustCommand(login, displayName, ArgsAfterCommand(text, dust), dust);
                 return;
             }
             if (MatchesCommand(text, collection))
@@ -3619,6 +3882,93 @@ namespace CardPackWidgetApp
             // The "Nachricht bei Einloesung" is sent AFTER the animation finishes (see
             // SendDrawPostMessage), so it can include the actual drawn card and booster name.
             Enqueue("draw", login, displayName, "chat");
+        }
+
+        // ---- Dust: "!dust <Kartenname> <Anzahl>" sacrifices owned duplicates of a card to
+        // reduce a viewer's pity streak (see ProcessQueueItem's "draw" handling), with leftover
+        // points banked as extra guaranteed draws. No cooldown/usage-limit tracking - the natural
+        // cost (giving up owned duplicates) is the limiting factor. ----
+        private void HandleDustCommand(string login, string displayName, string args, Dictionary<string, object> dustCfg)
+        {
+            string rest = args.Trim();
+            int lastSpace = rest.LastIndexOf(' ');
+            if (lastSpace < 0)
+            {
+                SendChatMessageSafe(GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName));
+                return;
+            }
+            string cardName = rest.Substring(0, lastSpace).Trim();
+            string countText = rest.Substring(lastSpace + 1).Trim();
+            int count;
+            if (cardName.Length == 0 || !Int32.TryParse(countText, out count) || count < 1)
+            {
+                SendChatMessageSafe(GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName));
+                return;
+            }
+
+            Dictionary<string, object> card = server.ResolveCardByName(cardName);
+            if (!Convert.ToBoolean(card["found"]))
+            {
+                SendChatMessageSafe(GetString(dustCfg, "cardNotFoundMessage", DefaultDustCardNotFound)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[falscherName]", cardName)
+                    .Replace("[Kartenname]", GetString(card, "suggestion", "")));
+                return;
+            }
+            string cardId = GetString(card, "cardId", "");
+            string cardTitle = GetString(card, "cardTitle", "");
+            string boosterId = GetString(card, "boosterId", "");
+
+            int owned = server.GetCardCount(login, boosterId, cardId);
+            if (owned - count < 1)
+            {
+                SendChatMessageSafe(GetString(dustCfg, "notEnoughMessage", DefaultDustNotEnough)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Kartenname]", cardTitle)
+                    .Replace("[Besitz]", owned.ToString()));
+                return;
+            }
+
+            if (!server.RemoveCardCopies(login, displayName, boosterId, cardId, count))
+            {
+                // Lost a race against a trade/draw between the check above and here - safe to
+                // just ask the viewer to retry rather than silently drop their points.
+                SendChatMessageSafe(GetString(dustCfg, "notEnoughMessage", DefaultDustNotEnough)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Kartenname]", cardTitle)
+                    .Replace("[Besitz]", owned.ToString()));
+                return;
+            }
+
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> pityCfg = Obj(settings, "pity");
+            int pityThreshold = Math.Max(1, GetInt(pityCfg, "threshold", 10));
+            Dictionary<string, object> dustValues = Obj(pityCfg, "dustValues");
+            string rarity = server.CardRarity(cardId);
+            double perCard = GetDouble(dustValues, rarity, 1);
+            int points = Math.Max(0, (int)Math.Round(perCard * count));
+
+            int pityRest;
+            lock (pityLock)
+            {
+                Dictionary<string, object> entry = GetPityEntry(login);
+                int streak = GetInt(entry, "streak", 0);
+                int bank = GetInt(entry, "bank", 0);
+                int applied = Math.Min(points, pityThreshold - streak);
+                streak += applied;
+                bank += points - applied;
+                entry["streak"] = streak;
+                entry["bank"] = bank;
+                SavePityEntry(login, entry);
+                pityRest = Math.Max(0, pityThreshold - streak);
+            }
+
+            SendChatMessageSafe(GetString(dustCfg, "successMessage", DefaultDustSuccess)
+                .Replace("@userName", "@" + displayName)
+                .Replace("[Kartenname]", cardTitle)
+                .Replace("[Anzahl]", count.ToString())
+                .Replace("[Punkte]", points.ToString())
+                .Replace("[PityRest]", pityRest.ToString()));
         }
 
         // ---- Trade system: !trade / !tradeyes / !tradeno ----
@@ -4632,6 +4982,33 @@ namespace CardPackWidgetApp
         {
             try { File.WriteAllText(server.CommandUsagePath(), server.Serializer.Serialize(usageData), Encoding.UTF8); }
             catch { }
+        }
+
+        // Exposes each viewer's current pity streak/bank (see ProcessQueueItem/HandleDustCommand)
+        // for display in the admin User tab.
+        public Dictionary<string, object> GetPityState()
+        {
+            lock (pityLock)
+            {
+                EnsurePityLoaded();
+                var result = new Dictionary<string, object>();
+                foreach (var kvp in pityState)
+                {
+                    Dictionary<string, object> entry = kvp.Value as Dictionary<string, object>;
+                    if (entry != null)
+                    {
+                        result[kvp.Key] = new Dictionary<string, object> { { "streak", GetInt(entry, "streak", 0) }, { "bank", GetInt(entry, "bank", 0) } };
+                    }
+                    else
+                    {
+                        // Back-compat: legacy bare-integer streak entries (see GetPityEntry).
+                        int legacyStreak;
+                        Int32.TryParse(Convert.ToString(kvp.Value), out legacyStreak);
+                        result[kvp.Key] = new Dictionary<string, object> { { "streak", legacyStreak }, { "bank", 0 } };
+                    }
+                }
+                return result;
+            }
         }
 
         public Dictionary<string, object> GetCommandUsage()

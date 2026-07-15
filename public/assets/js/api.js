@@ -184,6 +184,12 @@ export async function getCommandUsage() {
   return response.json();
 }
 
+export async function getPityState() {
+  const response = await fetch("/api/pity", { cache: "no-store" });
+  if (!response.ok) throw new Error("Pity-Daten konnten nicht geladen werden.");
+  return response.json();
+}
+
 export async function resetCommandUsage(login = "") {
   const response = await fetch("/api/command-usage/reset", {
     method: "POST",

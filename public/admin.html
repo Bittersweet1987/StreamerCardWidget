@@ -444,7 +444,36 @@
               <a href="#cc-section-battleyes" data-i18n="cc-battleyes-title">Kampf-Annahme-Befehl</a>
               <a href="#cc-section-battleno" data-i18n="cc-battleno-title">Kampf-Ablehnungs-Befehl</a>
               <a href="#cc-section-ranking" data-i18n="cc-ranking-title">Ranking-Befehl</a>
+              <a href="#cc-section-autohelp" data-i18n="cc-autohelp-title">Automatische Hilfe-Nachricht</a>
             </nav>
+
+            <article class="reward-entry command-card" id="cc-section-autohelp">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-autohelp-eyebrow">Hilfe</p>
+                  <h3 data-i18n="cc-autohelp-title">Automatische Hilfe-Nachricht</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="autohelp-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+              <p class="hint" data-i18n="cc-autohelp-hint">Postet in regelmäßigen Abständen eine Übersicht aller aktivierten Befehle im Chat, damit Zuschauer wissen, was sie nutzen können. Beide Intervalle können gleichzeitig aktiv sein - was zuerst eintritt, löst die Nachricht aus (0 = deaktiviert).</p>
+              <div class="form-grid">
+                <label data-i18n="label-autohelp-minutes">Nach X Minuten<input id="autohelp-minutes" type="number" min="0" step="1"></label>
+                <label data-i18n="label-autohelp-messages">Nach X Chat-Nachrichten<input id="autohelp-messages" type="number" min="0" step="1"></label>
+              </div>
+              <div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-autohelp-message">Nachrichtentext</span>
+                  <div class="var-chips" data-target="autohelp-message">
+                    <button class="var-chip" type="button" data-insert="[Befehle]">[Befehle]</button>
+                  </div>
+                </div>
+                <textarea id="autohelp-message" rows="2"></textarea>
+              </div>
+              <p class="hint" data-i18n="cc-autohelp-list-hint">[Befehle] wird automatisch durch die Liste aller aktivierten Befehle mit ihrer Kurzbeschreibung ersetzt (z.B. "!pack - zieht ein zufälliges Kartenpack | !collection - zeigt deine Kartensammlung").</p>
+            </article>
 
             <article class="reward-entry command-card" id="cc-section-pack">
               <header class="command-card-head">
@@ -463,6 +492,7 @@
                 <div class="form-grid">
                   <label data-i18n="label-cc-prefix">Präfix<input id="cc-pack-prefix" type="text" maxlength="1"></label>
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-pack-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-pack-helptext" type="text"></label>
                 </div>
               </div>
 
@@ -538,6 +568,7 @@
                 <div class="form-grid">
                   <label data-i18n="label-cc-prefix">Präfix<input id="cc-collection-prefix" type="text" maxlength="1"></label>
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-collection-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-collection-helptext" type="text"></label>
                 </div>
                 <p class="hint" data-i18n="cc-collection-hint">Zeigt die Sammlung als Overlay in OBS. Zusätzlich kann der Befehl die eigenen Kartennamen direkt im Chat auflisten (mit Anzahl bei Mehrfachbesitz) – wird bei Bedarf automatisch auf mehrere Nachrichten aufgeteilt, um Twitchs Zeichenlimit einzuhalten.</p>
                 <div class="form-grid">
@@ -578,6 +609,81 @@
               </div>
             </article>
 
+            <article class="reward-entry command-card" id="cc-section-dust">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Pity</p>
+                  <h3 data-i18n="cc-dust-title">Dust-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-dust-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-dust-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dust-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dust-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-dust-hint">Verwandelt doppelt besessene Karten in Pity-Punkte: "!dust Kartenname Anzahl". Wie viele Punkte eine Karte je nach Seltenheit bringt, legst du unter Einstellungen → Pity-System fest. Mindestens 1 Exemplar bleibt dem Viewer immer erhalten.</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dust-usage">Nachricht bei falscher Nutzung</span>
+                    <div class="var-chips" data-target="cc-dust-usage-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dust-usage-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dust-notfound">Nachricht bei unbekannter Karte</span>
+                    <div class="var-chips" data-target="cc-dust-notfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[falscherName]">[falscherName]</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dust-notfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dust-notenough">Nachricht bei zu wenig Duplikaten</span>
+                    <div class="var-chips" data-target="cc-dust-notenough-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                      <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dust-notenough-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dust-success">Nachricht bei Erfolg</span>
+                    <div class="var-chips" data-target="cc-dust-success-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                      <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
+                      <button class="var-chip" type="button" data-insert="[Punkte]">[Punkte]</button>
+                      <button class="var-chip" type="button" data-insert="[PityRest]">[PityRest]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dust-success-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
             <article class="reward-entry command-card" id="cc-section-trade">
               <header class="command-card-head">
                 <div>
@@ -595,6 +701,7 @@
                 <div class="form-grid">
                   <label data-i18n="label-cc-prefix">Präfix<input id="cc-trade-prefix" type="text" maxlength="1"></label>
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-trade-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-trade-helptext" type="text"></label>
                 </div>
                 <p class="hint">Nutzung im Chat: <code>!trade [Username] [Kartenname]</code></p>
               </div>
@@ -824,6 +931,7 @@
                 <div class="form-grid">
                   <label data-i18n="label-cc-prefix">Präfix<input id="cc-battle-prefix" type="text" maxlength="1"></label>
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-battle-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-battle-helptext" type="text"></label>
                 </div>
                 <p class="hint">Nutzung im Chat: <code>!battle [Username]</code></p>
               </div>
@@ -1036,6 +1144,7 @@
                   <label data-i18n="label-cc-prefix">Präfix<input id="cc-ranking-prefix" type="text" maxlength="1"></label>
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-ranking-command" type="text"></label>
                   <label data-i18n="label-cc-ranking-seconds">Anzeigedauer (Sek.)<input id="cc-ranking-seconds" type="number" min="2" step="1"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-ranking-helptext" type="text"></label>
                 </div>
                 <p class="hint">Nutzung im Chat: <code>!ranking [Kartenname]</code>, <code>!ranking battle</code> oder <code>!ranking tausch</code></p>
                 <p class="hint" data-i18n="cc-ranking-hint">Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle" wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „tausch" erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.</p>
@@ -1112,6 +1221,41 @@
               <label data-i18n="rarity-epic">Episch<input id="rarity-weight-epic" type="number" min="0" step="1" data-rarity-weight="epic"></label>
               <label data-i18n="rarity-legendary">Legendär<input id="rarity-weight-legendary" type="number" min="0" step="1" data-rarity-weight="legendary"></label>
               <label data-i18n="rarity-holo">Holo<input id="rarity-weight-holo" type="number" min="0" step="1" data-rarity-weight="holo"></label>
+            </div>
+          </section>
+
+          <section class="tool-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="pity-eyebrow">Karten</p>
+                <h2 data-i18n="pity-title">Pity-System</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="pity-hint">Garantiert jedem Viewer nach X erfolglosen Ziehungen in Folge (egal ob per Kanalpunkte oder Chat-Befehl) mindestens die gewählte Seltenheit – ändert nichts an der normalen Gewichtung, greift nur als Untergrenze.</p>
+            <label class="switch-row compact-switch">
+              <input id="pity-enabled" type="checkbox">
+              <span data-i18n="label-pity-enabled">Pity-System aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-pity-threshold">Ziehungen bis Garantie<input id="pity-threshold" type="number" min="1" step="1"></label>
+              <label data-i18n="label-pity-min-rarity">Garantierte Mindest-Seltenheit
+                <select id="pity-min-rarity">
+                  <option value="uncommon" data-i18n="rarity-uncommon">Ungewöhnlich</option>
+                  <option value="rare" data-i18n="rarity-rare">Selten</option>
+                  <option value="epic" data-i18n="rarity-epic">Episch</option>
+                  <option value="legendary" data-i18n="rarity-legendary">Legendär</option>
+                  <option value="holo" data-i18n="rarity-holo">Holo</option>
+                </select>
+              </label>
+            </div>
+            <p class="hint" data-i18n="pity-dust-hint">Punkte, die eine vernichtete Karte je nach Seltenheit für den "!dust"-Befehl (Chat Befehle) einbringt.</p>
+            <div class="form-grid">
+              <label data-i18n="rarity-common">Gewöhnlich<input id="pity-dust-common" type="number" min="0" step="1" data-pity-dust="common"></label>
+              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="pity-dust-uncommon" type="number" min="0" step="1" data-pity-dust="uncommon"></label>
+              <label data-i18n="rarity-rare">Selten<input id="pity-dust-rare" type="number" min="0" step="1" data-pity-dust="rare"></label>
+              <label data-i18n="rarity-epic">Episch<input id="pity-dust-epic" type="number" min="0" step="1" data-pity-dust="epic"></label>
+              <label data-i18n="rarity-legendary">Legendär<input id="pity-dust-legendary" type="number" min="0" step="1" data-pity-dust="legendary"></label>
+              <label data-i18n="rarity-holo">Holo<input id="pity-dust-holo" type="number" min="0" step="1" data-pity-dust="holo"></label>
             </div>
           </section>
 
@@ -1207,6 +1351,24 @@
               <button class="update-button" id="trade-anim-test" type="button" data-i18n="btn-trade-anim-test">Test starten</button>
             </div>
             <p class="hint" data-i18n="trade-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
+          </section>
+
+          <section class="tool-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="collection-anim-eyebrow">Sammlung</p>
+                <h2 data-i18n="collection-anim-title">Sammlung-Animation</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="collection-anim-hint">Legt fest, wie die Sammlungs-Anzeige (Kanalpunkte-Belohnung oder Chat-Befehl "!collection") in OBS aussieht.</p>
+            <div class="form-grid">
+              <label data-i18n="label-collection-anim-style">Anzeigestil
+                <select id="collection-anim-style">
+                  <option value="detailed" data-i18n="opt-collection-style-detailed">Detailliert (alle Karten)</option>
+                  <option value="compact" data-i18n="opt-collection-style-compact">Kompakt (nur Anzahl je Seltenheit)</option>
+                </select>
+              </label>
+            </div>
           </section>
 
           <section class="tool-panel battle-anim-panel">
@@ -1405,6 +1567,13 @@
               <h2 data-i18n="cards-title">Karten verwalten</h2>
             </div>
             <div class="button-row">
+              <label data-i18n="label-cards-sort">Sortieren nach<select id="cards-sort">
+                <option value="default" data-i18n="option-cards-sort-default">Reihenfolge</option>
+                <option value="name" data-i18n="option-cards-sort-name">Name (A-Z)</option>
+                <option value="rarity" data-i18n="option-cards-sort-rarity">Seltenheit</option>
+                <option value="booster" data-i18n="option-cards-sort-booster">Booster-Zuordnung</option>
+                <option value="status" data-i18n="option-cards-sort-status">Status (aktiv zuerst)</option>
+              </select></label>
               <label class="upload-button file-label" data-i18n="btn-import-card">Karte importieren<input id="import-card" type="file" accept=".json,application/json"></label>
               <button class="primary-button" id="add-card" type="button" data-i18n="btn-add-card">Karte hinzufügen</button>
             </div>
@@ -1461,7 +1630,7 @@
               </div>
               <div class="assigned-cards" id="assigned-cards"></div>
             </section>
-            <section class="tool-panel preview-center">
+            <section class="tool-panel preview-center sticky-preview">
               <div id="booster-preview"></div>
             </section>
           </div>
@@ -1564,6 +1733,6 @@
     </div>
 
     <script src="/assets/js/vendor/qwebchannel.min.js?v=20260716-changelogall1"></script>
-    <script type="module" src="/assets/js/admin.js?v=20260716-memfixes"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260716-jumpnavfix"></script>
   </body>
 </html>

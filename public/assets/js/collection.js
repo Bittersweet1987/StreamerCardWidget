@@ -75,7 +75,115 @@ function gridMarkup(cards, counts) {
   return slots + `<div class="showcase-slot showcase-slot-empty"></div>`.repeat(padding);
 }
 
+// ---- Compact style: instead of one page-flipping panel per booster showing every card,
+// group several boosters' summaries (owned/total per rarity, no per-card art) onto shared pages -
+// much faster to read through since there's no card-by-card grid to flip through per booster.
+const BOOSTERS_PER_PAGE = 3;
+
+function summarizeBooster(booster, counts) {
+  const cards = cardsForBooster(settings, booster);
+  const byRarity = new Map();
+  for (const card of cards) {
+    const rarityId = card.rarity || "common";
+    if (!byRarity.has(rarityId)) byRarity.set(rarityId, { total: 0, owned: 0 });
+    const bucket = byRarity.get(rarityId);
+    bucket.total += 1;
+    if (Number(counts[card.id] || 0) > 0) bucket.owned += 1;
+  }
+  const ownedUnique = cards.filter((card) => Number(counts[card.id] || 0) > 0).length;
+  return { booster, byRarity, ownedUnique, total: cards.length };
+}
+
+function compactHeaderMarkup(user, overallOwned, overallTotal, pageIndex, pageCount) {
+  const pageSuffix = pageCount > 1 ? ` · ${pageIndex + 1}/${pageCount}` : "";
+  return `
+    <header class="showcase-head">
+      <span class="showcase-user">${escapeForOverlay(user)}</span>
+      <strong class="showcase-booster-title">${escapeForOverlay(overlayText("collectionLabel", settings.language))}</strong>
+      <span class="showcase-progress">${overallOwned} / ${overallTotal}${pageSuffix}</span>
+    </header>
+  `;
+}
+
+function compactGridMarkup(boosterPage) {
+  const cards = boosterPage.map(({ booster, byRarity, ownedUnique, total }) => {
+    const rows = RARITIES
+      .filter((rarity) => byRarity.has(rarity.id))
+      .map((rarity) => {
+        const bucket = byRarity.get(rarity.id);
+        return `
+          <div class="compact-rarity-row">
+            <span class="compact-rarity-label">${escapeForOverlay(rarity.label)}</span>
+            <span class="compact-rarity-count">${bucket.owned} / ${bucket.total}</span>
+          </div>
+        `;
+      }).join("");
+    return `
+      <article class="compact-booster-card" style="--pack-accent:${booster.accent || "#ff78bb"}">
+        <header class="compact-booster-head">
+          <strong>${escapeForOverlay(booster.title || "Booster")}</strong>
+          <span>${ownedUnique} / ${total}</span>
+        </header>
+        <div class="compact-rarity-list">${rows}</div>
+      </article>
+    `;
+  }).join("");
+  // Pad a partial last page so the layout doesn't jump between page-flips.
+  const padding = Math.max(0, BOOSTERS_PER_PAGE - boosterPage.length);
+  return cards + `<div class="compact-booster-card compact-booster-card-empty"></div>`.repeat(padding);
+}
+
+async function runCompactShowcase(request = {}) {
+  const boosters = activeBoosters();
+  if (!boosters.length) return;
+  const user = request.user || request.displayName || "Viewer";
+  const login = request.userLogin || request.login || user;
+  const collections = await getCollections();
+  const secondsPerPage = Math.max(2, Number(settings.showcase?.secondsPerBooster || 12));
+
+  let overallOwned = 0;
+  let overallTotal = 0;
+  const summaries = boosters.map((booster) => {
+    const counts = countsFor(collections?.[booster.id] || {}, user, login);
+    const summary = summarizeBooster(booster, counts);
+    overallOwned += summary.ownedUnique;
+    overallTotal += summary.total;
+    return summary;
+  });
+  const pages = chunk(summaries, BOOSTERS_PER_PAGE);
+
+  const panel = document.createElement("section");
+  panel.className = "showcase-panel showcase-panel-compact";
+  panel.innerHTML = `${compactHeaderMarkup(user, overallOwned, overallTotal, 0, pages.length)}<div class="showcase-compact-grid">${compactGridMarkup(pages[0])}</div>`;
+  stage.append(panel);
+
+  requestAnimationFrame(() => panel.classList.add("is-in"));
+
+  for (let p = 0; p < pages.length; p++) {
+    if (p > 0) {
+      const grid = panel.querySelector(".showcase-compact-grid");
+      const progress = panel.querySelector(".showcase-progress");
+      grid.classList.add("is-flipping");
+      await delay(260);
+      grid.innerHTML = compactGridMarkup(pages[p]);
+      if (progress) progress.textContent = `${overallOwned} / ${overallTotal} · ${p + 1}/${pages.length}`;
+      await new Promise(requestAnimationFrame);
+      grid.classList.remove("is-flipping");
+    }
+    await delay(secondsPerPage * 1000);
+  }
+
+  panel.classList.remove("is-in");
+  panel.classList.add("is-out");
+  await delay(620);
+  panel.remove();
+}
+
 async function runShowcase(request = {}) {
+  if (settings.showcase?.style === "compact") {
+    await runCompactShowcase(request);
+    return;
+  }
   const boosters = activeBoosters();
   if (!boosters.length) return;
   const user = request.user || request.displayName || "Viewer";

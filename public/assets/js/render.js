@@ -181,6 +181,83 @@ const DEFAULT_MESSAGES = {
     es: "@userName, todavía no tienes cartas.",
     th: "@userName คุณยังไม่มีการ์ดเลย"
   },
+  helpPack: {
+    de: "zieht ein zufälliges Kartenpack",
+    en: "draws a random card pack",
+    fr: "tire un booster de cartes aléatoire",
+    es: "saca un sobre de cartas al azar",
+    th: "สุ่มเปิดบูสเตอร์การ์ด"
+  },
+  helpDust: {
+    de: "verwandelt doppelte Karten in Pity-Punkte",
+    en: "converts duplicate cards into pity points",
+    fr: "convertit les cartes en double en points de pitié",
+    es: "convierte cartas duplicadas en puntos de compensación",
+    th: "แปลงการ์ดที่ซ้ำเป็นแต้มการันตี"
+  },
+  helpCollection: {
+    de: "zeigt deine Kartensammlung",
+    en: "shows your card collection",
+    fr: "affiche ta collection de cartes",
+    es: "muestra tu colección de cartas",
+    th: "แสดงคอลเลกชันการ์ดของคุณ"
+  },
+  helpTrade: {
+    de: "bietet einen Kartentausch an",
+    en: "offers a card trade",
+    fr: "propose un échange de cartes",
+    es: "ofrece un intercambio de cartas",
+    th: "เสนอแลกเปลี่ยนการ์ด"
+  },
+  helpBattle: {
+    de: "fordert einen Kartenkampf heraus",
+    en: "challenges another viewer to a card battle",
+    fr: "défie un autre spectateur en duel de cartes",
+    es: "desafía a otro espectador a un duelo de cartas",
+    th: "ท้าดวลการ์ดกับผู้ชมคนอื่น"
+  },
+  helpRanking: {
+    de: "zeigt eine Bestenliste (Karte oder Kämpfe)",
+    en: "shows a leaderboard (card or battles)",
+    fr: "affiche un classement (carte ou combats)",
+    es: "muestra una clasificación (carta o combates)",
+    th: "แสดงอันดับ (การ์ดหรือการดวล)"
+  },
+  autoHelpMessage: {
+    de: "📋 Verfügbare Befehle: [Befehle]",
+    en: "📋 Available commands: [Befehle]",
+    fr: "📋 Commandes disponibles : [Befehle]",
+    es: "📋 Comandos disponibles: [Befehle]",
+    th: "📋 คำสั่งที่ใช้ได้: [Befehle]"
+  },
+  dustUsage: {
+    de: "@userName, Nutzung: !dust <Kartenname> <Anzahl>",
+    en: "@userName, usage: !dust <card name> <count>",
+    fr: "@userName, utilisation : !dust <nom de la carte> <nombre>",
+    es: "@userName, uso: !dust <nombre de la carta> <cantidad>",
+    th: "@userName วิธีใช้: !dust <ชื่อการ์ด> <จำนวน>"
+  },
+  dustCardNotFound: {
+    de: "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?",
+    en: "@userName, the card [falscherName] doesn't exist. Did you mean [Kartenname] instead?",
+    fr: "@userName, la carte [falscherName] n'existe pas. Voulais-tu dire [Kartenname] ?",
+    es: "@userName, la carta [falscherName] no existe. ¿Quisiste decir [Kartenname]?",
+    th: "@userName ไม่มีการ์ด [falscherName] คุณหมายถึง [Kartenname] ใช่ไหม?"
+  },
+  dustNotEnough: {
+    de: "@userName, du hast nicht genug Duplikate von [Kartenname] (du besitzt [Besitz], mindestens 1 muss dir erhalten bleiben).",
+    en: "@userName, you don't have enough duplicates of [Kartenname] (you own [Besitz], at least 1 must remain yours).",
+    fr: "@userName, tu n'as pas assez de doublons de [Kartenname] (tu en possèdes [Besitz], il t'en faut garder au moins 1).",
+    es: "@userName, no tienes suficientes duplicados de [Kartenname] (posees [Besitz], debes conservar al menos 1).",
+    th: "@userName คุณมีการ์ดซ้ำของ [Kartenname] ไม่พอ (คุณมี [Besitz] ใบ ต้องเหลืออย่างน้อย 1 ใบ)"
+  },
+  dustSuccess: {
+    de: "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Pity-Punkte). Noch [PityRest] Ziehungen bis zur garantierten Seltenheit.",
+    en: "@userName sacrificed [Anzahl]x [Kartenname] (+[Punkte] pity points). [PityRest] more draws until the guaranteed rarity.",
+    fr: "@userName a sacrifié [Anzahl]x [Kartenname] (+[Punkte] points de pitié). Encore [PityRest] tirages avant la rareté garantie.",
+    es: "@userName sacrificó [Anzahl]x [Kartenname] (+[Punkte] puntos de compensación). Faltan [PityRest] tiradas para la rareza garantizada.",
+    th: "@userName สังเวย [Kartenname] จำนวน [Anzahl] ใบ (+[Punkte] แต้มการันตี) เหลืออีก [PityRest] ครั้งจนถึงการันตี"
+  },
   tradeCardNotFound: {
     de: "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?",
     en: "@userName, the card [falscherName] doesn't exist. Did you mean [Kartenname] instead?",
@@ -428,6 +505,15 @@ export function normalizeSettings(settings) {
     settings.rarityWeights[rarity.id] = Number.isFinite(value) && value > 0 ? value : DEFAULT_RARITY_WEIGHTS[rarity.id];
   }
   setRarityWeights(settings.rarityWeights);
+  settings.pity ||= {};
+  settings.pity.enabled = settings.pity.enabled === true;
+  settings.pity.threshold = Number(settings.pity.threshold) > 0 ? Math.round(Number(settings.pity.threshold)) : 10;
+  settings.pity.minRarity = RARITIES.some((rarity) => rarity.id === settings.pity.minRarity) ? settings.pity.minRarity : "rare";
+  settings.pity.dustValues ||= {};
+  for (const [index, rarity] of RARITIES.entries()) {
+    const value = Number(settings.pity.dustValues[rarity.id]);
+    settings.pity.dustValues[rarity.id] = Number.isFinite(value) && value >= 0 ? value : index + 1;
+  }
   settings.obs ||= {
     enabled: false,
     host: "127.0.0.1",
@@ -463,6 +549,7 @@ export function normalizeSettings(settings) {
   settings.showcase.rewardGlobalCooldown = Number(settings.showcase.rewardGlobalCooldown || 0);
   settings.showcase.rewardEnabled = settings.showcase.rewardEnabled !== false;
   settings.showcase.rewardPaused = settings.showcase.rewardPaused === true;
+  settings.showcase.style = settings.showcase.style === "compact" ? "compact" : "detailed";
 
   // Single global "open a pack" reward, decoupled from any one booster: PickRandomBoosterId()
   // (server-side) always draws from ALL eligible boosters regardless of which reward triggered
@@ -495,6 +582,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.pack.enabled = settings.chatCommands.pack.enabled !== false;
   settings.chatCommands.pack.prefix ||= "!";
   settings.chatCommands.pack.command ||= "pack";
+  settings.chatCommands.pack.helpText ||= pickDefault(settings.language, "helpPack");
   settings.chatCommands.pack.maxUses = Number(settings.chatCommands.pack.maxUses) >= 0 ? Number(settings.chatCommands.pack.maxUses) : 5;
   settings.chatCommands.pack.resetUnit = ["minutes", "hours", "days"].includes(settings.chatCommands.pack.resetUnit) ? settings.chatCommands.pack.resetUnit : "hours";
   settings.chatCommands.pack.resetValue = Number(settings.chatCommands.pack.resetValue) > 0 ? Number(settings.chatCommands.pack.resetValue) : 8;
@@ -507,10 +595,20 @@ export function normalizeSettings(settings) {
       || settings.chatCommands.pack.successMessage === "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.") {
     settings.chatCommands.pack.successMessage = pickDefault(settings.language, "drawPost");
   }
+  settings.chatCommands.dust ||= {};
+  settings.chatCommands.dust.enabled = settings.chatCommands.dust.enabled === true;
+  settings.chatCommands.dust.prefix ||= "!";
+  settings.chatCommands.dust.command ||= "dust";
+  settings.chatCommands.dust.helpText ||= pickDefault(settings.language, "helpDust");
+  settings.chatCommands.dust.usageMessage ||= pickDefault(settings.language, "dustUsage");
+  settings.chatCommands.dust.cardNotFoundMessage ||= pickDefault(settings.language, "dustCardNotFound");
+  settings.chatCommands.dust.notEnoughMessage ||= pickDefault(settings.language, "dustNotEnough");
+  settings.chatCommands.dust.successMessage ||= pickDefault(settings.language, "dustSuccess");
   settings.chatCommands.collection ||= {};
   settings.chatCommands.collection.enabled = settings.chatCommands.collection.enabled !== false;
   settings.chatCommands.collection.prefix ||= "!";
   settings.chatCommands.collection.command ||= "collection";
+  settings.chatCommands.collection.helpText ||= pickDefault(settings.language, "helpCollection");
   // Besides the overlay showcase, !collection can also list the caller's card names as chat
   // text (own toggle, on by default).
   settings.chatCommands.collection.chatOutputEnabled = settings.chatCommands.collection.chatOutputEnabled !== false;
@@ -522,6 +620,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.trade.enabled = settings.chatCommands.trade.enabled !== false;
   settings.chatCommands.trade.prefix ||= "!";
   settings.chatCommands.trade.command ||= "trade";
+  settings.chatCommands.trade.helpText ||= pickDefault(settings.language, "helpTrade");
   settings.chatCommands.trade.cooldownSeconds = Number(settings.chatCommands.trade.cooldownSeconds) >= 0 ? Number(settings.chatCommands.trade.cooldownSeconds) : 60;
   settings.chatCommands.trade.maxUses = Number(settings.chatCommands.trade.maxUses) >= 0 ? Number(settings.chatCommands.trade.maxUses) : 5;
   settings.chatCommands.trade.resetUnit = ["minutes", "hours", "days"].includes(settings.chatCommands.trade.resetUnit) ? settings.chatCommands.trade.resetUnit : "hours";
@@ -554,6 +653,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.battle.enabled = settings.chatCommands.battle.enabled !== false;
   settings.chatCommands.battle.prefix ||= "!";
   settings.chatCommands.battle.command ||= "battle";
+  settings.chatCommands.battle.helpText ||= pickDefault(settings.language, "helpBattle");
   settings.chatCommands.battle.lineupSize = Number(settings.chatCommands.battle.lineupSize) > 0 ? Number(settings.chatCommands.battle.lineupSize) : 3;
   settings.chatCommands.battle.cooldownSeconds = Number(settings.chatCommands.battle.cooldownSeconds) >= 0 ? Number(settings.chatCommands.battle.cooldownSeconds) : 60;
   settings.chatCommands.battle.maxUses = Number(settings.chatCommands.battle.maxUses) >= 0 ? Number(settings.chatCommands.battle.maxUses) : 5;
@@ -588,9 +688,18 @@ export function normalizeSettings(settings) {
   settings.chatCommands.ranking.prefix ||= "!";
   settings.chatCommands.ranking.command ||= "ranking";
   settings.chatCommands.ranking.displaySeconds = Number(settings.chatCommands.ranking.displaySeconds) > 0 ? Number(settings.chatCommands.ranking.displaySeconds) : 8;
+  settings.chatCommands.ranking.helpText ||= pickDefault(settings.language, "helpRanking");
 
   settings.ranking ||= {};
   settings.ranking.sourceName ||= "Streamer Card Ranking";
+
+  // Automatic "which commands are available" chat message - see CheckAutoHelp (server-side) for
+  // the trigger logic (fires after N minutes and/or N chat messages, whichever comes first).
+  settings.autoHelp ||= {};
+  settings.autoHelp.enabled = settings.autoHelp.enabled === true;
+  settings.autoHelp.intervalMinutes = Number(settings.autoHelp.intervalMinutes) >= 0 ? Number(settings.autoHelp.intervalMinutes) : 30;
+  settings.autoHelp.intervalMessages = Number(settings.autoHelp.intervalMessages) >= 0 ? Number(settings.autoHelp.intervalMessages) : 0;
+  settings.autoHelp.message ||= pickDefault(settings.language, "autoHelpMessage");
 
 
   if (!settings.boosters.length) {

@@ -116,6 +116,75 @@
   text-align: center;
 }
 
+/* Compact style: booster summaries (owned/total per rarity) instead of a per-card grid - same
+   panel slide-in/out and page-flip mechanics as the detailed style, just a different page body. */
+.showcase-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  align-items: start;
+  transition: opacity .26s ease, transform .26s ease;
+}
+
+.showcase-compact-grid.is-flipping {
+  opacity: 0;
+  transform: perspective(900px) rotateY(-8deg) scale(.97);
+}
+
+.compact-booster-card {
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pack-accent, #ff78bb) 30%, rgba(20, 14, 34, .6)), rgba(20, 14, 34, .5));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+}
+
+.compact-booster-card-empty {
+  visibility: hidden;
+}
+
+.compact-booster-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, .18);
+}
+
+.compact-booster-head strong {
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.compact-booster-head span {
+  font-size: .95rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .78);
+}
+
+.compact-rarity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compact-rarity-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: .92rem;
+}
+
+.compact-rarity-label {
+  font-weight: 700;
+  color: rgba(255, 255, 255, .85);
+}
+
+.compact-rarity-count {
+  font-weight: 800;
+}
+
 @media (max-width: 900px) {
   .showcase-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -123,5 +192,8 @@
   }
   .showcase-slot .tcg-card {
     width: 110px;
+  }
+  .showcase-compact-grid {
+    grid-template-columns: 1fr;
   }
 }

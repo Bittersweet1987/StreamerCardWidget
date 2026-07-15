@@ -393,19 +393,23 @@ body[data-theme="dark"] .topbar {
 .cc-jump-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: 6px;
+  margin-bottom: 22px;
   padding: 10px;
   border: 1px solid #e4deec;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #f7f4fc;
+  /* .topbar is itself sticky at top:0 with z-index:30 and ~94px tall (see .sticky-preview) -
+     without this offset the jump nav's own top:0 sticks it directly under the topbar, where it
+     then scrolls UNDER it (lower z-index) and disappears instead of staying visible. */
   position: sticky;
-  top: 0;
-  z-index: 5;
+  top: 84px;
+  z-index: 20;
+  box-shadow: 0 10px 20px -14px rgba(36, 31, 51, .35);
 }
 
 .cc-jump-nav a {
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: 999px;
   background: #fff;
   color: #241f33;
@@ -414,6 +418,7 @@ body[data-theme="dark"] .topbar {
   text-decoration: none;
   border: 1px solid #ded9e8;
   white-space: nowrap;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
 
 .cc-jump-nav a:hover {
@@ -421,15 +426,27 @@ body[data-theme="dark"] .topbar {
   border-color: #8df4d5;
 }
 
+.cc-jump-nav a.is-active {
+  background: linear-gradient(135deg, #ff78bb, #6a55ff);
+  border-color: transparent;
+  color: #fff;
+}
+
 body[data-theme="dark"] .cc-jump-nav {
   background: #211b2d;
   border-color: #4d415f;
+  box-shadow: 0 10px 20px -14px rgba(0, 0, 0, .5);
 }
 
 body[data-theme="dark"] .cc-jump-nav a {
   background: #2c2438;
   color: #fff;
   border-color: #4d415f;
+}
+
+body[data-theme="dark"] .cc-jump-nav a.is-active {
+  background: linear-gradient(135deg, #ff78bb, #6a55ff);
+  border-color: transparent;
 }
 
 button:disabled {
@@ -1352,6 +1369,14 @@ body[data-theme="dark"] .showcase-entry {
   font-weight: 800;
   margin-right: auto;
   margin-left: 12px;
+}
+
+.user-pity-info {
+  color: #9a94ab;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
 }
 
 .user-card-cards {

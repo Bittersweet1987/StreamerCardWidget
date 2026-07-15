@@ -10,6 +10,7 @@ import {
   getCollections,
   clearQueue,
   getCommandUsage,
+  getPityState,
   getFonts,
   getLatestRelease,
   getReleases,
@@ -1322,6 +1323,36 @@ const I18N = {
     es: "Añadir carta",
     th: "เพิ่มการ์ด"
   },
+  "label-cards-sort": { de: "Sortieren nach", en: "Sort by",
+    fr: "Trier par",
+    es: "Ordenar por",
+    th: "เรียงตาม"
+  },
+  "option-cards-sort-default": { de: "Reihenfolge", en: "Order",
+    fr: "Ordre",
+    es: "Orden",
+    th: "ลำดับ"
+  },
+  "option-cards-sort-name": { de: "Name (A-Z)", en: "Name (A-Z)",
+    fr: "Nom (A-Z)",
+    es: "Nombre (A-Z)",
+    th: "ชื่อ (ก-ฮ)"
+  },
+  "option-cards-sort-rarity": { de: "Seltenheit", en: "Rarity",
+    fr: "Rareté",
+    es: "Rareza",
+    th: "ระดับความหายาก"
+  },
+  "option-cards-sort-booster": { de: "Booster-Zuordnung", en: "Booster assignment",
+    fr: "Affectation au booster",
+    es: "Asignación de sobre",
+    th: "การกำหนดบูสเตอร์"
+  },
+  "option-cards-sort-status": { de: "Status (aktiv zuerst)", en: "Status (active first)",
+    fr: "Statut (actives en premier)",
+    es: "Estado (activas primero)",
+    th: "สถานะ (เปิดใช้งานก่อน)"
+  },
   "btn-import-card": { de: "Karte importieren", en: "Import card",
     fr: "Importer une carte",
     es: "Importar carta",
@@ -1501,6 +1532,99 @@ const I18N = {
     fr: "Des valeurs plus élevées sont tirées plus souvent.",
     es: "Los valores más altos salen con más frecuencia.",
     th: "ค่าที่สูงกว่าจะถูกสุ่มออกบ่อยกว่า"
+  },
+  "pity-eyebrow": { de: "Karten", en: "Cards",
+    fr: "Cartes",
+    es: "Cartas",
+    th: "การ์ด"
+  },
+  "pity-title": { de: "Pity-System", en: "Pity system",
+    fr: "Système de pitié",
+    es: "Sistema de compensación",
+    th: "ระบบการันตี"
+  },
+  "pity-hint": {
+    de: "Garantiert jedem Viewer nach X erfolglosen Ziehungen in Folge (egal ob per Kanalpunkte oder Chat-Befehl) mindestens die gewählte Seltenheit – ändert nichts an der normalen Gewichtung, greift nur als Untergrenze.",
+    en: "Guarantees every viewer at least the chosen rarity after X unsuccessful draws in a row (regardless of channel points or chat command) - doesn't change the normal weighting, only acts as a floor.",
+    fr: "Garantit à chaque spectateur au moins la rareté choisie après X tirages infructueux d'affilée (que ce soit via les points de chaîne ou une commande de chat) - ne change pas la pondération normale, agit seulement comme un plancher.",
+    es: "Garantiza a cada espectador al menos la rareza elegida tras X tiradas fallidas seguidas (ya sea por puntos de canal o comando de chat) - no cambia la ponderación normal, solo actúa como un mínimo garantizado.",
+    th: "รับประกันให้ผู้ชมทุกคนได้อย่างน้อยระดับความหายากที่เลือกหลังจากสุ่มไม่สำเร็จติดต่อกัน X ครั้ง (ไม่ว่าจะผ่านแชนแนลพอยท์หรือคำสั่งแชท) - ไม่เปลี่ยนน้ำหนักปกติ เป็นเพียงขั้นต่ำที่รับประกัน"
+  },
+  "label-pity-enabled": { de: "Pity-System aktiviert", en: "Pity system enabled",
+    fr: "Système de pitié activé",
+    es: "Sistema de compensación activado",
+    th: "เปิดใช้งานระบบการันตี"
+  },
+  "label-pity-threshold": { de: "Ziehungen bis Garantie", en: "Draws until guarantee",
+    fr: "Tirages avant garantie",
+    es: "Tiradas hasta la garantía",
+    th: "จำนวนครั้งจนถึงการันตี"
+  },
+  "label-pity-min-rarity": { de: "Garantierte Mindest-Seltenheit", en: "Guaranteed minimum rarity",
+    fr: "Rareté minimale garantie",
+    es: "Rareza mínima garantizada",
+    th: "ระดับความหายากขั้นต่ำที่การันตี"
+  },
+  "pity-dust-hint": {
+    de: "Punkte, die eine vernichtete Karte je nach Seltenheit für den \"!dust\"-Befehl (Chat Befehle) einbringt.",
+    en: "Points a sacrificed card grants depending on rarity for the \"!dust\" command (Chat commands).",
+    fr: "Points qu'une carte sacrifiée rapporte selon sa rareté pour la commande « !dust » (Commandes de chat).",
+    es: "Puntos que otorga una carta sacrificada según su rareza para el comando \"!dust\" (Comandos de chat).",
+    th: "แต้มที่การ์ดที่สังเวยจะได้ตามระดับความหายากสำหรับคำสั่ง \"!dust\" (คำสั่งแชท)"
+  },
+  "label-pity-streak": { de: "Pity:", en: "Pity:",
+    fr: "Pitié :",
+    es: "Compensación:",
+    th: "การันตี:"
+  },
+  "label-pity-bank": { de: "Guthaben:", en: "Bank:",
+    fr: "Solde :",
+    es: "Saldo:",
+    th: "เครดิต:"
+  },
+  "hint-pity-info": {
+    de: "Ziehungen bis zur garantierten Seltenheit / gebanktes Guthaben aus !dust",
+    en: "Draws until guaranteed rarity / banked credit from !dust",
+    fr: "Tirages avant la rareté garantie / crédit banqué via !dust",
+    es: "Tiradas hasta la rareza garantizada / crédito acumulado por !dust",
+    th: "จำนวนครั้งจนถึงการันตี / เครดิตที่สะสมจาก !dust"
+  },
+  "cc-dust-eyebrow": { de: "Pity", en: "Pity",
+    fr: "Pitié",
+    es: "Compensación",
+    th: "การันตี"
+  },
+  "cc-dust-title": { de: "Dust-Befehl", en: "Dust command",
+    fr: "Commande de sacrifice",
+    es: "Comando de sacrificio",
+    th: "คำสั่งสังเวย"
+  },
+  "cc-dust-hint": {
+    de: "Verwandelt doppelt besessene Karten in Pity-Punkte: \"!dust Kartenname Anzahl\". Wie viele Punkte eine Karte je nach Seltenheit bringt, legst du unter Einstellungen → Pity-System fest. Mindestens 1 Exemplar bleibt dem Viewer immer erhalten.",
+    en: "Converts duplicate cards into pity points: \"!dust card name count\". How many points a card grants depending on rarity is set under Settings → Pity system. The viewer always keeps at least 1 copy.",
+    fr: "Convertit les cartes en double en points de pitié : « !dust nom de la carte nombre ». Le nombre de points accordés par rareté se règle sous Paramètres → Système de pitié. Le spectateur garde toujours au moins 1 exemplaire.",
+    es: "Convierte cartas duplicadas en puntos de compensación: \"!dust nombre de la carta cantidad\". Cuántos puntos otorga una carta según la rareza se define en Ajustes → Sistema de compensación. El espectador siempre conserva al menos 1 copia.",
+    th: "แปลงการ์ดที่ซ้ำเป็นแต้มการันตี: \"!dust ชื่อการ์ด จำนวน\" กำหนดแต้มตามระดับความหายากได้ที่การตั้งค่า → ระบบการันตี ผู้ชมจะเหลือการ์ดอย่างน้อย 1 ใบเสมอ"
+  },
+  "label-cc-dust-usage": { de: "Nachricht bei falscher Nutzung", en: "Message on incorrect usage",
+    fr: "Message en cas d'utilisation incorrecte",
+    es: "Mensaje por uso incorrecto",
+    th: "ข้อความเมื่อใช้งานผิดวิธี"
+  },
+  "label-cc-dust-notfound": { de: "Nachricht bei unbekannter Karte", en: "Message on unknown card",
+    fr: "Message pour carte inconnue",
+    es: "Mensaje por carta desconocida",
+    th: "ข้อความเมื่อไม่พบการ์ด"
+  },
+  "label-cc-dust-notenough": { de: "Nachricht bei zu wenig Duplikaten", en: "Message on not enough duplicates",
+    fr: "Message si pas assez de doublons",
+    es: "Mensaje por duplicados insuficientes",
+    th: "ข้อความเมื่อการ์ดซ้ำไม่พอ"
+  },
+  "label-cc-dust-success": { de: "Nachricht bei Erfolg", en: "Message on success",
+    fr: "Message de réussite",
+    es: "Mensaje de éxito",
+    th: "ข้อความเมื่อสำเร็จ"
   },
   "btn-reset-rarity-weights": { de: "Auf Standard zurücksetzen", en: "Reset to defaults",
     fr: "Réinitialiser",
@@ -2369,6 +2493,82 @@ const I18N = {
     fr: "Aucune carte active trouvée dans un booster.",
     es: "No se encontraron cartas activas en ningún sobre.",
     th: "ไม่พบการ์ดที่ใช้งานอยู่ในบูสเตอร์ใดเลย"
+  },
+  "label-cc-helptext": { de: "Kurzbeschreibung (für Auto-Hilfe-Nachricht)", en: "Short description (for auto-help message)",
+    fr: "Brève description (pour le message d'aide automatique)",
+    es: "Descripción breve (para el mensaje de ayuda automático)",
+    th: "คำอธิบายสั้น ๆ (สำหรับข้อความช่วยเหลืออัตโนมัติ)"
+  },
+  "cc-autohelp-eyebrow": { de: "Hilfe", en: "Help",
+    fr: "Aide",
+    es: "Ayuda",
+    th: "ช่วยเหลือ"
+  },
+  "cc-autohelp-title": { de: "Automatische Hilfe-Nachricht", en: "Automatic help message",
+    fr: "Message d'aide automatique",
+    es: "Mensaje de ayuda automático",
+    th: "ข้อความช่วยเหลืออัตโนมัติ"
+  },
+  "cc-autohelp-hint": {
+    de: "Postet in regelmäßigen Abständen eine Übersicht aller aktivierten Befehle im Chat, damit Zuschauer wissen, was sie nutzen können. Beide Intervalle können gleichzeitig aktiv sein - was zuerst eintritt, löst die Nachricht aus (0 = deaktiviert).",
+    en: "Posts an overview of all enabled commands in chat at regular intervals, so viewers know what they can use. Both intervals can be active at once - whichever comes first triggers the message (0 = disabled).",
+    fr: "Publie régulièrement un aperçu de toutes les commandes activées dans le chat, pour que les spectateurs sachent ce qu'ils peuvent utiliser. Les deux intervalles peuvent être actifs en même temps - celui qui survient en premier déclenche le message (0 = désactivé).",
+    es: "Publica periódicamente en el chat un resumen de todos los comandos activados, para que los espectadores sepan qué pueden usar. Ambos intervalos pueden estar activos a la vez - el que se cumpla primero dispara el mensaje (0 = desactivado).",
+    th: "โพสต์ภาพรวมคำสั่งที่เปิดใช้งานทั้งหมดในแชทเป็นระยะ เพื่อให้ผู้ชมรู้ว่าใช้อะไรได้บ้าง ทั้งสองช่วงเวลาทำงานพร้อมกันได้ - อันไหนถึงก่อนจะส่งข้อความ (0 = ปิดใช้งาน)"
+  },
+  "cc-autohelp-list-hint": {
+    de: "[Befehle] wird automatisch durch die Liste aller aktivierten Befehle mit ihrer Kurzbeschreibung ersetzt (z.B. \"!pack - zieht ein zufälliges Kartenpack | !collection - zeigt deine Kartensammlung\").",
+    en: "[Befehle] is automatically replaced with the list of all enabled commands and their short description (e.g. \"!pack - draws a random card pack | !collection - shows your card collection\").",
+    fr: "[Befehle] est automatiquement remplacé par la liste de toutes les commandes activées avec leur brève description (par ex. « !pack - tire un booster de cartes aléatoire | !collection - affiche ta collection de cartes »).",
+    es: "[Befehle] se sustituye automáticamente por la lista de todos los comandos activados con su descripción breve (p. ej. \"!pack - saca un sobre de cartas al azar | !collection - muestra tu colección de cartas\").",
+    th: "[Befehle] จะถูกแทนที่ด้วยรายการคำสั่งที่เปิดใช้งานทั้งหมดพร้อมคำอธิบายสั้น ๆ โดยอัตโนมัติ (เช่น \"!pack - สุ่มเปิดบูสเตอร์การ์ด | !collection - แสดงคอลเลกชันการ์ดของคุณ\")"
+  },
+  "label-autohelp-minutes": { de: "Nach X Minuten", en: "After X minutes",
+    fr: "Après X minutes",
+    es: "Después de X minutos",
+    th: "หลังจาก X นาที"
+  },
+  "label-autohelp-messages": { de: "Nach X Chat-Nachrichten", en: "After X chat messages",
+    fr: "Après X messages de chat",
+    es: "Después de X mensajes de chat",
+    th: "หลังจาก X ข้อความแชท"
+  },
+  "label-autohelp-message": { de: "Nachrichtentext", en: "Message text",
+    fr: "Texte du message",
+    es: "Texto del mensaje",
+    th: "ข้อความ"
+  },
+  "collection-anim-eyebrow": { de: "Sammlung", en: "Collection",
+    fr: "Collection",
+    es: "Colección",
+    th: "คอลเลกชัน"
+  },
+  "collection-anim-title": { de: "Sammlung-Animation", en: "Collection animation",
+    fr: "Animation de collection",
+    es: "Animación de colección",
+    th: "แอนิเมชันคอลเลกชัน"
+  },
+  "collection-anim-hint": {
+    de: "Legt fest, wie die Sammlungs-Anzeige (Kanalpunkte-Belohnung oder Chat-Befehl \"!collection\") in OBS aussieht.",
+    en: "Sets how the collection display (channel-points reward or \"!collection\" chat command) looks in OBS.",
+    fr: "Définit l'apparence de l'affichage de la collection (récompense en points de chaîne ou commande de chat « !collection ») dans OBS.",
+    es: "Define cómo se ve la visualización de la colección (recompensa de puntos de canal o comando de chat \"!collection\") en OBS.",
+    th: "กำหนดรูปแบบการแสดงคอลเลกชัน (รางวัลแชนแนลพอยท์หรือคำสั่งแชท \"!collection\") ใน OBS"
+  },
+  "label-collection-anim-style": { de: "Anzeigestil", en: "Display style",
+    fr: "Style d'affichage",
+    es: "Estilo de visualización",
+    th: "รูปแบบการแสดงผล"
+  },
+  "opt-collection-style-detailed": { de: "Detailliert (alle Karten)", en: "Detailed (all cards)",
+    fr: "Détaillé (toutes les cartes)",
+    es: "Detallado (todas las cartas)",
+    th: "รายละเอียด (การ์ดทั้งหมด)"
+  },
+  "opt-collection-style-compact": { de: "Kompakt (nur Anzahl je Seltenheit)", en: "Compact (count per rarity only)",
+    fr: "Compact (nombre par rareté uniquement)",
+    es: "Compacto (solo cantidad por rareza)",
+    th: "กะทัดรัด (แสดงจำนวนตามระดับความหายากเท่านั้น)"
   },
   "label-trade-anim-style": { de: "Animationsstil", en: "Animation style",
     fr: "Style d'animation",
@@ -3838,8 +4038,37 @@ function cardEditorMarkup(card, index) {
   `;
 }
 
+let cardsSortMode = "default";
+
+// Display-only ordering - never reorders settings.deck.cards itself, so nothing that indexes
+// cards by array position (insertCardEditor's "prepend new card at top" assumption, exports,
+// etc.) is affected. Only the rendered order changes.
+function sortedCards() {
+  const cards = settings.deck.cards;
+  if (cardsSortMode === "default") return cards;
+  const copy = cards.slice();
+  if (cardsSortMode === "name") {
+    copy.sort((a, b) => (a.title || "").localeCompare(b.title || "", undefined, { sensitivity: "base" }));
+  } else if (cardsSortMode === "rarity") {
+    const rank = RARITIES.map((rarity) => rarity.id);
+    copy.sort((a, b) => rank.indexOf(a.rarity || "common") - rank.indexOf(b.rarity || "common"));
+  } else if (cardsSortMode === "booster") {
+    const owner = ownerBoosterByCardId();
+    copy.sort((a, b) => {
+      const titleA = owner.get(a.id)?.title || "";
+      const titleB = owner.get(b.id)?.title || "";
+      if (!titleA && titleB) return 1;
+      if (titleA && !titleB) return -1;
+      return titleA.localeCompare(titleB, undefined, { sensitivity: "base" });
+    });
+  } else if (cardsSortMode === "status") {
+    copy.sort((a, b) => Number(b.enabled !== false) - Number(a.enabled !== false));
+  }
+  return copy;
+}
+
 function renderCards() {
-  $("#card-list").innerHTML = settings.deck.cards.map((card, index) => cardEditorMarkup(card, index)).join("");
+  $("#card-list").innerHTML = sortedCards().map((card, index) => cardEditorMarkup(card, index)).join("");
   refreshPreviews();
 }
 
@@ -3850,6 +4079,13 @@ function renderCards() {
 // WebView2 renderer's memory and crash it. Only prepend the new card's own node and patch the
 // existing nodes' order-badge/delete-disabled state in place, leaving their <img> nodes intact.
 function insertCardEditor(card) {
+  // Prepending assumes the new card is displayed first, which is only true in the default
+  // (insertion) order - any other sort mode needs the full (still cheap, one-off) rebuild so the
+  // card lands in its actual sorted position instead of visually at the top.
+  if (cardsSortMode !== "default") {
+    renderCards();
+    return;
+  }
   const list = $("#card-list");
   list.insertAdjacentHTML("afterbegin", cardEditorMarkup(card, 0));
   const editors = list.querySelectorAll(".card-editor");
@@ -4158,8 +4394,17 @@ function buildUserIndex() {
   return [...index.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
+let pityByLogin = {};
+
 async function loadUsers() {
   collections = await getCollections();
+  try {
+    const result = await getPityState();
+    pityByLogin = result.pity || {};
+  } catch {
+    // Best-effort - the user cards themselves are more important than the pity info.
+    pityByLogin = {};
+  }
 }
 
 function renderUsers() {
@@ -4211,11 +4456,16 @@ function renderUsers() {
           `;
         }).join("")
       : `<p class="hint">${t("hint-no-cards-drawn")}</p>`;
+    const pityEntry = pityByLogin[user.key] || pityByLogin[user.key?.toLowerCase()];
+    const pityHtml = settings.pity?.enabled
+      ? `<span class="user-pity-info" title="${t("hint-pity-info")}">${t("label-pity-streak")} ${pityEntry?.streak ?? 0}/${settings.pity.threshold} · ${t("label-pity-bank")} ${pityEntry?.bank ?? 0}</span>`
+      : "";
     return `
       <div class="user-card" data-user="${escapeHtml(user.key)}">
         <div class="user-card-header">
           <strong>${escapeHtml(user.displayName)}</strong>
           <span>${total} ${t("unit-cards")}</span>
+          ${pityHtml}
           <button class="danger-button" type="button" data-action="delete-user" data-user="${escapeHtml(user.key)}">${t("btn-delete-user")}</button>
         </div>
         <div class="user-card-cards">${rows}</div>
@@ -4501,15 +4751,26 @@ function hydrateChatCommands() {
   $("#cc-pack-success-message").value = cc.pack.successMessage || "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.";
   $("#cc-pack-limit-message").value = cc.pack.limitMessage || "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
   $("#cc-pack-cooldown-message").value = cc.pack.cooldownMessage || "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
+  $("#cc-pack-helptext").value = cc.pack.helpText || "";
   $("#cc-collection-prefix").value = cc.collection.prefix || "!";
   $("#cc-collection-command").value = cc.collection.command || "collection";
   $("#cc-collection-chatoutput-enabled").checked = cc.collection.chatOutputEnabled !== false;
   $("#cc-collection-header-message").value = cc.collection.headerMessage || "";
   $("#cc-collection-empty-message").value = cc.collection.emptyMessage || "";
+  cc.dust ||= {};
+  $("#cc-dust-enabled").checked = cc.dust.enabled === true;
+  $("#cc-dust-prefix").value = cc.dust.prefix || "!";
+  $("#cc-dust-command").value = cc.dust.command || "dust";
+  $("#cc-dust-usage-message").value = cc.dust.usageMessage || "";
+  $("#cc-dust-notfound-message").value = cc.dust.cardNotFoundMessage || "";
+  $("#cc-dust-notenough-message").value = cc.dust.notEnoughMessage || "";
+  $("#cc-dust-success-message").value = cc.dust.successMessage || "";
+  $("#cc-dust-helptext").value = cc.dust.helpText || "";
   // Same underlying value as "#showcase-seconds" in Kanalpunkte (settings.showcase.secondsPerBooster)
   // - the showcase overlay's page-flip timing is one setting regardless of which trigger (channel
   // point reward or chat command) started it, so both fields must always show/write the same number.
   $("#cc-collection-seconds").value = settings.showcase?.secondsPerBooster || 12;
+  $("#cc-collection-helptext").value = cc.collection.helpText || "";
 
   const trade = cc.trade || {};
   $("#cc-trade-enabled").checked = trade.enabled !== false;
@@ -4528,6 +4789,7 @@ function hydrateChatCommands() {
   $("#cc-trade-limit-message").value = trade.limitMessage || "";
   $("#cc-trade-timeout-message").value = trade.timeoutMessage || "";
   $("#cc-trade-busy-message").value = trade.busyMessage || "";
+  $("#cc-trade-helptext").value = trade.helpText || "";
 
   const tradeyes = cc.tradeyes || {};
   $("#cc-tradeyes-enabled").checked = tradeyes.enabled !== false;
@@ -4560,6 +4822,7 @@ function hydrateChatCommands() {
   $("#cc-battle-limit-message").value = battle.limitMessage || "";
   $("#cc-battle-timeout-message").value = battle.timeoutMessage || "";
   $("#cc-battle-busy-message").value = battle.busyMessage || "";
+  $("#cc-battle-helptext").value = battle.helpText || "";
 
   const battleyes = cc.battleyes || {};
   $("#cc-battleyes-enabled").checked = battleyes.enabled !== false;
@@ -4578,6 +4841,13 @@ function hydrateChatCommands() {
   $("#cc-ranking-prefix").value = ranking.prefix || "!";
   $("#cc-ranking-command").value = ranking.command || "ranking";
   $("#cc-ranking-seconds").value = ranking.displaySeconds ?? 8;
+  $("#cc-ranking-helptext").value = ranking.helpText || "";
+
+  const autoHelp = settings.autoHelp || {};
+  $("#autohelp-enabled").checked = autoHelp.enabled === true;
+  $("#autohelp-minutes").value = autoHelp.intervalMinutes ?? 30;
+  $("#autohelp-messages").value = autoHelp.intervalMessages ?? 0;
+  $("#autohelp-message").value = autoHelp.message || "";
 }
 
 function readChatCommandsFromForm() {
@@ -4597,11 +4867,23 @@ function readChatCommandsFromForm() {
   cc.pack.successMessage = $("#cc-pack-success-message").value;
   cc.pack.limitMessage = $("#cc-pack-limit-message").value;
   cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
+  cc.pack.helpText = $("#cc-pack-helptext").value;
   cc.collection.prefix = $("#cc-collection-prefix").value || "!";
   cc.collection.command = $("#cc-collection-command").value.trim() || "collection";
   cc.collection.chatOutputEnabled = $("#cc-collection-chatoutput-enabled").checked;
   cc.collection.headerMessage = $("#cc-collection-header-message").value;
   cc.collection.emptyMessage = $("#cc-collection-empty-message").value;
+  cc.collection.helpText = $("#cc-collection-helptext").value;
+
+  cc.dust ||= {};
+  cc.dust.enabled = $("#cc-dust-enabled").checked;
+  cc.dust.prefix = $("#cc-dust-prefix").value || "!";
+  cc.dust.command = $("#cc-dust-command").value.trim() || "dust";
+  cc.dust.usageMessage = $("#cc-dust-usage-message").value;
+  cc.dust.cardNotFoundMessage = $("#cc-dust-notfound-message").value;
+  cc.dust.notEnoughMessage = $("#cc-dust-notenough-message").value;
+  cc.dust.successMessage = $("#cc-dust-success-message").value;
+  cc.dust.helpText = $("#cc-dust-helptext").value;
 
   cc.trade ||= {};
   cc.trade.enabled = $("#cc-trade-enabled").checked;
@@ -4620,6 +4902,7 @@ function readChatCommandsFromForm() {
   cc.trade.limitMessage = $("#cc-trade-limit-message").value;
   cc.trade.timeoutMessage = $("#cc-trade-timeout-message").value;
   cc.trade.busyMessage = $("#cc-trade-busy-message").value;
+  cc.trade.helpText = $("#cc-trade-helptext").value;
 
   cc.tradeyes ||= {};
   cc.tradeyes.enabled = $("#cc-tradeyes-enabled").checked;
@@ -4652,6 +4935,7 @@ function readChatCommandsFromForm() {
   cc.battle.limitMessage = $("#cc-battle-limit-message").value;
   cc.battle.timeoutMessage = $("#cc-battle-timeout-message").value;
   cc.battle.busyMessage = $("#cc-battle-busy-message").value;
+  cc.battle.helpText = $("#cc-battle-helptext").value;
 
   cc.battleyes ||= {};
   cc.battleyes.enabled = $("#cc-battleyes-enabled").checked;
@@ -4670,6 +4954,13 @@ function readChatCommandsFromForm() {
   cc.ranking.prefix = $("#cc-ranking-prefix").value || "!";
   cc.ranking.command = $("#cc-ranking-command").value.trim() || "ranking";
   cc.ranking.displaySeconds = Math.max(2, Math.round(Number($("#cc-ranking-seconds").value) || 8));
+  cc.ranking.helpText = $("#cc-ranking-helptext").value;
+
+  settings.autoHelp ||= {};
+  settings.autoHelp.enabled = $("#autohelp-enabled").checked;
+  settings.autoHelp.intervalMinutes = Math.max(0, Math.round(Number($("#autohelp-minutes").value) || 0));
+  settings.autoHelp.intervalMessages = Math.max(0, Math.round(Number($("#autohelp-messages").value) || 0));
+  settings.autoHelp.message = $("#autohelp-message").value;
 }
 
 function insertVariableIntoField(fieldId, variable) {
@@ -4779,10 +5070,35 @@ function resetAllMessageDefaults() {
   showNotice(t("notice-messages-reset"));
 }
 
+// Highlights the jump-nav link for whichever command-card section is currently most visible,
+// so it's clear where you are while scrolling a long tab instead of the nav just sitting static.
+function bindChatCommandsJumpNav() {
+  const nav = document.querySelector(".cc-jump-nav");
+  if (!nav) return;
+  const links = [...nav.querySelectorAll("a[href^='#']")];
+  const sections = links
+    .map((link) => document.getElementById(link.getAttribute("href").slice(1)))
+    .filter(Boolean);
+  if (!sections.length) return;
+
+  const setActive = (id) => {
+    for (const link of links) link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+    if (visible[0]) setActive(visible[0].target.id);
+  }, { rootMargin: "-100px 0px -60% 0px", threshold: [0, .25, .5, .75, 1] });
+
+  for (const section of sections) observer.observe(section);
+  setActive(sections[0].id);
+}
+
 function bindChatCommands() {
   const panel = document.querySelector('[data-panel="chatcommands"]');
   panel.addEventListener("input", readChatCommandsFromForm);
   panel.addEventListener("change", readChatCommandsFromForm);
+  bindChatCommandsJumpNav();
   $("#reset-message-defaults").addEventListener("click", () => {
     if (!window.confirm(t("confirm-reset-message-defaults"))) return;
     resetAllMessageDefaults();
@@ -4850,6 +5166,13 @@ function hydrateDesign() {
     const weightInput = $(`#rarity-weight-${rarity.id}`);
     if (weightInput) weightInput.value = settings.rarityWeights?.[rarity.id] ?? DEFAULT_RARITY_WEIGHTS[rarity.id];
   }
+  $("#pity-enabled").checked = settings.pity?.enabled === true;
+  $("#pity-threshold").value = settings.pity?.threshold ?? 10;
+  $("#pity-min-rarity").value = settings.pity?.minRarity || "rare";
+  for (const rarity of RARITIES) {
+    const dustInput = $(`#pity-dust-${rarity.id}`);
+    if (dustInput) dustInput.value = settings.pity?.dustValues?.[rarity.id] ?? 1;
+  }
   $("#reveal-seconds").value = settings.behavior.revealSeconds ?? 3.2;
   $("#cooldown-seconds").value = settings.behavior.cooldownSeconds ?? 0.8;
   $("#backs-before-reveal").value = settings.behavior.cardBacksBeforeReveal ?? 2;
@@ -4868,6 +5191,7 @@ function hydrateDesign() {
   $("#trade-anim-sendchat").checked = settings.tradeAnimation?.sendChat !== false;
   $("#trade-anim-style").value = ["swap", "arc", "flip"].includes(settings.tradeAnimation?.style) ? settings.tradeAnimation.style : "swap";
   $("#trade-anim-duration").value = ["short", "medium", "long"].includes(settings.tradeAnimation?.duration) ? settings.tradeAnimation.duration : "medium";
+  $("#collection-anim-style").value = settings.showcase?.style === "compact" ? "compact" : "detailed";
   $("#obs-battle-source-name").value = settings.battleAnimation?.sourceName || "Streamer Card Kampf";
   $("#obs-ranking-source-name").value = settings.ranking?.sourceName || "Streamer Card Ranking";
   $("#meld-scene-name").value = settings.meld?.sceneName || "Streamer Card Overlay";
@@ -5077,6 +5401,29 @@ function bindDesign() {
     scheduleAutoSave();
     showNotice(t("notice-rarity-weights-reset"));
   });
+  $("#pity-enabled").addEventListener("change", (event) => {
+    settings.pity ||= {};
+    settings.pity.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#pity-threshold").addEventListener("input", (event) => {
+    settings.pity ||= {};
+    settings.pity.threshold = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#pity-min-rarity").addEventListener("change", (event) => {
+    settings.pity ||= {};
+    settings.pity.minRarity = event.target.value;
+    scheduleAutoSave();
+  });
+  $$("[data-pity-dust]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      settings.pity ||= {};
+      settings.pity.dustValues ||= {};
+      settings.pity.dustValues[event.target.dataset.pityDust] = Math.max(0, Number(event.target.value) || 0);
+      scheduleAutoSave();
+    });
+  });
   $("#language-select").addEventListener("change", (event) => {
     settings.language = event.target.value;
     renderAll();
@@ -5237,6 +5584,11 @@ function bindDesign() {
   $("#trade-anim-style").addEventListener("change", (event) => {
     settings.tradeAnimation ||= {};
     settings.tradeAnimation.style = event.target.value;
+  });
+  $("#collection-anim-style").addEventListener("change", (event) => {
+    settings.showcase ||= {};
+    settings.showcase.style = event.target.value;
+    scheduleAutoSave();
   });
   $("#trade-anim-duration").addEventListener("change", (event) => {
     settings.tradeAnimation ||= {};
@@ -5446,6 +5798,10 @@ function bindGlobalActions() {
     settings.deck.cards.unshift(card);
     selectedCardId = card.id;
     insertCardEditor(card);
+  });
+  $("#cards-sort").addEventListener("change", (event) => {
+    cardsSortMode = event.target.value;
+    renderCards();
   });
   $("#import-card").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
