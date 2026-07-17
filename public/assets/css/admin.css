@@ -345,6 +345,146 @@ body[data-theme="dark"] .topbar {
   row-gap: 14px;
 }
 
+.save-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .8rem;
+  font-weight: 700;
+  color: #746f82;
+}
+
+.save-indicator::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #9147ff;
+  flex: none;
+}
+
+.save-indicator[data-state="saving"]::before {
+  animation: save-indicator-pulse 0.9s ease-in-out infinite;
+}
+
+.save-indicator[data-state="dirty"] {
+  color: #c98a1a;
+}
+
+.save-indicator[data-state="dirty"]::before {
+  background: #e0a52e;
+}
+
+.overlay-layout-editor {
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.overlay-layout-editor .oly-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.overlay-layout-editor .oly-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.overlay-layout-editor .oly-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.overlay-layout-editor .oly-field label {
+  opacity: 0.75;
+}
+
+.overlay-layout-editor .oly-field input {
+  width: 72px;
+  text-align: center;
+}
+
+.overlay-layout-editor .oly-preview {
+  position: relative;
+  width: 384px;
+  height: 216px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: crosshair;
+  flex-shrink: 0;
+}
+
+.overlay-layout-editor .oly-box {
+  position: absolute;
+  border: 1px dashed rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  transform-origin: center center;
+}
+
+.overlay-layout-editor .oly-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #e0413f;
+  border: 2px solid #fff;
+  box-shadow: 0 0 6px rgba(224, 65, 63, 0.8);
+  cursor: grab;
+}
+
+.overlay-layout-editor .oly-dot:active {
+  cursor: grabbing;
+}
+
+.overlay-layout-editor .oly-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.overlay-layout-editor .oly-field.oly-scale {
+  flex-direction: row;
+  gap: 6px;
+}
+
+.overlay-layout-editor .oly-field.oly-scale input {
+  width: 56px;
+}
+
+.save-indicator[data-state="saved"] {
+  color: #1f9d55;
+}
+
+.save-indicator[data-state="saved"]::before {
+  background: #1f9d55;
+}
+
+.save-indicator[data-state="error"] {
+  color: #d3423e;
+}
+
+.save-indicator[data-state="error"]::before {
+  background: #d3423e;
+}
+
+@keyframes save-indicator-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .4; transform: scale(.7); }
+}
+
 .primary-button {
   padding: 0 16px;
   color: #fff;

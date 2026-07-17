@@ -1,5 +1,9 @@
-import { addLog, completeQueueItem, connectEventStream, getSettings } from "./api.js";
-import { applyTheme, cardMarkup, normalizeSettings, rarityColor } from "./render.js";
+// Asset version (BootId) propagated from this module's own URL (set by the page's bootstrap
+// loader) into the shared-module imports below, so api.js/render.js are always fetched at the
+// same version as this file - OBS/Meld can never mix a fresh page module with stale shared code.
+const __v = new URL(import.meta.url).searchParams.get("v") || String(Date.now());
+const { addLog, completeQueueItem, connectEventStream, getSettings } = await import(`./api.js?v=${__v}`);
+const { applyOverlayLayout, applyTheme, cardMarkup, normalizeSettings, rarityColor } = await import(`./render.js?v=${__v}`);
 
 const stage = document.querySelector("#battle-stage");
 const status = document.querySelector("#status");
@@ -289,7 +293,115 @@ async function playHpMatchup(arena, matchup, hitDuration, userA, userB, hpState)
   await delay(500);
 }
 
+// Shows the tournament bracket-so-far before a tournament match plays: the whole tree so far,
+// scaled down to fit the stage, then a zoom onto the match that's about to happen. Only present
+// on tournament matches (event.bracket) - a normal 1v1 !battle challenge has no bracket and skips
+// this entirely. The bracket data itself only ever reveals rounds up to and including the current
+// one (see ResolveTournamentSignup server-side) - nothing here shows a future round's outcome.
+async function playBracketTree(bracket) {
+  const rounds = Array.isArray(bracket?.rounds) ? bracket.rounds : [];
+  if (!rounds.length) return;
+  const currentRoundIndex = bracket.currentRoundIndex ?? 0;
+  const currentMatchIndex = bracket.currentMatchIndex ?? 0;
+
+  const wrap = document.createElement("div");
+  wrap.className = "bracket-tree-overlay";
+  const tree = document.createElement("div");
+  tree.className = "bracket-tree";
+  wrap.append(tree);
+
+  let currentBox = null;
+  rounds.forEach((round, roundIdx) => {
+    const col = document.createElement("div");
+    col.className = "bracket-round";
+    const heading = document.createElement("div");
+    heading.className = "bracket-round-label";
+    heading.textContent = round.label || "";
+    col.append(heading);
+    (round.matches || []).forEach((match, matchIdx) => {
+      const box = document.createElement("div");
+      const isCurrent = roundIdx === currentRoundIndex && matchIdx === currentMatchIndex;
+      box.className = `bracket-match${isCurrent ? " is-current" : ""}`;
+      const aWon = match.winner === "a";
+      const bWon = match.winner === "b";
+      const bSlot = match.bye
+        ? `<div class="bracket-entrant is-bye">${settings?.language === "en" ? "Bye" : "Freilos"}</div>`
+        : `<div class="bracket-entrant ${bWon ? "is-winner" : match.winner ? "is-loser" : ""}">${escapeForOverlay(match.b || "?")}</div>`;
+      box.innerHTML = `
+        <div class="bracket-entrant ${aWon ? "is-winner" : match.winner ? "is-loser" : ""}">${escapeForOverlay(match.a || "?")}</div>
+        ${bSlot}
+      `;
+      col.append(box);
+      if (isCurrent) currentBox = box;
+    });
+    tree.append(col);
+  });
+  stage.append(wrap);
+
+  // Measure everything in ONE untransformed layout pass - the zoom step below computes a fresh
+  // transform from these natural coordinates rather than compounding on top of the fit-scale
+  // transform, which keeps the math correct regardless of how either scale/position turns out.
+  // getBoundingClientRect() forces a synchronous layout on its own - deliberately NOT waiting on
+  // requestAnimationFrame here, since rAF callbacks can be paused entirely while a page/tab is
+  // not visible (confirmed via document.hidden while testing), which would stall this forever;
+  // a real OBS/Meld browser source keeps rendering regardless, but there is no reason to depend
+  // on the paint loop for a plain layout measurement anyway.
+  const stageRect = stage.getBoundingClientRect();
+  const treeRect = tree.getBoundingClientRect();
+  const boxRect = currentBox ? currentBox.getBoundingClientRect() : null;
+  const margin = 120;
+  const fitScale = Math.min(1, (stageRect.width - margin) / treeRect.width, (stageRect.height - margin) / treeRect.height);
+  const stageCenterX = stageRect.width / 2;
+  const stageCenterY = stageRect.height / 2;
+
+  function focusOn(scale, localX, localY, durationMs) {
+    tree.style.transition = durationMs ? `transform ${durationMs}ms cubic-bezier(.3,.8,.3,1)` : "none";
+    tree.style.transform = `translate(${stageCenterX - localX * scale}px, ${stageCenterY - localY * scale}px) scale(${scale})`;
+  }
+
+  tree.style.transformOrigin = "0 0";
+  focusOn(fitScale, treeRect.width / 2, treeRect.height / 2, 0);
+  await delay(rounds.length > 1 ? 2400 : 1700);
+
+  // The "new branch forms" animation only makes sense once a whole round's fights are OVER and
+  // two winners have actually merged into a new round - never before round 1 (nothing feeds into
+  // it) and never mid-round (a round's matches don't depend on each other). Since this module's
+  // queue plays every match of a round before any match of the next round starts, the right
+  // moment is exactly "the first match of a new round" - at that point every match box in the
+  // PREVIOUS round is a settled result, and each one's two entrants have just combined into one
+  // box in the round now being shown. Animate that merge for every match of the previous round
+  // at once, then continue to the zoom-to-current-match step below.
+  if (currentMatchIndex === 0 && currentRoundIndex > 0) {
+    const prevRoundCol = tree.children[currentRoundIndex - 1];
+    const feederBoxes = prevRoundCol ? [...prevRoundCol.querySelectorAll(".bracket-match")] : [];
+    feederBoxes.forEach((feederBox) => {
+      const line = document.createElement("div");
+      line.className = "bracket-advance-line";
+      line.style.transitionDuration = "900ms";
+      feederBox.append(line);
+      // Force a layout flush so the width transition animates from 0 instead of jumping straight
+      // to its end state (same synchronous-measurement reasoning as above - no rAF).
+      void line.offsetWidth;
+      line.classList.add("is-filling");
+    });
+    await delay(1100);
+  }
+
+  if (boxRect) {
+    const localX = boxRect.left - treeRect.left + boxRect.width / 2;
+    const localY = boxRect.top - treeRect.top + boxRect.height / 2;
+    const zoomScale = Math.min(2.4, Math.max(1, fitScale * 2.6));
+    focusOn(zoomScale, localX, localY, 900);
+    await delay(900 + 1300);
+  }
+
+  wrap.classList.add("is-out");
+  await delay(400);
+  wrap.remove();
+}
+
 async function playBattle(event = {}) {
+  if (event.bracket) await playBracketTree(event.bracket);
   const isHpMode = event.mode === "hp";
   const rounds = Array.isArray(event.rounds) ? event.rounds : [];
   const matchups = Array.isArray(event.hpMatchups) ? event.hpMatchups : [];
@@ -361,12 +473,59 @@ async function playBattle(event = {}) {
 async function loadSettings() {
   settings = normalizeSettings(await getSettings());
   applyTheme(settings);
+  // Applied to the whole #battle-stage rather than the per-event .battle-scene/bracket-tree
+  // elements: the bracket tree does its own fit/zoom math relative to #battle-stage's rect
+  // directly, so transforming an intermediate wrapper would throw that math off. This does mean
+  // the tournament signup countdown moves along with the battle position/scale setting too.
+  applyOverlayLayout(stage, settings.overlayLayout?.battle, "battle");
+}
+
+// Subtle, always-on-top countdown of the remaining tournament signup window - separate from the
+// queued battle animations (this has no animation of its own and must never block the queue), so
+// it lives outside enqueueBattle/runQueue entirely and just reacts to its own SSE event directly.
+let signupCountdownTimer = null;
+let signupCountdownEl = null;
+
+function ensureSignupCountdownEl() {
+  if (signupCountdownEl) return signupCountdownEl;
+  signupCountdownEl = document.createElement("div");
+  signupCountdownEl.className = "tournament-signup-countdown";
+  signupCountdownEl.hidden = true;
+  stage.append(signupCountdownEl);
+  return signupCountdownEl;
+}
+
+function handleTournamentSignupEvent(event = {}) {
+  const el = ensureSignupCountdownEl();
+  clearInterval(signupCountdownTimer);
+  if (!event.active || !event.deadlineUtc) {
+    el.hidden = true;
+    return;
+  }
+  const deadline = new Date(event.deadlineUtc).getTime();
+  const label = settings?.language === "en" ? "Tournament signup" : "Turnier-Anmeldung";
+  const tick = () => {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      el.hidden = true;
+      clearInterval(signupCountdownTimer);
+      return;
+    }
+    const totalSeconds = Math.ceil(remainingMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    el.hidden = false;
+    el.textContent = `🏆 ${label}: ${minutes}:${String(seconds).padStart(2, "0")}`;
+  };
+  tick();
+  signupCountdownTimer = setInterval(tick, 1000);
 }
 
 function bindServerEvents() {
   connectEventStream({
     battle: (event) => enqueueBattle(event),
     settings: () => loadSettings(),
+    tournamentsignup: (event) => handleTournamentSignupEvent(event),
     collections: () => {},
     draw: () => {},
     trade: () => {},

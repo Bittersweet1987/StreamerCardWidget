@@ -1,0 +1,116 @@
+@import url("/assets/css/components.css");
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--font);
+}
+
+.liveticker-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Width is always the full 1920 canvas (see OVERLAY_LAYOUT_NATURAL_SIZES.liveTicker's lockWidth
+   flag in render.js) - only height is set dynamically by liveticker.js from the "Skalierung"
+   setting, and --liveticker-scale drives every text/icon size below so they shrink/grow with it. */
+.liveticker-banner {
+  width: 1920px;
+  height: 90px;
+  flex-shrink: 0;
+  --liveticker-scale: 1;
+  border-radius: 12px;
+  background: rgba(20, 14, 34, .74);
+  box-shadow: 0 10px 24px rgba(20, 14, 34, .35);
+  overflow: hidden;
+}
+
+.liveticker-banner[hidden] {
+  display: none;
+}
+
+.liveticker-viewport {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+/* Positioned purely via a JS-driven translateX (see liveticker.js) rather than a CSS keyframe
+   animation - a keyframe loop has to be restarted whenever the content changes (new draw arrives,
+   oldest one drops off), which is exactly the visible stutter/jump this was replacing. Driving the
+   transform per animation frame instead means new items can be appended at the tail, and expired
+   ones dropped from the head, without ever touching what's already scrolling on screen. */
+.liveticker-track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.liveticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(10px * var(--liveticker-scale, 1));
+  padding: 0 calc(26px * var(--liveticker-scale, 1));
+  white-space: nowrap;
+}
+
+.liveticker-item::before {
+  content: "\2726";
+  margin-right: calc(26px * var(--liveticker-scale, 1));
+  color: rgba(255, 255, 255, .35);
+  font-size: calc(12px * var(--liveticker-scale, 1));
+}
+
+.liveticker-avatar-slot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.liveticker-twitch-icon,
+.liveticker-avatar {
+  flex: 0 0 auto;
+  width: calc(24px * var(--liveticker-scale, 1));
+  height: calc(24px * var(--liveticker-scale, 1));
+}
+
+.liveticker-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  border: calc(1.5px * var(--liveticker-scale, 1)) solid rgba(255, 255, 255, .55);
+}
+
+/* All text - username, "zog"/"drew", card name, pack name - shares the exact same look, per
+   explicit request: one uniform white/bold style rather than different colors or weights. */
+.liveticker-user,
+.liveticker-sep,
+.liveticker-card,
+.liveticker-booster {
+  color: #fff;
+  font-weight: 900;
+  font-size: calc(22px * var(--liveticker-scale, 1));
+}
+
+.status {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(36, 31, 51, .78);
+  font-size: 13px;
+  font-weight: 800;
+}

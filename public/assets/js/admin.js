@@ -11,6 +11,8 @@ import {
   clearQueue,
   getCommandUsage,
   getPityState,
+  getCommunityGoal,
+  resetCommunityGoal,
   getFonts,
   getLatestRelease,
   getReleases,
@@ -26,11 +28,14 @@ import {
   resetCommandUsage,
   saveSettings,
   syncShowcaseReward,
+  syncTournamentReward,
+  getTournamentState,
+  startTournament,
   syncTwitchReward,
   testTradeAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js";
+} from "./api.js?v=1784294738";
 import {
   applyTheme,
   boosterMarkup,
@@ -45,20 +50,21 @@ import {
   escapeHtml,
   MAX_BOOSTER_CARDS,
   normalizeSettings,
+  OVERLAY_LAYOUT_NATURAL_SIZES,
+  overlayLayoutBoxSize,
   pickDefault,
   RARITIES,
   rarityById,
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js";
+} from "./render.js?v=1784294738";
 
 let settings;
 let selectedCardId;
 let selectedBoosterId;
 let previewCardId;
 let availableFonts = [];
-let autoSaveTimer;
 let autoSaveReady = false;
 let collections = {};
 const DEFAULT_TWITCH_CLIENT_ID = "klgyxuiixy0mfo7ze7goubj5j16g7u";
@@ -167,6 +173,11 @@ const I18N = {
     fr: "Paramètres",
     es: "Ajustes",
     th: "การตั้งค่า"
+  },
+  "nav-animations": { de: "Animationen", en: "Animations",
+    fr: "Animations",
+    es: "Animaciones",
+    th: "แอนิเมชัน"
   },
   "nav-update": { de: "Update", en: "Update",
     fr: "Mise à jour",
@@ -439,6 +450,11 @@ const I18N = {
     es: "Cola",
     th: "คิว"
   },
+  "eyebrow-twitch": { de: "Twitch", en: "Twitch", fr: "Twitch", es: "Twitch", th: "Twitch" },
+  "eyebrow-obs": { de: "OBS", en: "OBS", fr: "OBS", es: "OBS", th: "OBS" },
+  "eyebrow-meld": { de: "Meld Studio", en: "Meld Studio", fr: "Meld Studio", es: "Meld Studio", th: "Meld Studio" },
+  "obs-websocket-title": { de: "WebSocket", en: "WebSocket", fr: "WebSocket", es: "WebSocket", th: "WebSocket" },
+  "meld-websocket-title": { de: "WebSocket", en: "WebSocket", fr: "WebSocket", es: "WebSocket", th: "WebSocket" },
   "bot-trigger-title": { de: "Bot-Verbindung (Chat)", en: "Bot connection (chat)",
     fr: "Connexion du bot (chat)",
     es: "Conexión del bot (chat)",
@@ -712,8 +728,8 @@ const I18N = {
     th: "ระยะเวลาแสดงผล (วินาที)"
   },
   "cc-ranking-hint": {
-    de: "Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle“ wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „tausch“ erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.",
-    en: "Shows the ranking exclusively in its own OBS source (Connection → Ranking source name) – deliberately no chat output. For “battle” the display cycles through: most fights → most wins → most defeats → best win/loss ratio (top 5 each). For “trade” it shows the 5 users with the most completed trades. The display duration applies per view.",
+    de: "Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle“ wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „turnier“ wechselt die Anzeige durch: meiste Turniersiege → meiste Turnierteilnahmen (je Top 5). Bei „tausch“ erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.",
+    en: "Shows the ranking exclusively in its own OBS source (Connection → Ranking source name) – deliberately no chat output. For “battle” the display cycles through: most fights → most wins → most defeats → best win/loss ratio (top 5 each). For “tournament” the display cycles through: most tournament wins → most tournament participations (top 5 each). For “trade” it shows the 5 users with the most completed trades. The display duration applies per view.",
     fr: "Affiche le classement uniquement dans sa propre source OBS (Connexion → Nom de la source de classement) – volontairement aucune sortie chat. Pour « duel » l'affichage défile : plus de combats → plus de victoires → plus de défaites → meilleur ratio victoires/défaites (top 5 chacun). Pour « échange » il montre les 5 utilisateurs avec le plus d'échanges terminés. La durée d'affichage s'applique par vue.",
     es: "Muestra la clasificación exclusivamente en su propia fuente de OBS (Conexión → Nombre de fuente de clasificación) – deliberadamente sin salida en el chat. Para “duelo” la vista rota entre: más combates → más victorias → más derrotas → mejor ratio victorias/derrotas (top 5 cada uno). Para “intercambio” muestra los 5 usuarios con más intercambios completados. La duración de visualización aplica por vista.",
     th: "แสดงอันดับเฉพาะในซอร์ส OBS ของตัวเอง (การเชื่อมต่อ → ชื่อซอร์สอันดับ) โดยตั้งใจไม่ส่งข้อความในแชท สำหรับ \"การดวล\" จะวนแสดง: ต่อสู้มากที่สุด → ชนะมากที่สุด → แพ้มากที่สุด → อัตราส่วนชนะ/แพ้ดีที่สุด (5 อันดับแรกแต่ละหมวด) สำหรับ \"การแลกเปลี่ยน\" จะแสดงผู้ใช้ 5 อันดับที่แลกเปลี่ยนสำเร็จมากที่สุด ระยะเวลาแสดงผลใช้ต่อหนึ่งมุมมอง"
@@ -722,6 +738,16 @@ const I18N = {
     fr: "Nom de source classement",
     es: "Nombre de fuente de clasificación",
     th: "ชื่อซอร์สอันดับ"
+  },
+  "label-obs-communitygoal-source": { de: "Quellenname Community-Ziel", en: "Source name community goal",
+    fr: "Nom de source objectif communautaire",
+    es: "Nombre de fuente meta comunitaria",
+    th: "ชื่อซอร์สเป้าหมายชุมชน"
+  },
+  "label-meld-communitygoal-source": { de: "Quellenname Community-Ziel", en: "Source name community goal",
+    fr: "Nom de source objectif communautaire",
+    es: "Nombre de fuente meta comunitaria",
+    th: "ชื่อซอร์สเป้าหมายชุมชน"
   },
   "cc-pack-eyebrow": { de: "Kartenpack", en: "Card pack",
     fr: "Pack de cartes",
@@ -1212,6 +1238,18 @@ const I18N = {
     es: "Guardar",
     th: "บันทึก"
   },
+  "save-indicator-dirty": { de: "Ungespeicherte Änderungen", en: "Unsaved changes",
+    fr: "Modifications non enregistrées", es: "Cambios sin guardar", th: "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
+  },
+  "save-indicator-saving": { de: "Speichert…", en: "Saving…",
+    fr: "Enregistrement…", es: "Guardando…", th: "กำลังบันทึก…"
+  },
+  "save-indicator-saved": { de: "Gespeichert", en: "Saved",
+    fr: "Enregistré", es: "Guardado", th: "บันทึกแล้ว"
+  },
+  "save-indicator-error": { de: "Speichern fehlgeschlagen", en: "Save failed",
+    fr: "Échec de l'enregistrement", es: "Error al guardar", th: "บันทึกล้มเหลว"
+  },
   "ov-test-eyebrow": { de: "Testlauf", en: "Test run",
     fr: "Test",
     es: "Prueba",
@@ -1538,7 +1576,7 @@ const I18N = {
     es: "Cartas",
     th: "การ์ด"
   },
-  "pity-title": { de: "Pity-System", en: "Pity system",
+  "pity-title": { de: "Garantie-System", en: "Pity system",
     fr: "Système de pitié",
     es: "Sistema de compensación",
     th: "ระบบการันตี"
@@ -1550,7 +1588,7 @@ const I18N = {
     es: "Garantiza a cada espectador al menos la rareza elegida tras X tiradas fallidas seguidas (ya sea por puntos de canal o comando de chat) - no cambia la ponderación normal, solo actúa como un mínimo garantizado.",
     th: "รับประกันให้ผู้ชมทุกคนได้อย่างน้อยระดับความหายากที่เลือกหลังจากสุ่มไม่สำเร็จติดต่อกัน X ครั้ง (ไม่ว่าจะผ่านแชนแนลพอยท์หรือคำสั่งแชท) - ไม่เปลี่ยนน้ำหนักปกติ เป็นเพียงขั้นต่ำที่รับประกัน"
   },
-  "label-pity-enabled": { de: "Pity-System aktiviert", en: "Pity system enabled",
+  "label-pity-enabled": { de: "Garantie-System aktiviert", en: "Pity system enabled",
     fr: "Système de pitié activé",
     es: "Sistema de compensación activado",
     th: "เปิดใช้งานระบบการันตี"
@@ -1572,7 +1610,7 @@ const I18N = {
     es: "Puntos que otorga una carta sacrificada según su rareza para el comando \"!dust\" (Comandos de chat).",
     th: "แต้มที่การ์ดที่สังเวยจะได้ตามระดับความหายากสำหรับคำสั่ง \"!dust\" (คำสั่งแชท)"
   },
-  "label-pity-streak": { de: "Pity:", en: "Pity:",
+  "label-pity-streak": { de: "Garantie:", en: "Pity:",
     fr: "Pitié :",
     es: "Compensación:",
     th: "การันตี:"
@@ -1589,7 +1627,142 @@ const I18N = {
     es: "Tiradas hasta la rareza garantizada / crédito acumulado por !dust",
     th: "จำนวนครั้งจนถึงการันตี / เครดิตที่สะสมจาก !dust"
   },
-  "cc-dust-eyebrow": { de: "Pity", en: "Pity",
+  "communitygoal-eyebrow": { de: "Community", en: "Community",
+    fr: "Communauté",
+    es: "Comunidad",
+    th: "ชุมชน"
+  },
+  "communitygoal-title": { de: "Community-Ziel", en: "Community goal",
+    fr: "Objectif communautaire",
+    es: "Meta comunitaria",
+    th: "เป้าหมายชุมชน"
+  },
+  "communitygoal-hint": {
+    de: "Ein gemeinsamer Fortschrittsbalken über alle Zuschauer hinweg – jede Ziehung (egal ob per Kanalpunkte oder Chat-Befehl) zählt +1. Wird das Ziel erreicht, postet der Bot eine Feier-Nachricht im Chat, die OBS-Quelle zeigt eine Feier-Animation, und jeder, der mitgezogen hat, bekommt automatisch einen Bonus-Booster.",
+    en: "A shared progress bar across every viewer - each draw (channel points or chat command) counts +1. Once the goal is reached, the bot posts a celebration message in chat, the OBS source plays a celebration animation, and everyone who participated automatically gets a bonus booster.",
+    fr: "Une barre de progression partagée entre tous les spectateurs - chaque tirage (points de chaîne ou commande de chat) compte +1. Une fois l'objectif atteint, le bot publie un message de célébration dans le chat, la source OBS joue une animation de célébration, et tous les participants reçoivent automatiquement un booster bonus.",
+    es: "Una barra de progreso compartida entre todos los espectadores - cada tirada (puntos de canal o comando de chat) cuenta +1. Al alcanzar la meta, el bot publica un mensaje de celebración en el chat, la fuente de OBS reproduce una animación de celebración, y todos los participantes reciben automáticamente un sobre extra.",
+    th: "แถบความคืบหน้าที่ใช้ร่วมกันของผู้ชมทุกคน - แต่ละครั้งที่สุ่ม (แชนแนลพอยท์หรือคำสั่งแชท) นับ +1 เมื่อบรรลุเป้าหมาย บอทจะโพสต์ข้อความฉลองในแชท ซอร์ส OBS จะเล่นแอนิเมชันฉลอง และทุกคนที่เข้าร่วมจะได้รับบูสเตอร์โบนัสอัตโนมัติ"
+  },
+  "label-communitygoal-enabled": { de: "Community-Ziel aktiviert", en: "Community goal enabled",
+    fr: "Objectif communautaire activé",
+    es: "Meta comunitaria activada",
+    th: "เปิดใช้งานเป้าหมายชุมชน"
+  },
+  "label-communitygoal-target": { de: "Ziel (Anzahl Ziehungen)", en: "Goal (number of draws)",
+    fr: "Objectif (nombre de tirages)",
+    es: "Meta (número de tiradas)",
+    th: "เป้าหมาย (จำนวนครั้ง)"
+  },
+  "label-communitygoal-message": { de: "Feier-Nachricht im Chat", en: "Celebration message in chat",
+    fr: "Message de célébration dans le chat",
+    es: "Mensaje de celebración en el chat",
+    th: "ข้อความฉลองในแชท"
+  },
+  "btn-communitygoal-reset": { de: "Fortschritt zurücksetzen", en: "Reset progress",
+    fr: "Réinitialiser la progression",
+    es: "Reiniciar progreso",
+    th: "รีเซ็ตความคืบหน้า"
+  },
+  "confirm-communitygoal-reset": { de: "Fortschritt wirklich auf 0 zurücksetzen?", en: "Really reset progress to 0?",
+    fr: "Vraiment réinitialiser la progression à 0 ?",
+    es: "¿Reiniciar de verdad el progreso a 0?",
+    th: "ต้องการรีเซ็ตความคืบหน้าเป็น 0 จริงหรือไม่?"
+  },
+  "notice-communitygoal-reset": { de: "Community-Ziel zurückgesetzt.", en: "Community goal reset.",
+    fr: "Objectif communautaire réinitialisé.",
+    es: "Meta comunitaria reiniciada.",
+    th: "รีเซ็ตเป้าหมายชุมชนแล้ว"
+  },
+  "label-communitygoal-reached": { de: "Ziel erreicht!", en: "Goal reached!",
+    fr: "Objectif atteint !",
+    es: "¡Meta alcanzada!",
+    th: "บรรลุเป้าหมายแล้ว!"
+  },
+  "tournament-eyebrow": { de: "Kämpfe", en: "Battles", fr: "Combats", es: "Combates", th: "การดวล" },
+  "tournament-title": { de: "Turnier-Modus", en: "Tournament mode", fr: "Mode tournoi", es: "Modo torneo", th: "โหมดทัวร์นาเมนต์" },
+  "tournament-hint": {
+    de: "Ein Ausscheidungsturnier für Kartenduelle. Zuschauer treten während einer Anmeldephase per Chat-Befehl bei (Befehl unter Chat-Befehle einstellbar); danach werden alle Runden automatisch nacheinander über die normale Kampf-Animation ausgetragen - ohne Risiko für die eigenen Karten. Der Turniersieger bekommt stattdessen eine konfigurierbare Anzahl Kartenpack-Ziehungen. Startbar per Kanalpunkte-Belohnung (unter Kanalpunkte), per Chat-Befehl oder per Knopf hier.",
+    en: "A single-elimination tournament for card duels. Viewers join during a signup window via a chat command (configurable under Chat Commands); afterwards every round plays out automatically through the normal battle animation - no risk to anyone's cards. The champion instead gets a configurable number of pack draws. Can be started via a channel-point reward (under Channel Points), a chat command, or the button here.",
+    fr: "Un tournoi à élimination directe pour des duels de cartes. Les spectateurs rejoignent pendant une phase d'inscription via une commande de chat (configurable sous Commandes de chat) ; ensuite, chaque tour se déroule automatiquement via l'animation de combat normale - sans risque pour les cartes de quiconque. Le champion reçoit à la place un nombre configurable de tirages de booster. Peut être démarré via une récompense de points de chaîne (sous Points de chaîne), une commande de chat, ou le bouton ci-dessous.",
+    es: "Un torneo de eliminación directa para duelos de cartas. Los espectadores se unen durante una ventana de inscripción con un comando de chat (configurable en Comandos de chat); después, cada ronda se desarrolla automáticamente mediante la animación de combate normal, sin riesgo para las cartas de nadie. El campeón recibe en su lugar un número configurable de tiradas de sobre. Se puede iniciar mediante una recompensa de puntos de canal (en Puntos de canal), un comando de chat o el botón de aquí.",
+    th: "ทัวร์นาเมนต์แบบแพ้คัดออกสำหรับการดวลการ์ด ผู้ชมเข้าร่วมระหว่างช่วงสมัครด้วยคำสั่งแชท (ตั้งค่าได้ที่คำสั่งแชท) จากนั้นทุกรอบจะเล่นอัตโนมัติผ่านแอนิเมชันการดวลปกติ - ไม่มีความเสี่ยงต่อการ์ดของใคร แชมป์จะได้รับจำนวนการจับสลากแพ็กที่ตั้งค่าได้แทน เริ่มได้ผ่านรางวัลแชนแนลพอยท์ (ที่แชนแนลพอยท์) คำสั่งแชท หรือปุ่มด้านล่างนี้"
+  },
+  "tournament-layout-hint": {
+    de: "Der Turnierbaum wird in derselben OBS-Quelle wie die Kampf-Animation angezeigt – diese Position/Skalierung gilt für beide gemeinsam.",
+    en: "The tournament bracket is shown in the same OBS source as the battle animation - this position/scale applies to both.",
+    fr: "L'arbre du tournoi s'affiche dans la même source OBS que l'animation de combat - cette position/échelle s'applique aux deux.",
+    es: "El cuadro del torneo se muestra en la misma fuente de OBS que la animación de combate; esta posición/escala se aplica a ambas.",
+    th: "สายการแข่งขันจะแสดงในแหล่ง OBS เดียวกับแอนิเมชันการดวล - ตำแหน่ง/ขนาดนี้ใช้ร่วมกันทั้งสองอย่าง"
+  },
+  "liveticker-eyebrow": { de: "Community", en: "Community", fr: "Communauté", es: "Comunidad", th: "คอมมูนิตี้" },
+  "liveticker-title": { de: "Live-Ticker", en: "Live ticker", fr: "Fil d'actualité en direct", es: "Ticker en vivo", th: "ตัวแสดงผลสด" },
+  "liveticker-hint": {
+    de: "Ein durchlaufendes Laufschrift-Banner (wie ein Newsticker), das die letzten Ziehungen aller Zuschauer in einer Endlosschleife von rechts nach links zeigt – unabhängig von der Kartenpack-Animation, läuft also nicht gedrosselt durch deren Warteschlange.",
+    en: "A scrolling news-ticker banner that loops the most recent draws from all viewers from right to left - independent of the pack animation, so it isn't throttled by its queue.",
+    fr: "Un bandeau défilant façon ticker d'actualités qui fait défiler en boucle les derniers tirages de tous les spectateurs de droite à gauche - indépendant de l'animation du booster, donc non ralenti par sa file d'attente.",
+    es: "Un banner de noticias desplazable que muestra en bucle las tiradas más recientes de todos los espectadores de derecha a izquierda - independiente de la animación del sobre, por lo que no se ralentiza por su cola.",
+    th: "แบนเนอร์ข่าววิ่งที่วนลูปการจับสลากล่าสุดของผู้ชมทุกคนจากขวาไปซ้าย - ไม่ขึ้นกับแอนิเมชันแพ็ก จึงไม่ถูกจำกัดด้วยคิวของมัน"
+  },
+  "label-liveticker-enabled": { de: "Live-Ticker aktiviert", en: "Live ticker enabled", fr: "Fil d'actualité en direct activé", es: "Ticker en vivo activado", th: "เปิดใช้งานตัวแสดงผลสด" },
+  "label-liveticker-max-entries": { de: "Einträge im Umlauf", en: "Entries in rotation", fr: "Entrées en rotation", es: "Entradas en rotación", th: "รายการที่หมุนเวียน" },
+  "label-liveticker-speed": { de: "Geschwindigkeit (Px/Sek.)", en: "Speed (px/sec.)", fr: "Vitesse (px/sec.)", es: "Velocidad (px/seg.)", th: "ความเร็ว (พิกเซล/วิ)" },
+  "label-tournament-enabled": { de: "Turnier-Modus aktiviert", en: "Tournament mode enabled", fr: "Mode tournoi activé", es: "Modo torneo activado", th: "เปิดใช้งานโหมดทัวร์นาเมนต์" },
+  "label-tournament-min-participants": { de: "Mindestteilnehmer", en: "Minimum participants", fr: "Participants minimum", es: "Participantes mínimos", th: "ผู้เข้าร่วมขั้นต่ำ" },
+  "label-tournament-signup-seconds": { de: "Anmeldezeit (Sek.)", en: "Signup time (sec.)", fr: "Temps d'inscription (sec.)", es: "Tiempo de inscripción (seg.)", th: "เวลาสมัคร (วินาที)" },
+  "label-tournament-lineup-size": { de: "Kartenanzahl pro Duell", en: "Cards per duel", fr: "Cartes par duel", es: "Cartas por duelo", th: "จำนวนการ์ดต่อการดวล" },
+  "label-tournament-winner-draws": { de: "Ziehungen für den Sieger", en: "Draws for the champion", fr: "Tirages pour le champion", es: "Tiradas para el campeón", th: "จำนวนการจับสลากสำหรับแชมป์" },
+  "label-tournament-announce-joins": { de: "Beitritte im Chat ankündigen", en: "Announce joins in chat", fr: "Annoncer les inscriptions dans le chat", es: "Anunciar inscripciones en el chat", th: "ประกาศการเข้าร่วมในแชท" },
+  "label-tournament-perround-enabled": { de: "Jeder Rundensieger zieht sofort eine Karte", en: "Every round's winner draws a card immediately", fr: "Le vainqueur de chaque manche tire une carte immédiatement", es: "El ganador de cada ronda saca una carta de inmediato", th: "ผู้ชนะแต่ละรอบจับการ์ดทันที" },
+  "label-tournament-champion-draws-enabled": { de: "Turniersieger erhält zusätzliche Ziehungen (siehe oben)", en: "Champion gets extra draws (see above)", fr: "Le champion reçoit des tirages supplémentaires (voir ci-dessus)", es: "El campeón recibe tiradas adicionales (ver arriba)", th: "แชมป์ได้รับการจับสลากเพิ่มเติม (ดูด้านบน)" },
+  "btn-tournament-start-now": { de: "Turnier jetzt starten", en: "Start tournament now", fr: "Démarrer le tournoi maintenant", es: "Iniciar torneo ahora", th: "เริ่มทัวร์นาเมนต์ตอนนี้" },
+  "label-tournament-state-idle": { de: "Kein Turnier aktiv", en: "No tournament active", fr: "Aucun tournoi actif", es: "Ningún torneo activo", th: "ไม่มีทัวร์นาเมนต์ที่ใช้งานอยู่" },
+  "label-tournament-state-signup": { de: "Anmeldephase läuft", en: "Signup in progress", fr: "Inscription en cours", es: "Inscripción en curso", th: "กำลังรับสมัคร" },
+  "label-tournament-state-running": { de: "Turnier läuft", en: "Tournament running", fr: "Tournoi en cours", es: "Torneo en curso", th: "ทัวร์นาเมนต์กำลังดำเนินอยู่" },
+  "ranking-anim-eyebrow": { de: "Ranking", en: "Ranking", fr: "Classement", es: "Clasificación", th: "การจัดอันดับ" },
+  "ranking-anim-title": { de: "Ranking-Anzeige", en: "Ranking display", fr: "Affichage du classement", es: "Visualización de clasificación", th: "การแสดงการจัดอันดับ" },
+  "pack-anim-eyebrow": { de: "Kartenpack", en: "Card pack", fr: "Booster de cartes", es: "Sobre de cartas", th: "แพ็กการ์ด" },
+  "pack-anim-title": { de: "Pack-Animation", en: "Pack animation", fr: "Animation du booster", es: "Animación del sobre", th: "แอนิเมชันแพ็ก" },
+  "ranking-anim-hint": { de: "Position und Größe der Ranking-Anzeige (ranking.html) im Overlay-Bild.", en: "Position and size of the ranking display (ranking.html) in the overlay image.", fr: "Position et taille de l'affichage du classement (ranking.html) dans l'image de superposition.", es: "Posición y tamaño de la visualización de clasificación (ranking.html) en la imagen de superposición.", th: "ตำแหน่งและขนาดของการแสดงการจัดอันดับ (ranking.html) ในภาพโอเวอร์เลย์" },
+  "label-oly-top": { de: "Abstand oben", en: "Top margin", fr: "Marge supérieure", es: "Margen superior", th: "ระยะขอบบน" },
+  "label-oly-right": { de: "Abstand rechts", en: "Right margin", fr: "Marge droite", es: "Margen derecho", th: "ระยะขอบขวา" },
+  "label-oly-bottom": { de: "Abstand unten", en: "Bottom margin", fr: "Marge inférieure", es: "Margen inferior", th: "ระยะขอบล่าง" },
+  "label-oly-left": { de: "Abstand links", en: "Left margin", fr: "Marge gauche", es: "Margen izquierdo", th: "ระยะขอบซ้าย" },
+  "label-oly-scale": { de: "Skalierung", en: "Scale", fr: "Échelle", es: "Escala", th: "ขนาด" },
+  "btn-oly-center": { de: "Zentrieren", en: "Center", fr: "Centrer", es: "Centrar", th: "จัดกึ่งกลาง" },
+  "hint-oly-drag": { de: "Roten Punkt in der Vorschau ziehen, um die Position zu setzen (Basis: 1920×1080).", en: "Drag the red dot in the preview to set the position (based on 1920×1080).", fr: "Faites glisser le point rouge dans l'aperçu pour définir la position (base : 1920×1080).", es: "Arrastra el punto rojo en la vista previa para establecer la posición (base: 1920×1080).", th: "ลากจุดสีแดงในตัวอย่างเพื่อกำหนดตำแหน่ง (พื้นฐาน: 1920×1080)" },
+  "label-tournament-participants": { de: "Teilnehmer", en: "participants", fr: "participants", es: "participantes", th: "ผู้เข้าร่วม" },
+  "notice-tournament-started": { de: "Turnier-Anmeldung gestartet.", en: "Tournament signup started.", fr: "Inscription au tournoi démarrée.", es: "Inscripción al torneo iniciada.", th: "เริ่มการสมัครทัวร์นาเมนต์แล้ว" },
+  "notice-tournament-already-running": { de: "Es läuft bereits ein Turnier oder eine Anmeldephase.", en: "A tournament or signup phase is already running.", fr: "Un tournoi ou une phase d'inscription est déjà en cours.", es: "Ya hay un torneo o una fase de inscripción en curso.", th: "มีทัวร์นาเมนต์หรือช่วงสมัครที่กำลังดำเนินอยู่แล้ว" },
+  "notice-tournament-disabled": { de: "Turnier-Modus ist nicht aktiviert.", en: "Tournament mode is not enabled.", fr: "Le mode tournoi n'est pas activé.", es: "El modo torneo no está activado.", th: "โหมดทัวร์นาเมนต์ไม่ได้เปิดใช้งาน" },
+  "tournament-reward-eyebrow": { de: "Turnier", en: "Tournament", fr: "Tournoi", es: "Torneo", th: "ทัวร์นาเมนต์" },
+  "tournament-reward-title": { de: "Turnier-Belohnung", en: "Tournament reward", fr: "Récompense de tournoi", es: "Recompensa de torneo", th: "รางวัลทัวร์นาเมนต์" },
+  "tournament-reward-info-text": {
+    de: "Löst ein Zuschauer diese Belohnung ein, startet die Turnier-Anmeldephase (siehe Einstellungen → Turnier-Modus für Regeln wie Mindestteilnehmerzahl und Anmeldezeit).",
+    en: "When a viewer redeems this reward, it starts the tournament signup phase (see Settings → Tournament mode for rules like minimum participants and signup time).",
+    fr: "Lorsqu'un spectateur échange cette récompense, cela démarre la phase d'inscription au tournoi (voir Paramètres → Mode tournoi pour les règles comme le nombre minimum de participants et le temps d'inscription).",
+    es: "Cuando un espectador canjea esta recompensa, se inicia la fase de inscripción del torneo (ver Configuración → Modo torneo para reglas como participantes mínimos y tiempo de inscripción).",
+    th: "เมื่อผู้ชมแลกรางวัลนี้ จะเริ่มช่วงสมัครทัวร์นาเมนต์ (ดูการตั้งค่า → โหมดทัวร์นาเมนต์สำหรับกฎ เช่น จำนวนผู้เข้าร่วมขั้นต่ำและเวลาสมัคร)"
+  },
+  "cc-tournamentjoin-eyebrow": { de: "Turnier", en: "Tournament", fr: "Tournoi", es: "Torneo", th: "ทัวร์นาเมนต์" },
+  "cc-tournamentjoin-title": { de: "Turnier-Beitritt", en: "Tournament join", fr: "Inscription au tournoi", es: "Unirse al torneo", th: "เข้าร่วมทัวร์นาเมนต์" },
+  "cc-tournamentjoin-hint": {
+    de: "Mit diesem Befehl treten Zuschauer während einer laufenden Anmeldephase dem Turnier bei. Wer nicht genug verschiedene Karten besitzt (siehe Einstellungen → Turnier-Modus), bekommt eine Hinweis-Nachricht statt beizutreten.",
+    en: "Viewers use this command to join the tournament during an active signup phase. Anyone without enough different cards (see Settings → Tournament mode) gets a notice message instead of joining.",
+    fr: "Les spectateurs utilisent cette commande pour rejoindre le tournoi pendant une phase d'inscription active. Quiconque n'a pas assez de cartes différentes (voir Paramètres → Mode tournoi) reçoit un message au lieu de rejoindre.",
+    es: "Los espectadores usan este comando para unirse al torneo durante una fase de inscripción activa. Quien no tenga suficientes cartas diferentes (ver Configuración → Modo torneo) recibe un mensaje en vez de unirse.",
+    th: "ผู้ชมใช้คำสั่งนี้เพื่อเข้าร่วมทัวร์นาเมนต์ระหว่างช่วงสมัครที่ใช้งานอยู่ ผู้ที่มีการ์ดต่างกันไม่พอ (ดูการตั้งค่า → โหมดทัวร์นาเมนต์) จะได้รับข้อความแจ้งเตือนแทนการเข้าร่วม"
+  },
+  "cc-tournamentstart-eyebrow": { de: "Turnier", en: "Tournament", fr: "Tournoi", es: "Torneo", th: "ทัวร์นาเมนต์" },
+  "cc-tournamentstart-title": { de: "Turnier-Start (Chat)", en: "Tournament start (chat)", fr: "Démarrage du tournoi (chat)", es: "Inicio de torneo (chat)", th: "เริ่มทัวร์นาเมนต์ (แชท)" },
+  "cc-tournamentstart-hint": {
+    de: "Optionaler Chat-Befehl, um die Turnier-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel.",
+    en: "Optional chat command to start the tournament signup phase - in addition to the channel-point reward and the admin panel's start button.",
+    fr: "Commande de chat optionnelle pour démarrer la phase d'inscription au tournoi - en plus de la récompense de points de chaîne et du bouton de démarrage du panneau d'administration.",
+    es: "Comando de chat opcional para iniciar la fase de inscripción del torneo, además de la recompensa de puntos de canal y el botón de inicio del panel de administración.",
+    th: "คำสั่งแชทเสริมสำหรับเริ่มช่วงสมัครทัวร์นาเมนต์ - นอกเหนือจากรางวัลแชนแนลพอยท์และปุ่มเริ่มในแผงผู้ดูแลระบบ"
+  },
+  "cc-dust-eyebrow": { de: "Garantie", en: "Pity",
     fr: "Pitié",
     es: "Compensación",
     th: "การันตี"
@@ -1600,7 +1773,7 @@ const I18N = {
     th: "คำสั่งสังเวย"
   },
   "cc-dust-hint": {
-    de: "Verwandelt doppelt besessene Karten in Pity-Punkte: \"!dust Kartenname Anzahl\". Wie viele Punkte eine Karte je nach Seltenheit bringt, legst du unter Einstellungen → Pity-System fest. Mindestens 1 Exemplar bleibt dem Viewer immer erhalten.",
+    de: "Verwandelt doppelt besessene Karten in Garantie-Punkte: \"!dust Kartenname Anzahl\". Wie viele Punkte eine Karte je nach Seltenheit bringt, legst du unter Einstellungen → Garantie-System fest. Mindestens 1 Exemplar bleibt dem Viewer immer erhalten.",
     en: "Converts duplicate cards into pity points: \"!dust card name count\". How many points a card grants depending on rarity is set under Settings → Pity system. The viewer always keeps at least 1 copy.",
     fr: "Convertit les cartes en double en points de pitié : « !dust nom de la carte nombre ». Le nombre de points accordés par rareté se règle sous Paramètres → Système de pitié. Le spectateur garde toujours au moins 1 exemplaire.",
     es: "Convierte cartas duplicadas en puntos de compensación: \"!dust nombre de la carta cantidad\". Cuántos puntos otorga una carta según la rareza se define en Ajustes → Sistema de compensación. El espectador siempre conserva al menos 1 copia.",
@@ -2052,6 +2225,10 @@ const I18N = {
     es: "Nombre de la escena",
     th: "ชื่อฉาก"
   },
+  "label-obs-combined-source": { de: "Quellenname (alle Animationen)", en: "Source name (all animations)",
+    fr: "Nom de la source (toutes les animations)", es: "Nombre de la fuente (todas las animaciones)", th: "ชื่อแหล่งที่มา (แอนิเมชันทั้งหมด)" },
+  "label-meld-combined-source": { de: "Quellenname (alle Animationen)", en: "Source name (all animations)",
+    fr: "Nom de la source (toutes les animations)", es: "Nombre de la fuente (todas las animaciones)", th: "ชื่อแหล่งที่มา (แอนิเมชันทั้งหมด)" },
   "label-obs-source": { de: "Quellenname Booster", en: "Source name booster",
     fr: "Nom de source booster",
     es: "Nombre de fuente del sobre",
@@ -2360,6 +2537,11 @@ const I18N = {
     es: "Guardando recompensa de vitrina...",
     th: "กำลังบันทึกรางวัลโชว์เคส..."
   },
+  "notice-tournament-reward-saved": { de: "Turnier-Belohnung gespeichert.", en: "Tournament reward saved.",
+    fr: "Récompense de tournoi enregistrée.",
+    es: "Recompensa de torneo guardada.",
+    th: "บันทึกรางวัลทัวร์นาเมนต์แล้ว"
+  },
   "notice-showcase-saved": { de: "Showcase-Belohnung gespeichert.", en: "Showcase reward saved.",
     fr: "Récompense vitrine enregistrée.",
     es: "Recompensa de vitrina guardada.",
@@ -2554,6 +2736,17 @@ const I18N = {
     fr: "Définit l'apparence de l'affichage de la collection (récompense en points de chaîne ou commande de chat « !collection ») dans OBS.",
     es: "Define cómo se ve la visualización de la colección (recompensa de puntos de canal o comando de chat \"!collection\") en OBS.",
     th: "กำหนดรูปแบบการแสดงคอลเลกชัน (รางวัลแชนแนลพอยท์หรือคำสั่งแชท \"!collection\") ใน OBS"
+  },
+  "label-collection-anim-enabled": {
+    de: "Sammlung-Animation aktiviert", en: "Collection animation enabled",
+    fr: "Animation de collection activée", es: "Animación de colección activada", th: "เปิดใช้งานแอนิเมชันคอลเลกชัน"
+  },
+  "collection-anim-disabled-hint": {
+    de: "Bei ausgeschalteter Animation läuft weder Kanalpunkte- noch !collection-Auslösung über OBS – die Kartenlisten-Chat-Ausgabe (unter Chat Befehle → Sammlung-Befehl) läuft trotzdem unabhängig davon weiter, falls dort aktiviert.",
+    en: "With the animation switched off, neither the channel-points nor the !collection trigger runs anything through OBS - the card-list chat output (under Chat Commands → collection command) still runs independently of this, if enabled there.",
+    fr: "Lorsque l'animation est désactivée, ni le déclenchement par points de chaîne ni !collection ne passe par OBS - la liste de cartes envoyée dans le chat (sous Commandes de chat → commande collection) continue de fonctionner indépendamment, si elle y est activée.",
+    es: "Con la animación desactivada, ni la recompensa de puntos de canal ni !collection pasan por OBS - la salida de chat con la lista de cartas (en Comandos de chat → comando de colección) sigue funcionando de forma independiente, si está activada allí.",
+    th: "เมื่อปิดแอนิเมชัน ทั้งแชนแนลพอยท์และคำสั่ง !collection จะไม่ทำงานผ่าน OBS - การแสดงรายการการ์ดในแชท (ที่คำสั่งแชท → คำสั่งคอลเลกชัน) ยังคงทำงานแยกต่างหาก หากเปิดใช้งานไว้ที่นั่น"
   },
   "label-collection-anim-style": { de: "Anzeigestil", en: "Display style",
     fr: "Style d'affichage",
@@ -2873,35 +3066,79 @@ function bindSegToggle(id, onChange) {
 let autoSaveInFlight = false;
 let autoSaveQueued = false;
 
-// scheduleAutoSave()'s 650ms timer only debounces WHEN a save starts, not whether one is
-// already running. settings (with every card's base64 image) can serialize to 10MB+; if the
-// user keeps editing while a previous save's request is still in flight (e.g. slow network to
-// the stats VPS), each new timer fires ANOTHER overlapping save holding its own full copy of
-// that string, which is what was ballooning the WebView2 heap to multiple GB. Only one save may
-// be in flight at a time; a save requested while one is running is deferred until it finishes.
-function scheduleAutoSave() {
-  if (!autoSaveReady || !settings) return;
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(runAutoSave, 650);
+let saveIndicatorHideTimer = null;
+
+// Visible feedback for the autosave cycle: without this, the ~650ms debounce plus however long
+// the actual request takes made it look like edits weren't being saved at all, especially once
+// settings.json grows large with many card images.
+function setSaveIndicator(state) {
+  const el = $("#save-indicator");
+  if (!el) return;
+  clearTimeout(saveIndicatorHideTimer);
+  if (!state) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  el.dataset.state = state;
+  el.textContent = state === "saving" ? t("save-indicator-saving")
+    : state === "error" ? t("save-indicator-error")
+    : state === "dirty" ? t("save-indicator-dirty")
+    : t("save-indicator-saved");
+  // "dirty"/"saving" both persist until something else happens (a save completing, or another
+  // edit) - only the terminal "saved"/"error" states auto-hide after a moment.
+  if (state === "saved" || state === "error") {
+    saveIndicatorHideTimer = setTimeout(() => { el.hidden = true; }, 2500);
+  }
 }
 
+// Saving now only actually happens on an explicit trigger - a manual "Speichern" click, or
+// switching to a different nav tab while there are unsaved changes - not on every keystroke or
+// click. Constantly re-saving the full settings (worst case several MB with many card images) on
+// every single edit made the app feel laggy and the save indicator flicker non-stop; there is
+// also no need to persist mid-edit if the user is still on the same tab. scheduleAutoSave() is
+// still called from every field listener throughout this file (dozens of call sites) - instead of
+// debouncing an imminent save, it now only raises the "dirty" flag; saveIfDirty() performs the
+// actual save and is called from the tab-switch handler and the manual save button.
+let workspaceDirty = false;
+
+function scheduleAutoSave() {
+  if (!autoSaveReady || !settings) return;
+  workspaceDirty = true;
+  setSaveIndicator("dirty");
+}
+
+async function saveIfDirty() {
+  if (!workspaceDirty) return;
+  workspaceDirty = false;
+  await runAutoSave();
+}
+
+// scheduleAutoSave() no longer starts a save itself, so the only remaining source of overlapping
+// saves is the queued-retry path below (a change arriving while a save is already in flight) -
+// autoSaveInFlight/autoSaveQueued still guard against that, same rationale as before: settings
+// can serialize to several MB, and two overlapping in-flight copies of that string is what once
+// ballooned the WebView2 heap to multiple GB.
 async function runAutoSave() {
   if (autoSaveInFlight) {
     autoSaveQueued = true;
     return;
   }
   autoSaveInFlight = true;
+  setSaveIndicator("saving");
   try {
     await saveSettings(settings);
     syncCommunityCounts();
     loadCommunityStats(true);
+    if (!autoSaveQueued) setSaveIndicator("saved");
   } catch (error) {
+    setSaveIndicator("error");
     showNotice(error.message, "error");
   } finally {
     autoSaveInFlight = false;
     if (autoSaveQueued) {
       autoSaveQueued = false;
-      scheduleAutoSave();
+      runAutoSave();
     }
   }
 }
@@ -3329,6 +3566,10 @@ function bindLogTab() {
 function bindTabs() {
   $$(".nav-button").forEach((button) => {
     button.addEventListener("click", async () => {
+      // Leaving a tab is the trigger point for persisting whatever was changed on it - see
+      // scheduleAutoSave(). Only actually hits the network if something is dirty; switching tabs
+      // with no pending edits is a no-op here.
+      await saveIfDirty();
       $$(".nav-button").forEach((item) => item.classList.toggle("is-active", item === button));
       $$(".tab-panel").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === button.dataset.tab));
       if (button.dataset.tab === "users") {
@@ -3720,18 +3961,29 @@ async function setupObsOverlay() {
     await saveSettings(settings);
     ws = await connectObs();
     const sceneName = settings.obs?.sceneName || "Streamer Card Overlay";
-    const packSourceName = settings.obs?.sourceName || "Streamer Card Widget";
-    const collectionSourceName = settings.showcase?.sourceName || "Streamer Card Sammlung";
-    const tradeSourceName = settings.tradeAnimation?.sourceName || "Streamer Card Tausch";
-    const battleSourceName = settings.battleAnimation?.sourceName || "Streamer Card Kampf";
-    const rankingSourceName = settings.ranking?.sourceName || "Streamer Card Ranking";
-    await applyObsBrowserSource(ws, sceneName, packSourceName, await sourceUrl("/overlay.html"));
-    await applyObsBrowserSource(ws, sceneName, collectionSourceName, await sourceUrl("/collection.html"));
-    await applyObsBrowserSource(ws, sceneName, tradeSourceName, await sourceUrl("/trade.html"));
-    await applyObsBrowserSource(ws, sceneName, battleSourceName, await sourceUrl("/battle.html"));
-    await applyObsBrowserSource(ws, sceneName, rankingSourceName, await sourceUrl("/ranking.html"));
+    const combinedSourceName = settings.obs?.combinedSourceName || "Streamer Card Overlays";
+    // ONE combined browser source hosts all animations (overlays.html). Never go back to one
+    // source per animation: OBS's shared browser context allows only 6 concurrent connections
+    // per host, and six sources each holding an event stream saturated that pool and stalled
+    // every other request (2026-07-16).
+    await applyObsBrowserSource(ws, sceneName, combinedSourceName, await sourceUrl("/overlays.html"));
 
-    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${packSourceName} + ${collectionSourceName} + ${tradeSourceName} + ${battleSourceName} + ${rankingSourceName}`, "ok");
+    // Clean up the legacy per-animation sources (pre-combined setups); their names come from
+    // the settings they were created with. Non-fatal if they're already gone.
+    const legacySourceNames = [
+      settings.obs?.sourceName || "Streamer Card Widget",
+      settings.showcase?.sourceName || "Streamer Card Sammlung",
+      settings.tradeAnimation?.sourceName || "Streamer Card Tausch",
+      settings.battleAnimation?.sourceName || "Streamer Card Kampf",
+      settings.ranking?.sourceName || "Streamer Card Ranking",
+      settings.communityGoal?.sourceName || "Streamer Card Community-Ziel"
+    ];
+    for (const legacyName of legacySourceNames) {
+      if (legacyName === combinedSourceName) continue;
+      try { await obsRequest(ws, "RemoveInput", { inputName: legacyName }); } catch {}
+    }
+
+    setStatus("#obs-status", `${t("status-obs-updated")} ${sceneName} / ${combinedSourceName}`, "ok");
     setPill("#obs-pill", t("pill-obs-connected"), true);
     settings.obs ||= {};
     settings.obs.enabled = true;
@@ -3889,27 +4141,21 @@ async function setupMeldOverlay() {
     const meld = connection.meld;
 
     const sceneName = settings.meld?.sceneName || "Streamer Card Overlay";
-    const sources = [
-      [settings.meld?.sourceName || "Streamer Card Widget", await sourceUrl("/overlay.html")],
-      [settings.meld?.collectionSourceName || "Streamer Card Sammlung", await sourceUrl("/collection.html")],
-      [settings.meld?.tradeSourceName || "Streamer Card Tausch", await sourceUrl("/trade.html")],
-      [settings.meld?.battleSourceName || "Streamer Card Kampf", await sourceUrl("/battle.html")],
-      [settings.meld?.rankingSourceName || "Streamer Card Ranking", await sourceUrl("/ranking.html")]
-    ];
+    // ONE combined browser source hosts all animations (overlays.html) - same rationale as OBS:
+    // one page = one event-stream connection, regardless of how many animation types exist.
+    // Meld's API can only update existing scenes/sources, so the user creates the single
+    // browser source manually once; legacy per-animation sources can simply be deleted by hand.
+    const combinedSourceName = settings.meld?.combinedSourceName || "Streamer Card Overlays";
 
     const scene = findMeldItem(meld, "scene", sceneName);
     if (!scene) throw new Error(`${t("error-meld-scene-missing")} "${sceneName}"`);
 
-    const updatedNames = [];
-    for (const [sourceName, url] of sources) {
-      const layer = findMeldItem(meld, "layer", sourceName);
-      if (!layer) throw new Error(`${t("error-meld-source-missing")} "${sourceName}"`);
-      meld.setProperty(layer.id, "url", url);
-      updatedNames.push(sourceName);
-    }
+    const layer = findMeldItem(meld, "layer", combinedSourceName);
+    if (!layer) throw new Error(`${t("error-meld-source-missing")} "${combinedSourceName}"`);
+    meld.setProperty(layer.id, "url", await sourceUrl("/overlays.html"));
     meld.showScene(scene.id);
 
-    setStatus("#meld-status", `${t("status-meld-updated")} ${sceneName} / ${updatedNames.join(" + ")}`, "ok");
+    setStatus("#meld-status", `${t("status-meld-updated")} ${sceneName} / ${combinedSourceName}`, "ok");
     setPill("#meld-pill", t("pill-meld-connected"), true);
     settings.meld ||= {};
     settings.meld.enabled = true;
@@ -3990,6 +4236,55 @@ function bindShowcase() {
   });
   $("#showcase-sync-reward").addEventListener("click", handleShowcaseSync);
   $("#showcase-delete-reward").addEventListener("click", handleShowcaseDelete);
+}
+
+async function handleTournamentRewardSync() {
+  const statusEl = $("#tournament-reward-status");
+  if (statusEl) statusEl.hidden = false;
+  setStatus("#tournament-reward-status", t("status-showcase-saving"), "neutral");
+  try {
+    settings.tournament ||= {};
+    await saveSettings(settings);
+    const tournament = settings.tournament;
+    const result = await syncTournamentReward({
+      rewardId: tournament.rewardIds?.[0] || "",
+      title: $("#tournament-reward-title").value || "Turnier starten",
+      cost: Number($("#tournament-reward-cost").value || 1000),
+      prompt: $("#tournament-reward-prompt").value || "",
+      backgroundColor: $("#tournament-reward-bg-color").value || "#9147ff",
+      isEnabled: $("#tournament-reward-enabled").checked,
+      isPaused: $("#tournament-reward-paused").checked,
+      globalCooldown: Math.max(0, Number($("#tournament-reward-cooldown").value || 0))
+    });
+    settings = normalizeSettings(result.settings || await getSettings());
+    hydrateTrigger();
+    setStatus("#tournament-reward-status", t("notice-tournament-reward-saved"), "ok");
+    showNotice(t("notice-tournament-reward-saved"));
+  } catch (error) {
+    setStatus("#tournament-reward-status", error.message, "error");
+  }
+}
+
+async function handleTournamentRewardDelete() {
+  const rewardId = settings.tournament?.rewardIds?.[0];
+  if (!rewardId) return;
+  if (!window.confirm(t("confirm-delete-reward"))) return;
+  $("#tournament-reward-status").hidden = false;
+  setStatus("#tournament-reward-status", t("status-deleting-reward"), "neutral");
+  try {
+    const result = await deleteTwitchReward({ rewardId });
+    settings = normalizeSettings(result.settings || await getSettings());
+    hydrateTrigger();
+    setStatus("#tournament-reward-status", t("notice-reward-deleted"), "ok");
+    showNotice(t("notice-reward-deleted"));
+  } catch (error) {
+    setStatus("#tournament-reward-status", error.message, "error");
+  }
+}
+
+function bindTournamentReward() {
+  $("#tournament-reward-sync").addEventListener("click", handleTournamentRewardSync);
+  $("#tournament-reward-delete").addEventListener("click", handleTournamentRewardDelete);
 }
 
 function renderOverview() {
@@ -4843,6 +5138,18 @@ function hydrateChatCommands() {
   $("#cc-ranking-seconds").value = ranking.displaySeconds ?? 8;
   $("#cc-ranking-helptext").value = ranking.helpText || "";
 
+  const tournamentJoin = cc.tournamentJoin || {};
+  $("#cc-tournamentjoin-enabled").checked = tournamentJoin.enabled !== false;
+  $("#cc-tournamentjoin-prefix").value = tournamentJoin.prefix || "!";
+  $("#cc-tournamentjoin-command").value = tournamentJoin.command || "turnier";
+  $("#cc-tournamentjoin-helptext").value = tournamentJoin.helpText || "";
+
+  const tournamentStart = cc.tournamentStart || {};
+  $("#cc-tournamentstart-enabled").checked = tournamentStart.enabled !== false;
+  $("#cc-tournamentstart-prefix").value = tournamentStart.prefix || "!";
+  $("#cc-tournamentstart-command").value = tournamentStart.command || "turnierstart";
+  $("#cc-tournamentstart-helptext").value = tournamentStart.helpText || "";
+
   const autoHelp = settings.autoHelp || {};
   $("#autohelp-enabled").checked = autoHelp.enabled === true;
   $("#autohelp-minutes").value = autoHelp.intervalMinutes ?? 30;
@@ -4955,6 +5262,18 @@ function readChatCommandsFromForm() {
   cc.ranking.command = $("#cc-ranking-command").value.trim() || "ranking";
   cc.ranking.displaySeconds = Math.max(2, Math.round(Number($("#cc-ranking-seconds").value) || 8));
   cc.ranking.helpText = $("#cc-ranking-helptext").value;
+
+  cc.tournamentJoin ||= {};
+  cc.tournamentJoin.enabled = $("#cc-tournamentjoin-enabled").checked;
+  cc.tournamentJoin.prefix = $("#cc-tournamentjoin-prefix").value || "!";
+  cc.tournamentJoin.command = $("#cc-tournamentjoin-command").value.trim() || "turnier";
+  cc.tournamentJoin.helpText = $("#cc-tournamentjoin-helptext").value;
+
+  cc.tournamentStart ||= {};
+  cc.tournamentStart.enabled = $("#cc-tournamentstart-enabled").checked;
+  cc.tournamentStart.prefix = $("#cc-tournamentstart-prefix").value || "!";
+  cc.tournamentStart.command = $("#cc-tournamentstart-command").value.trim() || "turnierstart";
+  cc.tournamentStart.helpText = $("#cc-tournamentstart-helptext").value;
 
   settings.autoHelp ||= {};
   settings.autoHelp.enabled = $("#autohelp-enabled").checked;
@@ -5072,33 +5391,36 @@ function resetAllMessageDefaults() {
 
 // Highlights the jump-nav link for whichever command-card section is currently most visible,
 // so it's clear where you are while scrolling a long tab instead of the nav just sitting static.
-function bindChatCommandsJumpNav() {
-  const nav = document.querySelector(".cc-jump-nav");
-  if (!nav) return;
-  const links = [...nav.querySelectorAll("a[href^='#']")];
-  const sections = links
-    .map((link) => document.getElementById(link.getAttribute("href").slice(1)))
-    .filter(Boolean);
-  if (!sections.length) return;
+// Generic jump-nav binder: highlights whichever section is currently most visible so it's clear
+// where you are while scrolling a long tab. Binds every ".cc-jump-nav" found within `root`
+// independently (a tab can have more than one, e.g. Verbindung nests it inside a sub-layout).
+function bindJumpNav(root) {
+  for (const nav of root.querySelectorAll(".cc-jump-nav")) {
+    const links = [...nav.querySelectorAll("a[href^='#']")];
+    const sections = links
+      .map((link) => document.getElementById(link.getAttribute("href").slice(1)))
+      .filter(Boolean);
+    if (!sections.length) continue;
 
-  const setActive = (id) => {
-    for (const link of links) link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
-  };
+    const setActive = (id) => {
+      for (const link of links) link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+    };
 
-  const observer = new IntersectionObserver((entries) => {
-    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-    if (visible[0]) setActive(visible[0].target.id);
-  }, { rootMargin: "-100px 0px -60% 0px", threshold: [0, .25, .5, .75, 1] });
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+      if (visible[0]) setActive(visible[0].target.id);
+    }, { rootMargin: "-100px 0px -60% 0px", threshold: [0, .25, .5, .75, 1] });
 
-  for (const section of sections) observer.observe(section);
-  setActive(sections[0].id);
+    for (const section of sections) observer.observe(section);
+    setActive(sections[0].id);
+  }
 }
 
 function bindChatCommands() {
   const panel = document.querySelector('[data-panel="chatcommands"]');
   panel.addEventListener("input", readChatCommandsFromForm);
   panel.addEventListener("change", readChatCommandsFromForm);
-  bindChatCommandsJumpNav();
+  bindJumpNav(panel);
   $("#reset-message-defaults").addEventListener("click", () => {
     if (!window.confirm(t("confirm-reset-message-defaults"))) return;
     resetAllMessageDefaults();
@@ -5125,9 +5447,19 @@ function hydrateTrigger() {
   $("#showcase-cooldown").value = showcase.rewardGlobalCooldown || 0;
   $("#showcase-bg-color").value = showcase.rewardBackgroundColor || "#9147ff";
   $("#showcase-seconds").value = showcase.secondsPerBooster || 12;
+  const tournament = settings.tournament || {};
+  $("#tournament-reward-enabled").checked = tournament.rewardEnabled !== false;
+  $("#tournament-reward-paused").checked = tournament.rewardPaused === true;
+  $("#tournament-reward-title").value = tournament.rewardName || "Turnier starten";
+  $("#tournament-reward-cost").value = tournament.rewardCost || 1000;
+  $("#tournament-reward-prompt").value = tournament.rewardPrompt || "";
+  $("#tournament-reward-cooldown").value = tournament.rewardGlobalCooldown || 0;
+  $("#tournament-reward-bg-color").value = tournament.rewardBackgroundColor || "#9147ff";
 }
 
 function bindTrigger() {
+  bindJumpNav(document.querySelector('[data-panel="trigger"]'));
+  bindJumpNav(document.querySelector('[data-panel="channelpoints"]'));
   $("#connect-twitch").addEventListener("click", connectTwitch);
   $("#disconnect-twitch").addEventListener("click", handleTwitchDisconnect);
   $("#refresh-twitch-status").addEventListener("click", refreshTwitchStatus);
@@ -5136,6 +5468,7 @@ function bindTrigger() {
   $("#refresh-twitch-bot-status").addEventListener("click", refreshBotStatus);
   bindDrawReward();
   bindShowcase();
+  bindTournamentReward();
 }
 
 function hydrateDesign() {
@@ -5173,6 +5506,22 @@ function hydrateDesign() {
     const dustInput = $(`#pity-dust-${rarity.id}`);
     if (dustInput) dustInput.value = settings.pity?.dustValues?.[rarity.id] ?? 1;
   }
+  $("#communitygoal-enabled").checked = settings.communityGoal?.enabled === true;
+  $("#communitygoal-target").value = settings.communityGoal?.target ?? 500;
+  $("#communitygoal-message").value = settings.communityGoal?.celebrationMessage || "";
+  refreshCommunityGoalProgress();
+  $("#tournament-enabled").checked = settings.tournament?.enabled === true;
+  $("#tournament-min-participants").value = settings.tournament?.minParticipants ?? 3;
+  $("#tournament-signup-seconds").value = settings.tournament?.signupSeconds ?? 90;
+  $("#tournament-lineup-size").value = settings.tournament?.lineupSize ?? 3;
+  $("#tournament-winner-draws").value = settings.tournament?.winnerDraws ?? 1;
+  $("#tournament-announce-joins").checked = settings.tournament?.announceJoins !== false;
+  $("#tournament-perround-enabled").checked = settings.tournament?.perRoundWinnerEnabled === true;
+  $("#tournament-champion-draws-enabled").checked = settings.tournament?.championDrawsEnabled !== false;
+  refreshTournamentStatus();
+  $("#liveticker-enabled").checked = settings.liveTicker?.enabled !== false;
+  $("#liveticker-max-entries").value = settings.liveTicker?.maxEntries ?? 8;
+  $("#liveticker-speed").value = settings.liveTicker?.speed ?? 120;
   $("#reveal-seconds").value = settings.behavior.revealSeconds ?? 3.2;
   $("#cooldown-seconds").value = settings.behavior.cooldownSeconds ?? 0.8;
   $("#backs-before-reveal").value = settings.behavior.cardBacksBeforeReveal ?? 2;
@@ -5184,22 +5533,15 @@ function hydrateDesign() {
   $("#meld-host").value = settings.meld?.host || "127.0.0.1";
   $("#meld-port").value = settings.meld?.port || 13376;
   $("#obs-scene-name").value = settings.obs?.sceneName || "Streamer Card Overlay";
-  $("#obs-source-name").value = settings.obs?.sourceName || "Streamer Card Widget";
-  $("#obs-collection-source-name").value = settings.showcase?.sourceName || "Streamer Card Sammlung";
-  $("#obs-trade-source-name").value = settings.tradeAnimation?.sourceName || "Streamer Card Tausch";
+  $("#obs-combined-source-name").value = settings.obs?.combinedSourceName || "Streamer Card Overlays";
   $("#trade-anim-enabled").checked = settings.tradeAnimation?.enabled === true;
   $("#trade-anim-sendchat").checked = settings.tradeAnimation?.sendChat !== false;
   $("#trade-anim-style").value = ["swap", "arc", "flip"].includes(settings.tradeAnimation?.style) ? settings.tradeAnimation.style : "swap";
   $("#trade-anim-duration").value = ["short", "medium", "long"].includes(settings.tradeAnimation?.duration) ? settings.tradeAnimation.duration : "medium";
+  $("#collection-anim-enabled").checked = settings.showcase?.animationEnabled !== false;
   $("#collection-anim-style").value = settings.showcase?.style === "compact" ? "compact" : "detailed";
-  $("#obs-battle-source-name").value = settings.battleAnimation?.sourceName || "Streamer Card Kampf";
-  $("#obs-ranking-source-name").value = settings.ranking?.sourceName || "Streamer Card Ranking";
   $("#meld-scene-name").value = settings.meld?.sceneName || "Streamer Card Overlay";
-  $("#meld-source-name").value = settings.meld?.sourceName || "Streamer Card Widget";
-  $("#meld-collection-source-name").value = settings.meld?.collectionSourceName || "Streamer Card Sammlung";
-  $("#meld-trade-source-name").value = settings.meld?.tradeSourceName || "Streamer Card Tausch";
-  $("#meld-battle-source-name").value = settings.meld?.battleSourceName || "Streamer Card Kampf";
-  $("#meld-ranking-source-name").value = settings.meld?.rankingSourceName || "Streamer Card Ranking";
+  $("#meld-combined-source-name").value = settings.meld?.combinedSourceName || "Streamer Card Overlays";
   $("#battle-anim-enabled").checked = settings.battleAnimation?.enabled === true;
   $("#battle-anim-sendchat").checked = settings.battleAnimation?.sendChat !== false;
   $("#battle-anim-style").value = ["clash", "ranged", "hp"].includes(settings.battleAnimation?.style) ? settings.battleAnimation.style : "clash";
@@ -5212,6 +5554,7 @@ function hydrateDesign() {
   $("#battle-strength-variance").value = strength.variance ?? 0.6;
   $("#battle-strength-hpfactor").value = strength.hpFactor ?? 10;
   refreshSettingsPreview();
+  initOverlayLayoutEditors();
 }
 
 function updateSoundRow(kind) {
@@ -5298,7 +5641,252 @@ function refreshSettingsPreview() {
   document.body.dataset.theme = settings.style?.themeMode || "light";
 }
 
+async function refreshCommunityGoalProgress() {
+  const line = $("#communitygoal-progress-line");
+  if (!line) return;
+  try {
+    const result = await getCommunityGoal();
+    const goal = result.goal || {};
+    line.textContent = `${goal.current ?? 0} / ${goal.target ?? 0}${goal.reached ? " – " + t("label-communitygoal-reached") : ""}`;
+  } catch {
+    line.textContent = "";
+  }
+}
+
+async function refreshTournamentStatus() {
+  const line = $("#tournament-status-line");
+  if (!line) return;
+  try {
+    const result = await getTournamentState();
+    const state = result.tournament || {};
+    if (state.state === "signup") {
+      line.textContent = `${t("label-tournament-state-signup")} - ${state.participantCount ?? 0} / ${state.minParticipants ?? 0}`;
+    } else if (state.state === "running") {
+      line.textContent = `${t("label-tournament-state-running")} (${state.participantCount ?? 0} ${t("label-tournament-participants")})`;
+    } else {
+      line.textContent = t("label-tournament-state-idle");
+    }
+  } catch {
+    line.textContent = "";
+  }
+}
+
+const OVERLAY_LAYOUT_CANVAS_W = 1920;
+const OVERLAY_LAYOUT_CANVAS_H = 1080;
+const OVERLAY_LAYOUT_PREVIEW_W = 384;
+const OVERLAY_LAYOUT_PREVIEW_H = 216;
+
+let activeLayoutDrag = null;
+
+// Two widgets can point at the same underlying key (the tournament bracket shares the "battle"
+// layout with the Kampf-Animation editor) - this keeps every widget for a key in sync, so editing
+// either one immediately redraws the other instead of only updating on the next tab switch/reload.
+const overlayLayoutStatesByKey = {};
+
+// The box shown here is the animation's real content footprint (from OVERLAY_LAYOUT_NATURAL_SIZES,
+// derived from its actual CSS) scaled by the "Skalierung" field - never derived from the margins
+// (lockWidth keys like the live ticker are the exception: their width never scales - see
+// overlayLayoutBoxSize in render.js, the single source of truth shared with applyOverlayLayout).
+// The four margin fields only describe the box's position: marginLeft/marginTop are authoritative,
+// marginRight/marginBottom are always kept as their mirror (canvas - opposite margin - box size) so
+// typing into either side of a pair still moves the box while its size stays put.
+
+function overlayLayoutRedrawOne(state) {
+  const { key, els } = state;
+  const layout = settings.overlayLayout[key];
+  const scale = Number(layout.scale) > 0 ? layout.scale : 100;
+  const { w, h } = overlayLayoutBoxSize(key, scale);
+
+  const marginLeft = Math.min(Math.max(0, layout.marginLeft || 0), Math.max(0, OVERLAY_LAYOUT_CANVAS_W - w));
+  const marginTop = Math.min(Math.max(0, layout.marginTop || 0), Math.max(0, OVERLAY_LAYOUT_CANVAS_H - h));
+  layout.marginLeft = marginLeft;
+  layout.marginTop = marginTop;
+  layout.marginRight = Math.max(0, OVERLAY_LAYOUT_CANVAS_W - marginLeft - w);
+  layout.marginBottom = Math.max(0, OVERLAY_LAYOUT_CANVAS_H - marginTop - h);
+  layout.scale = scale;
+
+  const previewScale = OVERLAY_LAYOUT_PREVIEW_W / OVERLAY_LAYOUT_CANVAS_W;
+  els.box.style.width = `${w * previewScale}px`;
+  els.box.style.height = `${h * previewScale}px`;
+  els.box.style.left = `${marginLeft * previewScale}px`;
+  els.box.style.top = `${marginTop * previewScale}px`;
+  const centerX = marginLeft + w / 2;
+  const centerY = marginTop + h / 2;
+  els.dot.style.left = `${centerX * previewScale}px`;
+  els.dot.style.top = `${centerY * previewScale}px`;
+
+  // Never stomp the field the user is actively typing into - re-clamping on every keystroke
+  // (e.g. the scale field's min:10) used to snap the value back mid-type and make it impossible
+  // to type a number like "70" digit by digit.
+  const active = document.activeElement;
+  if (active !== els.top) els.top.value = Math.round(marginTop);
+  if (active !== els.right) els.right.value = Math.round(layout.marginRight);
+  if (active !== els.bottom) els.bottom.value = Math.round(layout.marginBottom);
+  if (active !== els.left) els.left.value = Math.round(marginLeft);
+  if (active !== els.scale) els.scale.value = Math.round(scale);
+}
+
+// Redraws the widget that triggered the change, then keeps any other widget bound to the same
+// key (e.g. the Turnier-Modus position editor shares "battle" with Kampf-Animation) in sync.
+function overlayLayoutRedraw(state) {
+  overlayLayoutRedrawOne(state);
+  for (const other of overlayLayoutStatesByKey[state.key] || []) {
+    if (other !== state) overlayLayoutRedrawOne(other);
+  }
+}
+
+function overlayLayoutSetCenter(state, centerX, centerY) {
+  const { key } = state;
+  const layout = settings.overlayLayout[key];
+  const { w, h } = overlayLayoutBoxSize(key, layout.scale);
+  const clampedX = Math.min(Math.max(centerX, w / 2), OVERLAY_LAYOUT_CANVAS_W - w / 2);
+  const clampedY = Math.min(Math.max(centerY, h / 2), OVERLAY_LAYOUT_CANVAS_H - h / 2);
+  layout.marginLeft = Math.max(0, clampedX - w / 2);
+  layout.marginTop = Math.max(0, clampedY - h / 2);
+  overlayLayoutRedraw(state);
+  scheduleAutoSave();
+}
+
+function handleLayoutDragMove(evt) {
+  if (!activeLayoutDrag) return;
+  evt.preventDefault();
+  const point = evt.touches ? evt.touches[0] : evt;
+  const rect = activeLayoutDrag.els.preview.getBoundingClientRect();
+  const previewScale = OVERLAY_LAYOUT_PREVIEW_W / OVERLAY_LAYOUT_CANVAS_W;
+  const x = (point.clientX - rect.left) / previewScale;
+  const y = (point.clientY - rect.top) / previewScale;
+  overlayLayoutSetCenter(activeLayoutDrag, x, y);
+}
+
+function handleLayoutDragEnd() {
+  activeLayoutDrag = null;
+}
+
+function bindGlobalLayoutDrag() {
+  document.addEventListener("mousemove", handleLayoutDragMove);
+  document.addEventListener("mouseup", handleLayoutDragEnd);
+  document.addEventListener("touchmove", handleLayoutDragMove, { passive: false });
+  document.addEventListener("touchend", handleLayoutDragEnd);
+}
+
+function buildOverlayLayoutEditor(container, key) {
+  if (!container) return;
+  container.classList.add("overlay-layout-editor");
+  container.innerHTML = `
+    <div class="oly-grid">
+      <div class="oly-field oly-top"><label>${t("label-oly-top")}</label><input type="number" min="0" step="1" data-oly="top"></div>
+      <div class="oly-row">
+        <div class="oly-field oly-left"><label>${t("label-oly-left")}</label><input type="number" min="0" step="1" data-oly="left"></div>
+        <div class="oly-preview"><div class="oly-box"></div><div class="oly-dot"></div></div>
+        <div class="oly-field oly-right"><label>${t("label-oly-right")}</label><input type="number" min="0" step="1" data-oly="right"></div>
+      </div>
+      <div class="oly-field oly-bottom"><label>${t("label-oly-bottom")}</label><input type="number" min="0" step="1" data-oly="bottom"></div>
+    </div>
+    <div class="oly-actions">
+      <button type="button" class="update-button" data-oly="center">${t("btn-oly-center")}</button>
+      <div class="oly-field oly-scale"><label>${t("label-oly-scale")}</label><input type="number" min="10" max="100" step="1" data-oly="scale">%</div>
+    </div>
+    <p class="hint">${t("hint-oly-drag")}</p>
+  `;
+
+  const els = {
+    preview: container.querySelector(".oly-preview"),
+    box: container.querySelector(".oly-box"),
+    dot: container.querySelector(".oly-dot"),
+    top: container.querySelector('[data-oly="top"]'),
+    right: container.querySelector('[data-oly="right"]'),
+    bottom: container.querySelector('[data-oly="bottom"]'),
+    left: container.querySelector('[data-oly="left"]'),
+    scale: container.querySelector('[data-oly="scale"]')
+  };
+  // lockWidth keys (currently just the live ticker) always span the full canvas width, so
+  // left/right have nothing to move - disable them instead of leaving inert, confusing fields.
+  if (OVERLAY_LAYOUT_NATURAL_SIZES[key]?.lockWidth) {
+    els.left.disabled = true;
+    els.right.disabled = true;
+  }
+  const state = { key, els };
+  (overlayLayoutStatesByKey[key] ||= []).push(state);
+
+  overlayLayoutRedraw(state);
+
+  els.top.addEventListener("input", () => {
+    settings.overlayLayout[key].marginTop = Math.max(0, Number(els.top.value) || 0);
+    overlayLayoutRedraw(state);
+    scheduleAutoSave();
+  });
+  els.left.addEventListener("input", () => {
+    settings.overlayLayout[key].marginLeft = Math.max(0, Number(els.left.value) || 0);
+    overlayLayoutRedraw(state);
+    scheduleAutoSave();
+  });
+  els.right.addEventListener("input", () => {
+    const layout = settings.overlayLayout[key];
+    const { w } = overlayLayoutBoxSize(key, layout.scale);
+    layout.marginLeft = Math.max(0, OVERLAY_LAYOUT_CANVAS_W - (Number(els.right.value) || 0) - w);
+    overlayLayoutRedraw(state);
+    scheduleAutoSave();
+  });
+  els.bottom.addEventListener("input", () => {
+    const layout = settings.overlayLayout[key];
+    const { h } = overlayLayoutBoxSize(key, layout.scale);
+    layout.marginTop = Math.max(0, OVERLAY_LAYOUT_CANVAS_H - (Number(els.bottom.value) || 0) - h);
+    overlayLayoutRedraw(state);
+    scheduleAutoSave();
+  });
+  els.scale.addEventListener("input", () => {
+    // Preserve the box's center when scale changes, so scaling feels natural instead of always
+    // shrinking toward the top-left corner.
+    const layout = settings.overlayLayout[key];
+    const before = overlayLayoutBoxSize(key, layout.scale);
+    const centerX = layout.marginLeft + before.w / 2;
+    const centerY = layout.marginTop + before.h / 2;
+    const value = Number(els.scale.value);
+    layout.scale = value > 0 ? Math.min(100, Math.max(10, value)) : 100;
+    const after = overlayLayoutBoxSize(key, layout.scale);
+    layout.marginLeft = Math.max(0, centerX - after.w / 2);
+    layout.marginTop = Math.max(0, centerY - after.h / 2);
+    overlayLayoutRedraw(state);
+    scheduleAutoSave();
+  });
+
+  container.querySelector('[data-oly="center"]').addEventListener("click", () => {
+    overlayLayoutSetCenter(state, OVERLAY_LAYOUT_CANVAS_W / 2, OVERLAY_LAYOUT_CANVAS_H / 2);
+  });
+
+  els.dot.addEventListener("mousedown", (evt) => { evt.preventDefault(); activeLayoutDrag = state; });
+  els.dot.addEventListener("touchstart", (evt) => { evt.preventDefault(); activeLayoutDrag = state; }, { passive: false });
+  els.preview.addEventListener("mousedown", (evt) => {
+    if (evt.target === els.dot) return;
+    const rect = els.preview.getBoundingClientRect();
+    const previewScale = OVERLAY_LAYOUT_PREVIEW_W / OVERLAY_LAYOUT_CANVAS_W;
+    overlayLayoutSetCenter(state, (evt.clientX - rect.left) / previewScale, (evt.clientY - rect.top) / previewScale);
+    activeLayoutDrag = state;
+  });
+}
+
+let overlayLayoutDragBound = false;
+
+function initOverlayLayoutEditors() {
+  if (!overlayLayoutDragBound) {
+    bindGlobalLayoutDrag();
+    overlayLayoutDragBound = true;
+  }
+  // hydrateDesign() (and therefore this) can run again on a settings reload - drop any state from
+  // a previous build so the registry doesn't accumulate references to DOM nodes that innerHTML
+  // just replaced.
+  for (const key of Object.keys(overlayLayoutStatesByKey)) delete overlayLayoutStatesByKey[key];
+  for (const key of ["draw", "collection", "trade", "battle", "ranking", "communityGoal", "liveTicker"]) {
+    buildOverlayLayoutEditor($(`#overlay-layout-${key}`), key);
+  }
+  // The tournament bracket renders inside the same OBS source as Kampf-Animation, so it shares
+  // that "battle" layout rather than having its own key.
+  buildOverlayLayoutEditor($("#overlay-layout-tournament"), "battle");
+}
+
 function bindDesign() {
+  bindJumpNav(document.querySelector('[data-panel="design"]'));
+  bindJumpNav(document.querySelector('[data-panel="animations"]'));
   const styleFields = {
     "#font-family": "fontFamily",
     "#style-accent": "accentColor",
@@ -5424,6 +6012,93 @@ function bindDesign() {
       scheduleAutoSave();
     });
   });
+  $("#communitygoal-enabled").addEventListener("change", (event) => {
+    settings.communityGoal ||= {};
+    settings.communityGoal.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#communitygoal-target").addEventListener("input", (event) => {
+    settings.communityGoal ||= {};
+    settings.communityGoal.target = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#communitygoal-message").addEventListener("input", (event) => {
+    settings.communityGoal ||= {};
+    settings.communityGoal.celebrationMessage = event.target.value;
+    scheduleAutoSave();
+  });
+  $("#communitygoal-reset").addEventListener("click", async () => {
+    if (!window.confirm(t("confirm-communitygoal-reset"))) return;
+    await resetCommunityGoal();
+    await refreshCommunityGoalProgress();
+    showNotice(t("notice-communitygoal-reset"));
+  });
+  $("#tournament-enabled").addEventListener("change", (event) => {
+    settings.tournament ||= {};
+    settings.tournament.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#tournament-min-participants").addEventListener("input", (event) => {
+    settings.tournament ||= {};
+    settings.tournament.minParticipants = Math.max(2, Math.round(Number(event.target.value) || 2));
+    scheduleAutoSave();
+  });
+  $("#tournament-signup-seconds").addEventListener("input", (event) => {
+    settings.tournament ||= {};
+    settings.tournament.signupSeconds = Math.max(10, Math.round(Number(event.target.value) || 10));
+    scheduleAutoSave();
+  });
+  $("#tournament-lineup-size").addEventListener("input", (event) => {
+    settings.tournament ||= {};
+    settings.tournament.lineupSize = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#tournament-winner-draws").addEventListener("input", (event) => {
+    settings.tournament ||= {};
+    settings.tournament.winnerDraws = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#tournament-announce-joins").addEventListener("change", (event) => {
+    settings.tournament ||= {};
+    settings.tournament.announceJoins = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#tournament-perround-enabled").addEventListener("change", (event) => {
+    settings.tournament ||= {};
+    settings.tournament.perRoundWinnerEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#tournament-champion-draws-enabled").addEventListener("change", (event) => {
+    settings.tournament ||= {};
+    settings.tournament.championDrawsEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#tournament-start-now").addEventListener("click", async () => {
+    try {
+      const result = await startTournament();
+      if (result.result === "already_running") showNotice(t("notice-tournament-already-running"), "error");
+      else if (result.result === "disabled") showNotice(t("notice-tournament-disabled"), "error");
+      else showNotice(t("notice-tournament-started"));
+      await refreshTournamentStatus();
+    } catch (error) {
+      showNotice(error.message, "error");
+    }
+  });
+  $("#liveticker-enabled").addEventListener("change", (event) => {
+    settings.liveTicker ||= {};
+    settings.liveTicker.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#liveticker-max-entries").addEventListener("input", (event) => {
+    settings.liveTicker ||= {};
+    settings.liveTicker.maxEntries = Math.min(15, Math.max(2, Math.round(Number(event.target.value) || 2)));
+    scheduleAutoSave();
+  });
+  $("#liveticker-speed").addEventListener("input", (event) => {
+    settings.liveTicker ||= {};
+    settings.liveTicker.speed = Math.min(400, Math.max(20, Number(event.target.value) || 20));
+    scheduleAutoSave();
+  });
   $("#language-select").addEventListener("change", (event) => {
     settings.language = event.target.value;
     renderAll();
@@ -5447,7 +6122,7 @@ function bindDesign() {
     "#obs-port": ["port", "number"],
     "#obs-password": ["password"],
     "#obs-scene-name": ["sceneName"],
-    "#obs-source-name": ["sourceName"]
+    "#obs-combined-source-name": ["combinedSourceName"]
   };
   for (const [selector, [field, type]] of Object.entries(obsFields)) {
     $(selector).addEventListener("input", (event) => {
@@ -5455,10 +6130,6 @@ function bindDesign() {
       settings.obs[field] = type === "checkbox" ? event.target.checked : type === "number" ? Number(event.target.value) : event.target.value;
     });
   }
-  $("#obs-collection-source-name").addEventListener("input", (event) => {
-    settings.showcase ||= {};
-    settings.showcase.sourceName = event.target.value;
-  });
   $("#test-obs").addEventListener("click", testObsConnection);
   $("#setup-obs").addEventListener("click", setupObsOverlay);
   $("#obs-info-toggle").addEventListener("click", () => {
@@ -5475,11 +6146,7 @@ function bindDesign() {
     "#meld-host": ["host"],
     "#meld-port": ["port", "number"],
     "#meld-scene-name": ["sceneName"],
-    "#meld-source-name": ["sourceName"],
-    "#meld-collection-source-name": ["collectionSourceName"],
-    "#meld-trade-source-name": ["tradeSourceName"],
-    "#meld-battle-source-name": ["battleSourceName"],
-    "#meld-ranking-source-name": ["rankingSourceName"]
+    "#meld-combined-source-name": ["combinedSourceName"]
   };
   for (const [selector, [field, type]] of Object.entries(meldFields)) {
     $(selector).addEventListener("input", (event) => {
@@ -5569,10 +6236,6 @@ function bindDesign() {
   $("#play-trade-sound").addEventListener("click", () => playSoundPreview("trade"));
   $("#play-battle-sound").addEventListener("click", () => playSoundPreview("battle"));
 
-  $("#obs-trade-source-name").addEventListener("input", (event) => {
-    settings.tradeAnimation ||= {};
-    settings.tradeAnimation.sourceName = event.target.value;
-  });
   $("#trade-anim-enabled").addEventListener("change", (event) => {
     settings.tradeAnimation ||= {};
     settings.tradeAnimation.enabled = event.target.checked;
@@ -5585,6 +6248,11 @@ function bindDesign() {
     settings.tradeAnimation ||= {};
     settings.tradeAnimation.style = event.target.value;
   });
+  $("#collection-anim-enabled").addEventListener("change", (event) => {
+    settings.showcase ||= {};
+    settings.showcase.animationEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
   $("#collection-anim-style").addEventListener("change", (event) => {
     settings.showcase ||= {};
     settings.showcase.style = event.target.value;
@@ -5596,14 +6264,6 @@ function bindDesign() {
   });
   $("#trade-anim-test").addEventListener("click", handleTradeAnimTest);
 
-  $("#obs-battle-source-name").addEventListener("input", (event) => {
-    settings.battleAnimation ||= {};
-    settings.battleAnimation.sourceName = event.target.value;
-  });
-  $("#obs-ranking-source-name").addEventListener("input", (event) => {
-    settings.ranking ||= {};
-    settings.ranking.sourceName = event.target.value;
-  });
   $("#battle-anim-enabled").addEventListener("change", (event) => {
     settings.battleAnimation ||= {};
     settings.battleAnimation.enabled = event.target.checked;
@@ -5809,12 +6469,20 @@ function bindGlobalActions() {
     if (file) await importCardFromFile(file);
   });
   $("#save-settings").addEventListener("click", async () => {
-    await saveSettings(settings);
-    showNotice(t("notice-saved"));
-    // Community stats sync is a best-effort network round trip to the VPS - don't make the
-    // user wait for it before showing the save confirmation.
-    syncCommunityCounts(true);
-    loadCommunityStats(true);
+    workspaceDirty = false;
+    setSaveIndicator("saving");
+    try {
+      await saveSettings(settings);
+      setSaveIndicator("saved");
+      showNotice(t("notice-saved"));
+      // Community stats sync is a best-effort network round trip to the VPS - don't make the
+      // user wait for it before showing the save confirmation.
+      syncCommunityCounts(true);
+      loadCommunityStats(true);
+    } catch (error) {
+      setSaveIndicator("error");
+      showNotice(error.message, "error");
+    }
   });
   $("#test-random").addEventListener("click", () => {
     const user = randomUsername();
@@ -5928,6 +6596,7 @@ function readThemeEditor() {
 }
 
 function bindThemes() {
+  bindJumpNav(document.querySelector('[data-panel="themes"]'));
   const grid = $("#themes-grid");
   if (grid) {
     grid.addEventListener("click", (event) => {

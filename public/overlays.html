@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Streamer Card Overlays</title>
+    <!-- Combined overlay page: ALL animations (pack draw, collection showcase, trade, battle,
+         ranking, community goal) run in this ONE page, so OBS/Meld need exactly ONE browser
+         source. This matters beyond convenience: OBS hosts all browser sources in one shared
+         Chromium context with a hard limit of 6 concurrent connections per host - six separate
+         overlay sources saturated that pool and stalled every further request (2026-07-16).
+         One page + the shared event stream in api.js keeps it at a single connection.
+         No static CSS/JS tags here: the bootstrap loader at the bottom fetches the server's
+         current BootId and loads every asset versioned with it, so stale caches are impossible. -->
+  </head>
+  <body>
+    <!-- Each module keeps its own stage container; ids match what the individual pages use so
+         the same entry modules run unchanged both here and on the standalone pages. -->
+    <main id="overlay" aria-live="polite">
+      <div id="stage" class="stage"></div>
+      <div id="showcase-stage" class="showcase-stage"></div>
+      <div id="status" class="status" hidden></div>
+    </main>
+    <main id="trade-overlay" aria-live="polite">
+      <div id="trade-stage" class="trade-stage"></div>
+    </main>
+    <main id="battle-overlay" aria-live="polite">
+      <div id="battle-stage" class="battle-stage"></div>
+    </main>
+    <main id="ranking-overlay" aria-live="polite">
+      <div id="ranking-stage" class="ranking-stage"></div>
+    </main>
+    <main id="communitygoal-overlay" aria-live="polite">
+      <div id="communitygoal-bar-wrap" class="communitygoal-bar-wrap" hidden>
+        <div class="communitygoal-bar-head">
+          <span class="communitygoal-label" id="communitygoal-label"></span>
+          <span class="communitygoal-count" id="communitygoal-count"></span>
+        </div>
+        <div class="communitygoal-bar-track">
+          <div class="communitygoal-bar-fill" id="communitygoal-bar-fill"></div>
+        </div>
+      </div>
+      <div id="communitygoal-celebration" class="communitygoal-celebration" hidden>
+        <div class="communitygoal-celebration-burst"></div>
+        <p class="communitygoal-celebration-text" id="communitygoal-celebration-text"></p>
+      </div>
+    </main>
+    <main id="liveticker-overlay" aria-live="polite">
+      <div id="liveticker-stage" class="liveticker-stage">
+        <div id="liveticker-banner" class="liveticker-banner" hidden>
+          <div id="liveticker-viewport" class="liveticker-viewport">
+            <div id="liveticker-track" class="liveticker-track"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script>
+      // Bootstrap loader: ask the server which asset version (BootId, changes every app start)
+      // is current and load all CSS/JS with it. The version request itself carries a unique
+      // timestamp so even a cache-header-ignoring embedded browser (OBS/Meld) can't answer it
+      // from cache. Fallback Date.now() if the server is unreachable = always re-fetch.
+      (async () => {
+        let v = String(Date.now());
+        try {
+          const response = await fetch("/api/version?_=" + Date.now(), { cache: "no-store" });
+          const info = await response.json();
+          if (info.bootId) v = String(info.bootId);
+        } catch {}
+        for (const href of ["/assets/css/overlay.css","/assets/css/collection.css","/assets/css/trade.css","/assets/css/battle.css","/assets/css/ranking.css","/assets/css/communitygoal.css","/assets/css/liveticker.css"]) {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = href + "?v=" + v;
+          document.head.appendChild(link);
+        }
+        for (const mod of ["overlay","collection","trade","battle","ranking","communitygoal","liveticker"]) {
+          import("/assets/js/" + mod + ".js?v=" + v);
+        }
+      })();
+    </script>
+  </body>
+</html>

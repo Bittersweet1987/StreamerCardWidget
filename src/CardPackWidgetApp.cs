@@ -21,9 +21,16 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.10.0";
-        public const string ReleaseDate = "2026-07-15";
+        public const string Version = "2.11.0";
+        public const string ReleaseDate = "2026-07-17";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
+
+        // Changes on every app start. The overlay pages use this as the cache-buster for ALL
+        // their assets (CSS + JS, fetched at runtime via /api/version) and reload themselves when
+        // an SSE reconnect delivers a different BootId. Files on disk can only change while the
+        // app is stopped (update/redeploy), so "new BootId" == "assets may have changed" - this is
+        // what makes OBS/Meld browser sources pick up updates without any manual cache refresh.
+        public static readonly string BootId = DateTime.UtcNow.Ticks.ToString();
     }
 
     internal static class Program
@@ -337,6 +344,7 @@ namespace CardPackWidgetApp
                     port = preferredPort;
                     running = true;
                     Task.Factory.StartNew(AcceptLoop, TaskCreationOptions.LongRunning);
+                    StartSseHeartbeat();
                     twitchBridge.Start();
                     return port;
                 }
@@ -408,6 +416,10 @@ namespace CardPackWidgetApp
 
                 if (request.Path == "/api/events")
                 {
+                    // Diagnostic: shows WHICH browser connected (OBS's CEF reports "OBS/x.y" in its
+                    // User-Agent) - key evidence when overlays appear dead in OBS but work in a tab.
+                    Log("server", "info", "Overlay-Verbindung (SSE) aufgebaut: " + DescribeUserAgent(request.UserAgent) +
+                        (String.IsNullOrEmpty(request.Query) ? "" : " [" + Uri.UnescapeDataString(request.Query) + "]"));
                     AddSseClient(client, stream);
                     keepOpen = true;
                     return;
@@ -513,11 +525,16 @@ namespace CardPackWidgetApp
             if (question >= 0) path = path.Substring(0, question);
             path = Uri.UnescapeDataString(path);
 
+            string userAgent;
+            headers.TryGetValue("User-Agent", out userAgent);
+
             return new HttpRequest
             {
                 Method = first[0].ToUpperInvariant(),
                 Path = path,
-                Body = Encoding.UTF8.GetString(bodyBytes, 0, offset)
+                Query = question >= 0 ? target.Substring(question + 1) : "",
+                Body = Encoding.UTF8.GetString(bodyBytes, 0, offset),
+                UserAgent = userAgent ?? ""
             };
         }
 
@@ -536,7 +553,8 @@ namespace CardPackWidgetApp
                     { "ok", true },
                     { "version", AppInfo.Version },
                     { "releaseDate", AppInfo.ReleaseDate },
-                    { "repo", AppInfo.GitHubRepo }
+                    { "repo", AppInfo.GitHubRepo },
+                    { "bootId", AppInfo.BootId }
                 }));
                 return;
             }
@@ -635,8 +653,11 @@ namespace CardPackWidgetApp
                 Dictionary<string, object> incoming = ParseObject(request.Body);
                 WriteSettingsObject(incoming);
                 twitchBridge.RefreshChatCommands();
-                string payload = json.Serialize(ReadSettingsObject());
-                SendJson(stream, 200, "{\"ok\":true,\"settings\":" + payload + "}");
+                // Echoing the full settings back (cards/boosters with base64 images, easily
+                // 10MB+) doubled every save's cost for a response no caller actually reads -
+                // every admin.js call site does "await saveSettings(settings)" and discards the
+                // result. A plain ack makes autosave noticeably faster, especially with many cards.
+                SendJson(stream, 200, "{\"ok\":true}");
                 return;
             }
 
@@ -812,6 +833,23 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (request.Method == "GET" && request.Path == "/api/community-goal")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "goal", twitchBridge.GetCommunityGoalState() }
+                }));
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/community-goal/reset")
+            {
+                twitchBridge.ResetCommunityGoal();
+                SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
             if (request.Method == "POST" && request.Path == "/api/command-usage/reset")
             {
                 Dictionary<string, object> body = ParseObject(request.Body);
@@ -836,10 +874,35 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            // Lets a freshly (re)loaded live-ticker overlay show the last few draws right away
+            // instead of sitting empty until the next one happens - see AnnounceDraw's in-memory
+            // history (cleared on app restart, same as the event log).
+            if (request.Method == "GET" && request.Path == "/api/liveticker/recent")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "entries", twitchBridge.GetLiveTickerHistory() }
+                }));
+                return;
+            }
+
             if (request.Method == "POST" && request.Path == "/api/queue/complete")
             {
                 Dictionary<string, object> body = ParseObject(request.Body);
                 twitchBridge.CompleteQueueItem(GetString(body, "eventId", ""), GetString(body, "cardTitle", ""), GetString(body, "boosterTitle", ""));
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object> { { "ok", true } }));
+                return;
+            }
+
+            // Fired by the overlay the moment a drawn card is fully revealed (same instant the
+            // collection panel appears next to it) - separate from /api/queue/complete so the
+            // post-draw chat message and live-ticker entry go out right then, instead of waiting
+            // for the whole multi-second animation (backs-before-reveal, slide, hold time) to finish.
+            if (request.Method == "POST" && request.Path == "/api/queue/announce")
+            {
+                Dictionary<string, object> body = ParseObject(request.Body);
+                twitchBridge.AnnounceDraw(GetString(body, "eventId", ""), GetString(body, "cardTitle", ""), GetString(body, "boosterTitle", ""));
                 SendJson(stream, 200, json.Serialize(new Dictionary<string, object> { { "ok", true } }));
                 return;
             }
@@ -932,6 +995,50 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (request.Method == "POST" && request.Path == "/api/twitch/tournament-reward")
+            {
+                try
+                {
+                    Dictionary<string, object> settings = twitchBridge.SyncTournamentReward(request.Body);
+                    SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", true },
+                        { "settings", settings }
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    SendJson(stream, 400, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", false },
+                        { "error", ex.Message }
+                    }));
+                }
+                return;
+            }
+
+            if (request.Method == "GET" && request.Path == "/api/tournament")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "tournament", twitchBridge.GetTournamentState() }
+                }));
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/tournament/start")
+            {
+                string result = twitchBridge.StartTournamentSignup("", "", "app");
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "result", result }
+                }));
+                return;
+            }
+
+
             if (request.Method == "DELETE" && request.Path == "/api/twitch/reward")
             {
                 try
@@ -972,6 +1079,22 @@ namespace CardPackWidgetApp
             SendJson(stream, 404, "{\"ok\":false,\"error\":\"API route not found.\"}");
         }
 
+        // Short, human-readable browser tag for diagnostics ("OBS 31.0", "WebView2", "Chrome", ...).
+        private static string DescribeUserAgent(string ua)
+        {
+            if (String.IsNullOrEmpty(ua)) return "unbekannter Client";
+            int obsIdx = ua.IndexOf("OBS/", StringComparison.OrdinalIgnoreCase);
+            if (obsIdx >= 0)
+            {
+                string rest = ua.Substring(obsIdx + 4);
+                int space = rest.IndexOf(' ');
+                return "OBS " + (space > 0 ? rest.Substring(0, space) : rest);
+            }
+            if (ua.IndexOf("Edg/", StringComparison.OrdinalIgnoreCase) >= 0) return "WebView2/Edge (Admin)";
+            if (ua.IndexOf("Chrome/", StringComparison.OrdinalIgnoreCase) >= 0) return "Chrome/Chromium";
+            return ua.Length > 60 ? ua.Substring(0, 60) : ua;
+        }
+
         private void ServeStatic(HttpRequest request, NetworkStream stream)
         {
             string relative = request.Path == "/" ? "admin.html" : request.Path.TrimStart('/');
@@ -983,6 +1106,14 @@ namespace CardPackWidgetApp
             {
                 SendText(stream, 404, "text/plain; charset=utf-8", "Not found", "no-store");
                 return;
+            }
+
+            // Diagnostic: page + script loads per browser, to verify OBS actually fetches the
+            // current files (its embedded browser caching has repeatedly caused "dead" overlays).
+            string lowerPath = request.Path.ToLowerInvariant();
+            if (lowerPath.EndsWith(".html") || lowerPath.EndsWith(".js"))
+            {
+                Log("server", "info", "Datei geladen: " + request.Path + " von " + DescribeUserAgent(request.UserAgent));
             }
 
             byte[] bytes = File.ReadAllBytes(full);
@@ -1008,12 +1139,36 @@ namespace CardPackWidgetApp
             {
                 clients.Add(client);
             }
-            client.Write("event: ready\ndata: {\"ok\":true}\n\n");
+            // bootId lets connected overlays detect an app restart (EventSource auto-reconnects):
+            // a changed bootId means the served files may have changed, so the page reloads itself
+            // with the new bootId as cache-buster (see connectEventStream in api.js).
+            client.Write("event: ready\ndata: {\"ok\":true,\"bootId\":\"" + AppInfo.BootId + "\"}\n\n");
+        }
+
+        private System.Threading.Timer sseHeartbeatTimer;
+
+        // SSE keepalive. Without periodic traffic, OBS's embedded browser (CEF) silently reaps
+        // event-stream connections after a few idle minutes: the page still reports readyState=1
+        // and the server's TCP writes still "succeed", but nothing arrives anymore - draws then
+        // played to nobody (diagnosed 2026-07-16: every failed draw happened >5 min after connect,
+        // everything within the first minutes worked). A ping every 20s keeps every hop alive,
+        // flushes genuinely dead sockets out of the client list early, and feeds the client-side
+        // watchdog in api.js, which force-reconnects if pings stop arriving.
+        private void StartSseHeartbeat()
+        {
+            if (sseHeartbeatTimer != null) return;
+            sseHeartbeatTimer = new System.Threading.Timer(delegate
+            {
+                try { Broadcast("ping", "{\"t\":" + DateTime.UtcNow.Ticks + "}"); }
+                catch { }
+            }, null, 20000, 20000);
         }
 
         internal void Broadcast(string eventName, string dataJson)
         {
             string payload = "event: " + eventName + "\n" + "data: " + dataJson + "\n\n";
+            int delivered = 0;
+            int dropped = 0;
             lock (clientsLock)
             {
                 foreach (SseClient client in clients.ToArray())
@@ -1022,8 +1177,20 @@ namespace CardPackWidgetApp
                     {
                         clients.Remove(client);
                         client.Close();
+                        dropped++;
+                    }
+                    else
+                    {
+                        delivered++;
                     }
                 }
+            }
+            // Diagnostic for the animation-triggering events: shows whether a broadcast actually
+            // reached any connected overlay (a successful TCP write is no guarantee the page is
+            // still alive, but delivered=0 proves nothing could have received it).
+            if (eventName == "draw" || eventName == "trade" || eventName == "battle" || eventName == "showcollection" || eventName == "ranking" || eventName == "communitygoalreached")
+            {
+                Log("server", "info", "Broadcast \"" + eventName + "\": an " + delivered + " Overlay-Verbindung(en) gesendet" + (dropped > 0 ? ", " + dropped + " tote Verbindung(en) entfernt" : "") + ".");
             }
         }
 
@@ -1090,6 +1257,11 @@ namespace CardPackWidgetApp
         internal string PityStatePath()
         {
             return Path.Combine(dataDir, "pity.json");
+        }
+
+        internal string CommunityGoalStatePath()
+        {
+            return Path.Combine(dataDir, "community-goal.json");
         }
 
         internal string ReadFileText(string path, string fallback)
@@ -1328,6 +1500,22 @@ namespace CardPackWidgetApp
             return result;
         }
 
+        // Used by the live-ticker broadcast (see CompleteQueueItem) to attach the drawn card's
+        // rarity for color-coding, without duplicating the whole ResolveCardByName lookup.
+        internal string GetCardRarityByTitle(string title)
+        {
+            if (String.IsNullOrWhiteSpace(title)) return "common";
+            Dictionary<string, object> settings = ReadSettingsObject();
+            foreach (object co in SettingsCards(settings))
+            {
+                Dictionary<string, object> card = co as Dictionary<string, object>;
+                if (card == null) continue;
+                if (String.Equals(GetString(card, "title", "").Trim(), title.Trim(), StringComparison.OrdinalIgnoreCase))
+                    return GetString(card, "rarity", "common");
+            }
+            return "common";
+        }
+
         // Similarity in [0,1], 1 = identical. Plain Levenshtein distance is unnormalized (a typo
         // in a long title scores "worse" than an unrelated but short title) and ignores that users
         // often type only part of a card's name - both of which made "did you mean" suggestions
@@ -1392,6 +1580,71 @@ namespace CardPackWidgetApp
                 {
                     if (CardCount(cards, cardId) < 1) continue;
                     result.Add(new Dictionary<string, string> { { "boosterId", kv.Key }, { "cardId", cardId } });
+                }
+            }
+            return result;
+        }
+
+        // Same result as calling GetUserOwnedCardTypes + GetCardCount + CardDisplayInfo per card,
+        // but reads collections.json and settings.json exactly once each regardless of how many
+        // card types the user owns - the per-card versions each independently re-read and
+        // re-parsed the whole file, including settings.json's several-MB of base64 card images;
+        // with dozens of owned card types (see !collection's chat listing) that turned a
+        // near-instant lookup into a multi-second-to-multi-minute one.
+        internal List<Dictionary<string, string>> GetUserOwnedCardsWithInfo(string login)
+        {
+            var result = new List<Dictionary<string, string>>();
+            string key = NormalizeUser(login).ToLowerInvariant();
+            Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+            Dictionary<string, object> settings = ReadSettingsObject();
+            object[] cardsArr = SettingsCards(settings);
+            object[] boostersArr = settings.ContainsKey("boosters") && settings["boosters"] is object[] ? (object[])settings["boosters"] : new object[0];
+
+            var cardInfoById = new Dictionary<string, Dictionary<string, string>>();
+            foreach (object co in cardsArr)
+            {
+                Dictionary<string, object> card = co as Dictionary<string, object>;
+                if (card == null) continue;
+                string id = GetString(card, "id", "");
+                if (String.IsNullOrEmpty(id)) continue;
+                cardInfoById[id] = new Dictionary<string, string> { { "title", GetString(card, "title", id) }, { "rarity", GetString(card, "rarity", "common") } };
+            }
+            var boosterTitleById = new Dictionary<string, string>();
+            foreach (object bo in boostersArr)
+            {
+                Dictionary<string, object> booster = bo as Dictionary<string, object>;
+                if (booster == null) continue;
+                string id = GetString(booster, "id", "");
+                if (String.IsNullOrEmpty(id)) continue;
+                boosterTitleById[id] = GetString(booster, "title", id);
+            }
+
+            foreach (KeyValuePair<string, object> kv in collections)
+            {
+                Dictionary<string, object> booster = kv.Value as Dictionary<string, object>;
+                if (booster == null) continue;
+                object usersObj;
+                if (!booster.TryGetValue("users", out usersObj) || !(usersObj is Dictionary<string, object>)) continue;
+                object uObj;
+                if (!((Dictionary<string, object>)usersObj).TryGetValue(key, out uObj) || !(uObj is Dictionary<string, object>)) continue;
+                object cObj;
+                if (!((Dictionary<string, object>)uObj).TryGetValue("cards", out cObj) || !(cObj is Dictionary<string, object>)) continue;
+                Dictionary<string, object> cards = (Dictionary<string, object>)cObj;
+                foreach (string cardId in cards.Keys)
+                {
+                    int count = CardCount(cards, cardId);
+                    if (count < 1) continue;
+                    string cardTitle = cardId;
+                    string rarity = "common";
+                    Dictionary<string, string> info;
+                    if (cardInfoById.TryGetValue(cardId, out info)) { cardTitle = info["title"]; rarity = info["rarity"]; }
+                    string boosterTitle;
+                    if (!boosterTitleById.TryGetValue(kv.Key, out boosterTitle)) boosterTitle = kv.Key;
+                    result.Add(new Dictionary<string, string>
+                    {
+                        { "boosterId", kv.Key }, { "cardId", cardId }, { "cardTitle", cardTitle },
+                        { "boosterTitle", boosterTitle }, { "rarity", rarity }, { "count", count.ToString() }
+                    });
                 }
             }
             return result;
@@ -1527,6 +1780,88 @@ namespace CardPackWidgetApp
             else { entry = new Dictionary<string, object>(); users[key] = entry; }
             if (!String.IsNullOrWhiteSpace(display)) entry["displayName"] = display;
             entry["trades"] = GetIntStat(entry, "trades") + 1;
+        }
+
+        // Permanently records one tournament win. Separate file from battle-stats.json - a
+        // tournament win is a distinct achievement from individual duel wins/losses within it.
+        internal void RecordTournamentWin(string winnerLogin, string winnerDisplay)
+        {
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TournamentStatsPath(), "{}"));
+                object usersObj;
+                Dictionary<string, object> users;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>) users = (Dictionary<string, object>)usersObj;
+                else { users = new Dictionary<string, object>(); stats["users"] = users; }
+                string key = NormalizeUser(winnerLogin).ToLowerInvariant();
+                object o;
+                Dictionary<string, object> entry;
+                if (users.TryGetValue(key, out o) && o is Dictionary<string, object>) entry = (Dictionary<string, object>)o;
+                else { entry = new Dictionary<string, object>(); users[key] = entry; }
+                if (!String.IsNullOrWhiteSpace(winnerDisplay)) entry["displayName"] = winnerDisplay;
+                entry["wins"] = GetIntStat(entry, "wins") + 1;
+                File.WriteAllText(TournamentStatsPath(), json.Serialize(stats), Encoding.UTF8);
+            }
+        }
+
+        // Permanently records one tournament participation (every bracket entrant, win or lose) -
+        // called once per participant when a signup window closes and the bracket starts running.
+        internal void RecordTournamentParticipation(string login, string displayName)
+        {
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TournamentStatsPath(), "{}"));
+                object usersObj;
+                Dictionary<string, object> users;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>) users = (Dictionary<string, object>)usersObj;
+                else { users = new Dictionary<string, object>(); stats["users"] = users; }
+                string key = NormalizeUser(login).ToLowerInvariant();
+                object o;
+                Dictionary<string, object> entry;
+                if (users.TryGetValue(key, out o) && o is Dictionary<string, object>) entry = (Dictionary<string, object>)o;
+                else { entry = new Dictionary<string, object>(); users[key] = entry; }
+                if (!String.IsNullOrWhiteSpace(displayName)) entry["displayName"] = displayName;
+                entry["participations"] = GetIntStat(entry, "participations") + 1;
+                File.WriteAllText(TournamentStatsPath(), json.Serialize(stats), Encoding.UTF8);
+            }
+        }
+
+        private string TournamentStatsPath()
+        {
+            return Path.Combine(dataDir, "tournament-stats.json");
+        }
+
+        // Top N users by tournament wins AND by tournament participations, for "!ranking turnier"
+        // (mirrors the multi-list shape of BuildBattleRanking).
+        internal Dictionary<string, object> BuildTournamentRanking(int limit)
+        {
+            var entries = new List<Dictionary<string, object>>();
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TournamentStatsPath(), "{}"));
+                object usersObj;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>)
+                {
+                    foreach (KeyValuePair<string, object> kv in (Dictionary<string, object>)usersObj)
+                    {
+                        Dictionary<string, object> e = kv.Value as Dictionary<string, object>;
+                        if (e == null) continue;
+                        int wins = GetIntStat(e, "wins");
+                        int participations = GetIntStat(e, "participations");
+                        if (wins < 1 && participations < 1) continue;
+                        entries.Add(new Dictionary<string, object>
+                        {
+                            { "user", GetString(e, "displayName", kv.Key) },
+                            { "wins", wins }, { "participations", participations }
+                        });
+                    }
+                }
+            }
+            return new Dictionary<string, object>
+            {
+                { "wins", TopByField(entries, "wins", limit) },
+                { "participations", TopByField(entries, "participations", limit) }
+            };
         }
 
         // Top N users by completed trade count, for "!ranking tausch".
@@ -2201,6 +2536,127 @@ namespace CardPackWidgetApp
                 catch (Exception ex) { server.Log("draw", "error", "Pity-Speicherung fehlgeschlagen: " + ex.Message); }
             }
         }
+
+        // ---- Community goal: a shared progress bar across every viewer's draws (any trigger).
+        // Persisted separately from settings.json since it's runtime state, not configuration -
+        // "enabled"/"target"/messages/source name live in settings.communityGoal instead.
+        //   current: cumulative draws counted so far this run.
+        //   reached: true once current >= target - progress freezes here until an admin resets it.
+        //   participants: login -> display name of everyone who drew at least once this run, used
+        //     to hand out the bonus booster to every contributor once the goal is reached.
+        private readonly object communityGoalLock = new object();
+        private Dictionary<string, object> communityGoalState;
+
+        private void EnsureCommunityGoalLoaded()
+        {
+            if (communityGoalState != null) return;
+            communityGoalState = ParseObject(server.ReadFileText(server.CommunityGoalStatePath(), "{}"));
+        }
+
+        private void SaveCommunityGoalState()
+        {
+            try { File.WriteAllText(server.CommunityGoalStatePath(), server.Serializer.Serialize(communityGoalState), Encoding.UTF8); }
+            catch (Exception ex) { server.Log("draw", "error", "Community-Ziel-Speicherung fehlgeschlagen: " + ex.Message); }
+        }
+
+        // Called from the same central "draw" handling as the pity system (see ProcessQueueItem)
+        // so every trigger (channel points or chat command) contributes equally.
+        private void RegisterCommunityGoalDraw(string login, string displayName)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> goalCfg = Obj(settings, "communityGoal");
+            if (!GetBool(goalCfg, "enabled", false)) return;
+            int target = Math.Max(1, GetInt(goalCfg, "target", 500));
+
+            bool justReached = false;
+            Dictionary<string, object> participants = null;
+            lock (communityGoalLock)
+            {
+                EnsureCommunityGoalLoaded();
+                bool reached = GetBool(communityGoalState, "reached", false);
+                if (reached) return; // frozen at target until an admin resets it
+
+                int current = GetInt(communityGoalState, "current", 0) + 1;
+                communityGoalState["current"] = current;
+                object participantsObj;
+                if (!communityGoalState.TryGetValue("participants", out participantsObj) || !(participantsObj is Dictionary<string, object>))
+                {
+                    participantsObj = new Dictionary<string, object>();
+                    communityGoalState["participants"] = participantsObj;
+                }
+                ((Dictionary<string, object>)participantsObj)[login] = displayName;
+
+                if (current >= target)
+                {
+                    communityGoalState["reached"] = true;
+                    justReached = true;
+                    participants = new Dictionary<string, object>((Dictionary<string, object>)participantsObj);
+                }
+                SaveCommunityGoalState();
+            }
+
+            server.Broadcast("communitygoalprogress", server.Serializer.Serialize(new Dictionary<string, object>
+            {
+                { "current", GetInt(communityGoalState, "current", 0) },
+                { "target", target },
+                { "reached", justReached }
+            }));
+
+            if (!justReached) return;
+
+            // Don't play the celebration or grant bonus draws right here - we're still in the
+            // middle of processing the draw THAT reached the goal, whose own animation hasn't
+            // even been broadcast yet (that happens further down in ProcessQueueItem). Firing the
+            // celebration synchronously made it visually stomp on that draw's animation (and the
+            // subsequent bonus draws), since none of this went through the serialized action
+            // queue. Enqueueing it as its own item instead makes it play in its proper turn, after
+            // the goal-completing draw's animation finishes.
+            server.Log("draw", "info", "Community-Ziel erreicht (" + target + " Ziehungen) - " + participants.Count + " Teilnehmer erhalten einen Bonus-Booster.");
+            var participantList = new List<object>();
+            foreach (var kvp in participants)
+            {
+                participantList.Add(new Dictionary<string, object> { { "login", kvp.Key }, { "displayName", Convert.ToString(kvp.Value) } });
+            }
+            Enqueue("communitygoalreached", "", "", "system", new Dictionary<string, object>
+            {
+                { "target", target },
+                { "participants", participantList.ToArray() }
+            });
+        }
+
+        private const string DefaultCommunityGoalMessage = "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch einen Bonus-Booster.";
+
+        // Exposes current progress for the admin panel and the OBS overlay's initial load.
+        public Dictionary<string, object> GetCommunityGoalState()
+        {
+            lock (communityGoalLock)
+            {
+                EnsureCommunityGoalLoaded();
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                int target = Math.Max(1, GetInt(Obj(settings, "communityGoal"), "target", 500));
+                return new Dictionary<string, object>
+                {
+                    { "current", GetInt(communityGoalState, "current", 0) },
+                    { "target", target },
+                    { "reached", GetBool(communityGoalState, "reached", false) }
+                };
+            }
+        }
+
+        // Manual admin reset - starts a fresh run at 0/target, clearing participants so a past
+        // run's contributors don't silently carry over into the next one's bonus-booster payout.
+        public void ResetCommunityGoal()
+        {
+            int target;
+            lock (communityGoalLock)
+            {
+                communityGoalState = new Dictionary<string, object> { { "current", 0 }, { "reached", false }, { "participants", new Dictionary<string, object>() } };
+                SaveCommunityGoalState();
+                target = Math.Max(1, GetInt(Obj(server.ReadSettingsObject(), "communityGoal"), "target", 500));
+            }
+            server.Broadcast("communitygoalprogress", server.Serializer.Serialize(new Dictionary<string, object> { { "current", 0 }, { "target", target }, { "reached", false } }));
+        }
+
         private bool usageLoaded;
         private System.Threading.Timer resetTimer;
         private volatile bool resetTimerStarted;
@@ -2213,6 +2669,15 @@ namespace CardPackWidgetApp
         private Dictionary<string, object> activeBattle;
         private System.Threading.Timer battleTimeoutTimer;
         private static readonly Random BattleRandom = new Random();
+
+        // Tournament Mode: a single global bracket (like activeBattle, only one tournament can be
+        // signing up or running at a time). Unlike a normal !battle challenge, matches don't need
+        // !battleyes/!battleno - joining the tournament IS the consent - so the whole bracket is
+        // resolved synchronously once signup closes and its matches are fed into the existing
+        // serialized action queue one after another (see ResolveTournamentSignup).
+        private readonly object tournamentLock = new object();
+        private Dictionary<string, object> activeTournament;
+        private System.Threading.Timer tournamentSignupTimer;
 
         private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
         private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
@@ -2231,7 +2696,7 @@ namespace CardPackWidgetApp
         private const string DefaultDustUsage = "@userName, Nutzung: !dust <Kartenname> <Anzahl>";
         private const string DefaultDustCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
         private const string DefaultDustNotEnough = "@userName, du hast nicht genug Duplikate von [Kartenname] (du besitzt [Besitz], mindestens 1 muss dir erhalten bleiben).";
-        private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Pity-Punkte). Noch [PityRest] Ziehungen bis zur garantierten Seltenheit.";
+        private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.";
 
         private const string DefaultBattleUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
         private const string DefaultBattleSelfChallenge = "@userName, du kannst nicht dich selbst herausfordern.";
@@ -2243,6 +2708,15 @@ namespace CardPackWidgetApp
         private const string DefaultBattleTimeout = "@userNameA, leider hat @userNameB nicht rechtzeitig ([Zeit] Sekunden) geantwortet. Daher wurde die Duellanfrage beendet.";
         private const string DefaultBattleDecline = "@userNameA, leider hat @userNameB deine Duellanfrage abgelehnt.";
         private const string DefaultBattleResult = "@userNameA gewinnt das Kartenduell gegen @userNameB ([SiegeA]:[SiegeB]) und erhält die Karte [GewonneneKarte]!";
+
+        private const string DefaultTournamentSignupStart = "🏆 Turnier-Anmeldung gestartet! Tritt mit [Befehl] bei - [Sekunden] Sekunden Zeit, mindestens [Mindestteilnehmer] Teilnehmer nötig.";
+        private const string DefaultTournamentJoinAck = "@userName ist dem Turnier beigetreten! ([Anzahl] Teilnehmer)";
+        private const string DefaultTournamentNotEligible = "@userName, für die Turnier-Teilnahme brauchst du mindestens [Anzahl] verschiedene Karten.";
+        private const string DefaultTournamentAlreadyRunning = "@userName, es läuft bereits ein Turnier oder eine Anmeldephase.";
+        private const string DefaultTournamentCancel = "Das Turnier wurde abgesagt - nur [Anzahl] von mindestens [Mindestteilnehmer] nötigen Teilnehmern haben sich angemeldet.";
+        private const string DefaultTournamentRoundAnnounce = "🏆 Turnier [Runde]: [SpielerA] vs [SpielerB]!";
+        private const string DefaultTournamentByeAnnounce = "🏆 Turnier [Runde]: [Spieler] hat ein Freilos und zieht kampflos weiter!";
+        private const string DefaultTournamentWinnerAnnounce = "🏆 @userName gewinnt das Turnier mit [Teilnehmerzahl] Teilnehmern und erhält [Anzahl]x Kartenpack-Ziehung!";
 
         private const string DefaultCardsEmpty = "@userName, du besitzt noch keine Karten.";
         private const string DefaultCardsHeader = "@userName, deine Karten:";
@@ -2419,15 +2893,13 @@ namespace CardPackWidgetApp
                 { "prompt", prompt },
                 { "is_enabled", isEnabled },
                 { "is_user_input_required", false },
-                // The app fulfills every redemption itself the instant it arrives, so it must
-                // never sit in Twitch's manual review queue. Twitch's web chat renders an
-                // interactive Fulfill/Refund control inline for unfulfilled redemptions - a
-                // newer UI element that OBS's bundled (older) Chromium can fail to render,
-                // crashing the whole chat dock with "There was an error displaying chat."
-                // Skipping the queue means the redemption is auto-fulfilled and chat only ever
-                // shows the plain "user redeemed X" line, which is what other tools (e.g.
-                // StreamerBot) already do by default - matching why their rewards never hit this.
-                { "should_redemptions_skip_request_queue", true },
+                // Deliberately left in the manual-review queue (NOT auto-skipped) so a redemption
+                // can still be refunded from the Twitch dashboard/mobile app if something goes
+                // wrong (e.g. a cancelled tournament signup, or a pack drawn in error). This can
+                // reportedly crash an OLDER OBS-bundled Chromium's built-in chat dock, which
+                // can't render the inline Fulfill/Refund control - if that happens, either update
+                // OBS or switch to an external chat client instead of re-enabling the skip.
+                { "should_redemptions_skip_request_queue", false },
                 { "is_max_per_stream_enabled", maxPerStream > 0 },
                 { "max_per_stream", maxPerStream > 0 ? maxPerStream : 1 },
                 { "is_max_per_user_per_stream_enabled", maxPerUserPerStream > 0 },
@@ -2512,6 +2984,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> settings = server.ReadSettingsObject();
             RemoveRewardId(Obj(settings, "draw"), rewardId);
             RemoveRewardId(Obj(settings, "showcase"), rewardId);
+            RemoveRewardId(Obj(settings, "tournament"), rewardId);
             server.WriteSettingsObject(settings);
             RestartQuietly();
             return settings;
@@ -2622,7 +3095,20 @@ namespace CardPackWidgetApp
             // always processed strictly one after another with a pause in between.
             if (ReconcileTrackedReward("showcase", rewardId, rewardTitle))
             {
-                Enqueue("showcollection", login, user, "channelpoints");
+                // The animation can be switched off entirely (settings.showcase.animationEnabled)
+                // while still wanting the chat card list - in that case there's nothing to queue
+                // or animate, so send the chat text directly instead of going through the overlay
+                // queue at all.
+                if (GetBool(Obj(server.ReadSettingsObject(), "showcase"), "animationEnabled", true))
+                    Enqueue("showcollection", login, user, "channelpoints");
+                else
+                    SendCollectionChatText(login, user);
+                return;
+            }
+
+            if (ReconcileTrackedReward("tournament", rewardId, rewardTitle))
+            {
+                StartTournamentSignup(login, user, "channelpoints");
                 return;
             }
 
@@ -2889,37 +3375,73 @@ namespace CardPackWidgetApp
 
         // Called by the overlay (POST /api/queue/complete) once it has finished playing the
         // animation for a given event. Releases the queue worker so it can proceed to the
-        // 500ms gap and then the next item.
-        // If more than one overlay page is showing the same source at once (e.g. the pack source
-        // open in both OBS AND Meld Studio simultaneously), each one independently plays the
-        // animation and independently posts /api/queue/complete for the same eventId. Without
-        // this guard, every extra ack would re-send the post-draw chat message, duplicating it.
-        private readonly object completionLock = new object();
-        private string lastCompletedEventId;
-
+        // 500ms gap and then the next item. The post-draw chat message and live-ticker entry are
+        // NOT sent from here (see AnnounceDraw below) - they need to go out the moment the card is
+        // actually revealed, well before the whole animation (backs-before-reveal, slide, hold
+        // time) has finished playing.
         public void CompleteQueueItem(string eventId, string cardTitle, string boosterTitle)
         {
             if (String.IsNullOrEmpty(eventId)) return;
             if (eventId != awaitingEventId) return;
-            bool isFirstAck;
-            lock (completionLock)
-            {
-                isFirstAck = lastCompletedEventId != eventId;
-                lastCompletedEventId = eventId;
-            }
-            if (isFirstAck)
-            {
-                // The animation just finished and the overlay reported which card was drawn, so
-                // the post-animation chat message (channel points and/or !pack) can now be sent by name.
-                try
-                {
-                    Dictionary<string, object> item;
-                    lock (queueLock) item = currentQueueItem;
-                    if (item != null && GetString(item, "kind", "") == "draw") SendDrawPostMessage(item, cardTitle, boosterTitle);
-                }
-                catch { }
-            }
             completionSignal.Set();
+        }
+
+        // Called by the overlay (POST /api/queue/announce) the instant a drawn card is fully
+        // revealed - the same moment the collection panel appears next to it - so the post-draw
+        // chat message and live-ticker entry go out right then instead of after the whole
+        // animation finishes playing.
+        // If more than one overlay page is showing the same source at once (e.g. the pack source
+        // open in both OBS AND Meld Studio simultaneously), each one independently plays the
+        // animation and independently posts /api/queue/announce for the same eventId. Without this
+        // guard, every extra call would re-send the post-draw chat message, duplicating it.
+        private readonly object announceLock = new object();
+        private string lastAnnouncedEventId;
+
+        // In-memory only (cleared on app restart, like the event log) - just enough so a freshly
+        // (re)loaded overlay/browser source shows the last few draws immediately instead of
+        // sitting empty until the next one happens. See GET /api/liveticker/recent.
+        private const int LiveTickerHistoryCap = 12;
+        private readonly object liveTickerHistoryLock = new object();
+        private readonly List<Dictionary<string, object>> liveTickerHistory = new List<Dictionary<string, object>>();
+
+        public object[] GetLiveTickerHistory()
+        {
+            lock (liveTickerHistoryLock) return liveTickerHistory.ToArray();
+        }
+
+        public void AnnounceDraw(string eventId, string cardTitle, string boosterTitle)
+        {
+            if (String.IsNullOrEmpty(eventId) || String.IsNullOrEmpty(cardTitle)) return;
+            if (eventId != awaitingEventId) return;
+            bool isFirst;
+            lock (announceLock)
+            {
+                isFirst = lastAnnouncedEventId != eventId;
+                lastAnnouncedEventId = eventId;
+            }
+            if (!isFirst) return;
+            try
+            {
+                Dictionary<string, object> item;
+                lock (queueLock) item = currentQueueItem;
+                if (item == null || GetString(item, "kind", "") != "draw") return;
+                SendDrawPostMessage(item, cardTitle, boosterTitle);
+                var tickerEntry = new Dictionary<string, object>
+                {
+                    { "user", GetString(item, "user", "Viewer") },
+                    { "cardTitle", cardTitle },
+                    { "boosterTitle", boosterTitle },
+                    { "rarity", server.GetCardRarityByTitle(cardTitle) },
+                    { "avatarUrl", GetUserAvatarUrl(GetString(item, "userLogin", "")) }
+                };
+                lock (liveTickerHistoryLock)
+                {
+                    liveTickerHistory.Add(tickerEntry);
+                    if (liveTickerHistory.Count > LiveTickerHistoryCap) liveTickerHistory.RemoveAt(0);
+                }
+                server.Broadcast("liveticker", server.Serializer.Serialize(tickerEntry));
+            }
+            catch { }
         }
 
         private void SendDrawPostMessage(Dictionary<string, object> item, string cardTitle, string boosterTitle)
@@ -3026,17 +3548,31 @@ namespace CardPackWidgetApp
             }
             if (kind == "ranking")
             {
-                // Battle ranking cycles through up to 4 phases; card/trade ranking show one.
+                // Battle ranking cycles through up to 4 phases, tournament ranking through 2
+                // (wins, participations); card/trade ranking show a single list.
                 // GetInt on the item itself: displaySeconds was stored on it by HandleRankingCommand.
                 int displaySeconds = Math.Max(2, GetInt(item, "displaySeconds", 8));
                 string rankingType = GetString(item, "type", "card");
-                int phases = rankingType == "battle" ? 4 : 1;
+                int phases = rankingType == "battle" ? 4 : rankingType == "tournament" ? 2 : 1;
                 return phases * (displaySeconds * 1000 + 500) + 8000;
             }
             if (kind == "trade")
             {
                 // Longest configured trade animation duration ("long" ~9s) plus a safety margin.
                 return 20000;
+            }
+            if (kind == "communitygoalreached")
+            {
+                // Matches the overlay's fixed 6s celebration display (see communitygoal.js) plus
+                // a safety margin.
+                return 12000;
+            }
+            if (kind == "tournamentbye" || kind == "tournamentwon")
+            {
+                // No overlay animation is involved (just a chat message, and for "tournamentwon"
+                // enqueuing the winner's bonus draws as separate future items) - nothing will ever
+                // send a completion ack for these, so don't make the queue sit out a real timeout.
+                return 200;
             }
             if (kind == "battle")
             {
@@ -3104,9 +3640,13 @@ namespace CardPackWidgetApp
                 // so the NEXT event is only fired once the current one has fully played out. A
                 // per-kind safety timeout prevents a permanent stall if no overlay is connected.
                 bool acked = completionSignal.WaitOne(ComputeQueueTimeoutMs(item));
-                if (!acked)
+                string itemKind = GetString(item, "kind", "");
+                // tournamentbye/tournamentwon are chat-only bookkeeping items with no overlay
+                // animation at all - nothing will EVER ack them, so warning as if an OBS source
+                // might be missing would be actively misleading every single time.
+                if (!acked && itemKind != "tournamentbye" && itemKind != "tournamentwon")
                 {
-                    server.Log("queue", "warn", "Keine Abschluss-Rueckmeldung vom Overlay fuer \"" + GetString(item, "kind", "") + "\" - nach Timeout fortgefahren. Ist die passende OBS-Quelle geoeffnet und aktuell?");
+                    server.Log("queue", "warn", "Keine Abschluss-Rueckmeldung vom Overlay fuer \"" + itemKind + "\" - nach Timeout fortgefahren. Ist die passende OBS-Quelle geoeffnet und aktuell?");
                 }
                 awaitingEventId = null;
 
@@ -3138,6 +3678,40 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (kind == "communitygoalreached")
+            {
+                // Plays as its own serialized queue item (see RegisterCommunityGoalDraw) so it
+                // never overlaps the draw that completed the goal. The chat message and bonus
+                // draws for every participant are triggered here, once it's this item's turn.
+                int target = GetInt(item, "target", 0);
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                Dictionary<string, object> goalCfg = Obj(settings, "communityGoal");
+                string celebrationMessage = GetString(goalCfg, "celebrationMessage", DefaultCommunityGoalMessage).Replace("[Ziel]", target.ToString());
+                SendChatMessageSafe(celebrationMessage);
+
+                var celebrationEvent = new Dictionary<string, object>
+                {
+                    { "eventId", GetString(item, "id", DateTime.UtcNow.Ticks.ToString()) },
+                    { "target", target }
+                };
+                server.Broadcast("communitygoalreached", server.Serializer.Serialize(celebrationEvent));
+
+                object participantsObj;
+                if (item.TryGetValue("participants", out participantsObj) && participantsObj is object[])
+                {
+                    foreach (object po in (object[])participantsObj)
+                    {
+                        Dictionary<string, object> participant = po as Dictionary<string, object>;
+                        if (participant == null) continue;
+                        string pLogin = GetString(participant, "login", "");
+                        string pName = GetString(participant, "displayName", pLogin);
+                        if (String.IsNullOrEmpty(pLogin)) continue;
+                        Enqueue("draw", pLogin, pName, "communitygoal");
+                    }
+                }
+                return;
+            }
+
             if (kind == "showcollection")
             {
                 server.Log("draw", "info", user + " hat die Sammlung angefordert.");
@@ -3149,11 +3723,29 @@ namespace CardPackWidgetApp
                     { "source", source }
                 };
                 server.Broadcast("showcollection", server.Serializer.Serialize(showEvent));
+                // Card-name chat text, same for both triggers (channel points and !collection) and
+                // fired right as the showcase animation actually starts, not early/late relative to
+                // whatever else was ahead of it in the queue.
+                SendCollectionChatText(login, user);
                 return;
             }
 
             if (kind == "trade" || kind == "battle")
             {
+                // A tournament match's round-announce chat message is sent HERE - when the queue
+                // actually reaches this item - rather than when the whole bracket was resolved
+                // (all at once, well before earlier matches finish playing). This keeps chat
+                // commentary timing aligned with what's actually animating in OBS at that moment,
+                // the same fix applied to the community-goal celebration earlier.
+                if (kind == "battle" && item.ContainsKey("tournamentRound"))
+                {
+                    Dictionary<string, object> tCfg = Obj(server.ReadSettingsObject(), "tournament");
+                    SendChatMessageSafe(GetString(tCfg, "roundAnnounceMessage", DefaultTournamentRoundAnnounce)
+                        .Replace("[Runde]", GetString(item, "tournamentRound", ""))
+                        .Replace("[SpielerA]", GetString(item, "userA", ""))
+                        .Replace("[SpielerB]", GetString(item, "userB", "")));
+                }
+
                 // trade/battle carry their full event payload (cards, users, result...) as "extra"
                 // on Enqueue - strip the queue-internal bookkeeping fields and broadcast the rest
                 // as-is, same pattern as "ranking" above.
@@ -3166,6 +3758,52 @@ namespace CardPackWidgetApp
                 animEvent.Remove("source");
                 animEvent.Remove("triggeredAt");
                 server.Broadcast(kind, server.Serializer.Serialize(animEvent));
+                return;
+            }
+
+            if (kind == "tournamentbye")
+            {
+                Dictionary<string, object> tCfg = Obj(server.ReadSettingsObject(), "tournament");
+                SendChatMessageSafe(GetString(tCfg, "byeAnnounceMessage", DefaultTournamentByeAnnounce)
+                    .Replace("[Runde]", GetString(item, "tournamentRound", ""))
+                    .Replace("[Spieler]", user));
+                return;
+            }
+
+            if (kind == "tournamentwon")
+            {
+                Dictionary<string, object> tCfg = Obj(server.ReadSettingsObject(), "tournament");
+                int totalParticipants = GetInt(item, "totalParticipants", 0);
+                // 0 is a deliberate, valid value here (championDrawsEnabled turned off) - not the
+                // "field missing" case, so this must not floor to 1 like most other GetInt uses.
+                int winnerDraws = Math.Max(0, GetInt(item, "winnerDraws", 0));
+                SendChatMessageSafe(GetString(tCfg, "winnerAnnounceMessage", DefaultTournamentWinnerAnnounce)
+                    .Replace("@userName", "@" + user)
+                    .Replace("[Teilnehmerzahl]", totalParticipants.ToString())
+                    .Replace("[Anzahl]", winnerDraws.ToString()));
+                server.Log("commands", "info", user + " hat das Turnier mit " + totalParticipants + " Teilnehmern gewonnen.");
+                server.RecordTournamentWin(login, user);
+
+                // Every round winner's draw (if that setting is enabled) was deliberately held
+                // back until now instead of playing right after their own match - see
+                // ResolveTournamentSignup - so the bracket isn't interrupted by pack-opening
+                // animations mid-tournament. They play here, before the champion's own bonus
+                // draws, so the tournament properly ends on the biggest reward.
+                object perRoundDrawsObj;
+                if (item.TryGetValue("perRoundDraws", out perRoundDrawsObj) && perRoundDrawsObj is object[])
+                {
+                    foreach (object po in (object[])perRoundDrawsObj)
+                    {
+                        Dictionary<string, object> p = po as Dictionary<string, object>;
+                        if (p == null) continue;
+                        string pLogin = GetString(p, "login", "");
+                        string pName = GetString(p, "displayName", pLogin);
+                        if (String.IsNullOrEmpty(pLogin)) continue;
+                        Enqueue("draw", pLogin, pName, "tournament");
+                    }
+                }
+
+                for (int i = 0; i < winnerDraws; i++) Enqueue("draw", login, user, "tournament");
                 return;
             }
 
@@ -3209,6 +3847,11 @@ namespace CardPackWidgetApp
                     pityEntry["streak"] = metPity ? 0 : pityStreak + 1;
                     SavePityEntry(login, pityEntry);
                 }
+
+                // Community goal: every draw (any trigger, including this method's own bonus
+                // draws once the goal is reached - RegisterCommunityGoalDraw no-ops while frozen)
+                // counts toward the shared progress bar.
+                RegisterCommunityGoalDraw(login, user);
 
                 string cardId = card != null ? GetString(card, "id", "") : "";
                 string cardTitle = card != null ? GetString(card, "title", "") : "";
@@ -3522,11 +4165,24 @@ namespace CardPackWidgetApp
         // per-chunk header/index prefix never pushes a message over the real limit.
         private const int MaxChatMessageLength = 450;
 
+        // Entry point for the card-name chat listing, independent of whether the overlay showcase
+        // animation runs at all (see settings.showcase.animationEnabled) - called both from
+        // ProcessQueueItem's "showcollection" handling (animation on: synced with its start) and
+        // directly from the channel-points/chat-command handlers (animation off: no queue/overlay
+        // involved, so this is the only thing that happens).
+        private void SendCollectionChatText(string login, string displayName)
+        {
+            Dictionary<string, object> collectionCfg = Obj(Obj(server.ReadSettingsObject(), "chatCommands"), "collection");
+            if (!GetBool(collectionCfg, "chatOutputEnabled", true)) return;
+            try { HandleCardsCommand(login, displayName, collectionCfg); }
+            catch (Exception ex) { server.Log("draw", "error", "HandleCardsCommand fehlgeschlagen: " + ex.Message + " | " + ex.StackTrace); }
+        }
+
         // Part of !collection's chat output (alongside the overlay showcase) - lists every card
         // the caller owns as plain text, split across multiple messages if needed.
         private void HandleCardsCommand(string login, string displayName, Dictionary<string, object> collectionCfg)
         {
-            List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
+            List<Dictionary<string, string>> owned = server.GetUserOwnedCardsWithInfo(login);
             if (owned.Count == 0)
             {
                 SendChatMessageSafe(GetString(collectionCfg, "emptyMessage", DefaultCardsEmpty).Replace("@userName", "@" + displayName));
@@ -3536,10 +4192,9 @@ namespace CardPackWidgetApp
             var entries = new List<KeyValuePair<string, string>>();
             foreach (Dictionary<string, string> entry in owned)
             {
-                int count = server.GetCardCount(login, entry["boosterId"], entry["cardId"]);
-                Dictionary<string, string> info = server.CardDisplayInfo(entry["boosterId"], entry["cardId"]);
-                string name = count > 1 ? info["cardTitle"] + " x" + count : info["cardTitle"];
-                entries.Add(new KeyValuePair<string, string>(info["cardTitle"], name));
+                int count = Int32.Parse(entry["count"]);
+                string name = count > 1 ? entry["cardTitle"] + " x" + count : entry["cardTitle"];
+                entries.Add(new KeyValuePair<string, string>(entry["cardTitle"], name));
             }
             // Sorted alphabetically by card name (A -> Z).
             entries.Sort(delegate (KeyValuePair<string, string> a, KeyValuePair<string, string> b)
@@ -3755,6 +4410,8 @@ namespace CardPackWidgetApp
             Dictionary<string, object> battleYes = Obj(cc, "battleyes");
             Dictionary<string, object> battleNo = Obj(cc, "battleno");
             Dictionary<string, object> ranking = Obj(cc, "ranking");
+            Dictionary<string, object> tournamentStart = Obj(cc, "tournamentStart");
+            Dictionary<string, object> tournamentJoin = Obj(cc, "tournamentJoin");
 
             if (MatchesCommand(text, pack))
             {
@@ -3768,17 +4425,18 @@ namespace CardPackWidgetApp
             }
             if (MatchesCommand(text, collection))
             {
-                // No usage limit, no cooldown, no tracking for the collection command. Besides
-                // the overlay showcase, it can also list the caller's card names in chat text
-                // (own toggle, on by default) - useful when no OBS source is being watched.
+                // No usage limit, no cooldown, no tracking for the collection command. When the
+                // showcase animation is enabled, the card-name chat text (own toggle, on by
+                // default) is sent when the queue actually reaches this item (see
+                // ProcessQueueItem's "showcollection" handling), synced with the animation
+                // starting. When the animation is switched off entirely, there's nothing to queue
+                // or animate, so the chat text goes out directly instead.
                 if (GetBool(collection, "enabled", true))
                 {
-                    Enqueue("showcollection", login, displayName, "chat");
-                    if (GetBool(collection, "chatOutputEnabled", true))
-                    {
-                        try { HandleCardsCommand(login, displayName, collection); }
-                        catch (Exception ex) { server.Log("draw", "error", "HandleCardsCommand fehlgeschlagen: " + ex.Message + " | " + ex.StackTrace); }
-                    }
+                    if (GetBool(Obj(settings, "showcase"), "animationEnabled", true))
+                        Enqueue("showcollection", login, displayName, "chat");
+                    else
+                        SendCollectionChatText(login, displayName);
                 }
                 return;
             }
@@ -3815,6 +4473,16 @@ namespace CardPackWidgetApp
             if (MatchesCommand(text, ranking))
             {
                 if (GetBool(ranking, "enabled", true)) HandleRankingCommand(login, displayName, ArgsAfterCommand(text, ranking), ranking);
+                return;
+            }
+            if (MatchesCommand(text, tournamentStart))
+            {
+                if (GetBool(tournamentStart, "enabled", true)) StartTournamentSignup(login, displayName, "chat");
+                return;
+            }
+            if (MatchesCommand(text, tournamentJoin))
+            {
+                if (GetBool(tournamentJoin, "enabled", true)) JoinTournament(login, displayName);
                 return;
             }
         }
@@ -3968,7 +4636,7 @@ namespace CardPackWidgetApp
                 .Replace("[Kartenname]", cardTitle)
                 .Replace("[Anzahl]", count.ToString())
                 .Replace("[Punkte]", points.ToString())
-                .Replace("[PityRest]", pityRest.ToString()));
+                .Replace("[GarantieRest]", pityRest.ToString()));
         }
 
         // ---- Trade system: !trade / !tradeyes / !tradeno ----
@@ -4543,6 +5211,402 @@ namespace CardPackWidgetApp
             }
         }
 
+        // ---- Tournament Mode ----
+        //
+        // One bracket at a time, global (like activeBattle). Flow: an admin/channel-point/chat
+        // trigger opens a signup window (StartTournamentSignup); viewers join with a chat command
+        // (JoinTournament) until the window closes; ResolveTournamentSignup then either cancels
+        // (too few participants) or resolves the ENTIRE bracket synchronously (all rounds - match
+        // resolution is instant dice-rolling, nothing to wait on) and feeds every match into the
+        // existing serialized action queue as ordinary "battle" queue items, so they play out
+        // through the normal battle animation one at a time, in bracket order, all by themselves -
+        // exactly like the community-goal bonus draws pattern. Chat commentary for each match/bye/
+        // the final winner is likewise NOT sent immediately during resolution (which would spam
+        // every round's outcome into chat before the corresponding animation has even played and
+        // spoil the final winner) - it is sent from ProcessQueueItem only once the queue actually
+        // reaches that specific item, so commentary timing always tracks real animation playback.
+
+        public string StartTournamentSignup(string login, string displayName, string source)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> tCfg = Obj(settings, "tournament");
+            if (!GetBool(tCfg, "enabled", false)) return "disabled";
+
+            lock (tournamentLock)
+            {
+                if (activeTournament != null)
+                {
+                    SendChatMessageSafe(GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
+                        .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
+                    return "already_running";
+                }
+
+                int minParticipants = Math.Max(2, GetInt(tCfg, "minParticipants", 3));
+                int signupSeconds = Math.Max(10, GetInt(tCfg, "signupSeconds", 90));
+                Dictionary<string, object> joinCfg = Obj(Obj(settings, "chatCommands"), "tournamentJoin");
+                string joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "turnier");
+                string deadlineUtc = DateTime.UtcNow.AddSeconds(signupSeconds).ToString("o");
+
+                activeTournament = new Dictionary<string, object>
+                {
+                    { "state", "signup" },
+                    { "participants", new List<object>() },
+                    { "minParticipants", minParticipants },
+                    { "lineupSize", Math.Max(1, GetInt(tCfg, "lineupSize", 3)) },
+                    { "winnerDraws", Math.Max(1, GetInt(tCfg, "winnerDraws", 1)) },
+                    { "startedAt", DateTime.UtcNow.ToString("o") }
+                };
+
+                SendChatMessageSafe(GetString(tCfg, "signupStartMessage", DefaultTournamentSignupStart)
+                    .Replace("[Befehl]", joinCommandText)
+                    .Replace("[Sekunden]", signupSeconds.ToString())
+                    .Replace("[Mindestteilnehmer]", minParticipants.ToString()));
+
+                // Lets the overlay show a subtle countdown of the remaining signup window - the
+                // client just computes "deadline minus now" locally and ticks it down itself
+                // rather than the server pushing a tick every second.
+                server.Broadcast("tournamentsignup", server.Serializer.Serialize(new Dictionary<string, object>
+                {
+                    { "active", true },
+                    { "deadlineUtc", deadlineUtc }
+                }));
+
+                if (tournamentSignupTimer != null) tournamentSignupTimer.Dispose();
+                tournamentSignupTimer = new System.Threading.Timer(delegate { ResolveTournamentSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
+            }
+
+            // Whoever spent the channel points to start the tournament obviously wants to play in
+            // it - join them automatically instead of making them also type the join command.
+            // JoinTournament re-acquires tournamentLock, which is safe here (Monitor locks are
+            // reentrant on the same thread) and still applies the normal eligibility check/message.
+            if (source == "channelpoints" && !String.IsNullOrEmpty(login))
+            {
+                JoinTournament(login, displayName);
+            }
+
+            return "started";
+        }
+
+        private void JoinTournament(string login, string displayName)
+        {
+            lock (tournamentLock)
+            {
+                if (activeTournament == null || GetString(activeTournament, "state", "") != "signup") return;
+                var participants = (List<object>)activeTournament["participants"];
+                string loginKey = login.ToLowerInvariant();
+                foreach (object p in participants)
+                {
+                    Dictionary<string, object> existing = p as Dictionary<string, object>;
+                    if (existing != null && GetString(existing, "login", "") == loginKey) return;
+                }
+
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                Dictionary<string, object> tCfg = Obj(settings, "tournament");
+                int lineupSize = GetInt(activeTournament, "lineupSize", 3);
+                List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
+                if (owned.Count < lineupSize)
+                {
+                    SendChatMessageSafe(GetString(tCfg, "notEligibleMessage", DefaultTournamentNotEligible)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Anzahl]", lineupSize.ToString()));
+                    return;
+                }
+
+                participants.Add(new Dictionary<string, object> { { "login", loginKey }, { "displayName", displayName } });
+
+                if (GetBool(tCfg, "announceJoins", true))
+                {
+                    SendChatMessageSafe(GetString(tCfg, "joinAckMessage", DefaultTournamentJoinAck)
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Anzahl]", participants.Count.ToString()));
+                }
+            }
+        }
+
+        public Dictionary<string, object> GetTournamentState()
+        {
+            lock (tournamentLock)
+            {
+                if (activeTournament == null) return new Dictionary<string, object> { { "state", "idle" } };
+                var participants = (List<object>)activeTournament["participants"];
+                return new Dictionary<string, object>
+                {
+                    { "state", GetString(activeTournament, "state", "idle") },
+                    { "participantCount", participants.Count },
+                    { "minParticipants", GetInt(activeTournament, "minParticipants", 3) }
+                };
+            }
+        }
+
+        // Resolves a single 1v1 tournament match (same weighted round/HP-elimination logic as a
+        // normal !battle duel) with NO card transfer and NO battle-stats recording - tournament
+        // matches only decide bracket advancement, per the "no cards at risk, winner gets pack
+        // draws instead" design. Returns the same event shape battle.js already knows how to
+        // animate (omitting the prizeCard* fields simply hides the prize line client-side).
+        private Dictionary<string, object> ResolveTournamentDuel(
+            string userA, List<Dictionary<string, string>> ownedA,
+            string userB, List<Dictionary<string, string>> ownedB,
+            int lineupSize, Dictionary<string, object> settings)
+        {
+            List<Dictionary<string, string>> lineupA = DrawRandomLineup(ownedA, lineupSize);
+            List<Dictionary<string, string>> lineupB = DrawRandomLineup(ownedB, lineupSize);
+
+            Dictionary<string, object> strengthCfg = Obj(settings, "battleStrength");
+            double variance = GetDouble(strengthCfg, "variance", DefaultBattleVariance);
+            Dictionary<string, object> battleAnimForStyle = Obj(settings, "battleAnimation");
+            bool useHpElimination = GetString(battleAnimForStyle, "style", "clash") == "hp";
+
+            int winsA = 0, winsB = 0;
+            var rounds = new List<object>();
+            Dictionary<string, object> hpResult = null;
+
+            if (useHpElimination)
+            {
+                hpResult = ResolveHpElimination(lineupA, lineupB, strengthCfg, variance);
+                winsA = GetInt(hpResult, "cardsLostB", 0);
+                winsB = GetInt(hpResult, "cardsLostA", 0);
+            }
+            else
+            {
+                for (int i = 0; i < lineupSize; i++)
+                {
+                    bool aWins = RollRound(lineupA[i], lineupB[i], strengthCfg, variance);
+                    if (aWins) winsA++; else winsB++;
+                    rounds.Add(new Dictionary<string, object> { { "cardA", lineupA[i] }, { "cardB", lineupB[i] }, { "winner", aWins ? "A" : "B" } });
+                }
+
+                var usedIdsA = new HashSet<string>();
+                foreach (Dictionary<string, string> c in lineupA) usedIdsA.Add(c["cardId"]);
+                var usedIdsB = new HashSet<string>();
+                foreach (Dictionary<string, string> c in lineupB) usedIdsB.Add(c["cardId"]);
+
+                int suddenDeathRounds = 0;
+                while (winsA == winsB && suddenDeathRounds < 20)
+                {
+                    List<Dictionary<string, string>> poolA = UnusedCardPool(ownedA, usedIdsA);
+                    List<Dictionary<string, string>> poolB = UnusedCardPool(ownedB, usedIdsB);
+                    List<Dictionary<string, string>> sdA = DrawRandomLineup(poolA, 1);
+                    List<Dictionary<string, string>> sdB = DrawRandomLineup(poolB, 1);
+                    usedIdsA.Add(sdA[0]["cardId"]);
+                    usedIdsB.Add(sdB[0]["cardId"]);
+                    bool aWins = RollRound(sdA[0], sdB[0], strengthCfg, variance);
+                    if (aWins) winsA++; else winsB++;
+                    rounds.Add(new Dictionary<string, object> { { "cardA", sdA[0] }, { "cardB", sdB[0] }, { "winner", aWins ? "A" : "B" }, { "suddenDeath", true } });
+                    suddenDeathRounds++;
+                }
+            }
+
+            bool winnerIsA = useHpElimination ? GetBool(hpResult, "winnerIsA", winsA >= winsB) : winsA > winsB;
+
+            return new Dictionary<string, object>
+            {
+                { "userA", userA }, { "userB", userB },
+                { "lineupA", lineupA }, { "lineupB", lineupB },
+                { "mode", useHpElimination ? "hp" : "rounds" },
+                { "rounds", rounds },
+                { "hpMatchups", useHpElimination ? hpResult["matchups"] : new object[0] },
+                { "winner", winnerIsA ? "A" : "B" },
+                { "winsA", winsA }, { "winsB", winsB },
+                { "winnerUser", winnerIsA ? userA : userB }, { "loserUser", winnerIsA ? userB : userA }
+            };
+        }
+
+        // Timer callback once the signup window closes. Runs entirely off the chat/HTTP threads,
+        // so it is free to take its time resolving every round synchronously before touching the
+        // queue - nothing here blocks command handling.
+        private void ResolveTournamentSignup()
+        {
+            List<Dictionary<string, object>> participants;
+            int minParticipants;
+            int lineupSize;
+            int winnerDraws;
+            bool perRoundWinnerEnabled;
+            bool championDrawsEnabled;
+            Dictionary<string, object> tCfg;
+            Dictionary<string, object> settings;
+
+            lock (tournamentLock)
+            {
+                if (activeTournament == null) return;
+                var rawParticipants = (List<object>)activeTournament["participants"];
+                participants = new List<Dictionary<string, object>>();
+                foreach (object p in rawParticipants)
+                {
+                    Dictionary<string, object> d = p as Dictionary<string, object>;
+                    if (d != null) participants.Add(d);
+                }
+                minParticipants = GetInt(activeTournament, "minParticipants", 3);
+                lineupSize = GetInt(activeTournament, "lineupSize", 3);
+                winnerDraws = GetInt(activeTournament, "winnerDraws", 1);
+                settings = server.ReadSettingsObject();
+                tCfg = Obj(settings, "tournament");
+                perRoundWinnerEnabled = GetBool(tCfg, "perRoundWinnerEnabled", false);
+                championDrawsEnabled = GetBool(tCfg, "championDrawsEnabled", true);
+
+                if (participants.Count < minParticipants)
+                {
+                    SendChatMessageSafe(GetString(tCfg, "cancelMessage", DefaultTournamentCancel)
+                        .Replace("[Anzahl]", participants.Count.ToString())
+                        .Replace("[Mindestteilnehmer]", minParticipants.ToString()));
+                    activeTournament = null;
+                    server.Broadcast("tournamentsignup", "{\"active\":false}");
+                    return;
+                }
+
+                activeTournament["state"] = "running";
+                server.Broadcast("tournamentsignup", "{\"active\":false}");
+            }
+
+            foreach (Dictionary<string, object> participant in participants)
+            {
+                server.RecordTournamentParticipation(GetString(participant, "login", ""), GetString(participant, "displayName", ""));
+            }
+
+            var shuffled = new List<Dictionary<string, object>>(participants);
+            lock (BattleRandom)
+            {
+                for (int i = shuffled.Count - 1; i > 0; i--)
+                {
+                    int j = BattleRandom.Next(i + 1);
+                    Dictionary<string, object> tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+                }
+            }
+
+            int totalParticipants = shuffled.Count;
+            List<Dictionary<string, object>> round = shuffled;
+            int roundNumber = 1;
+
+            // Grows one round at a time as the bracket is resolved. Every match/bye item gets a
+            // DEEP-CLONED snapshot of this (see CloneBracketRounds) taken at the exact moment it
+            // is enqueued - never a live reference - because the whole bracket (all rounds) is
+            // actually resolved synchronously in this one pass, well before any of it has played
+            // out on screen. Without cloning, every match's bracket view would already show every
+            // future round's winner, spoiling the whole tournament the instant the first match's
+            // animation starts. Each snapshot only ever reveals: earlier rounds (already played),
+            // this round's matchups (paired, but only already-played ones show a winner), and
+            // nothing beyond the current round at all.
+            var bracketRounds = new List<Dictionary<string, object>>();
+            // Every round winner's pack draw (if enabled) is deliberately NOT played right after
+            // their own match - collected here and only played once the whole tournament has
+            // concluded, back to back with the champion's bonus draws, so the ongoing bracket
+            // isn't interrupted by pack-opening animations mid-tournament.
+            var perRoundWinners = new List<object>();
+
+            while (round.Count > 1)
+            {
+                string roundLabel = round.Count <= 2 ? "Finale" : (round.Count <= 4 ? "Halbfinale" : ("Runde " + roundNumber));
+                var winners = new List<Dictionary<string, object>>();
+                var roundMatches = new List<object>();
+                var roundData = new Dictionary<string, object> { { "label", roundLabel }, { "matches", roundMatches } };
+                bracketRounds.Add(roundData);
+                int currentRoundIndex = bracketRounds.Count - 1;
+
+                for (int i = 0; i + 1 < round.Count; i += 2)
+                {
+                    Dictionary<string, object> a = round[i];
+                    Dictionary<string, object> b = round[i + 1];
+                    string loginA = GetString(a, "login", "");
+                    string userA = GetString(a, "displayName", loginA);
+                    string loginB = GetString(b, "login", "");
+                    string userB = GetString(b, "displayName", loginB);
+
+                    var matchData = new Dictionary<string, object> { { "a", userA }, { "b", userB }, { "winner", null }, { "bye", false } };
+                    roundMatches.Add(matchData);
+                    int currentMatchIndex = roundMatches.Count - 1;
+
+                    List<Dictionary<string, string>> ownedA = server.GetUserOwnedCardTypes(loginA);
+                    List<Dictionary<string, string>> ownedB = server.GetUserOwnedCardTypes(loginB);
+                    // A participant may have traded/dusted away cards since joining - rather than
+                    // crash the bracket, whichever side can no longer field a lineup forfeits.
+                    if (ownedA.Count < lineupSize && ownedB.Count < lineupSize) { matchData["winner"] = "a"; winners.Add(a); continue; }
+                    if (ownedA.Count < lineupSize) { matchData["winner"] = "b"; winners.Add(b); continue; }
+                    if (ownedB.Count < lineupSize) { matchData["winner"] = "a"; winners.Add(a); continue; }
+
+                    Dictionary<string, object> duelEvent = ResolveTournamentDuel(userA, ownedA, userB, ownedB, lineupSize, settings);
+                    duelEvent["tournamentRound"] = roundLabel;
+                    duelEvent["bracket"] = new Dictionary<string, object>
+                    {
+                        { "rounds", CloneBracketRounds(bracketRounds) },
+                        { "currentRoundIndex", currentRoundIndex },
+                        { "currentMatchIndex", currentMatchIndex }
+                    };
+                    Enqueue("battle", loginA, userA, "tournament", duelEvent);
+
+                    bool winnerIsA = GetString(duelEvent, "winner", "A") == "A";
+                    matchData["winner"] = winnerIsA ? "a" : "b";
+                    Dictionary<string, object> roundWinner = winnerIsA ? a : b;
+                    winners.Add(roundWinner);
+
+                    if (perRoundWinnerEnabled)
+                    {
+                        perRoundWinners.Add(new Dictionary<string, object>
+                        {
+                            { "login", GetString(roundWinner, "login", "") },
+                            { "displayName", GetString(roundWinner, "displayName", "") }
+                        });
+                    }
+                }
+
+                if (round.Count % 2 == 1)
+                {
+                    Dictionary<string, object> byeUser = round[round.Count - 1];
+                    winners.Add(byeUser);
+                    var byeMatchData = new Dictionary<string, object>
+                    {
+                        { "a", GetString(byeUser, "displayName", GetString(byeUser, "login", "")) },
+                        { "b", null }, { "winner", "a" }, { "bye", true }
+                    };
+                    roundMatches.Add(byeMatchData);
+                    Enqueue("tournamentbye", GetString(byeUser, "login", ""), GetString(byeUser, "displayName", ""), "tournament",
+                        new Dictionary<string, object>
+                        {
+                            { "tournamentRound", roundLabel },
+                            { "bracket", new Dictionary<string, object>
+                                {
+                                    { "rounds", CloneBracketRounds(bracketRounds) },
+                                    { "currentRoundIndex", currentRoundIndex },
+                                    { "currentMatchIndex", roundMatches.Count - 1 }
+                                }
+                            }
+                        });
+                }
+
+                round = winners;
+                roundNumber++;
+            }
+
+            lock (tournamentLock) { activeTournament = null; }
+            if (round.Count == 0) return;
+
+            Dictionary<string, object> championEntry = round[0];
+            string championLogin = GetString(championEntry, "login", "");
+            string championUser = GetString(championEntry, "displayName", championLogin);
+
+            Enqueue("tournamentwon", championLogin, championUser, "tournament", new Dictionary<string, object>
+            {
+                { "totalParticipants", totalParticipants },
+                { "winnerDraws", championDrawsEnabled ? winnerDraws : 0 },
+                { "perRoundDraws", perRoundWinners.ToArray() }
+            });
+        }
+
+        // Deep-clones the bracket-so-far into plain Dictionary/List primitives suitable for
+        // JSON serialization, independent of any further in-place mutation by the caller.
+        private static List<object> CloneBracketRounds(List<Dictionary<string, object>> rounds)
+        {
+            var clone = new List<object>();
+            foreach (Dictionary<string, object> round in rounds)
+            {
+                var clonedMatches = new List<object>();
+                foreach (object mo in (List<object>)round["matches"])
+                {
+                    clonedMatches.Add(new Dictionary<string, object>((Dictionary<string, object>)mo));
+                }
+                clone.Add(new Dictionary<string, object> { { "label", round["label"] }, { "matches", clonedMatches } });
+            }
+            return clone;
+        }
+
         private void HandleBattleNo(string login, string displayName, Dictionary<string, object> cc)
         {
             Dictionary<string, object> noCfg = Obj(cc, "battleno");
@@ -4774,6 +5838,20 @@ namespace CardPackWidgetApp
                 };
                 Enqueue("ranking", login, displayName, "chat", battlePayload);
                 server.Log("commands", "info", displayName + " hat das Kampf-Ranking angefordert.");
+                return;
+            }
+
+            if (lower == "turnier" || lower == "tournament" || lower == "turniere")
+            {
+                Dictionary<string, object> lists = server.BuildTournamentRanking(5);
+                var tournamentPayload = new Dictionary<string, object>
+                {
+                    { "type", "tournament" },
+                    { "displaySeconds", displaySeconds },
+                    { "lists", lists }
+                };
+                Enqueue("ranking", login, displayName, "chat", tournamentPayload);
+                server.Log("commands", "info", displayName + " hat das Turnier-Ranking angefordert.");
                 return;
             }
 
@@ -5206,9 +6284,9 @@ namespace CardPackWidgetApp
                 { "prompt", prompt },
                 { "is_enabled", isEnabled },
                 { "is_user_input_required", false },
-                // See SyncReward for why this must always be true (auto-fulfilled redemptions
-                // avoid the inline Fulfill/Refund UI that crashes OBS's Twitch chat dock).
-                { "should_redemptions_skip_request_queue", true },
+                // See SyncReward for why this is deliberately false (refundable from Twitch's
+                // dashboard/app, at the cost of a documented older-OBS chat-dock crash risk).
+                { "should_redemptions_skip_request_queue", false },
                 { "is_global_cooldown_enabled", globalCooldown > 0 },
                 { "global_cooldown_seconds", globalCooldown > 0 ? globalCooldown : 1 }
             };
@@ -5252,6 +6330,81 @@ namespace CardPackWidgetApp
             showcase["rewardEnabled"] = isEnabled;
             showcase["rewardPaused"] = isPaused;
             showcase["rewardGlobalCooldown"] = globalCooldown;
+            server.WriteSettingsObject(settings);
+            return settings;
+        }
+
+        public Dictionary<string, object> SyncTournamentReward(string bodyJson)
+        {
+            Dictionary<string, object> body = ParseObject(bodyJson);
+            Dictionary<string, object> twitch = RequireTwitch();
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> tournament = Obj(settings, "tournament");
+            if (tournament.Count == 0) { tournament = new Dictionary<string, object>(); settings["tournament"] = tournament; }
+
+            string title = GetString(body, "title", GetString(tournament, "rewardName", "Turnier starten"));
+            int cost = Math.Max(1, GetInt(body, "cost", 1000));
+            string prompt = GetString(body, "prompt", "");
+            string backgroundColor = GetString(body, "backgroundColor", "");
+            bool isEnabled = GetBool(body, "isEnabled", true);
+            bool isPaused = GetBool(body, "isPaused", false);
+            int globalCooldown = Math.Max(0, GetInt(body, "globalCooldown", 0));
+            bool explicitRewardId = body.ContainsKey("rewardId");
+            string rewardId = GetString(body, "rewardId", "");
+            object[] existingIds = tournament.ContainsKey("rewardIds") && tournament["rewardIds"] is object[] ? (object[])tournament["rewardIds"] : new object[0];
+            if (!explicitRewardId && String.IsNullOrWhiteSpace(rewardId)) rewardId = existingIds.Length > 0 ? Convert.ToString(existingIds[0]) : "";
+
+            var payload = new Dictionary<string, object>
+            {
+                { "title", title },
+                { "cost", cost },
+                { "prompt", prompt },
+                { "is_enabled", isEnabled },
+                { "is_user_input_required", false },
+                // See SyncReward for why this is deliberately false (refundable).
+                { "should_redemptions_skip_request_queue", false },
+                { "is_global_cooldown_enabled", globalCooldown > 0 },
+                { "global_cooldown_seconds", globalCooldown > 0 ? globalCooldown : 1 }
+            };
+            if (!String.IsNullOrWhiteSpace(backgroundColor)) payload["background_color"] = backgroundColor.ToUpperInvariant();
+
+            string baseUrl = "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" +
+                Uri.EscapeDataString(GetString(twitch, "broadcasterId", ""));
+            Dictionary<string, object> result;
+            if (String.IsNullOrWhiteSpace(rewardId))
+            {
+                result = CreateOrAdoptReward(twitch, baseUrl, title, payload, isPaused, ref rewardId);
+            }
+            else
+            {
+                try
+                {
+                    payload["is_paused"] = isPaused;
+                    result = TwitchJson("PATCH", baseUrl + "&id=" + Uri.EscapeDataString(rewardId), GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    if (ex.Message.IndexOf("was not found", StringComparison.OrdinalIgnoreCase) < 0) throw;
+                    payload.Remove("is_paused");
+                    result = CreateOrAdoptReward(twitch, baseUrl, title, payload, isPaused, ref rewardId);
+                }
+            }
+
+            object[] rewards = result.ContainsKey("data") && result["data"] is object[] ? (object[])result["data"] : new object[0];
+            Dictionary<string, object> reward = rewards.Length > 0 && rewards[0] is Dictionary<string, object>
+                ? (Dictionary<string, object>)rewards[0]
+                : new Dictionary<string, object>();
+            string savedId = GetString(reward, "id", rewardId);
+            server.Log("twitch", "info", "Turnier-Belohnung gespeichert. Twitch-Antwort: " + server.Serializer.Serialize(reward));
+
+            tournament["rewardIds"] = new object[] { savedId };
+            tournament["rewardName"] = title;
+            tournament["rewardCost"] = cost;
+            tournament["rewardPrompt"] = prompt;
+            tournament["rewardBackgroundColor"] = backgroundColor;
+            tournament["rewardEnabled"] = isEnabled;
+            tournament["rewardPaused"] = isPaused;
+            tournament["rewardGlobalCooldown"] = globalCooldown;
             server.WriteSettingsObject(settings);
             return settings;
         }
@@ -5306,6 +6459,42 @@ namespace CardPackWidgetApp
                 outRewardId = existingId;
                 return result;
             }
+        }
+
+        // Twitch profile picture for the live ticker (see CompleteQueueItem's "liveticker"
+        // broadcast) - cached per login since it almost never changes and every draw would
+        // otherwise cost an extra Helix round-trip. Empty string (never cached as failure-cached
+        // forever) just means the ticker falls back to no avatar for that entry.
+        private readonly object avatarCacheLock = new object();
+        private readonly Dictionary<string, string> avatarCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        private string GetUserAvatarUrl(string login)
+        {
+            if (String.IsNullOrWhiteSpace(login)) return "";
+            lock (avatarCacheLock)
+            {
+                string cached;
+                if (avatarCache.TryGetValue(login, out cached)) return cached;
+            }
+            try
+            {
+                Dictionary<string, object> twitch = Obj(server.ReadSettingsObject(), "twitch");
+                if (String.IsNullOrWhiteSpace(GetString(twitch, "clientId", "")) || String.IsNullOrWhiteSpace(GetString(twitch, "accessToken", "")))
+                    return "";
+                Dictionary<string, object> result = TwitchGet(
+                    "https://api.twitch.tv/helix/users?login=" + Uri.EscapeDataString(login),
+                    GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""));
+                object[] data = result.ContainsKey("data") && result["data"] is object[] ? (object[])result["data"] : new object[0];
+                string url = "";
+                if (data.Length > 0)
+                {
+                    Dictionary<string, object> user = data[0] as Dictionary<string, object>;
+                    if (user != null) url = GetString(user, "profile_image_url", "");
+                }
+                lock (avatarCacheLock) { avatarCache[login] = url; }
+                return url;
+            }
+            catch { return ""; }
         }
 
         // Looks up a reward we can still manage (created by this or another app using the same
@@ -5635,6 +6824,8 @@ namespace CardPackWidgetApp
     {
         public string Method;
         public string Path;
+        public string Query;
         public string Body;
+        public string UserAgent;
     }
 }

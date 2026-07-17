@@ -1,5 +1,9 @@
-import { addLog, completeQueueItem, connectEventStream, getCollections, getSettings, persistCollectionSnapshot } from "./api.js";
-import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES, weightedBoosterPick, weightedPick } from "./render.js";
+// Asset version (BootId) propagated from this module's own URL (set by the page's bootstrap
+// loader) into the shared-module imports below, so api.js/render.js are always fetched at the
+// same version as this file - OBS/Meld can never mix a fresh page module with stale shared code.
+const __v = new URL(import.meta.url).searchParams.get("v") || String(Date.now());
+const { addLog, announceDraw, completeQueueItem, connectEventStream, getCollections, getSettings, persistCollectionSnapshot } = await import(`./api.js?v=${__v}`);
+const { applyOverlayLayout, applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES, weightedBoosterPick, weightedPick } = await import(`./render.js?v=${__v}`);
 
 const stage = document.querySelector("#stage");
 const status = document.querySelector("#status");
@@ -238,6 +242,10 @@ async function runOpening(request = {}) {
   playSound("reveal");
   await delay(2450);
   scene.classList.add("phase-reveal");
+  // The card (and its collection panel to the right) is now fully visible - this is the moment
+  // the post-draw chat message and live-ticker entry should go out, not several seconds later
+  // once the whole animation finishes.
+  announceDraw(request.eventId, request.drawnCardTitle, request.drawnBoosterTitle);
   // A beat after the card is fully visible, count up from the pre-draw total to the new one.
   await delay(350);
   const bubble = scene.querySelector(".draw-count-bubble");
@@ -277,12 +285,18 @@ function escapeForOverlay(value) {
 async function loadSettings() {
   settings = normalizeSettings(await getSettings());
   applyTheme(settings);
+  applyOverlayLayout(stage, settings.overlayLayout?.draw, "draw");
   document.body.classList.toggle("hide-borders", settings.style?.cardBorders === false);
 }
 
 function bindServerEvents() {
   connectEventStream({
-    draw: (event) => enqueueDraw(event),
+    // The receipt log makes "event arrived but animation died" distinguishable from "event
+    // never arrived" when diagnosing a silent OBS browser source via the Log tab.
+    draw: (event) => {
+      addLog("overlay", "info", "Draw-Event empfangen (eventId=" + (event.eventId || "?") + ")");
+      enqueueDraw(event);
+    },
     settings: () => loadSettings(),
     collections: () => {}
   });

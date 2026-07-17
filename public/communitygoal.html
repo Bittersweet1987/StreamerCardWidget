@@ -3,14 +3,26 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Streamer Card Sammlung</title>
+    <title>Streamer Card Community-Ziel</title>
     <!-- No static CSS/JS tags here: the bootstrap loader at the bottom fetches the server's
          current BootId and loads every asset versioned with it, so OBS/Meld can never serve
          stale cached JS/CSS after an app update (their embedded browser ignores cache headers). -->
   </head>
   <body>
-    <main id="overlay" aria-live="polite">
-      <div id="showcase-stage" class="showcase-stage"></div>
+    <main id="communitygoal-overlay" aria-live="polite">
+      <div id="communitygoal-bar-wrap" class="communitygoal-bar-wrap" hidden>
+        <div class="communitygoal-bar-head">
+          <span class="communitygoal-label" id="communitygoal-label"></span>
+          <span class="communitygoal-count" id="communitygoal-count"></span>
+        </div>
+        <div class="communitygoal-bar-track">
+          <div class="communitygoal-bar-fill" id="communitygoal-bar-fill"></div>
+        </div>
+      </div>
+      <div id="communitygoal-celebration" class="communitygoal-celebration" hidden>
+        <div class="communitygoal-celebration-burst"></div>
+        <p class="communitygoal-celebration-text" id="communitygoal-celebration-text"></p>
+      </div>
       <div id="status" class="status" hidden></div>
     </main>
     <script>
@@ -25,13 +37,13 @@
           const info = await response.json();
           if (info.bootId) v = String(info.bootId);
         } catch {}
-        for (const href of ["/assets/css/overlay.css","/assets/css/collection.css"]) {
+        for (const href of ["/assets/css/overlay.css","/assets/css/communitygoal.css"]) {
           const link = document.createElement("link");
           link.rel = "stylesheet";
           link.href = href + "?v=" + v;
           document.head.appendChild(link);
         }
-        import("/assets/js/collection.js?v=" + v);
+        import("/assets/js/communitygoal.js?v=" + v);
       })();
     </script>
   </body>

@@ -181,6 +181,13 @@ const DEFAULT_MESSAGES = {
     es: "@userName, todavía no tienes cartas.",
     th: "@userName คุณยังไม่มีการ์ดเลย"
   },
+  communityGoalReached: {
+    de: "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch einen Bonus-Booster.",
+    en: "🎉 Community goal reached ([Ziel] draws)! Every participant automatically gets a bonus booster.",
+    fr: "🎉 Objectif communautaire atteint ([Ziel] tirages) ! Tous les participants reçoivent automatiquement un booster bonus.",
+    es: "🎉 ¡Meta comunitaria alcanzada ([Ziel] tiradas)! Todos los participantes reciben automáticamente un sobre extra.",
+    th: "🎉 บรรลุเป้าหมายชุมชนแล้ว ([Ziel] ครั้ง)! ผู้เข้าร่วมทุกคนจะได้รับบูสเตอร์โบนัสอัตโนมัติ"
+  },
   helpPack: {
     de: "zieht ein zufälliges Kartenpack",
     en: "draws a random card pack",
@@ -223,6 +230,76 @@ const DEFAULT_MESSAGES = {
     es: "muestra una clasificación (carta o combates)",
     th: "แสดงอันดับ (การ์ดหรือการดวล)"
   },
+  helpTournamentJoin: {
+    de: "tritt dem laufenden Turnier bei",
+    en: "joins the current tournament signup",
+    fr: "rejoint l'inscription au tournoi en cours",
+    es: "se une a la inscripción del torneo actual",
+    th: "เข้าร่วมการสมัครทัวร์นาเมนต์ปัจจุบัน"
+  },
+  helpTournamentStart: {
+    de: "startet die Turnier-Anmeldephase",
+    en: "starts the tournament signup phase",
+    fr: "démarre la phase d'inscription au tournoi",
+    es: "inicia la fase de inscripción del torneo",
+    th: "เริ่มช่วงเวลาสมัครทัวร์นาเมนต์"
+  },
+  tournamentSignupStart: {
+    de: "🏆 Turnier-Anmeldung gestartet! Tritt mit [Befehl] bei - [Sekunden] Sekunden Zeit, mindestens [Mindestteilnehmer] Teilnehmer nötig.",
+    en: "🏆 Tournament signup started! Join with [Befehl] - [Sekunden] seconds left, at least [Mindestteilnehmer] participants needed.",
+    fr: "🏆 Inscription au tournoi ouverte ! Rejoignez avec [Befehl] - [Sekunden] secondes restantes, [Mindestteilnehmer] participants minimum requis.",
+    es: "🏆 ¡Inscripción al torneo abierta! Únete con [Befehl] - quedan [Sekunden] segundos, se necesitan al menos [Mindestteilnehmer] participantes.",
+    th: "🏆 เปิดรับสมัครทัวร์นาเมนต์แล้ว! เข้าร่วมด้วย [Befehl] - เหลือเวลา [Sekunden] วินาที ต้องการผู้เข้าร่วมอย่างน้อย [Mindestteilnehmer] คน"
+  },
+  tournamentJoinAck: {
+    de: "@userName ist dem Turnier beigetreten! ([Anzahl] Teilnehmer)",
+    en: "@userName joined the tournament! ([Anzahl] participants)",
+    fr: "@userName a rejoint le tournoi ! ([Anzahl] participants)",
+    es: "¡@userName se unió al torneo! ([Anzahl] participantes)",
+    th: "@userName เข้าร่วมทัวร์นาเมนต์แล้ว! (ผู้เข้าร่วม [Anzahl] คน)"
+  },
+  tournamentNotEligible: {
+    de: "@userName, für die Turnier-Teilnahme brauchst du mindestens [Anzahl] verschiedene Karten.",
+    en: "@userName, you need at least [Anzahl] different cards to join the tournament.",
+    fr: "@userName, il te faut au moins [Anzahl] cartes différentes pour participer au tournoi.",
+    es: "@userName, necesitas al menos [Anzahl] cartas diferentes para participar en el torneo.",
+    th: "@userName คุณต้องมีการ์ดที่แตกต่างกันอย่างน้อย [Anzahl] ใบเพื่อเข้าร่วมทัวร์นาเมนต์"
+  },
+  tournamentAlreadyRunning: {
+    de: "@userName, es läuft bereits ein Turnier oder eine Anmeldephase.",
+    en: "@userName, a tournament or signup phase is already running.",
+    fr: "@userName, un tournoi ou une phase d'inscription est déjà en cours.",
+    es: "@userName, ya hay un torneo o una fase de inscripción en curso.",
+    th: "@userName มีทัวร์นาเมนต์หรือช่วงสมัครที่กำลังดำเนินอยู่แล้ว"
+  },
+  tournamentCancel: {
+    de: "Das Turnier wurde abgesagt - nur [Anzahl] von mindestens [Mindestteilnehmer] nötigen Teilnehmern haben sich angemeldet.",
+    en: "The tournament was cancelled - only [Anzahl] of the required [Mindestteilnehmer] participants signed up.",
+    fr: "Le tournoi a été annulé - seulement [Anzahl] des [Mindestteilnehmer] participants requis se sont inscrits.",
+    es: "El torneo fue cancelado - solo se inscribieron [Anzahl] de los [Mindestteilnehmer] participantes necesarios.",
+    th: "ทัวร์นาเมนต์ถูกยกเลิก - มีผู้สมัครเพียง [Anzahl] จาก [Mindestteilnehmer] คนที่ต้องการ"
+  },
+  tournamentRoundAnnounce: {
+    de: "🏆 Turnier [Runde]: [SpielerA] vs [SpielerB]!",
+    en: "🏆 Tournament [Runde]: [SpielerA] vs [SpielerB]!",
+    fr: "🏆 Tournoi [Runde] : [SpielerA] contre [SpielerB] !",
+    es: "🏆 Torneo [Runde]: ¡[SpielerA] contra [SpielerB]!",
+    th: "🏆 ทัวร์นาเมนต์ [Runde]: [SpielerA] พบ [SpielerB]!"
+  },
+  tournamentByeAnnounce: {
+    de: "🏆 Turnier [Runde]: [Spieler] hat ein Freilos und zieht kampflos weiter!",
+    en: "🏆 Tournament [Runde]: [Spieler] gets a bye and advances automatically!",
+    fr: "🏆 Tournoi [Runde] : [Spieler] est exempté et avance automatiquement !",
+    es: "🏆 Torneo [Runde]: ¡[Spieler] tiene un descanso y avanza automáticamente!",
+    th: "🏆 ทัวร์นาเมนต์ [Runde]: [Spieler] ได้บายและผ่านเข้ารอบโดยอัตโนมัติ!"
+  },
+  tournamentWinnerAnnounce: {
+    de: "🏆 @userName gewinnt das Turnier mit [Teilnehmerzahl] Teilnehmern und erhält [Anzahl]x Kartenpack-Ziehung!",
+    en: "🏆 @userName wins the tournament with [Teilnehmerzahl] participants and gets [Anzahl]x pack draws!",
+    fr: "🏆 @userName remporte le tournoi avec [Teilnehmerzahl] participants et reçoit [Anzahl]x tirages de booster !",
+    es: "🏆 ¡@userName gana el torneo con [Teilnehmerzahl] participantes y recibe [Anzahl]x tiradas de sobre!",
+    th: "🏆 @userName ชนะทัวร์นาเมนต์ด้วยผู้เข้าร่วม [Teilnehmerzahl] คน และได้รับการจับสลากแพ็ก [Anzahl] ครั้ง!"
+  },
   autoHelpMessage: {
     de: "📋 Verfügbare Befehle: [Befehle]",
     en: "📋 Available commands: [Befehle]",
@@ -252,11 +329,11 @@ const DEFAULT_MESSAGES = {
     th: "@userName คุณมีการ์ดซ้ำของ [Kartenname] ไม่พอ (คุณมี [Besitz] ใบ ต้องเหลืออย่างน้อย 1 ใบ)"
   },
   dustSuccess: {
-    de: "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Pity-Punkte). Noch [PityRest] Ziehungen bis zur garantierten Seltenheit.",
-    en: "@userName sacrificed [Anzahl]x [Kartenname] (+[Punkte] pity points). [PityRest] more draws until the guaranteed rarity.",
-    fr: "@userName a sacrifié [Anzahl]x [Kartenname] (+[Punkte] points de pitié). Encore [PityRest] tirages avant la rareté garantie.",
-    es: "@userName sacrificó [Anzahl]x [Kartenname] (+[Punkte] puntos de compensación). Faltan [PityRest] tiradas para la rareza garantizada.",
-    th: "@userName สังเวย [Kartenname] จำนวน [Anzahl] ใบ (+[Punkte] แต้มการันตี) เหลืออีก [PityRest] ครั้งจนถึงการันตี"
+    de: "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.",
+    en: "@userName sacrificed [Anzahl]x [Kartenname] (+[Punkte] pity points). [GarantieRest] more draws until the guaranteed rarity.",
+    fr: "@userName a sacrifié [Anzahl]x [Kartenname] (+[Punkte] points de pitié). Encore [GarantieRest] tirages avant la rareté garantie.",
+    es: "@userName sacrificó [Anzahl]x [Kartenname] (+[Punkte] puntos de compensación). Faltan [GarantieRest] tiradas para la rareza garantizada.",
+    th: "@userName สังเวย [Kartenname] จำนวน [Anzahl] ใบ (+[Punkte] แต้มการันตี) เหลืออีก [GarantieRest] ครั้งจนถึงการันตี"
   },
   tradeCardNotFound: {
     de: "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?",
@@ -524,6 +601,8 @@ export function normalizeSettings(settings) {
   };
   settings.obs.sceneName ||= "Streamer Card Overlay";
   settings.obs.sourceName ||= "Streamer Card Widget";
+  // One combined browser source (overlays.html) hosts ALL animations - see setupObsOverlay.
+  settings.obs.combinedSourceName ||= "Streamer Card Overlays";
   settings.meld ||= {
     enabled: false,
     host: "127.0.0.1",
@@ -535,6 +614,8 @@ export function normalizeSettings(settings) {
   settings.meld.tradeSourceName ||= settings.tradeAnimation?.sourceName || "Streamer Card Tausch";
   settings.meld.battleSourceName ||= settings.battleAnimation?.sourceName || "Streamer Card Kampf";
   settings.meld.rankingSourceName ||= settings.ranking?.sourceName || "Streamer Card Ranking";
+  settings.meld.communityGoalSourceName ||= settings.communityGoal?.sourceName || "Streamer Card Community-Ziel";
+  settings.meld.combinedSourceName ||= settings.obs.combinedSourceName || "Streamer Card Overlays";
 
   // Collection showcase: a dedicated channel-point reward that, when redeemed, slides through
   // every active booster showing the redeemer's owned + still-unknown cards in its own OBS source.
@@ -550,6 +631,10 @@ export function normalizeSettings(settings) {
   settings.showcase.rewardEnabled = settings.showcase.rewardEnabled !== false;
   settings.showcase.rewardPaused = settings.showcase.rewardPaused === true;
   settings.showcase.style = settings.showcase.style === "compact" ? "compact" : "detailed";
+  // Lets the overlay slideshow be switched off entirely (channel points AND !collection) while
+  // still sending the chat card-name listing - independent of chatOutputEnabled below, which
+  // controls the listing itself regardless of whether the animation runs.
+  settings.showcase.animationEnabled = settings.showcase.animationEnabled !== false;
 
   // Single global "open a pack" reward, decoupled from any one booster: PickRandomBoosterId()
   // (server-side) always draws from ALL eligible boosters regardless of which reward triggered
@@ -692,6 +777,98 @@ export function normalizeSettings(settings) {
 
   settings.ranking ||= {};
   settings.ranking.sourceName ||= "Streamer Card Ranking";
+
+  // Community goal: shared progress bar across every viewer's draws (any trigger). Runtime
+  // progress (current/reached/participants) lives server-side in data/community-goal.json, not
+  // here - this is just the admin-configurable part.
+  settings.communityGoal ||= {};
+  settings.communityGoal.enabled = settings.communityGoal.enabled === true;
+  settings.communityGoal.target = Number(settings.communityGoal.target) > 0 ? Math.round(Number(settings.communityGoal.target)) : 500;
+  settings.communityGoal.celebrationMessage ||= pickDefault(settings.language, "communityGoalReached");
+  settings.communityGoal.sourceName ||= "Streamer Card Community-Ziel";
+
+  // Tournament Mode: signup via chat command and/or channel points and/or the admin "Turnier
+  // starten" button; a single bracket resolves automatically once the signup window closes (see
+  // ResolveTournamentSignup server-side). No cards are at risk between opponents - the champion
+  // wins configurable bonus pack draws instead.
+  settings.tournament ||= {};
+  settings.tournament.enabled = settings.tournament.enabled === true;
+  settings.tournament.minParticipants = Number(settings.tournament.minParticipants) >= 2 ? Math.round(Number(settings.tournament.minParticipants)) : 3;
+  settings.tournament.signupSeconds = Number(settings.tournament.signupSeconds) > 0 ? Math.round(Number(settings.tournament.signupSeconds)) : 90;
+  settings.tournament.lineupSize = Number(settings.tournament.lineupSize) > 0 ? Math.round(Number(settings.tournament.lineupSize)) : 3;
+  settings.tournament.winnerDraws = Number(settings.tournament.winnerDraws) > 0 ? Math.round(Number(settings.tournament.winnerDraws)) : 1;
+  // Two independent reward layers, combinable: every round's winner can get a pack draw right
+  // after their match (perRoundWinnerEnabled), and/or the tournament champion gets winnerDraws
+  // extra draws at the very end. With both on, the champion gets a per-round draw for winning
+  // the final PLUS the bonus winnerDraws on top.
+  settings.tournament.perRoundWinnerEnabled = settings.tournament.perRoundWinnerEnabled === true;
+  settings.tournament.championDrawsEnabled = settings.tournament.championDrawsEnabled !== false;
+  settings.tournament.announceJoins = settings.tournament.announceJoins !== false;
+  settings.tournament.signupStartMessage ||= pickDefault(settings.language, "tournamentSignupStart");
+  settings.tournament.joinAckMessage ||= pickDefault(settings.language, "tournamentJoinAck");
+  settings.tournament.notEligibleMessage ||= pickDefault(settings.language, "tournamentNotEligible");
+  settings.tournament.alreadyRunningMessage ||= pickDefault(settings.language, "tournamentAlreadyRunning");
+  settings.tournament.cancelMessage ||= pickDefault(settings.language, "tournamentCancel");
+  settings.tournament.roundAnnounceMessage ||= pickDefault(settings.language, "tournamentRoundAnnounce");
+  settings.tournament.byeAnnounceMessage ||= pickDefault(settings.language, "tournamentByeAnnounce");
+  settings.tournament.winnerAnnounceMessage ||= pickDefault(settings.language, "tournamentWinnerAnnounce");
+  settings.tournament.rewardName ||= "Turnier starten";
+  settings.tournament.rewardCost = Number(settings.tournament.rewardCost) > 0 ? Number(settings.tournament.rewardCost) : 1000;
+  settings.tournament.rewardPrompt ||= "";
+  settings.tournament.rewardBackgroundColor ||= "#9147ff";
+  settings.tournament.rewardEnabled = settings.tournament.rewardEnabled !== false;
+  settings.tournament.rewardPaused = settings.tournament.rewardPaused === true;
+  settings.tournament.rewardGlobalCooldown = Number(settings.tournament.rewardGlobalCooldown) >= 0 ? Number(settings.tournament.rewardGlobalCooldown) : 0;
+  settings.tournament.rewardIds ||= [];
+
+  // Per-animation position/size within the combined overlay canvas (always 1920x1080,
+  // regardless of the actual OBS/Meld source resolution - scaling to the real canvas is the
+  // browser source's job, same as everything else in overlays.html). marginLeft/marginTop mark
+  // the top-left corner of the animation's natural-size content box (OVERLAY_LAYOUT_NATURAL_SIZES
+  // x scale%); marginRight/marginBottom are kept as their mirror for display - see
+  // applyOverlayLayout below. Default = centered at 100%, i.e. pixel-identical to before this
+  // setting existed.
+  settings.overlayLayout ||= {};
+  for (const key of ["draw", "collection", "trade", "battle", "ranking", "communityGoal", "liveTicker"]) {
+    const layout = settings.overlayLayout[key] || {};
+    const scale = Number(layout.scale) > 0 ? Math.min(100, Math.max(10, Number(layout.scale))) : 100;
+    const { w: boxW, h: boxH } = overlayLayoutBoxSize(key, scale);
+    // On first run (no stored margin yet) default to centered, matching how every animation
+    // rendered before this setting existed - not the top-left corner marginLeft:0 would imply.
+    // The live ticker is the one exception: a full-width banner centered on screen would sit on
+    // top of the card animation, so it defaults to horizontally centered along the bottom edge.
+    const defaultLeft = Math.max(0, (OVERLAY_LAYOUT_CANVAS_W - boxW) / 2);
+    const defaultTop = key === "liveTicker" ? Math.max(0, OVERLAY_LAYOUT_CANVAS_H - boxH - 40) : Math.max(0, (OVERLAY_LAYOUT_CANVAS_H - boxH) / 2);
+    const marginLeft = typeof layout.marginLeft === "number" ? Math.max(0, layout.marginLeft) : defaultLeft;
+    const marginTop = typeof layout.marginTop === "number" ? Math.max(0, layout.marginTop) : defaultTop;
+    settings.overlayLayout[key] = {
+      marginTop,
+      marginLeft,
+      marginRight: Math.max(0, OVERLAY_LAYOUT_CANVAS_W - marginLeft - boxW),
+      marginBottom: Math.max(0, OVERLAY_LAYOUT_CANVAS_H - marginTop - boxH),
+      scale
+    };
+  }
+
+  // Live ticker: a scrolling news-ticker banner listing the last few draws across all viewers,
+  // independent of the pack-opening queue/animation (so it isn't throttled by the sequential
+  // animation gap). speed is px/second the banner scrolls at, not a per-entry display timer.
+  settings.liveTicker ||= {};
+  settings.liveTicker.enabled = settings.liveTicker.enabled !== false;
+  settings.liveTicker.maxEntries = Number(settings.liveTicker.maxEntries) > 0 ? Math.min(15, Math.max(2, Math.round(Number(settings.liveTicker.maxEntries)))) : 8;
+  settings.liveTicker.speed = Number(settings.liveTicker.speed) > 0 ? Math.min(400, Math.max(20, Number(settings.liveTicker.speed))) : 120;
+
+  settings.chatCommands.tournamentJoin ||= {};
+  settings.chatCommands.tournamentJoin.enabled = settings.chatCommands.tournamentJoin.enabled !== false;
+  settings.chatCommands.tournamentJoin.prefix ||= "!";
+  settings.chatCommands.tournamentJoin.command ||= "turnier";
+  settings.chatCommands.tournamentJoin.helpText ||= pickDefault(settings.language, "helpTournamentJoin");
+
+  settings.chatCommands.tournamentStart ||= {};
+  settings.chatCommands.tournamentStart.enabled = settings.chatCommands.tournamentStart.enabled !== false;
+  settings.chatCommands.tournamentStart.prefix ||= "!";
+  settings.chatCommands.tournamentStart.command ||= "turnierstart";
+  settings.chatCommands.tournamentStart.helpText ||= pickDefault(settings.language, "helpTournamentStart");
 
   // Automatic "which commands are available" chat message - see CheckAutoHelp (server-side) for
   // the trigger logic (fires after N minutes and/or N chat messages, whichever comes first).
@@ -883,6 +1060,73 @@ export function customThemeCss(ct = {}) {
 }
 
 const CARD_VARS = ["--card-bg", "--card-pattern", "--card-pattern-opacity", "--card-art-bg"];
+
+// Applies a per-animation position/scale setting (see settings.overlayLayout in
+// normalizeSettings) to that animation's own root stage element. The element keeps whatever
+// internal centering it already has (flexbox etc.) - shrinking its box via inset margins just
+// moves where that centering point ends up, and the scale transform shrinks/grows the whole
+// thing around its own center. Called once after every settings load in each overlay page (draw/
+// collection/trade/battle/ranking/communitygoal), so a change takes effect on the next "settings"
+// SSE broadcast without needing a page reload.
+// Approximate on-screen footprint of each animation's actual content at the 1920x1080 reference
+// canvas (not the full-bleed stage element, which always spans the whole viewport) - derived from
+// the real CSS (card width/aspect-ratio, scene gaps, etc.) so the admin position/scale editor can
+// show a box whose size is proportionally honest instead of an arbitrary guess. Purely a display
+// aid for the editor; applyOverlayLayout below never stretches to these sizes.
+export const OVERLAY_LAYOUT_NATURAL_SIZES = {
+  // Card (320px) plus the collection-summary panel to its right (.rarity-summary, ~176px) and
+  // the gap between them - not just the bare card, otherwise the editor's box looked far too
+  // narrow next to what actually renders.
+  draw: { w: 660, h: 460 },
+  trade: { w: 720, h: 460 },
+  battle: { w: 760, h: 520 },
+  collection: { w: 1100, h: 780 },
+  ranking: { w: 1000, h: 600 },
+  communityGoal: { w: 560, h: 100 },
+  // A news-ticker banner spanning the full canvas width at all times - lockWidth means "scale"
+  // never touches its width, only its height (and, in liveticker.js, font size). See
+  // applyOverlayLayout and admin.js's overlayLayoutBoxSize, which both honor this flag.
+  liveTicker: { w: 1920, h: 90, lockWidth: true }
+};
+
+const OVERLAY_LAYOUT_CANVAS_W = 1920;
+const OVERLAY_LAYOUT_CANVAS_H = 1080;
+
+// Shared by applyOverlayLayout below and admin.js's editor so both agree on what a given
+// key's box looks like at a given scale - lockWidth keys (currently just liveTicker) keep their
+// natural width regardless of scale, only their height shrinks/grows with it.
+export function overlayLayoutBoxSize(key, scale) {
+  const natural = OVERLAY_LAYOUT_NATURAL_SIZES[key] || { w: 200, h: 200 };
+  const s = Number(scale) > 0 ? scale : 100;
+  return {
+    w: natural.lockWidth ? natural.w : natural.w * (s / 100),
+    h: natural.h * (s / 100)
+  };
+}
+
+// The stage element (#stage etc.) is always position:fixed;inset:0 (full viewport) via its own
+// CSS, with the actual animation content centered inside it by flexbox - so resizing/stretching
+// the stage itself would never resize the content. Position and scale are applied as a single
+// rigid transform instead, computed from the same natural content size and margins the admin
+// editor's box-and-dot preview uses: marginLeft/marginTop mark where the content's box should sit
+// (its size = natural size x scale), and that box's center becomes the translate target. For
+// lockWidth keys (the live ticker), the transform never scales - its actual height and font size
+// are set directly by the caller instead, so the banner never gets visually stretched/squished.
+export function applyOverlayLayout(el, layout, key) {
+  if (!el || !layout) return;
+  const scale = Number(layout.scale) > 0 ? layout.scale : 100;
+  const natural = OVERLAY_LAYOUT_NATURAL_SIZES[key] || { w: 0, h: 0 };
+  const { w: boxW, h: boxH } = overlayLayoutBoxSize(key, scale);
+  const centerX = (layout.marginLeft || 0) + boxW / 2;
+  const centerY = (layout.marginTop || 0) + boxH / 2;
+  const dx = centerX - OVERLAY_LAYOUT_CANVAS_W / 2;
+  const dy = centerY - OVERLAY_LAYOUT_CANVAS_H / 2;
+  const parts = [];
+  if (dx || dy) parts.push(`translate(${dx}px, ${dy}px)`);
+  if (!natural.lockWidth && scale !== 100) parts.push(`scale(${scale / 100})`);
+  el.style.transform = parts.join(" ");
+  el.style.transformOrigin = "center center";
+}
 
 export function applyTheme(settings) {
   const style = settings.style || {};

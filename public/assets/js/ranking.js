@@ -1,5 +1,9 @@
-import { addLog, completeQueueItem, connectEventStream, getSettings } from "./api.js";
-import { applyTheme, cardMarkup, normalizeSettings } from "./render.js";
+// Asset version (BootId) propagated from this module's own URL (set by the page's bootstrap
+// loader) into the shared-module imports below, so api.js/render.js are always fetched at the
+// same version as this file - OBS/Meld can never mix a fresh page module with stale shared code.
+const __v = new URL(import.meta.url).searchParams.get("v") || String(Date.now());
+const { addLog, completeQueueItem, connectEventStream, getSettings } = await import(`./api.js?v=${__v}`);
+const { applyOverlayLayout, applyTheme, cardMarkup, normalizeSettings } = await import(`./render.js?v=${__v}`);
 
 const stage = document.querySelector("#ranking-stage");
 const status = document.querySelector("#status");
@@ -50,6 +54,7 @@ async function runQueue() {
     try {
       if (event.type === "battle") await playBattleRanking(event);
       else if (event.type === "trade") await playTradeRanking(event);
+      else if (event.type === "tournament") await playTournamentRanking(event);
       else await playCardRanking(event);
     } catch (error) {
       addLog("ranking", "error", `Ranking-Anzeige fehlgeschlagen: ${error.message}`);
@@ -120,6 +125,45 @@ async function playTradeRanking(event) {
   completeQueueItem(event.eventId);
 }
 
+function tournamentPhaseTitles() {
+  const en = settings?.language === "en";
+  return {
+    wins: en ? "Most tournament wins" : "Meiste Turniersiege",
+    participations: en ? "Most tournament participations" : "Meiste Turnierteilnahmen"
+  };
+}
+
+async function playTournamentRanking(event) {
+  const lists = event.lists || {};
+  const seconds = Math.max(2, Number(event.displaySeconds) || 8);
+  const titles = tournamentPhaseTitles();
+  const phases = ["participations", "wins"]
+    .map((key) => ({ key, title: titles[key], entries: lists[key] || [] }))
+    .filter((phase) => phase.entries.length > 0);
+  if (!phases.length) { completeQueueItem(event.eventId); return; } // no recorded tournaments yet
+
+  const scene = document.createElement("div");
+  scene.className = "ranking-scene is-tournament";
+  stage.append(scene);
+
+  for (const phase of phases) {
+    scene.innerHTML = `
+      <div class="ranking-list-pane">
+        <div class="ranking-heading">
+          <span class="ranking-eyebrow">${settings?.language === "en" ? "Tournament ranking" : "Turnier-Ranking"}</span>
+          <h2>${escapeForOverlay(phase.title)}</h2>
+        </div>
+        ${listMarkup(phase.entries)}
+      </div>
+    `;
+    await delay(seconds * 1000);
+  }
+  scene.classList.add("is-out");
+  await delay(450);
+  scene.remove();
+  completeQueueItem(event.eventId);
+}
+
 async function playBattleRanking(event) {
   const lists = event.lists || {};
   const seconds = Math.max(2, Number(event.displaySeconds) || 8);
@@ -154,6 +198,7 @@ async function playBattleRanking(event) {
 async function loadSettings() {
   settings = normalizeSettings(await getSettings());
   applyTheme(settings);
+  applyOverlayLayout(stage, settings.overlayLayout?.ranking, "ranking");
 }
 
 function bindServerEvents() {

@@ -1,5 +1,9 @@
-import { completeQueueItem, connectEventStream, getCollections, getSettings } from "./api.js";
-import { applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES } from "./render.js";
+// Asset version (BootId) propagated from this module's own URL (set by the page's bootstrap
+// loader) into the shared-module imports below, so api.js/render.js are always fetched at the
+// same version as this file - OBS/Meld can never mix a fresh page module with stale shared code.
+const __v = new URL(import.meta.url).searchParams.get("v") || String(Date.now());
+const { completeQueueItem, connectEventStream, getCollections, getSettings } = await import(`./api.js?v=${__v}`);
+const { applyOverlayLayout, applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES } = await import(`./render.js?v=${__v}`);
 
 const stage = document.querySelector("#showcase-stage");
 const status = document.querySelector("#status");
@@ -264,6 +268,7 @@ function escapeForOverlay(value) {
 async function loadSettings() {
   settings = normalizeSettings(await getSettings());
   applyTheme(settings);
+  applyOverlayLayout(stage, settings.overlayLayout?.collection, "collection");
   document.body.classList.toggle("hide-borders", settings.style?.cardBorders === false);
   // Keep the collection label string referenced for parity with the main overlay.
   void overlayText("collectionLabel", settings.language);

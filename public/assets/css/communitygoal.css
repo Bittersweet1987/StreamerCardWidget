@@ -1,0 +1,105 @@
+#communitygoal-overlay {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.communitygoal-bar-wrap {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) scale(var(--widget-scale, 1));
+  width: min(560px, 80vw);
+  padding: 14px 22px;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(150deg, color-mix(in srgb, var(--pack-accent, #ff78bb) 32%, rgba(20, 14, 34, .88)), rgba(16, 11, 28, .9));
+  box-shadow: 0 20px 50px rgba(15, 8, 35, .45), inset 0 0 0 2px rgba(255, 255, 255, .08);
+}
+
+.communitygoal-bar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.communitygoal-label {
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.communitygoal-count {
+  font-weight: 800;
+  font-size: .95rem;
+  color: rgba(255, 255, 255, .85);
+}
+
+.communitygoal-bar-track {
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  overflow: hidden;
+}
+
+.communitygoal-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff78bb, #6a55ff);
+  transition: width .6s ease;
+}
+
+.communitygoal-celebration {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.communitygoal-celebration-burst {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255, 214, 102, .35), transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(255, 120, 187, .35), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(106, 85, 255, .35), transparent 45%);
+  opacity: 0;
+  transition: opacity .4s ease;
+}
+
+.communitygoal-celebration.is-playing .communitygoal-celebration-burst {
+  opacity: 1;
+  animation: communitygoal-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes communitygoal-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.communitygoal-celebration-text {
+  position: relative;
+  max-width: 80vw;
+  padding: 22px 34px;
+  border-radius: 22px;
+  background: linear-gradient(150deg, #ff78bb, #6a55ff);
+  color: #fff;
+  font-size: 1.8rem;
+  font-weight: 900;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, .4);
+  box-shadow: 0 34px 90px rgba(15, 8, 35, .55);
+  opacity: 0;
+  transform: scale(.85);
+  transition: opacity .4s ease, transform .4s cubic-bezier(.2, .8, .22, 1);
+}
+
+.communitygoal-celebration.is-playing .communitygoal-celebration-text {
+  opacity: 1;
+  transform: scale(1);
+}

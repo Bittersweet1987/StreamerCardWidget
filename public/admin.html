@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260716-changelogall1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1784294738">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -77,6 +77,7 @@
           <button class="nav-button" data-tab="channelpoints" data-i18n="nav-channelpoints">Kanalpunkte</button>
           <button class="nav-button" data-tab="chatcommands" data-i18n="nav-chatcommands">Chat Befehle</button>
           <button class="nav-button" data-tab="design" data-i18n="nav-design">Einstellungen</button>
+          <button class="nav-button" data-tab="animations" data-i18n="nav-animations">Animationen</button>
           <button class="nav-button" data-tab="themes" data-i18n="nav-themes">Themes</button>
           <button class="nav-button" data-tab="cards" data-i18n="nav-cards">Karten</button>
           <button class="nav-button" data-tab="booster" data-i18n="nav-booster">Booster</button>
@@ -123,6 +124,7 @@
             <h1 data-i18n="topbar-title">Kartenpacks</h1>
           </div>
           <div class="topbar-actions">
+            <span class="save-indicator" id="save-indicator" hidden></span>
             <button class="primary-button" id="save-settings" type="button" data-i18n="btn-save">Speichern</button>
           </div>
         </header>
@@ -204,10 +206,18 @@
 
         <section class="tab-panel" data-panel="trigger">
           <div class="connection-layout">
-            <section class="tool-panel">
+            <nav class="cc-jump-nav">
+              <a href="#jn-verbindung-trigger">Verbindung</a>
+              <a href="#jn-bot-verbindung-chat-trigger">Bot-Verbindung (Chat)</a>
+              <a href="#jn-websocket-obs-trigger">OBS WebSocket</a>
+              <a href="#jn-szene-and-quellen-obs-trigger">OBS Szene &amp; Quellen</a>
+              <a href="#jn-websocket-meld-trigger">Meld WebSocket</a>
+              <a href="#jn-szene-and-quellen-meld-trigger">Meld Szene &amp; Quellen</a>
+            </nav>
+            <section class="tool-panel" id="jn-verbindung-trigger">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">Twitch</p>
+                  <p class="eyebrow" data-i18n="eyebrow-twitch">Twitch</p>
                   <h2 data-i18n="nav-trigger">Verbindung</h2>
                 </div>
               </div>
@@ -219,10 +229,10 @@
               </div>
             </section>
 
-            <section class="tool-panel">
+            <section class="tool-panel" id="jn-bot-verbindung-chat-trigger">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">Twitch</p>
+                  <p class="eyebrow" data-i18n="eyebrow-twitch">Twitch</p>
                   <h2 data-i18n="bot-trigger-title">Bot-Verbindung (Chat)</h2>
                 </div>
               </div>
@@ -235,11 +245,11 @@
               </div>
             </section>
 
-            <section class="tool-panel obs-panel">
+            <section class="tool-panel obs-panel" id="jn-websocket-obs-trigger">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">OBS</p>
-                  <h2>WebSocket</h2>
+                  <p class="eyebrow" data-i18n="eyebrow-obs">OBS</p>
+                  <h2 data-i18n="obs-websocket-title">WebSocket</h2>
                 </div>
                 <button class="ghost-button" id="obs-info-toggle" type="button" data-i18n="btn-obs-info">Hilfe anzeigen</button>
               </div>
@@ -261,31 +271,27 @@
               </div>
             </section>
 
-            <section class="tool-panel obs-scenes-panel">
+            <section class="tool-panel obs-scenes-panel" id="jn-szene-and-quellen-obs-trigger">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">OBS</p>
+                  <p class="eyebrow" data-i18n="eyebrow-obs">OBS</p>
                   <h2 data-i18n="obs-scenes-title">Szene &amp; Quellen</h2>
                 </div>
               </div>
               <div class="form-grid">
                 <label class="full-row" data-i18n="label-obs-scene">Szenenname<input id="obs-scene-name" type="text"></label>
-                <label class="full-row" data-i18n="label-obs-source">Quellenname Booster<input id="obs-source-name" type="text"></label>
-                <label class="full-row" data-i18n="label-obs-collection-source">Quellenname Kartensammlung<input id="obs-collection-source-name" type="text"></label>
-                <label class="full-row" data-i18n="label-obs-trade-source">Quellenname Tausch-Animation<input id="obs-trade-source-name" type="text"></label>
-                <label class="full-row" data-i18n="label-obs-battle-source">Quellenname Kampf-Animation<input id="obs-battle-source-name" type="text"></label>
-                <label class="full-row" data-i18n="label-obs-ranking-source">Quellenname Ranking<input id="obs-ranking-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-obs-combined-source">Quellenname (alle Animationen)<input id="obs-combined-source-name" type="text"></label>
               </div>
               <div class="button-row">
                 <button class="primary-button" id="setup-obs" type="button" data-i18n="btn-setup-obs">OBS Szene / Quellen erstellen / aktualisieren</button>
               </div>
             </section>
 
-            <section class="tool-panel meld-panel">
+            <section class="tool-panel meld-panel" id="jn-websocket-meld-trigger">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">Meld Studio</p>
-                  <h2>WebSocket</h2>
+                  <p class="eyebrow" data-i18n="eyebrow-meld">Meld Studio</p>
+                  <h2 data-i18n="meld-websocket-title">WebSocket</h2>
                 </div>
                 <button class="ghost-button" id="meld-info-toggle" type="button" data-i18n="btn-meld-info">Hilfe anzeigen</button>
               </div>
@@ -306,21 +312,17 @@
               </div>
             </section>
 
-            <section class="tool-panel meld-scenes-panel">
+            <section class="tool-panel meld-scenes-panel" id="jn-szene-and-quellen-meld-trigger">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">Meld Studio</p>
+                  <p class="eyebrow" data-i18n="eyebrow-meld">Meld Studio</p>
                   <h2 data-i18n="meld-scenes-title">Szene &amp; Quellen</h2>
                 </div>
               </div>
               <p class="hint" data-i18n="meld-scenes-hint">Unabhängig von OBS: lege hier die Szenen- und Quellennamen fest, die in Meld Studio verwendet werden.</p>
               <div class="form-grid">
                 <label class="full-row" data-i18n="label-meld-scene">Szenenname<input id="meld-scene-name" type="text"></label>
-                <label class="full-row" data-i18n="label-meld-source">Quellenname Booster<input id="meld-source-name" type="text"></label>
-                <label class="full-row" data-i18n="label-meld-collection-source">Quellenname Kartensammlung<input id="meld-collection-source-name" type="text"></label>
-                <label class="full-row" data-i18n="label-meld-trade-source">Quellenname Tausch-Animation<input id="meld-trade-source-name" type="text"></label>
-                <label class="full-row" data-i18n="label-meld-battle-source">Quellenname Kampf-Animation<input id="meld-battle-source-name" type="text"></label>
-                <label class="full-row" data-i18n="label-meld-ranking-source">Quellenname Ranking<input id="meld-ranking-source-name" type="text"></label>
+                <label class="full-row" data-i18n="label-meld-combined-source">Quellenname (alle Animationen)<input id="meld-combined-source-name" type="text"></label>
               </div>
               <div class="button-row">
                 <button class="primary-button" id="setup-meld" type="button" data-i18n="btn-setup-meld">Meld Szene / Quellen aktualisieren</button>
@@ -330,6 +332,11 @@
         </section>
 
         <section class="tab-panel" data-panel="channelpoints">
+          <nav class="cc-jump-nav">
+            <a href="#jn-cp-draw" data-i18n="draw-reward-title">Kartenpack-Belohnung</a>
+            <a href="#jn-cp-showcase" data-i18n="showcase-title">Sammlungs-Showcase</a>
+            <a href="#jn-cp-tournament" data-i18n="tournament-reward-title">Turnier-Belohnung</a>
+          </nav>
           <section class="tool-panel channel-points-panel">
             <div class="section-heading">
               <div>
@@ -338,7 +345,7 @@
               </div>
             </div>
 
-            <article class="reward-entry">
+            <article class="reward-entry" id="jn-cp-draw">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow" data-i18n="draw-reward-eyebrow">Kartenpack</p>
@@ -384,7 +391,7 @@
               <div class="status-line" id="reward-status" hidden></div>
             </article>
 
-            <article class="reward-entry showcase-entry">
+            <article class="reward-entry showcase-entry" id="jn-cp-showcase">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow" data-i18n="showcase-eyebrow">Sammlung</p>
@@ -417,6 +424,38 @@
               </div>
               <div class="status-line" id="showcase-status" hidden></div>
             </article>
+
+            <article class="reward-entry tournament-entry" id="jn-cp-tournament">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="tournament-reward-eyebrow">Turnier</p>
+                  <h3 data-i18n="tournament-reward-title">Turnier-Belohnung</h3>
+                </div>
+              </div>
+              <div class="info-box">
+                <p data-i18n="tournament-reward-info-text">Löst ein Zuschauer diese Belohnung ein, startet die Turnier-Anmeldephase (siehe Einstellungen → Turnier-Modus für Regeln wie Mindestteilnehmerzahl und Anmeldezeit).</p>
+              </div>
+              <label class="switch-row">
+                <input id="tournament-reward-enabled" type="checkbox">
+                <span data-i18n="label-reward-enabled">Aktiviert</span>
+              </label>
+              <label class="switch-row compact-switch">
+                <input id="tournament-reward-paused" type="checkbox">
+                <span data-i18n="label-reward-paused">Pausiert</span>
+              </label>
+              <div class="form-grid">
+                <label data-i18n="label-showcase-reward-title">Reward-Titel<input id="tournament-reward-title" type="text"></label>
+                <label data-i18n="label-showcase-reward-cost">Kosten<input id="tournament-reward-cost" type="number" min="1" step="1"></label>
+                <label data-i18n="label-showcase-cooldown">Globaler Cooldown (Sek.)<input id="tournament-reward-cooldown" type="number" min="0" step="1"></label>
+                <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="tournament-reward-bg-color" type="color"></label>
+                <label class="full-row" data-i18n="label-reward-prompt">Beschreibung<input id="tournament-reward-prompt" type="text"></label>
+              </div>
+              <div class="button-row">
+                <button class="primary-button" id="tournament-reward-sync" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
+                <button class="danger-button" id="tournament-reward-delete" type="button" data-i18n="btn-delete-reward">Löschen</button>
+              </div>
+              <div class="status-line" id="tournament-reward-status" hidden></div>
+            </article>
           </section>
         </section>
 
@@ -444,6 +483,8 @@
               <a href="#cc-section-battleyes" data-i18n="cc-battleyes-title">Kampf-Annahme-Befehl</a>
               <a href="#cc-section-battleno" data-i18n="cc-battleno-title">Kampf-Ablehnungs-Befehl</a>
               <a href="#cc-section-ranking" data-i18n="cc-ranking-title">Ranking-Befehl</a>
+              <a href="#jn-cc-tournamentjoin" data-i18n="cc-tournamentjoin-title">Turnier-Beitritt</a>
+              <a href="#jn-cc-tournamentstart" data-i18n="cc-tournamentstart-title">Turnier-Start (Chat)</a>
               <a href="#cc-section-autohelp" data-i18n="cc-autohelp-title">Automatische Hilfe-Nachricht</a>
             </nav>
 
@@ -612,7 +653,7 @@
             <article class="reward-entry command-card" id="cc-section-dust">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Pity</p>
+                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
                   <h3 data-i18n="cc-dust-title">Dust-Befehl</h3>
                 </div>
                 <label class="switch-row compact-switch">
@@ -628,7 +669,7 @@
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-dust-command" type="text"></label>
                   <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dust-helptext" type="text"></label>
                 </div>
-                <p class="hint" data-i18n="cc-dust-hint">Verwandelt doppelt besessene Karten in Pity-Punkte: "!dust Kartenname Anzahl". Wie viele Punkte eine Karte je nach Seltenheit bringt, legst du unter Einstellungen → Pity-System fest. Mindestens 1 Exemplar bleibt dem Viewer immer erhalten.</p>
+                <p class="hint" data-i18n="cc-dust-hint">Verwandelt doppelt besessene Karten in Garantie-Punkte: "!dust Kartenname Anzahl". Wie viele Punkte eine Karte je nach Seltenheit bringt, legst du unter Einstellungen → Garantie-System fest. Mindestens 1 Exemplar bleibt dem Viewer immer erhalten.</p>
               </div>
 
               <div class="field-group">
@@ -676,7 +717,7 @@
                       <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
                       <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
                       <button class="var-chip" type="button" data-insert="[Punkte]">[Punkte]</button>
-                      <button class="var-chip" type="button" data-insert="[PityRest]">[PityRest]</button>
+                      <button class="var-chip" type="button" data-insert="[GarantieRest]">[GarantieRest]</button>
                     </div>
                   </div>
                   <textarea id="cc-dust-success-message" rows="2"></textarea>
@@ -1146,15 +1187,69 @@
                   <label data-i18n="label-cc-ranking-seconds">Anzeigedauer (Sek.)<input id="cc-ranking-seconds" type="number" min="2" step="1"></label>
                   <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-ranking-helptext" type="text"></label>
                 </div>
-                <p class="hint">Nutzung im Chat: <code>!ranking [Kartenname]</code>, <code>!ranking battle</code> oder <code>!ranking tausch</code></p>
+                <p class="hint">Nutzung im Chat: <code>!ranking [Kartenname]</code>, <code>!ranking battle</code>, <code>!ranking turnier</code> oder <code>!ranking tausch</code></p>
                 <p class="hint" data-i18n="cc-ranking-hint">Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle" wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „tausch" erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.</p>
+              </div>
+            </article>
+
+            <article class="cc-entry" id="jn-cc-tournamentjoin">
+              <header class="cc-entry-header">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-tournamentjoin-eyebrow">Turnier</p>
+                  <h3 data-i18n="cc-tournamentjoin-title">Turnier-Beitritt</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-tournamentjoin-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tournamentjoin-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tournamentjoin-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-tournamentjoin-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-tournamentjoin-hint">Mit diesem Befehl treten Zuschauer während einer laufenden Anmeldephase dem Turnier bei. Wer nicht genug verschiedene Karten besitzt (siehe Einstellungen → Turnier-Modus), bekommt eine Hinweis-Nachricht statt beizutreten.</p>
+              </div>
+            </article>
+
+            <article class="cc-entry" id="jn-cc-tournamentstart">
+              <header class="cc-entry-header">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-tournamentstart-eyebrow">Turnier</p>
+                  <h3 data-i18n="cc-tournamentstart-title">Turnier-Start (Chat)</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-tournamentstart-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tournamentstart-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tournamentstart-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-tournamentstart-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-tournamentstart-hint">Optionaler Chat-Befehl, um die Turnier-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel.</p>
               </div>
             </article>
           </section>
         </section>
 
         <section class="tab-panel" data-panel="design">
-          <section class="tool-panel">
+          <nav class="cc-jump-nav">
+              <a href="#jn-farben-und-anzeige-design">Farben und Anzeige</a>
+              <a href="#jn-sounds-design">Sounds</a>
+              <a href="#jn-rahmenfarben-je-raritaet-design">Rahmenfarben je Rarität</a>
+              <a href="#jn-gewichtung-je-raritaet-design">Gewichtung je Rarität</a>
+              <a href="#jn-pity-system-design" data-i18n="pity-title">Garantie-System</a>
+              <a href="#jn-kampfstaerke-je-seltenheit-design">Kampfstärke je Seltenheit</a>
+            </nav>
+            <section class="tool-panel" id="jn-farben-und-anzeige-design">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Look</p>
@@ -1187,79 +1282,7 @@
             </div>
           </section>
 
-          <section class="tool-panel">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow" data-i18n="rarity-colors-eyebrow">Karten</p>
-                <h2 data-i18n="rarity-colors-title">Rahmenfarben je Rarität</h2>
-              </div>
-              <button class="danger-button" id="reset-rarity-colors" type="button" data-i18n="btn-reset-rarity-colors">Auf Standard zurücksetzen</button>
-            </div>
-            <div class="form-grid">
-              <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-color-common" type="color" data-rarity-color="common"></label>
-              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="rarity-color-uncommon" type="color" data-rarity-color="uncommon"></label>
-              <label data-i18n="rarity-rare">Selten<input id="rarity-color-rare" type="color" data-rarity-color="rare"></label>
-              <label data-i18n="rarity-epic">Episch<input id="rarity-color-epic" type="color" data-rarity-color="epic"></label>
-              <label data-i18n="rarity-legendary">Legendär<input id="rarity-color-legendary" type="color" data-rarity-color="legendary"></label>
-              <label data-i18n="rarity-holo">Holo<input id="rarity-color-holo" type="color" data-rarity-color="holo"></label>
-            </div>
-          </section>
-
-          <section class="tool-panel">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow" data-i18n="rarity-weights-eyebrow">Karten</p>
-                <h2 data-i18n="rarity-weights-title">Gewichtung je Rarität</h2>
-              </div>
-              <button class="danger-button" id="reset-rarity-weights" type="button" data-i18n="btn-reset-rarity-weights">Auf Standard zurücksetzen</button>
-            </div>
-            <p class="hint" data-i18n="rarity-weights-hint">Höhere Werte werden häufiger gezogen.</p>
-            <div class="form-grid">
-              <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-weight-common" type="number" min="0" step="1" data-rarity-weight="common"></label>
-              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="rarity-weight-uncommon" type="number" min="0" step="1" data-rarity-weight="uncommon"></label>
-              <label data-i18n="rarity-rare">Selten<input id="rarity-weight-rare" type="number" min="0" step="1" data-rarity-weight="rare"></label>
-              <label data-i18n="rarity-epic">Episch<input id="rarity-weight-epic" type="number" min="0" step="1" data-rarity-weight="epic"></label>
-              <label data-i18n="rarity-legendary">Legendär<input id="rarity-weight-legendary" type="number" min="0" step="1" data-rarity-weight="legendary"></label>
-              <label data-i18n="rarity-holo">Holo<input id="rarity-weight-holo" type="number" min="0" step="1" data-rarity-weight="holo"></label>
-            </div>
-          </section>
-
-          <section class="tool-panel">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow" data-i18n="pity-eyebrow">Karten</p>
-                <h2 data-i18n="pity-title">Pity-System</h2>
-              </div>
-            </div>
-            <p class="hint" data-i18n="pity-hint">Garantiert jedem Viewer nach X erfolglosen Ziehungen in Folge (egal ob per Kanalpunkte oder Chat-Befehl) mindestens die gewählte Seltenheit – ändert nichts an der normalen Gewichtung, greift nur als Untergrenze.</p>
-            <label class="switch-row compact-switch">
-              <input id="pity-enabled" type="checkbox">
-              <span data-i18n="label-pity-enabled">Pity-System aktiviert</span>
-            </label>
-            <div class="form-grid">
-              <label data-i18n="label-pity-threshold">Ziehungen bis Garantie<input id="pity-threshold" type="number" min="1" step="1"></label>
-              <label data-i18n="label-pity-min-rarity">Garantierte Mindest-Seltenheit
-                <select id="pity-min-rarity">
-                  <option value="uncommon" data-i18n="rarity-uncommon">Ungewöhnlich</option>
-                  <option value="rare" data-i18n="rarity-rare">Selten</option>
-                  <option value="epic" data-i18n="rarity-epic">Episch</option>
-                  <option value="legendary" data-i18n="rarity-legendary">Legendär</option>
-                  <option value="holo" data-i18n="rarity-holo">Holo</option>
-                </select>
-              </label>
-            </div>
-            <p class="hint" data-i18n="pity-dust-hint">Punkte, die eine vernichtete Karte je nach Seltenheit für den "!dust"-Befehl (Chat Befehle) einbringt.</p>
-            <div class="form-grid">
-              <label data-i18n="rarity-common">Gewöhnlich<input id="pity-dust-common" type="number" min="0" step="1" data-pity-dust="common"></label>
-              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="pity-dust-uncommon" type="number" min="0" step="1" data-pity-dust="uncommon"></label>
-              <label data-i18n="rarity-rare">Selten<input id="pity-dust-rare" type="number" min="0" step="1" data-pity-dust="rare"></label>
-              <label data-i18n="rarity-epic">Episch<input id="pity-dust-epic" type="number" min="0" step="1" data-pity-dust="epic"></label>
-              <label data-i18n="rarity-legendary">Legendär<input id="pity-dust-legendary" type="number" min="0" step="1" data-pity-dust="legendary"></label>
-              <label data-i18n="rarity-holo">Holo<input id="pity-dust-holo" type="number" min="0" step="1" data-pity-dust="holo"></label>
-            </div>
-          </section>
-
-          <section class="tool-panel sound-panel">
+          <section class="tool-panel sound-panel" id="jn-sounds-design">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Audio</p>
@@ -1315,7 +1338,151 @@
             </div>
           </section>
 
-          <section class="tool-panel trade-anim-panel">
+          <section class="tool-panel" id="jn-rahmenfarben-je-raritaet-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="rarity-colors-eyebrow">Karten</p>
+                <h2 data-i18n="rarity-colors-title">Rahmenfarben je Rarität</h2>
+              </div>
+              <button class="danger-button" id="reset-rarity-colors" type="button" data-i18n="btn-reset-rarity-colors">Auf Standard zurücksetzen</button>
+            </div>
+            <div class="form-grid">
+              <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-color-common" type="color" data-rarity-color="common"></label>
+              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="rarity-color-uncommon" type="color" data-rarity-color="uncommon"></label>
+              <label data-i18n="rarity-rare">Selten<input id="rarity-color-rare" type="color" data-rarity-color="rare"></label>
+              <label data-i18n="rarity-epic">Episch<input id="rarity-color-epic" type="color" data-rarity-color="epic"></label>
+              <label data-i18n="rarity-legendary">Legendär<input id="rarity-color-legendary" type="color" data-rarity-color="legendary"></label>
+              <label data-i18n="rarity-holo">Holo<input id="rarity-color-holo" type="color" data-rarity-color="holo"></label>
+            </div>
+          </section>
+
+          <section class="tool-panel" id="jn-gewichtung-je-raritaet-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="rarity-weights-eyebrow">Karten</p>
+                <h2 data-i18n="rarity-weights-title">Gewichtung je Rarität</h2>
+              </div>
+              <button class="danger-button" id="reset-rarity-weights" type="button" data-i18n="btn-reset-rarity-weights">Auf Standard zurücksetzen</button>
+            </div>
+            <p class="hint" data-i18n="rarity-weights-hint">Höhere Werte werden häufiger gezogen.</p>
+            <div class="form-grid">
+              <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-weight-common" type="number" min="0" step="1" data-rarity-weight="common"></label>
+              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="rarity-weight-uncommon" type="number" min="0" step="1" data-rarity-weight="uncommon"></label>
+              <label data-i18n="rarity-rare">Selten<input id="rarity-weight-rare" type="number" min="0" step="1" data-rarity-weight="rare"></label>
+              <label data-i18n="rarity-epic">Episch<input id="rarity-weight-epic" type="number" min="0" step="1" data-rarity-weight="epic"></label>
+              <label data-i18n="rarity-legendary">Legendär<input id="rarity-weight-legendary" type="number" min="0" step="1" data-rarity-weight="legendary"></label>
+              <label data-i18n="rarity-holo">Holo<input id="rarity-weight-holo" type="number" min="0" step="1" data-rarity-weight="holo"></label>
+            </div>
+          </section>
+
+          <section class="tool-panel" id="jn-pity-system-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="pity-eyebrow">Karten</p>
+                <h2 data-i18n="pity-title">Garantie-System</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="pity-hint">Garantiert jedem Viewer nach X erfolglosen Ziehungen in Folge (egal ob per Kanalpunkte oder Chat-Befehl) mindestens die gewählte Seltenheit – ändert nichts an der normalen Gewichtung, greift nur als Untergrenze.</p>
+            <label class="switch-row compact-switch">
+              <input id="pity-enabled" type="checkbox">
+              <span data-i18n="label-pity-enabled">Garantie-System aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-pity-threshold">Ziehungen bis Garantie<input id="pity-threshold" type="number" min="1" step="1"></label>
+              <label data-i18n="label-pity-min-rarity">Garantierte Mindest-Seltenheit
+                <select id="pity-min-rarity">
+                  <option value="uncommon" data-i18n="rarity-uncommon">Ungewöhnlich</option>
+                  <option value="rare" data-i18n="rarity-rare">Selten</option>
+                  <option value="epic" data-i18n="rarity-epic">Episch</option>
+                  <option value="legendary" data-i18n="rarity-legendary">Legendär</option>
+                  <option value="holo" data-i18n="rarity-holo">Holo</option>
+                </select>
+              </label>
+            </div>
+            <p class="hint" data-i18n="pity-dust-hint">Punkte, die eine vernichtete Karte je nach Seltenheit für den "!dust"-Befehl (Chat Befehle) einbringt.</p>
+            <div class="form-grid">
+              <label data-i18n="rarity-common">Gewöhnlich<input id="pity-dust-common" type="number" min="0" step="1" data-pity-dust="common"></label>
+              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="pity-dust-uncommon" type="number" min="0" step="1" data-pity-dust="uncommon"></label>
+              <label data-i18n="rarity-rare">Selten<input id="pity-dust-rare" type="number" min="0" step="1" data-pity-dust="rare"></label>
+              <label data-i18n="rarity-epic">Episch<input id="pity-dust-epic" type="number" min="0" step="1" data-pity-dust="epic"></label>
+              <label data-i18n="rarity-legendary">Legendär<input id="pity-dust-legendary" type="number" min="0" step="1" data-pity-dust="legendary"></label>
+              <label data-i18n="rarity-holo">Holo<input id="pity-dust-holo" type="number" min="0" step="1" data-pity-dust="holo"></label>
+            </div>
+          </section>
+
+          <section class="tool-panel battle-strength-panel" id="jn-kampfstaerke-je-seltenheit-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="battle-strength-eyebrow">Kampf</p>
+                <h2 data-i18n="battle-strength-title">Kampfstärke je Seltenheit</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="battle-strength-hint">Bestimmt, wie stark eine Karte im Kartenduell ist (unabhängig von den Ziehungs-Gewichten). Höherer Wert = stärker.</p>
+            <div class="form-grid" id="battle-strength-grid">
+              <label data-i18n="label-battle-strength-common">Gewöhnlich<input id="battle-strength-common" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-uncommon">Ungewöhnlich<input id="battle-strength-uncommon" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-rare">Selten<input id="battle-strength-rare" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-epic">Episch<input id="battle-strength-epic" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-legendary">Legendär<input id="battle-strength-legendary" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-holo">Holo<input id="battle-strength-holo" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-variance">Zufalls-Varianz<input id="battle-strength-variance" type="number" min="0" max="3" step="0.05"></label>
+              <label data-i18n="label-battle-strength-hpfactor">HP-Faktor (nur HP-Leisten-Duell)<input id="battle-strength-hpfactor" type="number" min="1" step="1"></label>
+            </div>
+          </section>
+
+        </section>
+
+        <section class="tab-panel" data-panel="animations">
+          <nav class="cc-jump-nav">
+              <a href="#jn-pack-animation-design" data-i18n="pack-anim-title">Pack-Animation</a>
+              <a href="#jn-sammlung-animation-design">Sammlung-Animation</a>
+              <a href="#jn-tausch-animation-design">Tausch-Animation</a>
+              <a href="#jn-community-ziel-design" data-i18n="communitygoal-title">Community-Ziel</a>
+              <a href="#jn-ranking-anzeige-design" data-i18n="ranking-anim-title">Ranking-Anzeige</a>
+              <a href="#jn-kampf-animation-design">Kampf-Animation</a>
+              <a href="#jn-turnier-modus-design" data-i18n="tournament-title">Turnier-Modus</a>
+              <a href="#jn-live-ticker-design" data-i18n="liveticker-title">Live-Ticker</a>
+            </nav>
+            <section class="tool-panel timing-panel" id="jn-pack-animation-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="pack-anim-eyebrow">Kartenpack</p>
+                <h2 data-i18n="pack-anim-title">Pack-Animation</h2>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label data-i18n="label-reveal-seconds">Karte sichtbar in Sekunden<input id="reveal-seconds" type="number" min="1" step="0.1"></label>
+              <label data-i18n="label-cooldown-seconds">Cooldown in Sekunden<input id="cooldown-seconds" type="number" min="0" step="0.1"></label>
+              <label data-i18n="label-backs-before-reveal">Verdeckte Karten vor Reveal<input id="backs-before-reveal" type="number" min="0" max="8" step="1"></label>
+            </div>
+            <div id="overlay-layout-draw"></div>
+          </section>
+
+          <section class="tool-panel" id="jn-sammlung-animation-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="collection-anim-eyebrow">Sammlung</p>
+                <h2 data-i18n="collection-anim-title">Sammlung-Animation</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="collection-anim-hint">Legt fest, wie die Sammlungs-Anzeige (Kanalpunkte-Belohnung oder Chat-Befehl "!collection") in OBS aussieht.</p>
+            <label class="switch-row">
+              <input id="collection-anim-enabled" type="checkbox">
+              <span data-i18n="label-collection-anim-enabled">Sammlung-Animation aktiviert</span>
+            </label>
+            <p class="hint" data-i18n="collection-anim-disabled-hint">Bei ausgeschalteter Animation läuft weder Kanalpunkte- noch !collection-Auslösung über OBS – die Kartenlisten-Chat-Ausgabe (unter Chat Befehle → Sammlung-Befehl) läuft trotzdem unabhängig davon weiter, falls dort aktiviert.</p>
+            <div class="form-grid">
+              <label data-i18n="label-collection-anim-style">Anzeigestil
+                <select id="collection-anim-style">
+                  <option value="detailed" data-i18n="opt-collection-style-detailed">Detailliert (alle Karten)</option>
+                  <option value="compact" data-i18n="opt-collection-style-compact">Kompakt (nur Anzahl je Seltenheit)</option>
+                </select>
+              </label>
+            </div>
+            <div id="overlay-layout-collection"></div>
+          </section>
+
+          <section class="tool-panel trade-anim-panel" id="jn-tausch-animation-design">
             <div class="section-heading">
               <div>
                 <p class="eyebrow" data-i18n="trade-anim-eyebrow">Tausch</p>
@@ -1351,27 +1518,52 @@
               <button class="update-button" id="trade-anim-test" type="button" data-i18n="btn-trade-anim-test">Test starten</button>
             </div>
             <p class="hint" data-i18n="trade-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
+            <div id="overlay-layout-trade"></div>
           </section>
 
-          <section class="tool-panel">
+          <section class="tool-panel" id="jn-community-ziel-design">
             <div class="section-heading">
               <div>
-                <p class="eyebrow" data-i18n="collection-anim-eyebrow">Sammlung</p>
-                <h2 data-i18n="collection-anim-title">Sammlung-Animation</h2>
+                <p class="eyebrow" data-i18n="communitygoal-eyebrow">Community</p>
+                <h2 data-i18n="communitygoal-title">Community-Ziel</h2>
               </div>
             </div>
-            <p class="hint" data-i18n="collection-anim-hint">Legt fest, wie die Sammlungs-Anzeige (Kanalpunkte-Belohnung oder Chat-Befehl "!collection") in OBS aussieht.</p>
+            <p class="hint" data-i18n="communitygoal-hint">Ein gemeinsamer Fortschrittsbalken über alle Zuschauer hinweg – jede Ziehung (egal ob per Kanalpunkte oder Chat-Befehl) zählt +1. Wird das Ziel erreicht, postet der Bot eine Feier-Nachricht im Chat, die OBS-Quelle zeigt eine Feier-Animation, und jeder, der mitgezogen hat, bekommt automatisch einen Bonus-Booster.</p>
+            <label class="switch-row compact-switch">
+              <input id="communitygoal-enabled" type="checkbox">
+              <span data-i18n="label-communitygoal-enabled">Community-Ziel aktiviert</span>
+            </label>
             <div class="form-grid">
-              <label data-i18n="label-collection-anim-style">Anzeigestil
-                <select id="collection-anim-style">
-                  <option value="detailed" data-i18n="opt-collection-style-detailed">Detailliert (alle Karten)</option>
-                  <option value="compact" data-i18n="opt-collection-style-compact">Kompakt (nur Anzahl je Seltenheit)</option>
-                </select>
-              </label>
+              <label data-i18n="label-communitygoal-target">Ziel (Anzahl Ziehungen)<input id="communitygoal-target" type="number" min="1" step="1"></label>
             </div>
+            <div class="message-field">
+              <div class="message-field-head">
+                <span class="message-field-label" data-i18n="label-communitygoal-message">Feier-Nachricht im Chat</span>
+                <div class="var-chips" data-target="communitygoal-message">
+                  <button class="var-chip" type="button" data-insert="[Ziel]">[Ziel]</button>
+                </div>
+              </div>
+              <textarea id="communitygoal-message" rows="2"></textarea>
+            </div>
+            <div class="status-line" id="communitygoal-progress-line"></div>
+            <div class="button-row">
+              <button class="danger-button" id="communitygoal-reset" type="button" data-i18n="btn-communitygoal-reset">Fortschritt zurücksetzen</button>
+            </div>
+            <div id="overlay-layout-communityGoal"></div>
           </section>
 
-          <section class="tool-panel battle-anim-panel">
+          <section class="tool-panel" id="jn-ranking-anzeige-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="ranking-anim-eyebrow">Ranking</p>
+                <h2 data-i18n="ranking-anim-title">Ranking-Anzeige</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="ranking-anim-hint">Position und Größe der Ranking-Anzeige (ranking.html) im Overlay-Bild.</p>
+            <div id="overlay-layout-ranking"></div>
+          </section>
+
+          <section class="tool-panel battle-anim-panel" id="jn-kampf-animation-design">
             <div class="section-heading">
               <div>
                 <p class="eyebrow" data-i18n="battle-anim-eyebrow">Kampf</p>
@@ -1407,40 +1599,64 @@
               <button class="update-button" id="battle-anim-test" type="button" data-i18n="btn-battle-anim-test">Test starten</button>
             </div>
             <p class="hint" data-i18n="battle-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
+            <div id="overlay-layout-battle"></div>
           </section>
 
-          <section class="tool-panel battle-strength-panel">
+          <section class="tool-panel" id="jn-turnier-modus-design">
             <div class="section-heading">
               <div>
-                <p class="eyebrow" data-i18n="battle-strength-eyebrow">Kampf</p>
-                <h2 data-i18n="battle-strength-title">Kampfstärke je Seltenheit</h2>
+                <p class="eyebrow" data-i18n="tournament-eyebrow">Kämpfe</p>
+                <h2 data-i18n="tournament-title">Turnier-Modus</h2>
               </div>
             </div>
-            <p class="hint" data-i18n="battle-strength-hint">Bestimmt, wie stark eine Karte im Kartenduell ist (unabhängig von den Ziehungs-Gewichten). Höherer Wert = stärker.</p>
-            <div class="form-grid" id="battle-strength-grid">
-              <label data-i18n="label-battle-strength-common">Gewöhnlich<input id="battle-strength-common" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-uncommon">Ungewöhnlich<input id="battle-strength-uncommon" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-rare">Selten<input id="battle-strength-rare" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-epic">Episch<input id="battle-strength-epic" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-legendary">Legendär<input id="battle-strength-legendary" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-holo">Holo<input id="battle-strength-holo" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-variance">Zufalls-Varianz<input id="battle-strength-variance" type="number" min="0" max="3" step="0.05"></label>
-              <label data-i18n="label-battle-strength-hpfactor">HP-Faktor (nur HP-Leisten-Duell)<input id="battle-strength-hpfactor" type="number" min="1" step="1"></label>
-            </div>
-          </section>
-
-          <section class="tool-panel timing-panel">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Timing</p>
-                <h2>Animation</h2>
-              </div>
-            </div>
+            <p class="hint" data-i18n="tournament-hint">Ein Ausscheidungsturnier für Kartenduelle. Zuschauer treten während einer Anmeldephase per Chat-Befehl bei (Befehl unter Chat-Befehle einstellbar); danach werden alle Runden automatisch nacheinander über die normale Kampf-Animation ausgetragen - ohne Risiko für die eigenen Karten. Der Turniersieger bekommt stattdessen eine konfigurierbare Anzahl Kartenpack-Ziehungen. Startbar per Kanalpunkte-Belohnung (unter Kanalpunkte), per Chat-Befehl oder per Knopf hier.</p>
+            <label class="switch-row compact-switch">
+              <input id="tournament-enabled" type="checkbox">
+              <span data-i18n="label-tournament-enabled">Turnier-Modus aktiviert</span>
+            </label>
             <div class="form-grid">
-              <label data-i18n="label-reveal-seconds">Karte sichtbar in Sekunden<input id="reveal-seconds" type="number" min="1" step="0.1"></label>
-              <label data-i18n="label-cooldown-seconds">Cooldown in Sekunden<input id="cooldown-seconds" type="number" min="0" step="0.1"></label>
-              <label data-i18n="label-backs-before-reveal">Verdeckte Karten vor Reveal<input id="backs-before-reveal" type="number" min="0" max="8" step="1"></label>
+              <label data-i18n="label-tournament-min-participants">Mindestteilnehmer<input id="tournament-min-participants" type="number" min="2" step="1"></label>
+              <label data-i18n="label-tournament-signup-seconds">Anmeldezeit (Sek.)<input id="tournament-signup-seconds" type="number" min="10" step="5"></label>
+              <label data-i18n="label-tournament-lineup-size">Kartenanzahl pro Duell<input id="tournament-lineup-size" type="number" min="1" step="1"></label>
+              <label data-i18n="label-tournament-winner-draws">Ziehungen für den Sieger<input id="tournament-winner-draws" type="number" min="1" step="1"></label>
             </div>
+            <label class="switch-row compact-switch">
+              <input id="tournament-announce-joins" type="checkbox">
+              <span data-i18n="label-tournament-announce-joins">Beitritte im Chat ankündigen</span>
+            </label>
+            <label class="switch-row compact-switch">
+              <input id="tournament-perround-enabled" type="checkbox">
+              <span data-i18n="label-tournament-perround-enabled">Jeder Rundensieger zieht sofort eine Karte</span>
+            </label>
+            <label class="switch-row compact-switch">
+              <input id="tournament-champion-draws-enabled" type="checkbox">
+              <span data-i18n="label-tournament-champion-draws-enabled">Turniersieger erhält zusätzliche Ziehungen (siehe oben)</span>
+            </label>
+            <div class="status-line" id="tournament-status-line"></div>
+            <div class="button-row">
+              <button class="primary-button" id="tournament-start-now" type="button" data-i18n="btn-tournament-start-now">Turnier jetzt starten</button>
+            </div>
+            <p class="hint" data-i18n="tournament-layout-hint">Der Turnierbaum wird in derselben OBS-Quelle wie die Kampf-Animation angezeigt – diese Position/Skalierung gilt für beide gemeinsam.</p>
+            <div id="overlay-layout-tournament"></div>
+          </section>
+
+          <section class="tool-panel" id="jn-live-ticker-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="liveticker-eyebrow">Community</p>
+                <h2 data-i18n="liveticker-title">Live-Ticker</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="liveticker-hint">Ein durchlaufendes Laufschrift-Banner (wie ein Newsticker), das die letzten Ziehungen aller Zuschauer in einer Endlosschleife von rechts nach links zeigt – unabhängig von der Kartenpack-Animation, läuft also nicht gedrosselt durch deren Warteschlange.</p>
+            <label class="switch-row compact-switch">
+              <input id="liveticker-enabled" type="checkbox">
+              <span data-i18n="label-liveticker-enabled">Live-Ticker aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-liveticker-max-entries">Einträge im Umlauf<input id="liveticker-max-entries" type="number" min="2" max="15" step="1"></label>
+              <label data-i18n="label-liveticker-speed">Geschwindigkeit (Px/Sek.)<input id="liveticker-speed" type="number" min="20" max="400" step="10"></label>
+            </div>
+            <div id="overlay-layout-liveTicker"></div>
           </section>
         </section>
 
@@ -1452,7 +1668,11 @@
             </div>
           </div>
           <p class="hint" data-i18n="themes-hint">Wähle das Aussehen aller Karten per Klick. Die Auswahl gilt sofort für Overlay, Sammlung und Vorschauen.</p>
-          <section class="tool-panel">
+          <nav class="cc-jump-nav">
+              <a href="#jn-eigene-muster-themes">Eigene Muster</a>
+              <a href="#jn-bild-anpassung-themes">Bild-Anpassung</a>
+            </nav>
+            <section class="tool-panel" id="jn-eigene-muster-themes">
             <div class="section-heading">
               <div>
                 <p class="eyebrow" data-i18n="pattern-eyebrow">Muster</p>
@@ -1490,7 +1710,7 @@
             </div>
           </section>
 
-          <section class="tool-panel">
+          <section class="tool-panel" id="jn-bild-anpassung-themes">
             <div class="section-heading">
               <div>
                 <p class="eyebrow" data-i18n="imagefit-eyebrow">Bilder</p>
@@ -1732,7 +1952,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260716-changelogall1"></script>
-    <script type="module" src="/assets/js/admin.js?v=20260716-jumpnavfix"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784294738"></script>
+    <script type="module" src="/assets/js/admin.js?v=1784294738"></script>
   </body>
 </html>

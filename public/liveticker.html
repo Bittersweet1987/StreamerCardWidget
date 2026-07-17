@@ -3,14 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Streamer Card Sammlung</title>
+    <title>Streamer Card Live-Ticker</title>
     <!-- No static CSS/JS tags here: the bootstrap loader at the bottom fetches the server's
          current BootId and loads every asset versioned with it, so OBS/Meld can never serve
          stale cached JS/CSS after an app update (their embedded browser ignores cache headers). -->
   </head>
   <body>
-    <main id="overlay" aria-live="polite">
-      <div id="showcase-stage" class="showcase-stage"></div>
+    <main id="liveticker-overlay" aria-live="polite">
+      <div id="liveticker-stage" class="liveticker-stage">
+        <div id="liveticker-banner" class="liveticker-banner" hidden>
+          <div id="liveticker-viewport" class="liveticker-viewport">
+            <div id="liveticker-track" class="liveticker-track"></div>
+          </div>
+        </div>
+      </div>
       <div id="status" class="status" hidden></div>
     </main>
     <script>
@@ -25,13 +31,13 @@
           const info = await response.json();
           if (info.bootId) v = String(info.bootId);
         } catch {}
-        for (const href of ["/assets/css/overlay.css","/assets/css/collection.css"]) {
+        for (const href of ["/assets/css/liveticker.css"]) {
           const link = document.createElement("link");
           link.rel = "stylesheet";
           link.href = href + "?v=" + v;
           document.head.appendChild(link);
         }
-        import("/assets/js/collection.js?v=" + v);
+        import("/assets/js/liveticker.js?v=" + v);
       })();
     </script>
   </body>

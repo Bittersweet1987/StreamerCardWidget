@@ -1,5 +1,9 @@
-import { addLog, completeQueueItem, connectEventStream, getSettings } from "./api.js";
-import { applyTheme, cardMarkup, normalizeSettings } from "./render.js";
+// Asset version (BootId) propagated from this module's own URL (set by the page's bootstrap
+// loader) into the shared-module imports below, so api.js/render.js are always fetched at the
+// same version as this file - OBS/Meld can never mix a fresh page module with stale shared code.
+const __v = new URL(import.meta.url).searchParams.get("v") || String(Date.now());
+const { addLog, completeQueueItem, connectEventStream, getSettings } = await import(`./api.js?v=${__v}`);
+const { applyOverlayLayout, applyTheme, cardMarkup, normalizeSettings } = await import(`./render.js?v=${__v}`);
 
 const stage = document.querySelector("#trade-stage");
 const status = document.querySelector("#status");
@@ -131,6 +135,7 @@ async function playTrade(event = {}) {
 async function loadSettings() {
   settings = normalizeSettings(await getSettings());
   applyTheme(settings);
+  applyOverlayLayout(stage, settings.overlayLayout?.trade, "trade");
 }
 
 function bindServerEvents() {
