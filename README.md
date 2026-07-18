@@ -4,24 +4,25 @@
 
 # 🃏 Streamer Card Widget
 
-Lokale Windows-App für Twitch-Sammelkarten – mit animiertem OBS-Overlay.
+Lokale Windows-App für Twitch-Sammelkarten – mit animiertem **OBS-** oder **Meld-Studio-Overlay**.
 Deine Zuschauer ziehen über **Kanalpunkte** oder **Chat-Befehle** Karten aus Booster-Packs,
-die live in OBS aufgehen, bauen ihre eigene **Sammlung** auf, können Karten untereinander
-**tauschen** und sogar gegeneinander **Kartenduelle** austragen.
+die live im Overlay aufgehen, bauen ihre eigene **Sammlung** auf, können Karten untereinander
+**tauschen**, **verschenken** und sogar gegeneinander in **Kartenduellen, Turnieren und
+Team-Kämpfen** antreten.
 
 ### Wie es funktioniert (in Kürze)
 
 1. Du legst **Booster** (Karten-Packs) und **Karten** an – ein paar Beispiele sind schon dabei,
    du kannst also sofort loslegen.
-2. Du verbindest **Twitch** (für Kanalpunkte/Chat) und **OBS** (für das Overlay).
+2. Du verbindest **Twitch** (für Kanalpunkte/Chat) und **OBS oder Meld Studio** (für das Overlay).
 3. Ein Zuschauer löst eine Belohnung ein oder tippt z. B. `!pack` in den Chat → die App zieht
-   zufällig eine Karte und spielt die Animation in OBS ab.
+   zufällig eine Karte und spielt die Animation im Overlay ab.
 4. Jede gezogene Karte landet in der **Sammlung** des Zuschauers. Über `!collection` kann er sie
-   zeigen, über `!trade` mit anderen tauschen.
+   zeigen, über `!trade` mit anderen tauschen oder über `!gift` verschenken.
 
-> **Du brauchst:** Windows 10/11 und OBS Studio. Die WebView2-Runtime (für die Bedienoberfläche)
-> ist auf aktuellen Windows-Versionen vorinstalliert. Eine eigene Twitch-Entwickler-App ist
-> **nicht** nötig.
+> **Du brauchst:** Windows 10/11 sowie **OBS Studio oder Meld Studio** (eines von beiden reicht).
+> Die WebView2-Runtime (für die Bedienoberfläche) ist auf aktuellen Windows-Versionen
+> vorinstalliert. Eine eigene Twitch-Entwickler-App ist **nicht** nötig.
 
 ---
 
@@ -31,6 +32,7 @@ die live in OBS aufgehen, bauen ihre eigene **Sammlung** auf, können Karten unt
 - [Twitch verbinden](#twitch-verbinden)
 - [Bot-Account für Chat](#bot-account-für-chat)
 - [OBS einrichten](#obs-einrichten)
+- [Meld Studio einrichten](#meld-studio-einrichten)
 - [Booster anlegen](#booster-anlegen)
 - [Sub-exklusive Booster](#sub-exklusive-booster)
 - [Karten anlegen](#karten-anlegen)
@@ -66,7 +68,8 @@ die live in OBS aufgehen, bauen ihre eigene **Sammlung** auf, können Karten unt
 3. Empfohlene Reihenfolge fürs erste Einrichten:
    **Verbindung → Booster → Karten → Kanalpunkte / Chat Befehle**.
 4. Zum Ausprobieren: Im Tab **Übersicht** auf **Demo zufällig ausführen** klicken – das spielt eine
-   Pack-Animation ab (das OBS-Overlay oder die Datei `overlay.html` muss dafür geöffnet sein).
+   Pack-Animation ab (die Overlay-Quelle in OBS/Meld Studio oder die Datei `overlay.html` muss
+   dafür geöffnet sein).
 
 > **Tipp:** Beispiel-Booster und -Karten sind bereits enthalten – du kannst die Animation also
 > testen, bevor du eigene Inhalte anlegst.
@@ -111,6 +114,8 @@ greift automatisch der Hauptaccount als Fallback.
 
 ## OBS einrichten
 
+> Nutzt du stattdessen **Meld Studio**? Dann direkt weiter zu [Meld Studio einrichten](#meld-studio-einrichten).
+
 Die App spricht direkt mit dem **OBS WebSocket** (Standard-Port `4455`).
 
 1. In OBS: **Werkzeuge → WebSocket-Servereinstellungen** → *WebSocket-Server aktivieren*.
@@ -137,6 +142,11 @@ deren Browser-URL und wechselt zur passenden Szene.
 3. Host und Port in **Verbindung → Meld Studio** eintragen, mit **Meld testen** die Verbindung prüfen.
 4. Auf **Meld Szene / Quellen aktualisieren** klicken – die App trägt bei den vorhandenen
    Meld-Quellen die richtige Browser-URL ein und wechselt zur konfigurierten Szene.
+
+> **Hinweis:** In den folgenden Abschnitten ist der Kürze halber meist nur von „OBS-Quelle"/
+> „OBS Szene aktualisieren" die Rede – gemeint ist damit immer **OBS oder Meld Studio**
+> gleichermaßen (je nachdem, was du eingerichtet hast). Beide laufen über dieselbe Szenen-/
+> Quellenkonfiguration und werden von der App parallel aktuell gehalten.
 
 ---
 
