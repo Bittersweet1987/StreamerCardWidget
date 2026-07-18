@@ -266,9 +266,16 @@ Zeigt einem Zuschauer seine komplette Sammlung als Overlay – ebenfalls über K
    es entsteht eine zweite Browserquelle in derselben Szene.
 
 Beim Einlösen sliden nacheinander alle aktiven Booster mit den Karten dieses Zuschauers durch:
-**gezogene Karten sichtbar, noch nicht gezogene bleiben unbekannt**.
+**gezogene Karten sichtbar, noch nicht gezogene bleiben unbekannt**. Zwei **Anzeigestile** stehen
+zur Wahl (Einstellungen → Sammlung-Animation → Anzeigestil): **Detailliert** zeigt jede einzelne
+Karte, **Kompakt** zeigt pro Booster nur die Anzahl je Seltenheit – dadurch geht das Umblättern
+bei großen Sammlungen deutlich schneller.
 
-<p align="center"><img src="docs/media/collection-showcase.gif" alt="Sammlungs-Showcase Vorschau" width="480"></p>
+<p align="center">
+  <img src="docs/media/collection-showcase.gif" alt="Sammlungs-Showcase: Detailliert" width="260">
+  <img src="docs/media/collection-showcase-compact.gif" alt="Sammlungs-Showcase: Kompakt" width="260">
+</p>
+<p align="center"><sub>Detailliert · Kompakt</sub></p>
 
 ---
 
@@ -527,8 +534,9 @@ nächsten Reset-Zeiten. Du kannst nach Nutzern suchen, einzelne Nutzer oder **al
 
 ## Queue
 
-Alle ausgelösten Aktionen – Kanalpunkt-Einlösungen, Chat-Befehle **und Ranking-Anzeigen** – laufen
-über eine gemeinsame **Warteschlange** (Tab **Queue**) und werden streng nacheinander abgearbeitet,
+Alle ausgelösten Aktionen laufen über eine gemeinsame **Warteschlange** (Tab **Queue**) und werden
+streng nacheinander abgearbeitet – egal ob Kartenziehung, Sammlungs-Showcase, Tausch, Geschenk,
+Kartenduell, Turnier-Ergebnis, Team-Kampf-Ergebnis, Ranking-Anzeige oder Community-Ziel-Feier.
 mit kurzer Pause zwischen den Einträgen. So überlagern sich auch bei vielen gleichzeitigen
 Auslösern keine Animationen. Der Tab zeigt live alle offenen Einträge (wer, was, wann) und das gerade
 laufende. Du kannst die **Queue pausieren** (sammelt dann nur), **einzelne Einträge entfernen**
