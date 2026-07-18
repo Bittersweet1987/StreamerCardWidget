@@ -301,6 +301,8 @@ Optional läuft dazu eine eigene **Geschenk-Animation** in OBS (Einstellungen �
 eigene Browserquelle) – über dieselbe Queue wie alle anderen Animationen, damit sich nichts
 überlagert.
 
+<p align="center"><img src="docs/media/gift-success.gif" alt="Geschenk-Animation Vorschau" width="480"></p>
+
 ---
 
 ## Tauschsystem
@@ -439,6 +441,8 @@ Karte.
 
 Startbar über **Kanalpunkte-Belohnung** oder per Knopf unter **Einstellungen → Team-Kampf**.
 
+<p align="center"><img src="docs/media/teamkampf-fight.gif" alt="Team-Kampf HP-Duell Vorschau" width="480"></p>
+
 ---
 
 ## Ranking
@@ -478,6 +482,8 @@ Die letzten **8 Ereignisse** werden dauerhaft gespeichert, damit der Ticker beim
 App-Start sofort wieder Inhalt zeigt statt leer zu starten. Einstellbar sind außerdem
 Umlauf-Anzahl und Scroll-Geschwindigkeit.
 
+<p align="center"><img src="docs/media/liveticker-scroll.gif" alt="Live-Ticker Vorschau" width="480"></p>
+
 ---
 
 ## Community-Ziel
@@ -487,6 +493,8 @@ Kanalpunkte oder Chat-Befehl) zählt +1. Wird das Ziel erreicht, postet der Bot 
 **Feier-Nachricht** im Chat, die OBS-Quelle zeigt eine **Feier-Animation**, und jeder, der
 mitgezogen hat, bekommt automatisch einen **Bonus-Booster**. Einstellbar unter **Einstellungen →
 Community-Ziel**, inklusive manuellem Zurücksetzen des Fortschritts.
+
+<p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="Community-Ziel Feier-Animation Vorschau" width="480"></p>
 
 ---
 
