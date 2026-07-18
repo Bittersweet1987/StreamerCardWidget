@@ -5,11 +5,18 @@
   pointer-events: none;
 }
 
+/* Default position MUST be dead-center (both axes) - applyOverlayLayout (render.js) always
+   assumes the untransformed baseline is canvas-center and applies the admin-configured
+   marginTop/marginLeft as a translate offset FROM there. The old "top: 24px" (anchored near the
+   top, not centered) broke that assumption: since the offset math is relative to a center that
+   never actually matched the real render position, dragging the position editor to the very
+   bottom only ever moved the box a fraction of the way there - it could never reach past roughly
+   the middle of the canvas, which read as "always centered no matter where I drag it". */
 .communitygoal-bar-wrap {
   position: absolute;
-  top: 24px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%) scale(var(--widget-scale, 1));
+  transform: translate(-50%, -50%) scale(var(--widget-scale, 1));
   width: min(560px, 80vw);
   padding: 14px 22px;
   border-radius: 18px;
