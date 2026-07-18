@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Streamer Card Geschenk</title>
+    <!-- No static CSS/JS tags here: the bootstrap loader at the bottom fetches the server's
+         current BootId and loads every asset versioned with it, so OBS/Meld can never serve
+         stale cached JS/CSS after an app update (their embedded browser ignores cache headers). -->
+  </head>
+  <body>
+    <main id="gift-overlay" aria-live="polite">
+      <div id="gift-stage" class="gift-stage"></div>
+      <div id="status" class="status" hidden></div>
+    </main>
+    <script>
+      // Bootstrap loader: ask the server which asset version (BootId, changes every app start)
+      // is current and load all CSS/JS with it. The version request itself carries a unique
+      // timestamp so even a cache-header-ignoring embedded browser (OBS/Meld) can't answer it
+      // from cache. Fallback Date.now() if the server is unreachable = always re-fetch.
+      (async () => {
+        let v = String(Date.now());
+        try {
+          const response = await fetch("/api/version?_=" + Date.now(), { cache: "no-store" });
+          const info = await response.json();
+          if (info.bootId) v = String(info.bootId);
+        } catch {}
+        for (const href of ["/assets/css/overlay.css","/assets/css/gift.css"]) {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = href + "?v=" + v;
+          document.head.appendChild(link);
+        }
+        import("/assets/js/gift.js?v=" + v);
+      })();
+    </script>
+  </body>
+</html>

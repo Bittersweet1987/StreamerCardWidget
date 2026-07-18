@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.11.0";
-        public const string ReleaseDate = "2026-07-17";
+        public const string Version = "2.12.0";
+        public const string ReleaseDate = "2026-07-18";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -632,6 +632,16 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (request.Method == "GET" && request.Path == "/api/stats-install-id")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "installId", GetOrCreateStatsInstallId() }
+                }));
+                return;
+            }
+
             if (request.Method == "GET" && request.Path == "/api/fonts")
             {
                 var names = new List<string>();
@@ -707,6 +717,23 @@ namespace CardPackWidgetApp
                 int clientCount;
                 lock (clientsLock) clientCount = clients.Count;
                 Log("trade", "info", "Test-Animation an Overlays gesendet (" + GetString(body, "userA", "?") + " <-> " + GetString(body, "userB", "?") + "). Verbundene Overlay-Seiten: " + clientCount + ". Falls in OBS nichts passiert: Browserquelle aktualisieren (Cache).");
+                SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/gift/test")
+            {
+                // Preview the gift animation in OBS: the frontend supplies a random name pair and
+                // card, we tag it as a test (so the overlay plays it even if the animation is off)
+                // and broadcast it on the same "gift" channel a real gift uses.
+                Dictionary<string, object> body = ParseObject(request.Body);
+                body["eventId"] = "test-" + DateTime.UtcNow.Ticks.ToString();
+                body["test"] = true;
+                string giftJson = json.Serialize(body);
+                Broadcast("gift", giftJson);
+                int giftClientCount;
+                lock (clientsLock) giftClientCount = clients.Count;
+                Log("gift", "info", "Test-Animation an Overlays gesendet (" + GetString(body, "fromUser", "?") + " -> " + GetString(body, "toUser", "?") + "). Verbundene Overlay-Seiten: " + giftClientCount + ". Falls in OBS nichts passiert: Browserquelle aktualisieren (Cache).");
                 SendJson(stream, 200, "{\"ok\":true}");
                 return;
             }
@@ -1014,6 +1041,39 @@ namespace CardPackWidgetApp
                         { "error", ex.Message }
                     }));
                 }
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/twitch/teamBattle-reward")
+            {
+                try
+                {
+                    Dictionary<string, object> settings = twitchBridge.SyncTeamBattleReward(request.Body);
+                    SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", true },
+                        { "settings", settings }
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    SendJson(stream, 400, json.Serialize(new Dictionary<string, object>
+                    {
+                        { "ok", false },
+                        { "error", ex.Message }
+                    }));
+                }
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/teamBattle/start")
+            {
+                string teamBattleResult = twitchBridge.StartTeamBattleSignup("", "", "app");
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "result", teamBattleResult }
+                }));
                 return;
             }
 
@@ -1749,6 +1809,47 @@ namespace CardPackWidgetApp
             return 0;
         }
 
+        // ---- Live-ticker persistence: last few entries survive an app restart ----
+
+        private readonly object liveTickerHistoryFileLock = new object();
+
+        private string LiveTickerHistoryPath()
+        {
+            return Path.Combine(dataDir, "liveticker-history.json");
+        }
+
+        internal void SaveLiveTickerHistory(object[] entries)
+        {
+            lock (liveTickerHistoryFileLock)
+            {
+                try { File.WriteAllText(LiveTickerHistoryPath(), json.Serialize(entries), Encoding.UTF8); }
+                catch { }
+            }
+        }
+
+        internal List<Dictionary<string, object>> LoadLiveTickerHistory()
+        {
+            lock (liveTickerHistoryFileLock)
+            {
+                var result = new List<Dictionary<string, object>>();
+                try
+                {
+                    object parsed = json.DeserializeObject(ReadFile(LiveTickerHistoryPath(), "[]"));
+                    object[] arr = parsed as object[];
+                    if (arr != null)
+                    {
+                        foreach (object o in arr)
+                        {
+                            Dictionary<string, object> d = o as Dictionary<string, object>;
+                            if (d != null) result.Add(d);
+                        }
+                    }
+                }
+                catch { }
+                return result;
+            }
+        }
+
         private string TradeStatsPath()
         {
             return Path.Combine(dataDir, "trade-stats.json");
@@ -2052,6 +2153,46 @@ namespace CardPackWidgetApp
             }
         }
 
+        // Removes exactly one copy of a card, allowed to reach 0 (unlike RemoveCardCopies, which
+        // always keeps at least 1 for "!dust"). Used by Team-Kampf: a participant's staked card is
+        // a real wager - losing it can mean losing the viewer's only copy.
+        internal bool RemoveSingleCardAllowZero(string login, string displayName, string boosterId, string cardId)
+        {
+            lock (collectionWriteLock)
+            {
+                Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+                Dictionary<string, object> cards = EnsureUserCards(collections, boosterId, login, displayName);
+                int current = CardCount(cards, cardId);
+                if (current < 1) return false;
+                SetCount(cards, cardId, current - 1);
+                File.WriteAllText(CollectionsPath(), json.Serialize(collections), Encoding.UTF8);
+                Broadcast("collections", "{\"updated\":true}");
+                return true;
+            }
+        }
+
+        // One-sided gift ("!gift"): moves exactly one copy of a card from the giver's collection
+        // to the recipient's, within the same booster. Unlike RemoveCardCopies (used by "!dust"),
+        // this allows giving away the giver's last copy - it's an intentional full transfer, not
+        // a "spend a spare duplicate" action.
+        internal bool ApplyGiftTransfer(string fromLogin, string fromDisplay, string toLogin, string toDisplay, string boosterId, string cardId)
+        {
+            lock (collectionWriteLock)
+            {
+                Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+                Dictionary<string, object> giverCards = EnsureUserCards(collections, boosterId, fromLogin, fromDisplay);
+                if (CardCount(giverCards, cardId) < 1) return false;
+                Dictionary<string, object> receiverCards = EnsureUserCards(collections, boosterId, toLogin, toDisplay);
+
+                SetCount(giverCards, cardId, CardCount(giverCards, cardId) - 1);
+                SetCount(receiverCards, cardId, CardCount(receiverCards, cardId) + 1);
+
+                File.WriteAllText(CollectionsPath(), json.Serialize(collections), Encoding.UTF8);
+                Broadcast("collections", "{\"updated\":true}");
+                return true;
+            }
+        }
+
         private static object[] SettingsCards(Dictionary<string, object> settings)
         {
             object deckObj;
@@ -2311,6 +2452,39 @@ namespace CardPackWidgetApp
         private string CollectionsPath()
         {
             return Path.Combine(dataDir, "collections.json");
+        }
+
+        private readonly object statsInstallIdLock = new object();
+
+        private string StatsInstallIdPath()
+        {
+            return Path.Combine(dataDir, "stats-install-id.txt");
+        }
+
+        // Deliberately its OWN file, not a field inside settings.json - a settings.json reset
+        // (corrupt write, restored-from-defaults, whatever) must never silently mint a new
+        // installId, because the anonymous community-stats server (see admin.js
+        // syncCommunityCounts / tools/stats-server.js) sums card/booster counts per installId
+        // FOREVER and never retires old ones - a fresh installId for the same physical install
+        // just adds a permanent duplicate on top of the real total instead of replacing it.
+        internal string GetOrCreateStatsInstallId()
+        {
+            lock (statsInstallIdLock)
+            {
+                string path = StatsInstallIdPath();
+                if (File.Exists(path))
+                {
+                    string existing = ReadFile(path, "").Trim();
+                    if (!String.IsNullOrEmpty(existing)) return existing;
+                }
+                // One-time migration: if an older settings.json still has a statsInstallId from
+                // before this file existed, reuse it instead of minting a brand-new one, so an
+                // upgrade doesn't itself create the exact duplicate-entry problem this fixes.
+                string migrated = GetString(ReadSettingsObject(), "statsInstallId", "");
+                string id = !String.IsNullOrEmpty(migrated) ? migrated : Guid.NewGuid().ToString();
+                File.WriteAllText(path, id, Encoding.UTF8);
+                return id;
+            }
         }
 
         private string CardsPath()
@@ -2679,6 +2853,10 @@ namespace CardPackWidgetApp
         private Dictionary<string, object> activeTournament;
         private System.Threading.Timer tournamentSignupTimer;
 
+        private readonly object teamBattleLock = new object();
+        private Dictionary<string, object> activeTeamBattle;
+        private System.Threading.Timer teamBattleSignupTimer;
+
         private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
         private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
 
@@ -2698,6 +2876,13 @@ namespace CardPackWidgetApp
         private const string DefaultDustNotEnough = "@userName, du hast nicht genug Duplikate von [Kartenname] (du besitzt [Besitz], mindestens 1 muss dir erhalten bleiben).";
         private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.";
 
+        private const string DefaultGiftUsage = "@userName, Nutzung: !gift @userNameB <Kartenname>";
+        private const string DefaultGiftUserNotFound = "@userName, den Nutzer [Nutzer] kennt die Sammlung noch nicht.";
+        private const string DefaultGiftCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
+        private const string DefaultGiftNotOwned = "@userName, du besitzt [Kartenname] gar nicht.";
+        private const string DefaultGiftSelf = "@userName, du kannst dir nicht selbst etwas schenken.";
+        private const string DefaultGiftSuccess = "@userName hat [Kartenname] an @userNameB verschenkt!";
+
         private const string DefaultBattleUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
         private const string DefaultBattleSelfChallenge = "@userName, du kannst nicht dich selbst herausfordern.";
         private const string DefaultBattleNotEnoughCards = "@userName, für ein Kartenduell braucht ihr beide mindestens [Anzahl] verschiedene Karten.";
@@ -2713,10 +2898,28 @@ namespace CardPackWidgetApp
         private const string DefaultTournamentJoinAck = "@userName ist dem Turnier beigetreten! ([Anzahl] Teilnehmer)";
         private const string DefaultTournamentNotEligible = "@userName, für die Turnier-Teilnahme brauchst du mindestens [Anzahl] verschiedene Karten.";
         private const string DefaultTournamentAlreadyRunning = "@userName, es läuft bereits ein Turnier oder eine Anmeldephase.";
+
+        private const string DefaultTeamBattleBusy = "@userName, es läuft bereits ein Team-Kampf.";
+        private const string DefaultTeamBattleSignupStart = "Team-Kampf gestartet! Der Streamer stellt [Anzahl] Karten - tritt mit [Befehl] bei, [Sekunden] Sekunden Zeit!";
+        private const string DefaultTeamBattleNoActive = "@userName, gerade läuft keine Team-Kampf-Anmeldung.";
+        private const string DefaultTeamBattleJoinAlready = "@userName, du bist bereits angemeldet.";
+        private const string DefaultTeamBattleJoinNotOwned = "@userName, du besitzt noch keine Karten und kannst deshalb nicht teilnehmen.";
+        private const string DefaultTeamBattleJoinSuccess = "@userName ist dem Team-Kampf beigetreten! ([Anzahl] Teilnehmer)";
+        private const string DefaultTeamBattleNoParticipants = "Niemand hat sich für den Team-Kampf angemeldet - @streamerName tritt alleine an... gegen niemanden. Kampf abgesagt.";
+        private const string DefaultTeamBattleWinMessage = "Die Community hat gewonnen! Alle Teilnehmer erhalten Karten.";
+        private const string DefaultTeamBattleLoseMessage = "@streamerName hat gewonnen! Die Community verliert diesmal.";
+        private const string DefaultTeamBattleFinisherMessage = "@userName hat den entscheidenden Schlag gelandet und erhält zusätzlich [Anzahl]x Kartenpack-Ziehung!";
+        private const string DefaultTeamBattleFinisherMessageNoBonus = "@userName hat den entscheidenden Schlag gelandet!";
+        private const string DefaultTeamBattleLostCardMessage = "@userName hat [Kartenname] verloren.";
         private const string DefaultTournamentCancel = "Das Turnier wurde abgesagt - nur [Anzahl] von mindestens [Mindestteilnehmer] nötigen Teilnehmern haben sich angemeldet.";
         private const string DefaultTournamentRoundAnnounce = "🏆 Turnier [Runde]: [SpielerA] vs [SpielerB]!";
         private const string DefaultTournamentByeAnnounce = "🏆 Turnier [Runde]: [Spieler] hat ein Freilos und zieht kampflos weiter!";
         private const string DefaultTournamentWinnerAnnounce = "🏆 @userName gewinnt das Turnier mit [Teilnehmerzahl] Teilnehmern und erhält [Anzahl]x Kartenpack-Ziehung!";
+
+        private const string DefaultLiveTickerDrawMessage = "@userName hat [Kartenname] gezogen.";
+        private const string DefaultLiveTickerBattleMessage = "@userNameA hat gegen @userNameB gewonnen.";
+        private const string DefaultLiveTickerTournamentMessage = "Turnier: @userName hat gewonnen.";
+        private const string DefaultLiveTickerTeamBattleMessage = "Team-Kampf: [Sieger] hat gewonnen.";
 
         private const string DefaultCardsEmpty = "@userName, du besitzt noch keine Karten.";
         private const string DefaultCardsHeader = "@userName, deine Karten:";
@@ -2726,6 +2929,7 @@ namespace CardPackWidgetApp
         public TwitchBridge(CardPackServer server)
         {
             this.server = server;
+            liveTickerHistory.AddRange(server.LoadLiveTickerHistory());
         }
 
         public void Start()
@@ -3082,7 +3286,13 @@ namespace CardPackWidgetApp
                 return;
             }
             Dictionary<string, object> subscription = Obj(payload, "subscription");
-            if (GetString(subscription, "type", "") != "channel.channel_points_custom_reward_redemption.add") return;
+            string subType = GetString(subscription, "type", "");
+            if (subType == "channel.subscribe" || subType == "channel.subscription.message" || subType == "channel.subscription.gift")
+            {
+                HandleSubscriptionEvent(subType, Obj(payload, "event"));
+                return;
+            }
+            if (subType != "channel.channel_points_custom_reward_redemption.add") return;
             Dictionary<string, object> ev = Obj(payload, "event");
             string rewardId = GetString(Obj(ev, "reward"), "id", "");
             string rewardTitle = GetString(Obj(ev, "reward"), "title", "");
@@ -3112,6 +3322,12 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (ReconcileTrackedReward("teamBattle", rewardId, rewardTitle))
+            {
+                StartTeamBattleSignup(login, user, "channelpoints");
+                return;
+            }
+
             if (!ReconcileTrackedReward("draw", rewardId, rewardTitle))
             {
                 // Helps diagnose "nothing happened" reports: a redemption came in but matched
@@ -3129,9 +3345,70 @@ namespace CardPackWidgetApp
             Enqueue("draw", login, user, "channelpoints");
         }
 
+        // Sub/Resub/Gifted-Sub reward: draws "cardsPerSub" card(s) - multiplied by the number of
+        // subs for a gift/bomb event - exclusively from boosters flagged "subExclusive", via the
+        // normal action queue (same as any other draw, so it's serialized with everything else).
+        private void HandleSubscriptionEvent(string subType, Dictionary<string, object> ev)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> subCfg = Obj(settings, "subRewards");
+            if (!GetBool(subCfg, "enabled", true)) return;
+            int cardsPerSub = Math.Max(1, GetInt(subCfg, "cardsPerSub", 1));
+
+            string login;
+            string displayName;
+            int count;
+            string source;
+
+            if (subType == "channel.subscribe")
+            {
+                // Gifted subs are reported twice: once here (the recipient, is_gift=true) and once
+                // via channel.subscription.gift (the gifter, with the total gifted count). Only the
+                // gifter is rewarded, so the recipient's half is skipped to avoid double-counting.
+                if (GetBool(ev, "is_gift", false)) return;
+                login = GetString(ev, "user_login", "");
+                displayName = GetString(ev, "user_name", login);
+                count = 1;
+                source = "sub";
+            }
+            else if (subType == "channel.subscription.message")
+            {
+                login = GetString(ev, "user_login", "");
+                displayName = GetString(ev, "user_name", login);
+                count = 1;
+                source = "resub";
+            }
+            else if (subType == "channel.subscription.gift")
+            {
+                // Anonymous gifts carry no user to credit.
+                if (GetBool(ev, "is_anonymous", false)) return;
+                login = GetString(ev, "user_login", "");
+                displayName = GetString(ev, "user_name", login);
+                count = Math.Max(1, GetInt(ev, "total", 1));
+                source = "giftsub";
+            }
+            else
+            {
+                return;
+            }
+
+            if (String.IsNullOrWhiteSpace(login)) return;
+
+            int totalCards = cardsPerSub * count;
+            server.Log("draw", "info", displayName + " hat " + totalCards + " Sub-Belohnungskarte(n) ausgeloest (" + source + ").");
+            var extra = new Dictionary<string, object> { { "boosterPool", "subExclusive" } };
+            for (int i = 0; i < totalCards; i++) Enqueue("draw", login, displayName, source, extra);
+        }
+
         private static readonly Random RandomSource = new Random();
 
-        private string PickRandomBoosterId()
+        // subOnly=false (normal packs, channel points, "!pack") skips boosters flagged
+        // "subExclusive" entirely; subOnly=true (sub/resub/giftsub rewards) picks ONLY among
+        // them - the two pools never overlap.
+        // subOnly=false: normal boosters only (excludes subExclusive). subOnly=true: subExclusive
+        // only. subOnly=null: no filter at all - any enabled booster regardless of the flag (used
+        // by Team-Kampf, which draws the streamer's lineup from the whole card pool).
+        private string PickRandomBoosterId(bool? subOnly = false)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
             object boostersObj;
@@ -3142,6 +3419,7 @@ namespace CardPackWidgetApp
                 Dictionary<string, object> booster = item as Dictionary<string, object>;
                 if (booster == null) continue;
                 if (!GetBool(booster, "enabled", true)) continue;
+                if (subOnly.HasValue && GetBool(booster, "subExclusive", false) != subOnly.Value) continue;
                 object[] cardIds = booster.ContainsKey("cardIds") && booster["cardIds"] is object[] ? (object[])booster["cardIds"] : new object[0];
                 if (cardIds.Length == 0) continue;
                 if (!BoosterHasEnabledCard(settings, cardIds)) continue;
@@ -3397,16 +3675,39 @@ namespace CardPackWidgetApp
         private readonly object announceLock = new object();
         private string lastAnnouncedEventId;
 
-        // In-memory only (cleared on app restart, like the event log) - just enough so a freshly
-        // (re)loaded overlay/browser source shows the last few draws immediately instead of
-        // sitting empty until the next one happens. See GET /api/liveticker/recent.
-        private const int LiveTickerHistoryCap = 12;
+        // Persisted to disk (see CardPackServer.SaveLiveTickerHistory/LoadLiveTickerHistory) so a
+        // freshly (re)loaded overlay/browser source shows the last few events immediately even
+        // right after an app restart, instead of sitting empty until the next one happens. Loaded
+        // once in the constructor below. See GET /api/liveticker/recent.
+        private const int LiveTickerHistoryCap = 8;
         private readonly object liveTickerHistoryLock = new object();
         private readonly List<Dictionary<string, object>> liveTickerHistory = new List<Dictionary<string, object>>();
 
         public object[] GetLiveTickerHistory()
         {
             lock (liveTickerHistoryLock) return liveTickerHistory.ToArray();
+        }
+
+        // Single entry point for every live-ticker event kind (draw/battle/tournament/teamkampf) -
+        // the display text is fully pre-formatted here (from an admin-configurable template, see
+        // settings.liveTicker.*Message) rather than built client-side from structured fields, so
+        // "Texte sollen individuell festlegbar sein" applies uniformly to all four kinds.
+        private void PushLiveTickerEntry(string kind, string text, string avatarUrl)
+        {
+            if (String.IsNullOrEmpty(text)) return;
+            var tickerEntry = new Dictionary<string, object>
+            {
+                { "kind", kind },
+                { "text", text },
+                { "avatarUrl", avatarUrl }
+            };
+            lock (liveTickerHistoryLock)
+            {
+                liveTickerHistory.Add(tickerEntry);
+                if (liveTickerHistory.Count > LiveTickerHistoryCap) liveTickerHistory.RemoveAt(0);
+                server.SaveLiveTickerHistory(liveTickerHistory.ToArray());
+            }
+            server.Broadcast("liveticker", server.Serializer.Serialize(tickerEntry));
         }
 
         public void AnnounceDraw(string eventId, string cardTitle, string boosterTitle)
@@ -3426,20 +3727,14 @@ namespace CardPackWidgetApp
                 lock (queueLock) item = currentQueueItem;
                 if (item == null || GetString(item, "kind", "") != "draw") return;
                 SendDrawPostMessage(item, cardTitle, boosterTitle);
-                var tickerEntry = new Dictionary<string, object>
-                {
-                    { "user", GetString(item, "user", "Viewer") },
-                    { "cardTitle", cardTitle },
-                    { "boosterTitle", boosterTitle },
-                    { "rarity", server.GetCardRarityByTitle(cardTitle) },
-                    { "avatarUrl", GetUserAvatarUrl(GetString(item, "userLogin", "")) }
-                };
-                lock (liveTickerHistoryLock)
-                {
-                    liveTickerHistory.Add(tickerEntry);
-                    if (liveTickerHistory.Count > LiveTickerHistoryCap) liveTickerHistory.RemoveAt(0);
-                }
-                server.Broadcast("liveticker", server.Serializer.Serialize(tickerEntry));
+                string userLogin = GetString(item, "userLogin", "");
+                string user = GetString(item, "user", "Viewer");
+                Dictionary<string, object> ltCfg = Obj(server.ReadSettingsObject(), "liveTicker");
+                string text = GetString(ltCfg, "drawMessage", DefaultLiveTickerDrawMessage)
+                    .Replace("@userName", user)
+                    .Replace("[Kartenname]", cardTitle)
+                    .Replace("[Boostername]", boosterTitle ?? "");
+                PushLiveTickerEntry("draw", text, GetUserAvatarUrl(userLogin));
             }
             catch { }
         }
@@ -3561,6 +3856,11 @@ namespace CardPackWidgetApp
                 // Longest configured trade animation duration ("long" ~9s) plus a safety margin.
                 return 20000;
             }
+            if (kind == "gift")
+            {
+                // One-shot reveal (envelope/handover/confetti), all well under 10s - generous margin.
+                return 15000;
+            }
             if (kind == "communitygoalreached")
             {
                 // Matches the overlay's fixed 6s celebration display (see communitygoal.js) plus
@@ -3576,9 +3876,21 @@ namespace CardPackWidgetApp
             }
             if (kind == "battle")
             {
-                // HP-Leisten-Duell is explicitly capped at ~28s client-side (see battle.js
-                // maxTotalMs); clash/ranged rounds are shorter. Generous ceiling either way.
+                // A normal 1v1/tournament duel's HP-Leisten-Duell is capped at ~28s client-side
+                // (see battle.js maxTotalMs); clash/ranged rounds are shorter. A Team-Kampf can
+                // have far more matchups than a single duel though (one per eliminated card on
+                // either side), so scale the ceiling with how many matchups this item actually
+                // carries instead of using the flat 40s that's generous enough for a normal duel
+                // but not for a whole team fight.
+                object matchupsObj;
+                int matchupCount = item.TryGetValue("hpMatchups", out matchupsObj) && matchupsObj is object[] ? ((object[])matchupsObj).Length : 0;
+                if (matchupCount > 1) return Math.Min(180000, 10000 + matchupCount * 6000);
                 return 40000;
+            }
+            if (kind == "teamkampfresult")
+            {
+                // No overlay animation - just chat + the reward/penalty draws it enqueues.
+                return 200;
             }
             // Draw animation is a fixed sequence (~7s) plus reveal time; 30s is a safe ceiling.
             return 30000;
@@ -3730,7 +4042,7 @@ namespace CardPackWidgetApp
                 return;
             }
 
-            if (kind == "trade" || kind == "battle")
+            if (kind == "trade" || kind == "battle" || kind == "gift")
             {
                 // A tournament match's round-announce chat message is sent HERE - when the queue
                 // actually reaches this item - rather than when the whole bracket was resolved
@@ -3744,6 +4056,23 @@ namespace CardPackWidgetApp
                         .Replace("[Runde]", GetString(item, "tournamentRound", ""))
                         .Replace("[SpielerA]", GetString(item, "userA", ""))
                         .Replace("[SpielerB]", GetString(item, "userB", "")));
+                }
+
+                // Live-ticker entry only for a genuine standalone !battle duel, not a tournament
+                // round (those already get their own bracket chat commentary above, and their
+                // eventual champion gets a "tournamentwon" ticker entry once the whole thing ends).
+                if (kind == "battle" && !item.ContainsKey("tournamentRound"))
+                {
+                    string winnerUser = GetString(item, "winnerUser", "");
+                    string loserUser = GetString(item, "loserUser", "");
+                    if (!String.IsNullOrEmpty(winnerUser) && !String.IsNullOrEmpty(loserUser))
+                    {
+                        Dictionary<string, object> ltCfg = Obj(server.ReadSettingsObject(), "liveTicker");
+                        string text = GetString(ltCfg, "battleMessage", DefaultLiveTickerBattleMessage)
+                            .Replace("@userNameA", winnerUser)
+                            .Replace("@userNameB", loserUser);
+                        PushLiveTickerEntry("battle", text, GetUserAvatarUrl(GetString(item, "winnerLogin", "")));
+                    }
                 }
 
                 // trade/battle carry their full event payload (cards, users, result...) as "extra"
@@ -3784,6 +4113,14 @@ namespace CardPackWidgetApp
                 server.Log("commands", "info", user + " hat das Turnier mit " + totalParticipants + " Teilnehmern gewonnen.");
                 server.RecordTournamentWin(login, user);
 
+                {
+                    Dictionary<string, object> ltCfg = Obj(server.ReadSettingsObject(), "liveTicker");
+                    string tickerText = GetString(ltCfg, "tournamentMessage", DefaultLiveTickerTournamentMessage)
+                        .Replace("@userName", user)
+                        .Replace("[Teilnehmerzahl]", totalParticipants.ToString());
+                    PushLiveTickerEntry("tournament", tickerText, GetUserAvatarUrl(login));
+                }
+
                 // Every round winner's draw (if that setting is enabled) was deliberately held
                 // back until now instead of playing right after their own match - see
                 // ResolveTournamentSignup - so the bracket isn't interrupted by pack-opening
@@ -3807,16 +4144,112 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (kind == "teamkampfresult")
+            {
+                // Fires only once the (single, multi-matchup) "battle" item ahead of it in the
+                // queue has actually finished playing in the overlay - same "chat commentary
+                // timing tracks real animation playback" reasoning as tournamentwon above.
+                Dictionary<string, object> tbCfg = Obj(server.ReadSettingsObject(), "teamBattle");
+                bool communityWon = GetBool(item, "communityWon", false);
+                string streamerName = GetString(item, "streamerName", "Streamer");
+                object participantsObj;
+                var participants = new List<Dictionary<string, object>>();
+                if (item.TryGetValue("participants", out participantsObj) && participantsObj is List<Dictionary<string, object>>)
+                {
+                    participants = (List<Dictionary<string, object>>)participantsObj;
+                }
+
+                SendChatMessageSafe((communityWon
+                        ? GetString(tbCfg, "winMessage", DefaultTeamBattleWinMessage)
+                        : GetString(tbCfg, "loseMessage", DefaultTeamBattleLoseMessage))
+                    .Replace("@streamerName", streamerName)
+                    .Replace("[Teilnehmerzahl]", participants.Count.ToString()));
+
+                {
+                    Dictionary<string, object> ltSettings = server.ReadSettingsObject();
+                    Dictionary<string, object> ltCfg = Obj(ltSettings, "liveTicker");
+                    string siegerName = communityWon
+                        ? (GetString(ltSettings, "language", "de") == "en" ? "The community" : "Die Community")
+                        : streamerName;
+                    string tickerText = GetString(ltCfg, "teamBattleMessage", DefaultLiveTickerTeamBattleMessage)
+                        .Replace("[Sieger]", siegerName)
+                        .Replace("@streamerName", streamerName);
+                    PushLiveTickerEntry("teamkampf", tickerText, null);
+                }
+
+                if (communityWon)
+                {
+                    if (GetBool(tbCfg, "rewardsEnabled", true))
+                    {
+                        int drawsPerParticipant = Math.Max(0, GetInt(tbCfg, "drawsPerParticipant", 1));
+                        foreach (Dictionary<string, object> p in participants)
+                        {
+                            string pLogin = GetString(p, "login", "");
+                            string pName = GetString(p, "displayName", pLogin);
+                            if (String.IsNullOrEmpty(pLogin)) continue;
+                            for (int i = 0; i < drawsPerParticipant; i++) Enqueue("draw", pLogin, pName, "teamkampf");
+                        }
+                    }
+
+                    // Who landed the finishing blow, announced separately from the general win
+                    // message - only relevant when the community actually won (a streamer win has
+                    // no "finisher" to credit). The bonus-draw count is only mentioned when that
+                    // bonus is actually enabled, via a distinct message template rather than a
+                    // token that would otherwise have to disappear conditionally mid-sentence.
+                    string finisherLogin = GetString(item, "finisherLogin", "");
+                    string finisherDisplayName = GetString(item, "finisherDisplayName", finisherLogin);
+                    bool finisherBonusEnabled = GetBool(tbCfg, "finisherBonusEnabled", true);
+                    int finisherBonusDraws = Math.Max(0, GetInt(tbCfg, "finisherBonusDraws", 1));
+                    if (!String.IsNullOrEmpty(finisherLogin))
+                    {
+                        SendChatMessageSafe((finisherBonusEnabled
+                                ? GetString(tbCfg, "finisherAnnounceMessage", DefaultTeamBattleFinisherMessage)
+                                : GetString(tbCfg, "finisherAnnounceMessageNoBonus", DefaultTeamBattleFinisherMessageNoBonus))
+                            .Replace("@userName", "@" + finisherDisplayName)
+                            .Replace("[Anzahl]", finisherBonusDraws.ToString()));
+                        if (finisherBonusEnabled)
+                        {
+                            for (int i = 0; i < finisherBonusDraws; i++) Enqueue("draw", finisherLogin, finisherDisplayName, "teamkampf");
+                        }
+                    }
+                }
+                else if (GetBool(tbCfg, "loseCardOnDefeat", false))
+                {
+                    bool lostCardAnnounceEnabled = GetBool(tbCfg, "lostCardAnnounceEnabled", true);
+                    foreach (Dictionary<string, object> p in participants)
+                    {
+                        string pLogin = GetString(p, "login", "");
+                        string pName = GetString(p, "displayName", pLogin);
+                        string boosterId = GetString(p, "boosterId", "");
+                        string cardId = GetString(p, "cardId", "");
+                        if (String.IsNullOrEmpty(pLogin) || String.IsNullOrEmpty(boosterId) || String.IsNullOrEmpty(cardId)) continue;
+                        server.RemoveSingleCardAllowZero(pLogin, pName, boosterId, cardId);
+                        if (lostCardAnnounceEnabled)
+                        {
+                            Dictionary<string, string> lostCardInfo = server.CardDisplayInfo(boosterId, cardId);
+                            SendChatMessageSafe(GetString(tbCfg, "lostCardMessage", DefaultTeamBattleLostCardMessage)
+                                .Replace("@userName", "@" + pName)
+                                .Replace("[Kartenname]", lostCardInfo["cardTitle"])
+                                .Replace("[Boostername]", lostCardInfo["boosterTitle"]));
+                        }
+                    }
+                }
+                return;
+            }
+
             if (kind == "draw")
             {
                 // Booster AND card are picked here on the server (weighted by booster score and
                 // rarity weight). Broadcasting the concrete cardId means every overlay shows the
                 // same card, and - crucially - the server knows the drawn card/booster by name, so
                 // the post-animation chat message works regardless of the overlay's cached version.
-                string boosterId = PickRandomBoosterId();
+                bool subExclusivePool = GetString(item, "boosterPool", "") == "subExclusive";
+                string boosterId = PickRandomBoosterId(subExclusivePool);
                 if (String.IsNullOrWhiteSpace(boosterId))
                 {
-                    server.Log("draw", "error", user + " hat ein Kartenpack ausgeloest, aber kein Booster war verfuegbar.");
+                    server.Log("draw", subExclusivePool ? "warn" : "error",
+                        user + " hat " + (subExclusivePool ? "eine Sub-Belohnung" : "ein Kartenpack") + " ausgeloest, aber kein " +
+                        (subExclusivePool ? "Sub-exklusiver Booster" : "Booster") + " war verfuegbar.");
                     return;
                 }
                 Dictionary<string, object> settings = server.ReadSettingsObject();
@@ -4402,6 +4835,7 @@ namespace CardPackWidgetApp
 
             Dictionary<string, object> pack = Obj(cc, "pack");
             Dictionary<string, object> dust = Obj(cc, "dust");
+            Dictionary<string, object> gift = Obj(cc, "gift");
             Dictionary<string, object> collection = Obj(cc, "collection");
             Dictionary<string, object> trade = Obj(cc, "trade");
             Dictionary<string, object> tradeYes = Obj(cc, "tradeyes");
@@ -4412,6 +4846,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> ranking = Obj(cc, "ranking");
             Dictionary<string, object> tournamentStart = Obj(cc, "tournamentStart");
             Dictionary<string, object> tournamentJoin = Obj(cc, "tournamentJoin");
+            Dictionary<string, object> teamBattleJoin = Obj(cc, "teamBattleJoin");
 
             if (MatchesCommand(text, pack))
             {
@@ -4438,6 +4873,11 @@ namespace CardPackWidgetApp
                     else
                         SendCollectionChatText(login, displayName);
                 }
+                return;
+            }
+            if (MatchesCommand(text, gift))
+            {
+                if (GetBool(gift, "enabled", false)) HandleGiftCommand(login, displayName, ArgsAfterCommand(text, gift), gift);
                 return;
             }
             if (MatchesCommand(text, tradeYes))
@@ -4483,6 +4923,11 @@ namespace CardPackWidgetApp
             if (MatchesCommand(text, tournamentJoin))
             {
                 if (GetBool(tournamentJoin, "enabled", true)) JoinTournament(login, displayName);
+                return;
+            }
+            if (MatchesCommand(text, teamBattleJoin))
+            {
+                if (GetBool(teamBattleJoin, "enabled", true)) JoinTeamBattle(login, displayName);
                 return;
             }
         }
@@ -4637,6 +5082,106 @@ namespace CardPackWidgetApp
                 .Replace("[Anzahl]", count.ToString())
                 .Replace("[Punkte]", points.ToString())
                 .Replace("[GarantieRest]", pityRest.ToString()));
+        }
+
+        // ---- Gift: "!gift @recipient <Kartenname>" - one-sided, immediate, no accept/decline
+        // needed (unlike !trade). Transfers exactly one copy of the named card away from the
+        // sender's collection. ----
+        private void HandleGiftCommand(string login, string displayName, string args, Dictionary<string, object> giftCfg)
+        {
+            // "@recipient cardName with spaces" - same split as !trade's offer parsing.
+            string rest = args.Trim();
+            if (rest.Length == 0) return;
+            int sp = rest.IndexOf(' ');
+            if (sp < 0)
+            {
+                SendChatMessageSafe(GetString(giftCfg, "usageMessage", DefaultGiftUsage).Replace("@userName", "@" + displayName));
+                return;
+            }
+            string recipientRaw = rest.Substring(0, sp).Trim().TrimStart('@');
+            string cardName = rest.Substring(sp + 1).Trim();
+            if (recipientRaw.Length == 0 || cardName.Length == 0)
+            {
+                SendChatMessageSafe(GetString(giftCfg, "usageMessage", DefaultGiftUsage).Replace("@userName", "@" + displayName));
+                return;
+            }
+            string recipientLogin = recipientRaw.ToLowerInvariant();
+
+            if (recipientLogin == login.ToLowerInvariant())
+            {
+                SendChatMessageSafe(GetString(giftCfg, "selfGiftMessage", DefaultGiftSelf).Replace("@userName", "@" + displayName));
+                return;
+            }
+
+            if (!server.UserExistsInCollections(recipientLogin))
+            {
+                SendChatMessageSafe(GetString(giftCfg, "userNotFoundMessage", DefaultGiftUserNotFound)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Nutzer]", recipientRaw));
+                return;
+            }
+
+            Dictionary<string, object> card = server.ResolveCardByName(cardName);
+            if (!Convert.ToBoolean(card["found"]))
+            {
+                SendChatMessageSafe(GetString(giftCfg, "cardNotFoundMessage", DefaultGiftCardNotFound)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[falscherName]", cardName)
+                    .Replace("[Kartenname]", GetString(card, "suggestion", "")));
+                return;
+            }
+            string cardId = GetString(card, "cardId", "");
+            string cardTitle = GetString(card, "cardTitle", "");
+            string boosterId = GetString(card, "boosterId", "");
+            string boosterTitle = GetString(card, "boosterTitle", "");
+
+            if (server.GetCardCount(login, boosterId, cardId) < 1)
+            {
+                SendChatMessageSafe(GetString(giftCfg, "notOwnedMessage", DefaultGiftNotOwned)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Kartenname]", cardTitle));
+                return;
+            }
+
+            if (!server.ApplyGiftTransfer(login, displayName, recipientLogin, recipientRaw, boosterId, cardId))
+            {
+                // Lost a race against a trade/dust/gift between the check above and here.
+                SendChatMessageSafe(GetString(giftCfg, "notOwnedMessage", DefaultGiftNotOwned)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Kartenname]", cardTitle));
+                return;
+            }
+
+            server.Log("commands", "info", displayName + " hat \"" + cardTitle + "\" an " + recipientRaw + " verschenkt.");
+
+            if (GetBool(giftCfg, "chatOutputEnabled", true))
+            {
+                SendChatMessageSafe(GetString(giftCfg, "successMessage", DefaultGiftSuccess)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("@userNameB", "@" + recipientRaw)
+                    .Replace("[Kartenname]", cardTitle));
+            }
+
+            Dictionary<string, object> giftAnimCfg = Obj(server.ReadSettingsObject(), "giftAnimation");
+            if (GetBool(giftAnimCfg, "enabled", false))
+            {
+                var giftEvent = new Dictionary<string, object>
+                {
+                    { "kind", "gift" },
+                    { "style", GetString(giftAnimCfg, "style", "handover") },
+                    { "fromLogin", login.ToLowerInvariant() },
+                    { "fromUser", displayName },
+                    { "toLogin", recipientLogin },
+                    { "toUser", recipientRaw },
+                    { "cardId", cardId },
+                    { "cardTitle", cardTitle },
+                    { "boosterId", boosterId },
+                    { "boosterTitle", boosterTitle }
+                };
+                // Routed through the action queue (like every other animation) so it never plays
+                // at the same time as an in-progress pack-opening/trade/battle/etc.
+                Enqueue("gift", login, displayName, "chat", giftEvent);
+            }
         }
 
         // ---- Trade system: !trade / !tradeyes / !tradeno ----
@@ -5170,7 +5715,7 @@ namespace CardPackWidgetApp
                     { "winsA", winsA }, { "winsB", winsB },
                     { "prizeCardId", prizeCard["cardId"] }, { "prizeBoosterId", prizeCard["boosterId"] },
                     { "prizeCardTitle", prizeInfo["cardTitle"] }, { "prizeBoosterTitle", prizeInfo["boosterTitle"] },
-                    { "winnerUser", winnerUser }, { "loserUser", loserUser }
+                    { "winnerUser", winnerUser }, { "loserUser", loserUser }, { "winnerLogin", winnerLogin }
                 };
                 // Routed through the same queue as draw/showcollection/ranking so the battle
                 // animation never overlaps another - it used to broadcast directly, which let it
@@ -5409,6 +5954,280 @@ namespace CardPackWidgetApp
                 { "winsA", winsA }, { "winsB", winsB },
                 { "winnerUser", winnerIsA ? userA : userB }, { "loserUser", winnerIsA ? userB : userA }
             };
+        }
+
+        // ---- Team-Kampf ("Alle gegen den Streamer") ----
+        //
+        // One battle at a time, global (like activeTournament). Flow: a channel-points redemption
+        // opens a signup window (StartTeamBattleSignup) and draws the streamer's lineup up front
+        // (shown in the overlay immediately, so viewers know what they're up against); viewers
+        // join with a chat command (JoinTeamBattle), each getting ONE random card from their own
+        // collection assigned immediately (in signup order - first come, first in queue); when the
+        // window closes, ResolveTeamBattleSignup resolves the WHOLE fight in one shot by handing
+        // the streamer's lineup and the community's queue straight to the existing
+        // ResolveHpElimination (the same HP-Leisten-Duell math a normal 1v1 !battle uses) - HP
+        // already persists across matchups on BOTH sides there, which is exactly "next challenger
+        // steps up once the current one is defeated", symmetric for the streamer's team too. The
+        // whole multi-card fight is a SINGLE "battle" queue item (battle.js already loops every
+        // hpMatchups entry in one event) - just with a per-matchup community member name attached
+        // so the overlay shows who's currently fighting instead of a generic "Community" label.
+
+        // Any booster (subOnly:null - no subExclusive filter) since the streamer's own lineup is
+        // exempt from the normal "sub-exclusive boosters aren't reachable via packs" restriction.
+        private List<Dictionary<string, string>> DrawTeamBattleStreamerLineup(int count)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            var lineup = new List<Dictionary<string, string>>();
+            for (int i = 0; i < count; i++)
+            {
+                string boosterId = PickRandomBoosterId(null);
+                if (String.IsNullOrWhiteSpace(boosterId)) continue;
+                Dictionary<string, object> card = PickCardFromBooster(settings, boosterId);
+                if (card == null) continue;
+                Dictionary<string, object> booster = FindBooster(settings, boosterId);
+                lineup.Add(new Dictionary<string, string>
+                {
+                    { "boosterId", boosterId },
+                    { "cardId", GetString(card, "id", "") },
+                    { "cardTitle", GetString(card, "title", "") },
+                    { "boosterTitle", booster != null ? GetString(booster, "title", "") : "" },
+                    { "rarity", GetString(card, "rarity", "common") }
+                });
+            }
+            return lineup;
+        }
+
+        public string StartTeamBattleSignup(string login, string displayName, string source)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
+            if (!GetBool(tbCfg, "enabled", false)) return "disabled";
+
+            lock (teamBattleLock)
+            {
+                if (activeTeamBattle != null)
+                {
+                    SendChatMessageSafe(GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
+                        .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
+                    return "already_running";
+                }
+
+                // "Kartenanzahl Streamer-Team" is only the MINIMUM - the actual lineup size is
+                // randomized (min..min+4) so the streamer's side isn't the exact same size every
+                // single Team-Kampf. Safe to vary freely: ResolveHpElimination handles unequal
+                // streamer/community lineup lengths just fine (HP elimination, not paired rounds).
+                int streamerCardCountMin = Math.Max(1, GetInt(tbCfg, "streamerCardCount", 5));
+                int streamerCardCount;
+                lock (BattleRandom) { streamerCardCount = streamerCardCountMin + BattleRandom.Next(0, 5); }
+                int signupSeconds = Math.Max(10, GetInt(tbCfg, "signupSeconds", 60));
+                List<Dictionary<string, string>> streamerLineup = DrawTeamBattleStreamerLineup(streamerCardCount);
+                if (streamerLineup.Count == 0)
+                {
+                    server.Log("battle", "error", "Team-Kampf konnte nicht gestartet werden: keine Karten verfuegbar.");
+                    return "no_cards";
+                }
+
+                Dictionary<string, object> joinCfg = Obj(Obj(settings, "chatCommands"), "teamBattleJoin");
+                string joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "teamkampf");
+                string deadlineUtc = DateTime.UtcNow.AddSeconds(signupSeconds).ToString("o");
+
+                activeTeamBattle = new Dictionary<string, object>
+                {
+                    { "state", "signup" },
+                    { "participants", new List<object>() },
+                    { "streamerLineup", streamerLineup },
+                    { "deadlineUtc", deadlineUtc },
+                    { "startedAt", DateTime.UtcNow.ToString("o") }
+                };
+
+                SendChatMessageSafe(GetString(tbCfg, "signupStartMessage", DefaultTeamBattleSignupStart)
+                    .Replace("[Befehl]", joinCommandText)
+                    .Replace("[Sekunden]", signupSeconds.ToString())
+                    .Replace("[Anzahl]", streamerCardCount.ToString()));
+
+                BroadcastTeamBattleSignupState();
+
+                if (teamBattleSignupTimer != null) teamBattleSignupTimer.Dispose();
+                teamBattleSignupTimer = new System.Threading.Timer(delegate { ResolveTeamBattleSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
+            }
+
+            // Whoever spent the channel points obviously wants their own card in the fight too.
+            if (source == "channelpoints" && !String.IsNullOrEmpty(login))
+            {
+                JoinTeamBattle(login, displayName);
+            }
+
+            return "started";
+        }
+
+        // Broadcasts the FULL current signup state (streamer lineup, live participant list with
+        // avatars, deadline) - called once at signup start and again after every successful join,
+        // so the overlay can show who's already in without waiting for the fight itself. Always
+        // resends the same deadlineUtc (never recomputed), so the client's local countdown never
+        // jumps or restarts when a new participant joins mid-countdown.
+        private void BroadcastTeamBattleSignupState()
+        {
+            if (activeTeamBattle == null) return;
+            var streamerLineup = (List<Dictionary<string, string>>)activeTeamBattle["streamerLineup"];
+            var participants = (List<object>)activeTeamBattle["participants"];
+
+            var participantsForBroadcast = new object[participants.Count];
+            for (int i = 0; i < participants.Count; i++)
+            {
+                Dictionary<string, object> p = participants[i] as Dictionary<string, object>;
+                if (p == null) continue;
+                participantsForBroadcast[i] = new Dictionary<string, object>
+                {
+                    { "login", GetString(p, "login", "") },
+                    { "displayName", GetString(p, "displayName", "") },
+                    { "avatarUrl", GetUserAvatarUrl(GetString(p, "login", "")) }
+                };
+            }
+
+            // Viewers should only ever learn HOW MANY cards they need to beat, never which ones or
+            // how rare they are - sending only the count (not the card identities/rarities
+            // themselves) keeps that true even for someone inspecting the raw SSE payload, not
+            // just for what's rendered on screen (see cardMarkup(null, {hidden:true}) in battle.js).
+            server.Broadcast("teamkampfsignup", server.Serializer.Serialize(new Dictionary<string, object>
+            {
+                { "active", true },
+                { "deadlineUtc", GetString(activeTeamBattle, "deadlineUtc", "") },
+                { "streamerLineupCount", streamerLineup.Count },
+                { "participants", participantsForBroadcast }
+            }));
+        }
+
+        private void JoinTeamBattle(string login, string displayName)
+        {
+            lock (teamBattleLock)
+            {
+                if (activeTeamBattle == null || GetString(activeTeamBattle, "state", "") != "signup")
+                {
+                    Dictionary<string, object> tbCfgIdle = Obj(server.ReadSettingsObject(), "teamBattle");
+                    SendChatMessageSafe(GetString(tbCfgIdle, "noActiveMessage", DefaultTeamBattleNoActive).Replace("@userName", "@" + displayName));
+                    return;
+                }
+
+                var participants = (List<object>)activeTeamBattle["participants"];
+                string loginKey = login.ToLowerInvariant();
+                Dictionary<string, object> settings = server.ReadSettingsObject();
+                Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
+                foreach (object p in participants)
+                {
+                    Dictionary<string, object> existing = p as Dictionary<string, object>;
+                    if (existing != null && GetString(existing, "login", "") == loginKey)
+                    {
+                        SendChatMessageSafe(GetString(tbCfg, "joinAlreadyMessage", DefaultTeamBattleJoinAlready).Replace("@userName", "@" + displayName));
+                        return;
+                    }
+                }
+
+                List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
+                if (owned.Count == 0)
+                {
+                    SendChatMessageSafe(GetString(tbCfg, "joinNotOwnedMessage", DefaultTeamBattleJoinNotOwned).Replace("@userName", "@" + displayName));
+                    return;
+                }
+                Dictionary<string, string> card = DrawRandomLineup(owned, 1)[0];
+
+                participants.Add(new Dictionary<string, object>
+                {
+                    { "login", loginKey }, { "displayName", displayName },
+                    { "boosterId", card["boosterId"] }, { "cardId", card["cardId"] }
+                });
+
+                SendChatMessageSafe(GetString(tbCfg, "joinSuccessMessage", DefaultTeamBattleJoinSuccess)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Anzahl]", participants.Count.ToString()));
+
+                BroadcastTeamBattleSignupState();
+            }
+        }
+
+        // Timer callback once the signup window closes - runs off the chat/HTTP threads, so it is
+        // free to resolve the whole fight synchronously (the HP-elimination math is instant dice
+        // rolling, same as a normal 1v1 duel) before touching the queue.
+        private void ResolveTeamBattleSignup()
+        {
+            List<Dictionary<string, object>> participants;
+            List<Dictionary<string, string>> streamerLineup;
+            lock (teamBattleLock)
+            {
+                if (activeTeamBattle == null) return;
+                var rawParticipants = (List<object>)activeTeamBattle["participants"];
+                participants = new List<Dictionary<string, object>>();
+                foreach (object p in rawParticipants) if (p is Dictionary<string, object>) participants.Add((Dictionary<string, object>)p);
+                streamerLineup = (List<Dictionary<string, string>>)activeTeamBattle["streamerLineup"];
+                activeTeamBattle = null;
+            }
+
+            server.Broadcast("teamkampfsignup", server.Serializer.Serialize(new Dictionary<string, object> { { "active", false } }));
+
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
+            string streamerName = GetString(TwitchSettings(), "displayName", GetString(TwitchSettings(), "login", "Streamer"));
+
+            if (participants.Count == 0)
+            {
+                SendChatMessageSafe(GetString(tbCfg, "noParticipantsMessage", DefaultTeamBattleNoParticipants).Replace("@streamerName", streamerName));
+                return;
+            }
+
+            var communityLineup = new List<Dictionary<string, string>>();
+            foreach (Dictionary<string, object> p in participants)
+            {
+                communityLineup.Add(new Dictionary<string, string> { { "boosterId", GetString(p, "boosterId", "") }, { "cardId", GetString(p, "cardId", "") } });
+            }
+
+            Dictionary<string, object> strengthCfg = Obj(settings, "battleStrength");
+            double variance = GetDouble(strengthCfg, "variance", DefaultBattleVariance);
+            Dictionary<string, object> hpResult = ResolveHpElimination(streamerLineup, communityLineup, strengthCfg, variance);
+            object[] matchups = (object[])hpResult["matchups"];
+            bool communityWon = !GetBool(hpResult, "winnerIsA", true);
+
+            // Walks the matchups in order, tracking which community-lineup slot ("B" side) is
+            // fighting at each point, so the overlay can show that specific viewer's name instead
+            // of a generic team label. bIndex only advances when B's card was the one eliminated
+            // (winner == "A") - the same "next challenger steps up" logic ResolveHpElimination
+            // itself uses internally, just re-derived here from its output.
+            int bIndex = 0;
+            string finisherLogin = null, finisherDisplayName = null;
+            for (int i = 0; i < matchups.Length; i++)
+            {
+                Dictionary<string, object> matchup = (Dictionary<string, object>)matchups[i];
+                Dictionary<string, object> participant = participants[Math.Min(bIndex, participants.Count - 1)];
+                matchup["nameA"] = streamerName;
+                matchup["nameB"] = GetString(participant, "displayName", "Viewer");
+                if (i == matchups.Length - 1 && communityWon)
+                {
+                    finisherLogin = GetString(participant, "login", "");
+                    finisherDisplayName = GetString(participant, "displayName", "Viewer");
+                }
+                if (GetString(matchup, "winner", "") == "A") bIndex++;
+            }
+
+            server.Log("battle", "info", streamerName + " (Team-Kampf) vs. " + participants.Count + " Zuschauer: " + (communityWon ? "Community gewinnt" : "Streamer gewinnt") + ".");
+
+            var battleEvent = new Dictionary<string, object>
+            {
+                { "userA", streamerName }, { "userB", GetString(tbCfg, "communityLabel", "Community") },
+                { "lineupA", streamerLineup }, { "lineupB", communityLineup },
+                { "mode", "hp" }, { "rounds", new object[0] }, { "hpMatchups", matchups },
+                { "winner", communityWon ? "B" : "A" },
+                { "winsA", GetInt(hpResult, "cardsLostB", 0) }, { "winsB", GetInt(hpResult, "cardsLostA", 0) },
+                { "winnerUser", communityWon ? "Community" : streamerName }, { "loserUser", communityWon ? streamerName : "Community" },
+                { "teamBattle", true }
+            };
+
+            var resultExtra = new Dictionary<string, object>
+            {
+                { "communityWon", communityWon },
+                { "participants", participants },
+                { "finisherLogin", finisherLogin }, { "finisherDisplayName", finisherDisplayName },
+                { "streamerName", streamerName }
+            };
+            Enqueue("battle", "", streamerName, "teamkampf", battleEvent);
+            Enqueue("teamkampfresult", "", streamerName, "teamkampf", resultExtra);
         }
 
         // Timer callback once the signup window closes. Runs entirely off the chat/HTTP threads,
@@ -6234,6 +7053,28 @@ namespace CardPackWidgetApp
                 { "transport", new Dictionary<string, object> { { "method", "websocket" }, { "session_id", sessionId } } }
             };
             TwitchJson("POST", "https://api.twitch.tv/helix/eventsub/subscriptions", GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), body);
+
+            // Sub-Belohnungen (channel:read:subscriptions): optional on top of the redemption
+            // subscription above - wrapped individually so a token still missing this scope
+            // doesn't prevent channel points from working.
+            foreach (string subEventType in new[] { "channel.subscribe", "channel.subscription.message", "channel.subscription.gift" })
+            {
+                try
+                {
+                    var subBody = new Dictionary<string, object>
+                    {
+                        { "type", subEventType },
+                        { "version", "1" },
+                        { "condition", new Dictionary<string, object> { { "broadcaster_user_id", GetString(twitch, "broadcasterId", "") } } },
+                        { "transport", new Dictionary<string, object> { { "method", "websocket" }, { "session_id", sessionId } } }
+                    };
+                    TwitchJson("POST", "https://api.twitch.tv/helix/eventsub/subscriptions", GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), subBody);
+                }
+                catch (Exception ex)
+                {
+                    server.Log("twitch", "warn", "Sub-Ereignis-Abonnement (" + subEventType + ") fehlgeschlagen: " + ex.Message);
+                }
+            }
         }
 
         // Matches an incoming redemption against settings.draw or settings.showcase. If the id
@@ -6405,6 +7246,80 @@ namespace CardPackWidgetApp
             tournament["rewardEnabled"] = isEnabled;
             tournament["rewardPaused"] = isPaused;
             tournament["rewardGlobalCooldown"] = globalCooldown;
+            server.WriteSettingsObject(settings);
+            return settings;
+        }
+
+        public Dictionary<string, object> SyncTeamBattleReward(string bodyJson)
+        {
+            Dictionary<string, object> body = ParseObject(bodyJson);
+            Dictionary<string, object> twitch = RequireTwitch();
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> teamBattle = Obj(settings, "teamBattle");
+            if (teamBattle.Count == 0) { teamBattle = new Dictionary<string, object>(); settings["teamBattle"] = teamBattle; }
+
+            string title = GetString(body, "title", GetString(teamBattle, "rewardName", "Team-Kampf starten"));
+            int cost = Math.Max(1, GetInt(body, "cost", 2000));
+            string prompt = GetString(body, "prompt", "");
+            string backgroundColor = GetString(body, "backgroundColor", "");
+            bool isEnabled = GetBool(body, "isEnabled", true);
+            bool isPaused = GetBool(body, "isPaused", false);
+            int globalCooldown = Math.Max(0, GetInt(body, "globalCooldown", 0));
+            bool explicitRewardId = body.ContainsKey("rewardId");
+            string rewardId = GetString(body, "rewardId", "");
+            object[] existingIds = teamBattle.ContainsKey("rewardIds") && teamBattle["rewardIds"] is object[] ? (object[])teamBattle["rewardIds"] : new object[0];
+            if (!explicitRewardId && String.IsNullOrWhiteSpace(rewardId)) rewardId = existingIds.Length > 0 ? Convert.ToString(existingIds[0]) : "";
+
+            var payload = new Dictionary<string, object>
+            {
+                { "title", title },
+                { "cost", cost },
+                { "prompt", prompt },
+                { "is_enabled", isEnabled },
+                { "is_user_input_required", false },
+                { "should_redemptions_skip_request_queue", false },
+                { "is_global_cooldown_enabled", globalCooldown > 0 },
+                { "global_cooldown_seconds", globalCooldown > 0 ? globalCooldown : 1 }
+            };
+            if (!String.IsNullOrWhiteSpace(backgroundColor)) payload["background_color"] = backgroundColor.ToUpperInvariant();
+
+            string baseUrl = "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" +
+                Uri.EscapeDataString(GetString(twitch, "broadcasterId", ""));
+            Dictionary<string, object> result;
+            if (String.IsNullOrWhiteSpace(rewardId))
+            {
+                result = CreateOrAdoptReward(twitch, baseUrl, title, payload, isPaused, ref rewardId);
+            }
+            else
+            {
+                try
+                {
+                    payload["is_paused"] = isPaused;
+                    result = TwitchJson("PATCH", baseUrl + "&id=" + Uri.EscapeDataString(rewardId), GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    if (ex.Message.IndexOf("was not found", StringComparison.OrdinalIgnoreCase) < 0) throw;
+                    payload.Remove("is_paused");
+                    result = CreateOrAdoptReward(twitch, baseUrl, title, payload, isPaused, ref rewardId);
+                }
+            }
+
+            object[] rewards = result.ContainsKey("data") && result["data"] is object[] ? (object[])result["data"] : new object[0];
+            Dictionary<string, object> reward = rewards.Length > 0 && rewards[0] is Dictionary<string, object>
+                ? (Dictionary<string, object>)rewards[0]
+                : new Dictionary<string, object>();
+            string savedId = GetString(reward, "id", rewardId);
+            server.Log("twitch", "info", "Team-Kampf-Belohnung gespeichert. Twitch-Antwort: " + server.Serializer.Serialize(reward));
+
+            teamBattle["rewardIds"] = new object[] { savedId };
+            teamBattle["rewardName"] = title;
+            teamBattle["rewardCost"] = cost;
+            teamBattle["rewardPrompt"] = prompt;
+            teamBattle["rewardBackgroundColor"] = backgroundColor;
+            teamBattle["rewardEnabled"] = isEnabled;
+            teamBattle["rewardPaused"] = isPaused;
+            teamBattle["rewardGlobalCooldown"] = globalCooldown;
             server.WriteSettingsObject(settings);
             return settings;
         }
@@ -6692,6 +7607,9 @@ namespace CardPackWidgetApp
             }
 
             var missing = new List<string>();
+            // channel:read:subscriptions (Sub-Belohnungen) is intentionally NOT required here -
+            // it's optional on top of channel points, and CreateEventSubSubscription already
+            // tolerates a token that lacks it (existing connections keep working unchanged).
             if (!scopes.Contains("channel:read:redemptions")) missing.Add("channel:read:redemptions");
             if (!scopes.Contains("channel:manage:redemptions")) missing.Add("channel:manage:redemptions");
             if (missing.Count > 0)

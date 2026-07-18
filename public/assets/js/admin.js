@@ -22,6 +22,7 @@ import {
   installUpdate,
   getLogs,
   getSettings,
+  getStatsInstallId,
   getTwitchStatus,
   getVersion,
   persistCollectionSnapshot,
@@ -31,11 +32,14 @@ import {
   syncTournamentReward,
   getTournamentState,
   startTournament,
+  syncTeamBattleReward,
+  startTeamBattle,
   syncTwitchReward,
   testTradeAnimation,
+  testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1784294738";
+} from "./api.js?v=20260718-jumpnavfix1";
 import {
   applyTheme,
   boosterMarkup,
@@ -58,7 +62,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1784294738";
+} from "./render.js?v=20260718-jumpnavfix1";
 
 let settings;
 let selectedCardId;
@@ -113,17 +117,21 @@ async function reportTwitchConnected(broadcasterId) {
 // aggregate stat is always accurate to "how many exist right now" - a repeated call from
 // autosave just overwrites the same per-install entry instead of double-counting, and it also
 // picks up cards/boosters that already existed before this feature shipped, on the next save.
+let cachedStatsInstallId = null;
 async function syncCommunityCounts(force) {
-  if (!settings?.statsInstallId) return;
   const now = Date.now();
   if (!force && now - lastStatsSyncAt < STATS_SYNC_MIN_INTERVAL_MS) return;
   lastStatsSyncAt = now;
   try {
+    // Fetched (and cached for the rest of this session) from the server rather than read off
+    // `settings` - see getStatsInstallId in api.js for why it must not live in settings.json.
+    if (!cachedStatsInstallId) cachedStatsInstallId = await getStatsInstallId();
+    if (!cachedStatsInstallId) return;
     await fetch(`${STATS_ENDPOINT}/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        installId: settings.statsInstallId,
+        installId: cachedStatsInstallId,
         cards: settings.deck?.cards?.length || 0,
         boosters: settings.boosters?.length || 0
       })
@@ -135,7 +143,7 @@ async function syncCommunityCounts(force) {
     // Anonymous, best-effort - never surface this to the user.
   }
 }
-const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions user:read:chat user:write:chat";
+const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions channel:read:subscriptions user:read:chat user:write:chat";
 const TWITCH_BOT_SCOPES = "user:read:chat user:write:chat";
 
 const I18N = {
@@ -1581,6 +1589,41 @@ const I18N = {
     es: "Sistema de compensación",
     th: "ระบบการันตี"
   },
+  "subrewards-eyebrow": { de: "Karten", en: "Cards", fr: "Cartes", es: "Cartas", th: "การ์ด" },
+  "subrewards-title": { de: "Sub-Belohnungen", en: "Sub rewards",
+    fr: "Récompenses d'abonnement",
+    es: "Recompensas de suscripción",
+    th: "รางวัลจากการสมัครสมาชิก"
+  },
+  "subrewards-hint": {
+    de: "Vergibt automatisch Karten aus allen als \"Sub-exklusiv\" markierten Boostern (siehe Booster-Tab) bei neuem Sub, Resub oder verschenkten Subs. Diese Booster sind über Kanalpunkte/\"!pack\" nicht erreichbar.",
+    en: "Automatically awards cards from every booster flagged \"sub-exclusive\" (see the Booster tab) on a new sub, resub, or gifted subs. These boosters cannot be reached via channel points/\"!pack\".",
+    fr: "Attribue automatiquement des cartes de chaque booster marqué \"exclusif aux abonnés\" (voir l'onglet Booster) lors d'un nouvel abonnement, d'un réabonnement ou d'abonnements offerts. Ces boosters ne sont pas accessibles via les points de chaîne/\"!pack\".",
+    es: "Otorga automáticamente cartas de cada booster marcado como \"exclusivo para suscriptores\" (ver la pestaña Booster) al producirse una nueva suscripción, resuscripción o suscripciones regaladas. Estos boosters no son accesibles mediante puntos de canal/\"!pack\".",
+    th: "มอบการ์ดจากบูสเตอร์ที่ทำเครื่องหมายว่า \"เฉพาะผู้สมัครสมาชิก\" (ดูแท็บ Booster) โดยอัตโนมัติเมื่อมีการสมัครสมาชิกใหม่ การต่ออายุ หรือการมอบสมาชิก บูสเตอร์เหล่านี้ไม่สามารถเข้าถึงได้ผ่านแชนแนลพอยท์/\"!pack\""
+  },
+  "label-subrewards-enabled": { de: "Sub-Belohnungen aktiviert", en: "Sub rewards enabled",
+    fr: "Récompenses d'abonnement activées",
+    es: "Recompensas de suscripción activadas",
+    th: "เปิดใช้งานรางวัลจากการสมัครสมาชิก"
+  },
+  "label-subrewards-cards-per-sub": { de: "Karten je Sub", en: "Cards per sub",
+    fr: "Cartes par abonnement",
+    es: "Cartas por suscripción",
+    th: "การ์ดต่อการสมัครสมาชิก"
+  },
+  "label-booster-sub-exclusive": { de: "Sub-exklusiv", en: "Sub-exclusive",
+    fr: "Exclusif aux abonnés",
+    es: "Exclusivo para suscriptores",
+    th: "เฉพาะผู้สมัครสมาชิก"
+  },
+  "booster-sub-exclusive-hint": {
+    de: "Karten aus diesem Booster gibt es nur über Sub-Ereignisse (neuer Sub, Resub, Sub verschenkt) – nicht über Kanalpunkte oder den Chat-Befehl \"!pack\".",
+    en: "Cards from this booster are only awarded via sub events (new sub, resub, gifted sub) - not through channel points or the \"!pack\" chat command.",
+    fr: "Les cartes de ce booster ne sont attribuées que via des événements d'abonnement (nouvel abonnement, réabonnement, abonnement offert) - pas via les points de chaîne ou la commande de chat \"!pack\".",
+    es: "Las cartas de este booster solo se otorgan mediante eventos de suscripción (nueva suscripción, resuscripción, suscripción regalada) - no mediante puntos de canal o el comando de chat \"!pack\".",
+    th: "การ์ดจากบูสเตอร์นี้จะได้รับเฉพาะผ่านเหตุการณ์การสมัครสมาชิก (สมัครใหม่ ต่ออายุ หรือได้รับเป็นของขวัญ) เท่านั้น - ไม่ใช่ผ่านแชนแนลพอยท์หรือคำสั่งแชท \"!pack\""
+  },
   "pity-hint": {
     de: "Garantiert jedem Viewer nach X erfolglosen Ziehungen in Folge (egal ob per Kanalpunkte oder Chat-Befehl) mindestens die gewählte Seltenheit – ändert nichts an der normalen Gewichtung, greift nur als Untergrenze.",
     en: "Guarantees every viewer at least the chosen rarity after X unsuccessful draws in a row (regardless of channel points or chat command) - doesn't change the normal weighting, only acts as a floor.",
@@ -1707,6 +1750,11 @@ const I18N = {
   "label-liveticker-enabled": { de: "Live-Ticker aktiviert", en: "Live ticker enabled", fr: "Fil d'actualité en direct activé", es: "Ticker en vivo activado", th: "เปิดใช้งานตัวแสดงผลสด" },
   "label-liveticker-max-entries": { de: "Einträge im Umlauf", en: "Entries in rotation", fr: "Entrées en rotation", es: "Entradas en rotación", th: "รายการที่หมุนเวียน" },
   "label-liveticker-speed": { de: "Geschwindigkeit (Px/Sek.)", en: "Speed (px/sec.)", fr: "Vitesse (px/sec.)", es: "Velocidad (px/seg.)", th: "ความเร็ว (พิกเซล/วิ)" },
+  "liveticker-group-messages": { de: "Texte", en: "Texts", fr: "Textes", es: "Textos", th: "ข้อความ" },
+  "label-liveticker-draw-message": { de: "Text bei Kartenziehung", en: "Text on card draw", fr: "Texte lors du tirage d'une carte", es: "Texto al sacar una carta", th: "ข้อความเมื่อจับการ์ด" },
+  "label-liveticker-battle-message": { de: "Text bei Kartenduell", en: "Text on card duel", fr: "Texte lors d'un duel de cartes", es: "Texto en duelo de cartas", th: "ข้อความเมื่อดวลการ์ด" },
+  "label-liveticker-tournament-message": { de: "Text bei Turniersieg", en: "Text on tournament win", fr: "Texte lors d'une victoire au tournoi", es: "Texto al ganar el torneo", th: "ข้อความเมื่อชนะทัวร์นาเมนต์" },
+  "label-liveticker-teambattle-message": { de: "Text bei Team-Kampf-Ergebnis", en: "Text on team battle result", fr: "Texte lors du résultat du combat d'équipe", es: "Texto en resultado de combate de equipo", th: "ข้อความเมื่อผลการต่อสู้ทีม" },
   "label-tournament-enabled": { de: "Turnier-Modus aktiviert", en: "Tournament mode enabled", fr: "Mode tournoi activé", es: "Modo torneo activado", th: "เปิดใช้งานโหมดทัวร์นาเมนต์" },
   "label-tournament-min-participants": { de: "Mindestteilnehmer", en: "Minimum participants", fr: "Participants minimum", es: "Participantes mínimos", th: "ผู้เข้าร่วมขั้นต่ำ" },
   "label-tournament-signup-seconds": { de: "Anmeldezeit (Sek.)", en: "Signup time (sec.)", fr: "Temps d'inscription (sec.)", es: "Tiempo de inscripción (seg.)", th: "เวลาสมัคร (วินาที)" },
@@ -1753,6 +1801,56 @@ const I18N = {
     es: "Los espectadores usan este comando para unirse al torneo durante una fase de inscripción activa. Quien no tenga suficientes cartas diferentes (ver Configuración → Modo torneo) recibe un mensaje en vez de unirse.",
     th: "ผู้ชมใช้คำสั่งนี้เพื่อเข้าร่วมทัวร์นาเมนต์ระหว่างช่วงสมัครที่ใช้งานอยู่ ผู้ที่มีการ์ดต่างกันไม่พอ (ดูการตั้งค่า → โหมดทัวร์นาเมนต์) จะได้รับข้อความแจ้งเตือนแทนการเข้าร่วม"
   },
+  "cc-teamkampfjoin-eyebrow": { de: "Team-Kampf", en: "Team battle", fr: "Combat d'équipe", es: "Combate de equipo", th: "การต่อสู้ทีม" },
+  "cc-teamkampfjoin-title": { de: "Team-Kampf-Beitritt", en: "Team battle join", fr: "Rejoindre le combat d'équipe", es: "Unirse al combate de equipo", th: "เข้าร่วมการต่อสู้ทีม" },
+  "cc-teamkampfjoin-hint": {
+    de: "Mit diesem Befehl treten Zuschauer während der Anmeldezeit eines laufenden Team-Kampfes bei. Jeder Teilnehmer bekommt automatisch eine zufällige Karte aus der eigenen Sammlung zugeteilt (siehe Einstellungen → Team-Kampf).",
+    en: "Viewers use this command to join an active team battle during its signup window. Each participant is automatically assigned a random card from their own collection (see Settings → Team battle).",
+    fr: "Les spectateurs utilisent cette commande pour rejoindre un combat d'équipe actif pendant sa fenêtre d'inscription. Chaque participant reçoit automatiquement une carte aléatoire de sa propre collection (voir Paramètres → Combat d'équipe).",
+    es: "Los espectadores usan este comando para unirse a un combate de equipo activo durante su ventana de inscripción. Cada participante recibe automáticamente una carta aleatoria de su propia colección (ver Configuración → Combate de equipo).",
+    th: "ผู้ชมใช้คำสั่งนี้เพื่อเข้าร่วมการต่อสู้ทีมที่กำลังดำเนินอยู่ในช่วงเวลาสมัคร ผู้เข้าร่วมแต่ละคนจะได้รับการ์ดสุ่มจากคอลเลกชันของตนเองโดยอัตโนมัติ (ดูการตั้งค่า → การต่อสู้ทีม)"
+  },
+  "teamkampf-eyebrow": { de: "Kämpfe", en: "Battles", fr: "Combats", es: "Combates", th: "การดวล" },
+  "teamkampf-title": { de: "Team-Kampf", en: "Team battle", fr: "Combat d'équipe", es: "Combate de equipo", th: "การต่อสู้ทีม" },
+  "teamkampf-hint": {
+    de: "Alle gegen den Streamer: bei Einlösung der Kanalpunkte-Belohnung (unter Kanalpunkte) stellt der Streamer per Zufall ein Karten-Team zusammen (aus allen Boostern, auch Sub-exklusiven) und zeigt es im Overlay. Zuschauer treten während der Anmeldezeit per Chat-Befehl bei (unter Chat-Befehle einstellbar) - der Einlösende automatisch. Jeder Teilnehmer bekommt eine zufällige Karte aus der eigenen Sammlung. Nach Ablauf der Zeit kämpft im HP-Leisten-Duell-Stil Karte gegen Karte, in Anmeldereihenfolge - eine Karte bleibt im Kampf, bis sie besiegt ist, dann kommt die nächste (auf beiden Seiten).",
+    en: "Everyone vs. the streamer: redeeming the channel-point reward (under Channel points) randomly assembles the streamer's card team (from every booster, including sub-exclusive ones) and shows it in the overlay. Viewers join during the signup window with a chat command (configurable under Chat commands) - the redeemer joins automatically. Each participant gets a random card from their own collection. Once the window closes, cards fight one another HP-Leisten-Duell style, in signup order - a card stays in the fight until defeated, then the next one steps up (on both sides).",
+    fr: "Tout le monde contre le streamer : l'utilisation de la récompense de points de chaîne (sous Points de chaîne) assemble aléatoirement l'équipe de cartes du streamer (de tous les boosters, y compris les exclusifs aux abonnés) et l'affiche dans l'overlay. Les spectateurs rejoignent pendant la fenêtre d'inscription avec une commande de chat (configurable sous Commandes de chat) - la personne qui a échangé les points rejoint automatiquement. Chaque participant reçoit une carte aléatoire de sa propre collection. Une fois la fenêtre fermée, les cartes se battent les unes contre les autres façon duel à barres de vie, dans l'ordre d'inscription.",
+    es: "Todos contra el streamer: canjear la recompensa de puntos de canal (en Puntos de canal) reúne aleatoriamente el equipo de cartas del streamer (de todos los sobres, incluidos los exclusivos para suscriptores) y lo muestra en el overlay. Los espectadores se unen durante la ventana de inscripción con un comando de chat (configurable en Comandos de chat) - quien canjeó se une automáticamente. Cada participante recibe una carta aleatoria de su propia colección. Al cerrarse la ventana, las cartas luchan entre sí al estilo duelo de barras de vida, en orden de inscripción.",
+    th: "ทุกคนปะทะสตรีมเมอร์: การแลกรางวัลแชนแนลพอยท์ (ใต้แชนแนลพอยท์) จะสุ่มรวบรวมทีมการ์ดของสตรีมเมอร์ (จากบูสเตอร์ทั้งหมด รวมถึงแบบเฉพาะผู้สมัครสมาชิก) และแสดงในโอเวอร์เลย์ ผู้ชมเข้าร่วมระหว่างช่วงสมัครด้วยคำสั่งแชท (ตั้งค่าได้ใต้คำสั่งแชท) - ผู้แลกรางวัลจะเข้าร่วมโดยอัตโนมัติ ผู้เข้าร่วมแต่ละคนได้รับการ์ดสุ่มจากคอลเลกชันของตนเอง เมื่อหมดเวลา การ์ดจะต่อสู้กันแบบดวลแถบเลือด ตามลำดับการสมัคร"
+  },
+  "label-teamkampf-enabled": { de: "Team-Kampf aktiviert", en: "Team battle enabled", fr: "Combat d'équipe activé", es: "Combate de equipo activado", th: "เปิดใช้งานการต่อสู้ทีม" },
+  "label-teamkampf-card-count": { de: "Mindest-Kartenanzahl Streamer-Team (tatsächliche Anzahl ist zufällig)", en: "Minimum streamer team card count (actual count is randomized)", fr: "Nombre minimum de cartes de l'équipe du streamer (le nombre réel est aléatoire)", es: "Número mínimo de cartas del equipo del streamer (el número real es aleatorio)", th: "จำนวนการ์ดขั้นต่ำของทีมสตรีมเมอร์ (จำนวนจริงเป็นแบบสุ่ม)" },
+  "label-teamkampf-signup-seconds": { de: "Anmeldezeit (Sek.)", en: "Signup time (sec.)", fr: "Temps d'inscription (sec.)", es: "Tiempo de inscripción (seg.)", th: "เวลาสมัคร (วินาที)" },
+  "label-teamkampf-rewards-enabled": { de: "Bei Sieg der Community bekommt jeder Teilnehmer Karten", en: "On a community win, every participant gets cards", fr: "En cas de victoire de la communauté, chaque participant reçoit des cartes", es: "Si gana la comunidad, cada participante recibe cartas", th: "เมื่อชุมชนชนะ ผู้เข้าร่วมทุกคนจะได้รับการ์ด" },
+  "label-teamkampf-draws-per-participant": { de: "Ziehungen je Teilnehmer", en: "Draws per participant", fr: "Tirages par participant", es: "Tiradas por participante", th: "จำนวนการจับสลากต่อผู้เข้าร่วม" },
+  "label-teamkampf-finisher-bonus-enabled": { de: "Wer die letzte Streamer-Karte besiegt, bekommt zusätzliche Ziehungen", en: "Whoever defeats the streamer's last card gets extra draws", fr: "Celui qui bat la dernière carte du streamer reçoit des tirages supplémentaires", es: "Quien derrote la última carta del streamer recibe tiradas adicionales", th: "ผู้ที่เอาชนะการ์ดใบสุดท้ายของสตรีมเมอร์จะได้รับการจับสลากเพิ่มเติม" },
+  "label-teamkampf-finisher-bonus-draws": { de: "Bonus-Ziehungen für den Finisher", en: "Bonus draws for the finisher", fr: "Tirages bonus pour le finisseur", es: "Tiradas de bonificación para quien remata", th: "การจับสลากโบนัสสำหรับผู้พิชิต" },
+  "label-teamkampf-lose-card-enabled": { de: "Bei Niederlage verliert jeder Teilnehmer die eingesetzte Karte", en: "On defeat, every participant loses their staked card", fr: "En cas de défaite, chaque participant perd sa carte engagée", es: "En caso de derrota, cada participante pierde la carta apostada", th: "เมื่อพ่ายแพ้ ผู้เข้าร่วมทุกคนจะเสียการ์ดที่วางเดิมพัน" },
+  "label-teamkampf-lost-card-announce-enabled": { de: "Chat-Nachricht bei Kartenverlust", en: "Chat message on card loss", fr: "Message dans le chat en cas de perte de carte", es: "Mensaje en el chat al perder una carta", th: "ข้อความแชทเมื่อเสียการ์ด" },
+  "label-teamkampf-lost-card-message": { de: "Nachricht bei Kartenverlust", en: "Message on card loss", fr: "Message en cas de perte de carte", es: "Mensaje al perder una carta", th: "ข้อความเมื่อเสียการ์ด" },
+  "btn-teamkampf-start-now": { de: "Team-Kampf jetzt starten", en: "Start team battle now", fr: "Démarrer le combat d'équipe maintenant", es: "Iniciar combate de equipo ahora", th: "เริ่มการต่อสู้ทีมตอนนี้" },
+  "teamkampf-layout-hint": {
+    de: "Der Team-Kampf läuft in derselben OBS-Quelle wie die Kampf-Animation an – diese Position/Skalierung gilt für beide gemeinsam.",
+    en: "The team battle plays in the same OBS source as the battle animation - that position/scale setting applies to both.",
+    fr: "Le combat d'équipe se joue dans la même source OBS que l'animation de combat - ce réglage de position/échelle s'applique aux deux.",
+    es: "El combate de equipo se reproduce en la misma fuente de OBS que la animación de combate - ese ajuste de posición/escala se aplica a ambos.",
+    th: "การต่อสู้ทีมเล่นในซอร์ส OBS เดียวกับแอนิเมชันการต่อสู้ - การตั้งค่าตำแหน่ง/ขนาดนี้ใช้กับทั้งสองอย่าง"
+  },
+  "teamkampf-reward-eyebrow": { de: "Team-Kampf", en: "Team battle", fr: "Combat d'équipe", es: "Combate de equipo", th: "การต่อสู้ทีม" },
+  "teamkampf-reward-title": { de: "Team-Kampf-Belohnung", en: "Team battle reward", fr: "Récompense de combat d'équipe", es: "Recompensa de combate de equipo", th: "รางวัลการต่อสู้ทีม" },
+  "teamkampf-reward-info-text": {
+    de: "Löst ein Zuschauer diese Belohnung ein, stellt der Streamer sein Karten-Team zusammen und die Anmeldephase beginnt (siehe Einstellungen → Team-Kampf für Regeln wie Kartenanzahl und Anmeldezeit).",
+    en: "When a viewer redeems this reward, the streamer assembles their card team and the signup phase begins (see Settings → Team battle for rules like card count and signup time).",
+    fr: "Lorsqu'un spectateur échange cette récompense, le streamer assemble son équipe de cartes et la phase d'inscription commence (voir Paramètres → Combat d'équipe pour des règles comme le nombre de cartes et le temps d'inscription).",
+    es: "Cuando un espectador canjea esta recompensa, el streamer arma su equipo de cartas y comienza la fase de inscripción (ver Configuración → Combate de equipo para reglas como el número de cartas y el tiempo de inscripción).",
+    th: "เมื่อผู้ชมแลกรางวัลนี้ สตรีมเมอร์จะรวบรวมทีมการ์ดของตนและช่วงสมัครจะเริ่มต้น (ดูการตั้งค่า → การต่อสู้ทีม สำหรับกฎ เช่น จำนวนการ์ดและเวลาสมัคร)"
+  },
+  "notice-teamkampf-reward-saved": { de: "Team-Kampf-Belohnung gespeichert.", en: "Team battle reward saved.", fr: "Récompense de combat d'équipe enregistrée.", es: "Recompensa de combate de equipo guardada.", th: "บันทึกรางวัลการต่อสู้ทีมแล้ว" },
+  "notice-teamkampf-started": { de: "Team-Kampf-Anmeldung gestartet.", en: "Team battle signup started.", fr: "Inscription au combat d'équipe démarrée.", es: "Inscripción al combate de equipo iniciada.", th: "เริ่มการสมัครการต่อสู้ทีมแล้ว" },
+  "notice-teamkampf-already-running": { de: "Es läuft bereits ein Team-Kampf.", en: "A team battle is already running.", fr: "Un combat d'équipe est déjà en cours.", es: "Ya hay un combate de equipo en curso.", th: "มีการต่อสู้ทีมที่กำลังดำเนินอยู่แล้ว" },
+  "notice-teamkampf-disabled": { de: "Team-Kampf ist nicht aktiviert.", en: "Team battle is not enabled.", fr: "Le combat d'équipe n'est pas activé.", es: "El combate de equipo no está activado.", th: "การต่อสู้ทีมไม่ได้เปิดใช้งาน" },
+  "notice-teamkampf-no-cards": { de: "Team-Kampf konnte nicht gestartet werden: keine Karten verfügbar.", en: "Team battle couldn't start: no cards available.", fr: "Le combat d'équipe n'a pas pu démarrer : aucune carte disponible.", es: "No se pudo iniciar el combate de equipo: no hay cartas disponibles.", th: "ไม่สามารถเริ่มการต่อสู้ทีมได้: ไม่มีการ์ดที่ใช้งานได้" },
   "cc-tournamentstart-eyebrow": { de: "Turnier", en: "Tournament", fr: "Tournoi", es: "Torneo", th: "ทัวร์นาเมนต์" },
   "cc-tournamentstart-title": { de: "Turnier-Start (Chat)", en: "Tournament start (chat)", fr: "Démarrage du tournoi (chat)", es: "Inicio de torneo (chat)", th: "เริ่มทัวร์นาเมนต์ (แชท)" },
   "cc-tournamentstart-hint": {
@@ -2675,6 +2773,92 @@ const I18N = {
     fr: "Aucune carte active trouvée dans un booster.",
     es: "No se encontraron cartas activas en ningún sobre.",
     th: "ไม่พบการ์ดที่ใช้งานอยู่ในบูสเตอร์ใดเลย"
+  },
+  "gift-anim-eyebrow": { de: "Geschenk", en: "Gift", fr: "Cadeau", es: "Regalo", th: "ของขวัญ" },
+  "gift-anim-title": { de: "Geschenk-Animation", en: "Gift animation",
+    fr: "Animation de cadeau",
+    es: "Animación de regalo",
+    th: "แอนิเมชันของขวัญ"
+  },
+  "gift-anim-hint": {
+    de: "Wird abgespielt, wenn \"!gift\" erfolgreich eine Karte verschenkt (siehe Chat-Befehle → Geschenk-Befehl). Läuft über dieselbe Queue wie alle anderen Animationen, damit sich nichts überlagert.",
+    en: "Plays when \"!gift\" successfully gives away a card (see Chat commands → Gift command). Runs through the same queue as every other animation so nothing overlaps.",
+    fr: "Se joue lorsque \"!gift\" offre une carte avec succès (voir Commandes de chat → Commande de cadeau). Passe par la même file d'attente que toutes les autres animations pour éviter les chevauchements.",
+    es: "Se reproduce cuando \"!gift\" regala una carta con éxito (ver Comandos de chat → Comando de regalo). Pasa por la misma cola que el resto de animaciones para que nada se superponga.",
+    th: "เล่นเมื่อ \"!gift\" มอบการ์ดสำเร็จ (ดู คำสั่งแชท → คำสั่งของขวัญ) ทำงานผ่านคิวเดียวกับแอนิเมชันอื่น ๆ เพื่อไม่ให้ซ้อนทับกัน"
+  },
+  "label-gift-anim-enabled": { de: "Geschenk-Animation aktiviert", en: "Gift animation enabled",
+    fr: "Animation de cadeau activée",
+    es: "Animación de regalo activada",
+    th: "เปิดใช้แอนิเมชันของขวัญ"
+  },
+  "label-gift-anim-style": { de: "Animationsstil", en: "Animation style",
+    fr: "Style d'animation",
+    es: "Estilo de animación",
+    th: "สไตล์แอนิเมชัน"
+  },
+  "opt-gift-style-handover": { de: "Übergabe", en: "Handover", fr: "Remise", es: "Entrega", th: "การส่งมอบ" },
+  "opt-gift-style-spin": { de: "Spin-Reveal", en: "Spin reveal", fr: "Révélation tournante", es: "Revelación giratoria", th: "เผยโฉมแบบหมุน" },
+  "opt-gift-style-pixelate": { de: "Pixel-Reveal", en: "Pixelate reveal", fr: "Révélation pixelisée", es: "Revelación pixelada", th: "เผยโฉมแบบพิกเซล" },
+  "btn-gift-anim-test": { de: "Test starten", en: "Run test",
+    fr: "Lancer le test",
+    es: "Ejecutar prueba",
+    th: "เรียกใช้การทดสอบ"
+  },
+  "gift-anim-test-hint": {
+    de: "Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und einer zufälligen Karte. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.",
+    en: "Plays the animation once in OBS – with two random names and a random card. Works even if the animation isn't enabled yet.",
+    fr: "Joue l'animation une fois dans OBS – avec deux noms aléatoires et une carte aléatoire. Fonctionne même si l'animation n'est pas encore activée.",
+    es: "Reproduce la animación una vez en OBS – con dos nombres aleatorios y una carta aleatoria. Funciona aunque la animación aún no esté activada.",
+    th: "เล่นแอนิเมชันหนึ่งครั้งใน OBS – ด้วยชื่อสุ่มสองชื่อและการ์ดสุ่มหนึ่งใบ ใช้งานได้แม้ยังไม่ได้เปิดใช้แอนิเมชัน"
+  },
+  "cc-gift-eyebrow": { de: "Geschenk", en: "Gift", fr: "Cadeau", es: "Regalo", th: "ของขวัญ" },
+  "cc-gift-title": { de: "Geschenk-Befehl", en: "Gift command",
+    fr: "Commande de cadeau",
+    es: "Comando de regalo",
+    th: "คำสั่งของขวัญ"
+  },
+  "cc-gift-hint": {
+    de: "Verschenkt eine Karte einseitig an einen anderen Zuschauer: \"!gift @Empfänger Kartenname\". Die Karte wird direkt aus der eigenen Sammlung entfernt, keine Bestätigung durch den Empfänger nötig.",
+    en: "Gives a card away to another viewer, one-sided: \"!gift @recipient cardName\". The card is removed from the giver's collection immediately, no confirmation from the recipient needed.",
+    fr: "Offre une carte à un autre spectateur, à sens unique : \"!gift @destinataire nomDeLaCarte\". La carte est immédiatement retirée de la collection du donateur, aucune confirmation du destinataire n'est nécessaire.",
+    es: "Regala una carta a otro espectador, de forma unilateral: \"!gift @destinatario nombreDeLaCarta\". La carta se elimina inmediatamente de la colección del donante, no se necesita confirmación del destinatario.",
+    th: "มอบการ์ดให้ผู้ชมคนอื่นแบบทางเดียว: \"!gift @ผู้รับ ชื่อการ์ด\" การ์ดจะถูกนำออกจากคอลเลกชันของผู้ให้ทันที ไม่ต้องรอการยืนยันจากผู้รับ"
+  },
+  "label-cc-gift-chatoutput-enabled": { de: "Erfolgsmeldung im Chat senden", en: "Send success message in chat",
+    fr: "Envoyer le message de succès dans le chat",
+    es: "Enviar mensaje de éxito en el chat",
+    th: "ส่งข้อความสำเร็จในแชท"
+  },
+  "label-cc-gift-usage": { de: "Nachricht bei falscher Nutzung", en: "Message for incorrect usage",
+    fr: "Message en cas d'utilisation incorrecte",
+    es: "Mensaje por uso incorrecto",
+    th: "ข้อความเมื่อใช้งานผิด"
+  },
+  "label-cc-gift-usernotfound": { de: "Nachricht bei unbekanntem Empfänger", en: "Message for unknown recipient",
+    fr: "Message pour destinataire inconnu",
+    es: "Mensaje para destinatario desconocido",
+    th: "ข้อความเมื่อไม่รู้จักผู้รับ"
+  },
+  "label-cc-gift-notfound": { de: "Nachricht bei unbekannter Karte", en: "Message for unknown card",
+    fr: "Message pour carte inconnue",
+    es: "Mensaje para carta desconocida",
+    th: "ข้อความเมื่อไม่รู้จักการ์ด"
+  },
+  "label-cc-gift-notowned": { de: "Nachricht wenn Karte nicht besessen", en: "Message when the card isn't owned",
+    fr: "Message si la carte n'est pas possédée",
+    es: "Mensaje si la carta no se posee",
+    th: "ข้อความเมื่อไม่ได้เป็นเจ้าของการ์ด"
+  },
+  "label-cc-gift-self": { de: "Nachricht bei Selbst-Geschenk", en: "Message for gifting yourself",
+    fr: "Message pour un cadeau à soi-même",
+    es: "Mensaje al regalarse a uno mismo",
+    th: "ข้อความเมื่อให้ของขวัญตัวเอง"
+  },
+  "label-cc-gift-success": { de: "Nachricht bei Erfolg", en: "Message on success",
+    fr: "Message en cas de succès",
+    es: "Mensaje de éxito",
+    th: "ข้อความเมื่อสำเร็จ"
   },
   "label-cc-helptext": { de: "Kurzbeschreibung (für Auto-Hilfe-Nachricht)", en: "Short description (for auto-help message)",
     fr: "Brève description (pour le message d'aide automatique)",
@@ -4287,6 +4471,55 @@ function bindTournamentReward() {
   $("#tournament-reward-delete").addEventListener("click", handleTournamentRewardDelete);
 }
 
+async function handleTeamBattleRewardSync() {
+  const statusEl = $("#teamkampf-reward-status");
+  if (statusEl) statusEl.hidden = false;
+  setStatus("#teamkampf-reward-status", t("status-showcase-saving"), "neutral");
+  try {
+    settings.teamBattle ||= {};
+    await saveSettings(settings);
+    const teamBattle = settings.teamBattle;
+    const result = await syncTeamBattleReward({
+      rewardId: teamBattle.rewardIds?.[0] || "",
+      title: $("#teamkampf-reward-title").value || "Team-Kampf starten",
+      cost: Number($("#teamkampf-reward-cost").value || 2000),
+      prompt: $("#teamkampf-reward-prompt").value || "",
+      backgroundColor: $("#teamkampf-reward-bg-color").value || "#9147ff",
+      isEnabled: $("#teamkampf-reward-enabled").checked,
+      isPaused: $("#teamkampf-reward-paused").checked,
+      globalCooldown: Math.max(0, Number($("#teamkampf-reward-cooldown").value || 0))
+    });
+    settings = normalizeSettings(result.settings || await getSettings());
+    hydrateTrigger();
+    setStatus("#teamkampf-reward-status", t("notice-teamkampf-reward-saved"), "ok");
+    showNotice(t("notice-teamkampf-reward-saved"));
+  } catch (error) {
+    setStatus("#teamkampf-reward-status", error.message, "error");
+  }
+}
+
+async function handleTeamBattleRewardDelete() {
+  const rewardId = settings.teamBattle?.rewardIds?.[0];
+  if (!rewardId) return;
+  if (!window.confirm(t("confirm-delete-reward"))) return;
+  $("#teamkampf-reward-status").hidden = false;
+  setStatus("#teamkampf-reward-status", t("status-deleting-reward"), "neutral");
+  try {
+    const result = await deleteTwitchReward({ rewardId });
+    settings = normalizeSettings(result.settings || await getSettings());
+    hydrateTrigger();
+    setStatus("#teamkampf-reward-status", t("notice-reward-deleted"), "ok");
+    showNotice(t("notice-reward-deleted"));
+  } catch (error) {
+    setStatus("#teamkampf-reward-status", error.message, "error");
+  }
+}
+
+function bindTeamBattleReward() {
+  $("#teamkampf-reward-sync").addEventListener("click", handleTeamBattleRewardSync);
+  $("#teamkampf-reward-delete").addEventListener("click", handleTeamBattleRewardDelete);
+}
+
 function renderOverview() {
   const booster = selectedBooster();
   const cards = booster ? cardsForBooster(settings, booster) : [];
@@ -4501,7 +4734,7 @@ function renderBoosterList() {
     <button class="booster-list-item ${booster.id === selectedBoosterId ? "is-selected" : ""} ${booster.enabled === false ? "is-disabled" : ""}" data-booster-id="${booster.id}" type="button">
       <span>${escapeHtml(booster.title)}</span>
       ${booster.subtitle ? `<span class="booster-list-subtitle">${escapeHtml(booster.subtitle)}</span>` : ""}
-      <small>${(booster.cardIds || []).length}/${MAX_BOOSTER_CARDS} ${t("unit-cards")}${booster.enabled === false ? ` · ${t("label-booster-disabled-tag")}` : ""}</small>
+      <small>${(booster.cardIds || []).length}/${MAX_BOOSTER_CARDS} ${t("unit-cards")}${booster.enabled === false ? ` · ${t("label-booster-disabled-tag")}` : ""}${booster.subExclusive === true ? ` · ${t("label-booster-sub-exclusive")}` : ""}</small>
     </button>
   `).join("");
 }
@@ -4544,6 +4777,7 @@ function hydrateBooster() {
   const booster = selectedBooster();
   if (!booster) return;
   $("#booster-enabled").checked = booster.enabled !== false;
+  $("#booster-sub-exclusive").checked = booster.subExclusive === true;
   $("#booster-title").value = booster.title || "";
   $("#booster-subtitle").value = booster.subtitle || "";
   $("#booster-score").value = booster.score ?? 100;
@@ -4622,6 +4856,12 @@ function bindBooster() {
   $("#booster-enabled").addEventListener("change", (event) => {
     selectedBooster().enabled = event.target.checked;
     renderBoosterList();
+    scheduleAutoSave();
+  });
+  $("#booster-sub-exclusive").addEventListener("change", (event) => {
+    selectedBooster().subExclusive = event.target.checked;
+    renderBoosterList();
+    scheduleAutoSave();
   });
   $("#booster-title").addEventListener("input", (event) => {
     selectedBooster().title = event.target.value;
@@ -5061,6 +5301,18 @@ function hydrateChatCommands() {
   $("#cc-dust-notenough-message").value = cc.dust.notEnoughMessage || "";
   $("#cc-dust-success-message").value = cc.dust.successMessage || "";
   $("#cc-dust-helptext").value = cc.dust.helpText || "";
+  cc.gift ||= {};
+  $("#cc-gift-enabled").checked = cc.gift.enabled === true;
+  $("#cc-gift-prefix").value = cc.gift.prefix || "!";
+  $("#cc-gift-command").value = cc.gift.command || "gift";
+  $("#cc-gift-chatoutput-enabled").checked = cc.gift.chatOutputEnabled !== false;
+  $("#cc-gift-usage-message").value = cc.gift.usageMessage || "";
+  $("#cc-gift-usernotfound-message").value = cc.gift.userNotFoundMessage || "";
+  $("#cc-gift-notfound-message").value = cc.gift.cardNotFoundMessage || "";
+  $("#cc-gift-notowned-message").value = cc.gift.notOwnedMessage || "";
+  $("#cc-gift-self-message").value = cc.gift.selfGiftMessage || "";
+  $("#cc-gift-success-message").value = cc.gift.successMessage || "";
+  $("#cc-gift-helptext").value = cc.gift.helpText || "";
   // Same underlying value as "#showcase-seconds" in Kanalpunkte (settings.showcase.secondsPerBooster)
   // - the showcase overlay's page-flip timing is one setting regardless of which trigger (channel
   // point reward or chat command) started it, so both fields must always show/write the same number.
@@ -5144,6 +5396,12 @@ function hydrateChatCommands() {
   $("#cc-tournamentjoin-command").value = tournamentJoin.command || "turnier";
   $("#cc-tournamentjoin-helptext").value = tournamentJoin.helpText || "";
 
+  const teamBattleJoin = cc.teamBattleJoin || {};
+  $("#cc-teamkampfjoin-enabled").checked = teamBattleJoin.enabled !== false;
+  $("#cc-teamkampfjoin-prefix").value = teamBattleJoin.prefix || "!";
+  $("#cc-teamkampfjoin-command").value = teamBattleJoin.command || "teamkampf";
+  $("#cc-teamkampfjoin-helptext").value = teamBattleJoin.helpText || "";
+
   const tournamentStart = cc.tournamentStart || {};
   $("#cc-tournamentstart-enabled").checked = tournamentStart.enabled !== false;
   $("#cc-tournamentstart-prefix").value = tournamentStart.prefix || "!";
@@ -5191,6 +5449,19 @@ function readChatCommandsFromForm() {
   cc.dust.notEnoughMessage = $("#cc-dust-notenough-message").value;
   cc.dust.successMessage = $("#cc-dust-success-message").value;
   cc.dust.helpText = $("#cc-dust-helptext").value;
+
+  cc.gift ||= {};
+  cc.gift.enabled = $("#cc-gift-enabled").checked;
+  cc.gift.prefix = $("#cc-gift-prefix").value || "!";
+  cc.gift.command = $("#cc-gift-command").value.trim() || "gift";
+  cc.gift.chatOutputEnabled = $("#cc-gift-chatoutput-enabled").checked;
+  cc.gift.usageMessage = $("#cc-gift-usage-message").value;
+  cc.gift.userNotFoundMessage = $("#cc-gift-usernotfound-message").value;
+  cc.gift.cardNotFoundMessage = $("#cc-gift-notfound-message").value;
+  cc.gift.notOwnedMessage = $("#cc-gift-notowned-message").value;
+  cc.gift.selfGiftMessage = $("#cc-gift-self-message").value;
+  cc.gift.successMessage = $("#cc-gift-success-message").value;
+  cc.gift.helpText = $("#cc-gift-helptext").value;
 
   cc.trade ||= {};
   cc.trade.enabled = $("#cc-trade-enabled").checked;
@@ -5269,6 +5540,12 @@ function readChatCommandsFromForm() {
   cc.tournamentJoin.command = $("#cc-tournamentjoin-command").value.trim() || "turnier";
   cc.tournamentJoin.helpText = $("#cc-tournamentjoin-helptext").value;
 
+  cc.teamBattleJoin ||= {};
+  cc.teamBattleJoin.enabled = $("#cc-teamkampfjoin-enabled").checked;
+  cc.teamBattleJoin.prefix = $("#cc-teamkampfjoin-prefix").value || "!";
+  cc.teamBattleJoin.command = $("#cc-teamkampfjoin-command").value.trim() || "teamkampf";
+  cc.teamBattleJoin.helpText = $("#cc-teamkampfjoin-helptext").value;
+
   cc.tournamentStart ||= {};
   cc.tournamentStart.enabled = $("#cc-tournamentstart-enabled").checked;
   cc.tournamentStart.prefix = $("#cc-tournamentstart-prefix").value || "!";
@@ -5280,6 +5557,7 @@ function readChatCommandsFromForm() {
   settings.autoHelp.intervalMinutes = Math.max(0, Math.round(Number($("#autohelp-minutes").value) || 0));
   settings.autoHelp.intervalMessages = Math.max(0, Math.round(Number($("#autohelp-messages").value) || 0));
   settings.autoHelp.message = $("#autohelp-message").value;
+  scheduleAutoSave();
 }
 
 function insertVariableIntoField(fieldId, variable) {
@@ -5455,6 +5733,14 @@ function hydrateTrigger() {
   $("#tournament-reward-prompt").value = tournament.rewardPrompt || "";
   $("#tournament-reward-cooldown").value = tournament.rewardGlobalCooldown || 0;
   $("#tournament-reward-bg-color").value = tournament.rewardBackgroundColor || "#9147ff";
+  const teamBattle = settings.teamBattle || {};
+  $("#teamkampf-reward-enabled").checked = teamBattle.rewardEnabled !== false;
+  $("#teamkampf-reward-paused").checked = teamBattle.rewardPaused === true;
+  $("#teamkampf-reward-title").value = teamBattle.rewardName || "Team-Kampf starten";
+  $("#teamkampf-reward-cost").value = teamBattle.rewardCost || 2000;
+  $("#teamkampf-reward-prompt").value = teamBattle.rewardPrompt || "";
+  $("#teamkampf-reward-cooldown").value = teamBattle.rewardGlobalCooldown || 0;
+  $("#teamkampf-reward-bg-color").value = teamBattle.rewardBackgroundColor || "#9147ff";
 }
 
 function bindTrigger() {
@@ -5469,6 +5755,7 @@ function bindTrigger() {
   bindDrawReward();
   bindShowcase();
   bindTournamentReward();
+  bindTeamBattleReward();
 }
 
 function hydrateDesign() {
@@ -5506,6 +5793,8 @@ function hydrateDesign() {
     const dustInput = $(`#pity-dust-${rarity.id}`);
     if (dustInput) dustInput.value = settings.pity?.dustValues?.[rarity.id] ?? 1;
   }
+  $("#subrewards-enabled").checked = settings.subRewards?.enabled !== false;
+  $("#subrewards-cards-per-sub").value = settings.subRewards?.cardsPerSub ?? 1;
   $("#communitygoal-enabled").checked = settings.communityGoal?.enabled === true;
   $("#communitygoal-target").value = settings.communityGoal?.target ?? 500;
   $("#communitygoal-message").value = settings.communityGoal?.celebrationMessage || "";
@@ -5519,9 +5808,23 @@ function hydrateDesign() {
   $("#tournament-perround-enabled").checked = settings.tournament?.perRoundWinnerEnabled === true;
   $("#tournament-champion-draws-enabled").checked = settings.tournament?.championDrawsEnabled !== false;
   refreshTournamentStatus();
+  $("#teamkampf-enabled").checked = settings.teamBattle?.enabled === true;
+  $("#teamkampf-card-count").value = settings.teamBattle?.streamerCardCount ?? 5;
+  $("#teamkampf-signup-seconds").value = settings.teamBattle?.signupSeconds ?? 60;
+  $("#teamkampf-rewards-enabled").checked = settings.teamBattle?.rewardsEnabled !== false;
+  $("#teamkampf-draws-per-participant").value = settings.teamBattle?.drawsPerParticipant ?? 1;
+  $("#teamkampf-finisher-bonus-enabled").checked = settings.teamBattle?.finisherBonusEnabled !== false;
+  $("#teamkampf-finisher-bonus-draws").value = settings.teamBattle?.finisherBonusDraws ?? 1;
+  $("#teamkampf-lose-card-enabled").checked = settings.teamBattle?.loseCardOnDefeat === true;
+  $("#teamkampf-lost-card-announce-enabled").checked = settings.teamBattle?.lostCardAnnounceEnabled !== false;
+  $("#teamkampf-lost-card-message").value = settings.teamBattle?.lostCardMessage ?? "@userName hat [Kartenname] verloren.";
   $("#liveticker-enabled").checked = settings.liveTicker?.enabled !== false;
   $("#liveticker-max-entries").value = settings.liveTicker?.maxEntries ?? 8;
   $("#liveticker-speed").value = settings.liveTicker?.speed ?? 120;
+  $("#liveticker-draw-message").value = settings.liveTicker?.drawMessage ?? "@userName hat [Kartenname] gezogen.";
+  $("#liveticker-battle-message").value = settings.liveTicker?.battleMessage ?? "@userNameA hat gegen @userNameB gewonnen.";
+  $("#liveticker-tournament-message").value = settings.liveTicker?.tournamentMessage ?? "Turnier: @userName hat gewonnen.";
+  $("#liveticker-teambattle-message").value = settings.liveTicker?.teamBattleMessage ?? "Team-Kampf: [Sieger] hat gewonnen.";
   $("#reveal-seconds").value = settings.behavior.revealSeconds ?? 3.2;
   $("#cooldown-seconds").value = settings.behavior.cooldownSeconds ?? 0.8;
   $("#backs-before-reveal").value = settings.behavior.cardBacksBeforeReveal ?? 2;
@@ -5538,6 +5841,8 @@ function hydrateDesign() {
   $("#trade-anim-sendchat").checked = settings.tradeAnimation?.sendChat !== false;
   $("#trade-anim-style").value = ["swap", "arc", "flip"].includes(settings.tradeAnimation?.style) ? settings.tradeAnimation.style : "swap";
   $("#trade-anim-duration").value = ["short", "medium", "long"].includes(settings.tradeAnimation?.duration) ? settings.tradeAnimation.duration : "medium";
+  $("#gift-anim-enabled").checked = settings.giftAnimation?.enabled === true;
+  $("#gift-anim-style").value = ["handover", "spin", "pixelate"].includes(settings.giftAnimation?.style) ? settings.giftAnimation.style : "handover";
   $("#collection-anim-enabled").checked = settings.showcase?.animationEnabled !== false;
   $("#collection-anim-style").value = settings.showcase?.style === "compact" ? "compact" : "detailed";
   $("#meld-scene-name").value = settings.meld?.sceneName || "Streamer Card Overlay";
@@ -5693,7 +5998,7 @@ const overlayLayoutStatesByKey = {};
 
 function overlayLayoutRedrawOne(state) {
   const { key, els } = state;
-  const layout = settings.overlayLayout[key];
+  const layout = settings.overlayLayout[key] || (settings.overlayLayout[key] = {});
   const scale = Number(layout.scale) > 0 ? layout.scale : 100;
   const { w, h } = overlayLayoutBoxSize(key, scale);
 
@@ -5876,7 +6181,7 @@ function initOverlayLayoutEditors() {
   // a previous build so the registry doesn't accumulate references to DOM nodes that innerHTML
   // just replaced.
   for (const key of Object.keys(overlayLayoutStatesByKey)) delete overlayLayoutStatesByKey[key];
-  for (const key of ["draw", "collection", "trade", "battle", "ranking", "communityGoal", "liveTicker"]) {
+  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker"]) {
     buildOverlayLayoutEditor($(`#overlay-layout-${key}`), key);
   }
   // The tournament bracket renders inside the same OBS source as Kampf-Animation, so it shares
@@ -5989,6 +6294,16 @@ function bindDesign() {
     scheduleAutoSave();
     showNotice(t("notice-rarity-weights-reset"));
   });
+  $("#subrewards-enabled").addEventListener("change", (event) => {
+    settings.subRewards ||= {};
+    settings.subRewards.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#subrewards-cards-per-sub").addEventListener("input", (event) => {
+    settings.subRewards ||= {};
+    settings.subRewards.cardsPerSub = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
   $("#pity-enabled").addEventListener("change", (event) => {
     settings.pity ||= {};
     settings.pity.enabled = event.target.checked;
@@ -6084,6 +6399,67 @@ function bindDesign() {
       showNotice(error.message, "error");
     }
   });
+  $("#teamkampf-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-card-count").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.streamerCardCount = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-signup-seconds").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.signupSeconds = Math.max(10, Math.round(Number(event.target.value) || 10));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-rewards-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.rewardsEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-draws-per-participant").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.drawsPerParticipant = Math.max(0, Math.round(Number(event.target.value) || 0));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-finisher-bonus-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.finisherBonusEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-finisher-bonus-draws").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.finisherBonusDraws = Math.max(0, Math.round(Number(event.target.value) || 0));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-lose-card-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.loseCardOnDefeat = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-lost-card-announce-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.lostCardAnnounceEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-lost-card-message").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.lostCardMessage = event.target.value;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-start-now").addEventListener("click", async () => {
+    try {
+      const result = await startTeamBattle();
+      if (result.result === "already_running") showNotice(t("notice-teamkampf-already-running"), "error");
+      else if (result.result === "disabled") showNotice(t("notice-teamkampf-disabled"), "error");
+      else if (result.result === "no_cards") showNotice(t("notice-teamkampf-no-cards"), "error");
+      else showNotice(t("notice-teamkampf-started"));
+    } catch (error) {
+      showNotice(error.message, "error");
+    }
+  });
   $("#liveticker-enabled").addEventListener("change", (event) => {
     settings.liveTicker ||= {};
     settings.liveTicker.enabled = event.target.checked;
@@ -6097,6 +6473,26 @@ function bindDesign() {
   $("#liveticker-speed").addEventListener("input", (event) => {
     settings.liveTicker ||= {};
     settings.liveTicker.speed = Math.min(400, Math.max(20, Number(event.target.value) || 20));
+    scheduleAutoSave();
+  });
+  $("#liveticker-draw-message").addEventListener("input", (event) => {
+    settings.liveTicker ||= {};
+    settings.liveTicker.drawMessage = event.target.value;
+    scheduleAutoSave();
+  });
+  $("#liveticker-battle-message").addEventListener("input", (event) => {
+    settings.liveTicker ||= {};
+    settings.liveTicker.battleMessage = event.target.value;
+    scheduleAutoSave();
+  });
+  $("#liveticker-tournament-message").addEventListener("input", (event) => {
+    settings.liveTicker ||= {};
+    settings.liveTicker.tournamentMessage = event.target.value;
+    scheduleAutoSave();
+  });
+  $("#liveticker-teambattle-message").addEventListener("input", (event) => {
+    settings.liveTicker ||= {};
+    settings.liveTicker.teamBattleMessage = event.target.value;
     scheduleAutoSave();
   });
   $("#language-select").addEventListener("change", (event) => {
@@ -6248,6 +6644,16 @@ function bindDesign() {
     settings.tradeAnimation ||= {};
     settings.tradeAnimation.style = event.target.value;
   });
+  $("#gift-anim-enabled").addEventListener("change", (event) => {
+    settings.giftAnimation ||= {};
+    settings.giftAnimation.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#gift-anim-style").addEventListener("change", (event) => {
+    settings.giftAnimation ||= {};
+    settings.giftAnimation.style = event.target.value;
+    scheduleAutoSave();
+  });
   $("#collection-anim-enabled").addEventListener("change", (event) => {
     settings.showcase ||= {};
     settings.showcase.animationEnabled = event.target.checked;
@@ -6263,6 +6669,7 @@ function bindDesign() {
     settings.tradeAnimation.duration = event.target.value;
   });
   $("#trade-anim-test").addEventListener("click", handleTradeAnimTest);
+  $("#gift-anim-test").addEventListener("click", handleGiftAnimTest);
 
   $("#battle-anim-enabled").addEventListener("change", (event) => {
     settings.battleAnimation ||= {};
@@ -6328,6 +6735,35 @@ async function handleTradeAnimTest() {
       boosterBId: b.booster.id,
       newCountA: 1 + Math.floor(Math.random() * 9),
       newCountB: 1 + Math.floor(Math.random() * 9)
+    });
+    showNotice(t("notice-trade-test-started"));
+  } catch (error) {
+    showNotice(error.message, "error");
+  }
+}
+
+async function handleGiftAnimTest() {
+  const pairs = [];
+  for (const booster of settings.boosters || []) {
+    for (const card of cardsForBooster(settings, booster)) {
+      if (card.enabled !== false) pairs.push({ card, booster });
+    }
+  }
+  if (!pairs.length) {
+    showNotice(t("notice-trade-test-no-cards"), "error");
+    return;
+  }
+  const pick = pairs[Math.floor(Math.random() * pairs.length)];
+  let fromUser = randomUsername();
+  let toUser = randomUsername();
+  for (let i = 0; i < 5 && toUser === fromUser; i++) toUser = randomUsername();
+  try {
+    await testGiftAnimation({
+      fromUser,
+      toUser,
+      cardId: pick.card.id,
+      boosterId: pick.booster.id,
+      style: $("#gift-anim-style").value
     });
     showNotice(t("notice-trade-test-started"));
   } catch (error) {

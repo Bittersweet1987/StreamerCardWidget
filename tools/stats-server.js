@@ -74,9 +74,11 @@ app.post("/sync", (req, res) => {
   const boosters = Math.max(0, Number(body.boosters) || 0);
   const prev = data.installs[installId];
   if (prev && prev.cards === cards && prev.boosters === boosters) {
+    prev.lastSeen = new Date().toISOString();
+    saveData(data);
     return res.json({ ok: true, unchanged: true });
   }
-  data.installs[installId] = { cards, boosters };
+  data.installs[installId] = { cards, boosters, lastSeen: new Date().toISOString() };
   saveData(data);
   res.json({ ok: true });
 });

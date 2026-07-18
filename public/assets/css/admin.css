@@ -309,6 +309,22 @@ body {
   box-shadow: 0 12px 24px -18px rgba(36, 31, 51, .35);
 }
 
+/* Jump-nav targets (see the various <nav> anchor lists throughout admin.html, all pointing at
+   elements with an id starting "jn-" or "cc-section-") need scroll-margin-top so the browser's
+   native anchor scrolling doesn't tuck the section's own heading behind the sticky .topbar (and,
+   inside the chat-commands panel, behind the ADDITIONAL sticky .cc-jump-nav stacked below it) -
+   without this, clicking a jump-nav link visually "missed" the top of its target section. */
+[id^="jn-"] {
+  scroll-margin-top: 110px;
+}
+
+[id^="cc-section-"],
+#jn-cc-tournamentjoin,
+#jn-cc-teamkampfjoin,
+#jn-cc-tournamentstart {
+  scroll-margin-top: 150px;
+}
+
 body[data-theme="dark"] .topbar {
   background: #15121d;
   box-shadow: 0 12px 24px -18px rgba(0, 0, 0, .5);

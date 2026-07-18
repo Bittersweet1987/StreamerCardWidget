@@ -27,6 +27,9 @@
     <main id="battle-overlay" aria-live="polite">
       <div id="battle-stage" class="battle-stage"></div>
     </main>
+    <main id="gift-overlay" aria-live="polite">
+      <div id="gift-stage" class="gift-stage"></div>
+    </main>
     <main id="ranking-overlay" aria-live="polite">
       <div id="ranking-stage" class="ranking-stage"></div>
     </main>
@@ -66,13 +69,13 @@
           const info = await response.json();
           if (info.bootId) v = String(info.bootId);
         } catch {}
-        for (const href of ["/assets/css/overlay.css","/assets/css/collection.css","/assets/css/trade.css","/assets/css/battle.css","/assets/css/ranking.css","/assets/css/communitygoal.css","/assets/css/liveticker.css"]) {
+        for (const href of ["/assets/css/overlay.css","/assets/css/collection.css","/assets/css/trade.css","/assets/css/battle.css","/assets/css/gift.css","/assets/css/ranking.css","/assets/css/communitygoal.css","/assets/css/liveticker.css"]) {
           const link = document.createElement("link");
           link.rel = "stylesheet";
           link.href = href + "?v=" + v;
           document.head.appendChild(link);
         }
-        for (const mod of ["overlay","collection","trade","battle","ranking","communitygoal","liveticker"]) {
+        for (const mod of ["overlay","collection","trade","battle","gift","ranking","communitygoal","liveticker"]) {
           import("/assets/js/" + mod + ".js?v=" + v);
         }
       })();

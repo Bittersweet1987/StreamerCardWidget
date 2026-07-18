@@ -87,6 +87,11 @@ function playBattleSound(kind) {
 }
 
 function enqueueBattle(event = {}) {
+  // A Team-Kampf fight starting is a guaranteed signal the signup window is over - force the
+  // countdown/participant box away right now instead of only trusting its own local timer (which
+  // must independently reach the same conclusion from deadlineUtc; this is a second, redundant
+  // path to the same outcome so the box can never linger visible into the fight itself).
+  if (event.teamBattle) hideTeamKampfSignup();
   // A test event always previews (so it can be checked before enabling); real events obey the
   // toggle. Real events are gated by the server-side queue (see runQueue's finally below) - if
   // the animation is off, the event is dropped here but must still be acked immediately,
@@ -440,7 +445,13 @@ async function playBattle(event = {}) {
     // cardAId/cardBId start undefined so the first matchup counts both sides as fresh cards.
     const hpState = { hpA: 0, hpB: 0, cardAId: undefined, cardBId: undefined };
     for (const matchup of matchups) {
-      await playHpMatchup(arena, matchup, hitDuration, event.userA, event.userB, hpState);
+      // Team-Kampf attaches a per-matchup nameA/nameB (which specific community member is
+      // currently fighting) since event.userA/userB are just the fixed streamer/"Community"
+      // labels for the whole multi-matchup fight - falls back to those for a normal 1v1/tournament
+      // duel, which never sets these fields.
+      const nameA = matchup.nameA || event.userA;
+      const nameB = matchup.nameB || event.userB;
+      await playHpMatchup(arena, matchup, hitDuration, nameA, nameB, hpState);
     }
   } else {
     const roundDuration = Math.max(900, Math.round(total * 0.7 / rounds.length));
@@ -521,11 +532,96 @@ function handleTournamentSignupEvent(event = {}) {
   signupCountdownTimer = setInterval(tick, 1000);
 }
 
+// Same "own countdown, outside the queue" pattern as the tournament signup countdown above, plus
+// a row of the streamer's revealed lineup (drawn up front by the server, see
+// DrawTeamBattleStreamerLineup) and a live-updating row of joined participants (avatar + name -
+// see BroadcastTeamBattleSignupState, which re-sends this on every join, not just once at start)
+// so viewers know both what they're up against and who else has already joined.
+let teamKampfCountdownTimer = null;
+let teamKampfEl = null;
+
+function ensureTeamKampfEl() {
+  if (teamKampfEl) return teamKampfEl;
+  teamKampfEl = document.createElement("div");
+  teamKampfEl.className = "teamkampf-signup";
+  teamKampfEl.hidden = true;
+  stage.append(teamKampfEl);
+  return teamKampfEl;
+}
+
+// Unconditional hide, independent of whatever the local countdown interval thinks the remaining
+// time is - called both by the countdown reaching zero AND (redundantly, see enqueueBattle) the
+// instant the fight itself actually starts, so the box can never linger on screen past that point.
+function hideTeamKampfSignup() {
+  clearInterval(teamKampfCountdownTimer);
+  if (teamKampfEl) teamKampfEl.hidden = true;
+}
+
+function teamKampfAvatarHtml(name, avatarUrl) {
+  const safeName = escapeForOverlay(name || "");
+  const img = avatarUrl
+    ? `<img class="teamkampf-avatar" src="${escapeForOverlay(avatarUrl)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'teamkampf-avatar teamkampf-avatar-fallback',textContent:'?'}))">`
+    : `<span class="teamkampf-avatar teamkampf-avatar-fallback">?</span>`;
+  return `<div class="teamkampf-participant">${img}<span class="teamkampf-participant-name">${safeName}</span></div>`;
+}
+
+function handleTeamBattleSignupEvent(event = {}) {
+  const el = ensureTeamKampfEl();
+  if (!event.active || !event.deadlineUtc) {
+    hideTeamKampfSignup();
+    return;
+  }
+  const deadline = new Date(event.deadlineUtc).getTime();
+  const label = settings?.language === "en" ? "Team battle signup" : "Team-Kampf-Anmeldung";
+  // Face-down card backs, on purpose: viewers should see HOW MANY cards they need to beat, not
+  // which ones or how rare they are (that would let the community pre-plan around a known weak
+  // spot in the lineup). The server only sends a count (see BroadcastTeamBattleSignupState), not
+  // the actual card identities, so there's nothing to reveal even by inspecting the raw event.
+  const lineupCount = Math.max(0, Number(event.streamerLineupCount) || 0);
+  const lineupHtml = Array.from({ length: lineupCount }, () => `<div class="teamkampf-lineup-card">${cardMarkup(null, { compact: true, hidden: true })}</div>`).join("");
+  const participants = Array.isArray(event.participants) ? event.participants : [];
+  const participantsHtml = participants.map((p) => teamKampfAvatarHtml(p?.displayName, p?.avatarUrl)).join("");
+  const participantsLabel = settings?.language === "en" ? "Joined" : "Angemeldet";
+  // Rebuilding the whole innerHTML on every join (not just at signup start) is deliberate and
+  // cheap here - this box has no ongoing CSS animation to interrupt, unlike the queued battle
+  // scenes, so there's no continuity to preserve across rebuilds the way liveticker.js's
+  // append-only conveyor has to.
+  el.innerHTML = `
+    <div class="teamkampf-signup-title"></div>
+    <div class="teamkampf-lineup">${lineupHtml}</div>
+    ${participants.length ? `
+      <div class="teamkampf-participants-label">${participantsLabel} (${participants.length})</div>
+      <div class="teamkampf-participants">${participantsHtml}</div>
+    ` : ""}
+  `;
+  const titleEl = el.querySelector(".teamkampf-signup-title");
+  // A fresh interval per event is intentional: clearing+recreating on every join keeps exactly one
+  // ticking interval alive at all times (never zero, never more than one), and since it always
+  // reads the SAME deadline (see BroadcastTeamBattleSignupState - the deadline is never
+  // recomputed), the displayed countdown itself never jumps or resets when someone joins.
+  clearInterval(teamKampfCountdownTimer);
+  const tick = () => {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      hideTeamKampfSignup();
+      return;
+    }
+    const totalSeconds = Math.ceil(remainingMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    el.hidden = false;
+    if (titleEl) titleEl.textContent = `${label}: ${minutes}:${String(seconds).padStart(2, "0")}`;
+  };
+  tick();
+  teamKampfCountdownTimer = setInterval(tick, 1000);
+}
+
 function bindServerEvents() {
   connectEventStream({
     battle: (event) => enqueueBattle(event),
     settings: () => loadSettings(),
     tournamentsignup: (event) => handleTournamentSignupEvent(event),
+    teamkampfsignup: (event) => handleTeamBattleSignupEvent(event),
     collections: () => {},
     draw: () => {},
     trade: () => {},

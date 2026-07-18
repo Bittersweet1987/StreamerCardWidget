@@ -1,0 +1,197 @@
+/* Gift animation overlay ("!gift"). Three selectable styles (handover / spin / pixelate), fixed
+   ~5s length via --dur. The card visual (.tcg-card) comes from overlay.css; this file only
+   handles layout, the sender/recipient label and the motion. The label lives INSIDE .gift-anim
+   (flex column, below the card) so it always tracks the card - never a separately positioned
+   element that could drift to a corner. */
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+.gift-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.gift-scene {
+  position: absolute;
+  inset: 0;
+  --dur: 5000ms;
+}
+
+.gift-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 320px;
+  max-width: 26vw;
+  transform: translate(-50%, -50%);
+}
+
+.gift-anim {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  will-change: transform, opacity;
+}
+
+.gift-anim .tcg-card {
+  width: 100%;
+}
+
+.gift-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.3rem;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+  padding: 5px 16px;
+  background: rgba(20, 16, 32, .55);
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 34vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(-6px);
+  animation: gift-label-in var(--dur) ease both;
+}
+
+.gift-label .gift-arrow {
+  opacity: .75;
+}
+
+@keyframes gift-label-in {
+  0%, 16% { opacity: 0; transform: translateY(-6px); }
+  30% { opacity: 1; transform: translateY(0); }
+  84% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(0); }
+}
+
+/* Spin's card doesn't finish materializing until the spin stops dead at 50% (see
+   spin-card below) - the label waits for that instead of the generic 16-30% timing above,
+   otherwise it would appear while the card is still a spinning speck. */
+.style-spin .gift-label {
+  animation-name: spin-label-in;
+}
+
+@keyframes spin-label-in {
+  0%, 50% { opacity: 0; transform: translateY(-6px); }
+  58% { opacity: 1; transform: translateY(0); }
+  84% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(0); }
+}
+
+/* Pixelate's card is only fully "resolved" once most of the tile grid has dissolved (~55% of the
+   duration, see gift-pixel-tile below) - the label waits for that instead of the generic
+   16-30% timing above. */
+.style-pixelate .gift-label {
+  animation-name: pixelate-label-in;
+}
+
+@keyframes pixelate-label-in {
+  0%, 55% { opacity: 0; transform: translateY(-6px); }
+  63% { opacity: 1; transform: translateY(0); }
+  84% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(0); }
+}
+
+/* ---------- Style: Handover (card slides from sender to recipient) ---------- */
+.style-handover .gift-slot {
+  animation: handover-move var(--dur) cubic-bezier(.5, .05, .25, 1) both;
+}
+
+@keyframes handover-move {
+  0% { left: 16vw; opacity: 0; transform: translate(-50%, -50%) scale(.85) rotate(-6deg); }
+  14% { left: 16vw; opacity: 1; transform: translate(-50%, -50%) scale(.85) rotate(-6deg); }
+  50% { left: 50%; opacity: 1; transform: translate(-50%, -50%) translateY(-8vh) scale(1.05) rotate(0deg); }
+  84% { left: 84vw; opacity: 1; transform: translate(-50%, -50%) scale(.85) rotate(6deg); }
+  100% { left: 84vw; opacity: 0; transform: translate(-50%, -50%) scale(.7) rotate(6deg); }
+}
+
+/* ---------- Style: Spin-Reveal (card starts at 0% size, spins flat clockwise very fast, grows
+   to full size while the spin rapidly decelerates to a dead stop exactly at 100%). No ring, no
+   separate background layer - just the card itself doing the whole trick. ---------- */
+.style-spin .gift-slot .gift-anim {
+  animation: spin-card-fade var(--dur) ease both;
+}
+
+@keyframes spin-card-fade {
+  0%, 2% { opacity: 0; }
+  4% { opacity: 1; }
+  84% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Scale 0% -> 100% and a flat clockwise spin (rotate(), a real "spinning coin face-up" look, not
+   a 3D flip) both live on the card art itself (not the label below it). The spin's keyframe
+   stops get farther apart as the animation goes on (0->8->18->30->50%) while covering smaller and
+   smaller rotation deltas (1200->900->500->220->60deg) - very fast up front, rapidly
+   decelerating, landing on a multiple of 360deg exactly at 50% so the card is upright the instant
+   it reaches full size and the spin stops dead. */
+.style-spin .gift-slot .gift-anim .tcg-card {
+  transform: scale(0) rotate(0deg);
+  animation: spin-card var(--dur) linear both;
+}
+
+@keyframes spin-card {
+  0% { transform: scale(0) rotate(0deg); }
+  8% { transform: scale(.18) rotate(1200deg); }
+  18% { transform: scale(.42) rotate(2100deg); }
+  30% { transform: scale(.72) rotate(2600deg); }
+  42% { transform: scale(.94) rotate(2820deg); }
+  50% { transform: scale(1) rotate(2880deg); }
+  84% { transform: scale(1) rotate(2880deg); }
+  100% { transform: scale(.94) rotate(2880deg); }
+}
+
+/* ---------- Style: Pixel-Reveal (the real card renders immediately, covered by a grid of solid
+   tiles that dissolve away at randomized delays - "resolving" into the finished card piece by
+   piece). Deliberately plain 2D (opacity only, no 3D transforms) - an earlier fold-based style
+   attempted real 3D hinges and those simply didn't render at all in OBS's browser source, so this
+   sticks to properties guaranteed to work everywhere. ---------- */
+.style-pixelate .gift-slot .gift-anim {
+  animation: pixelate-card-fade var(--dur) ease both;
+}
+
+@keyframes pixelate-card-fade {
+  0%, 2% { opacity: 0; transform: scale(.94); }
+  6% { opacity: 1; transform: scale(1); }
+  84% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(.94); }
+}
+
+.gift-pixel-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.gift-pixel-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+.gift-pixel-tile {
+  opacity: 1;
+  animation-name: gift-pixel-fade;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes gift-pixel-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}

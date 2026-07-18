@@ -10,6 +10,17 @@ export async function getCollections() {
   return response.json();
 }
 
+// Stable per-install id for the anonymous community stats counter - lives server-side in its own
+// file (see GetOrCreateStatsInstallId in CardPackWidgetApp.cs), not in settings.json, so a
+// settings reset can never silently mint a new one and duplicate this install's counts on the
+// stats server (which sums every id it has ever seen, forever).
+export async function getStatsInstallId() {
+  const response = await fetch("/api/stats-install-id", { cache: "no-store" });
+  if (!response.ok) throw new Error("statsInstallId unavailable");
+  const result = await response.json();
+  return result.installId;
+}
+
 // Last few draws still remembered server-side (cleared on app restart) - lets a freshly (re)loaded
 // live-ticker overlay show something immediately instead of sitting empty until the next draw.
 export async function getRecentLiveTickerEntries() {
@@ -161,6 +172,24 @@ export async function startTournament() {
   return data;
 }
 
+export async function syncTeamBattleReward(payload) {
+  const response = await fetch("/api/twitch/teamBattle-reward", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Team-Kampf-Belohnung konnte nicht gespeichert werden.");
+  return data;
+}
+
+export async function startTeamBattle() {
+  const response = await fetch("/api/teamBattle/start", { method: "POST" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Team-Kampf konnte nicht gestartet werden.");
+  return data;
+}
+
 export async function deleteTwitchReward(payload) {
   const response = await fetch("/api/twitch/reward", {
     method: "DELETE",
@@ -174,6 +203,16 @@ export async function deleteTwitchReward(payload) {
 
 export async function testTradeAnimation(payload) {
   const response = await fetch("/api/trade/test", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error("Test-Animation konnte nicht gestartet werden.");
+  return response.json();
+}
+
+export async function testGiftAnimation(payload) {
+  const response = await fetch("/api/gift/test", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)
@@ -347,8 +386,8 @@ function handleReadyEvent(data) {
 
 // Every event name the server broadcasts. The leader listens to all of them on behalf of every
 // page, because it cannot know which events the other pages' handlers care about.
-const SSE_EVENT_NAMES = ["settings", "collections", "draw", "trade", "battle", "showcollection",
-  "ranking", "queue", "communitygoalprogress", "communitygoalreached", "tournamentsignup", "liveticker", "ping", "ready"];
+const SSE_EVENT_NAMES = ["settings", "collections", "draw", "trade", "battle", "gift", "showcollection",
+  "ranking", "queue", "communitygoalprogress", "communitygoalreached", "tournamentsignup", "teamkampfsignup", "liveticker", "ping", "ready"];
 
 // Animation-triggering events get a receipt log so a silent OBS browser source can be diagnosed
 // from the Log tab: "written by server but never received" vs. "received but animation failed".

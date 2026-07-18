@@ -92,12 +92,9 @@ body {
   border: calc(1.5px * var(--liveticker-scale, 1)) solid rgba(255, 255, 255, .55);
 }
 
-/* All text - username, "zog"/"drew", card name, pack name - shares the exact same look, per
-   explicit request: one uniform white/bold style rather than different colors or weights. */
-.liveticker-user,
-.liveticker-sep,
-.liveticker-card,
-.liveticker-booster {
+/* One uniform white/bold style for the whole (server-templated) entry text, per explicit request -
+   no per-token colors or weights. */
+.liveticker-text {
   color: #fff;
   font-weight: 900;
   font-size: calc(22px * var(--liveticker-scale, 1));

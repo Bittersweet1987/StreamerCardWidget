@@ -492,10 +492,11 @@ export function pickDefault(lang, entryKey) {
 
 export function normalizeSettings(settings) {
   settings.language = SUPPORTED_LANGUAGES.includes(settings.language) ? settings.language : "de";
-  // Random, stable per-install id for the anonymous community stats counter - unrelated to
-  // Twitch identity, just lets the stats server tell "this install's current card/booster
-  // count" apart from another install's without knowing who anyone is.
-  settings.statsInstallId ||= (crypto.randomUUID ? crypto.randomUUID() : `install-${Date.now()}-${Math.random()}`);
+  // The per-install id for the anonymous community stats counter now lives server-side in its
+  // own file (see GetOrCreateStatsInstallId in CardPackWidgetApp.cs / GET /api/stats-install-id)
+  // instead of here - minting it as part of settings.json meant any settings reset silently
+  // created a brand-new id, and the stats server sums every id it has ever seen forever, so that
+  // just permanently double-counted the same install's cards/boosters on top of the real total.
   // Was previously never defaulted: a settings.json missing this key (e.g. after a partial
   // save) crashed hydrateDesign() on the first line reading it, which silently aborted
   // hydration of everything after it (OBS, trade/battle animation, battle strength fields).
@@ -555,6 +556,14 @@ export function normalizeSettings(settings) {
   settings.battleAnimation.sendChat = settings.battleAnimation.sendChat !== false;
   settings.battleAnimation.sourceName ||= "Streamer Card Kampf";
 
+  // Gift animation: shown in its own OBS browser source (gift.html) when "!gift" successfully
+  // transfers a card. Style is picked here; the chat message is a separate toggle (chatOutputEnabled
+  // on settings.chatCommands.gift, not here) - same "!command enabled" / "animation enabled" /
+  // "chat text enabled" three-way split as the collection showcase.
+  settings.giftAnimation ||= {};
+  settings.giftAnimation.enabled = settings.giftAnimation.enabled === true;
+  settings.giftAnimation.style = ["handover", "spin", "pixelate"].includes(settings.giftAnimation.style) ? settings.giftAnimation.style : "handover";
+
   // Battle strength: per-rarity power used by the duel round rolls (independent of the draw
   // weights above, since "common" should be weakest here but is drawn most often).
   settings.battleStrength ||= {};
@@ -591,6 +600,9 @@ export function normalizeSettings(settings) {
     const value = Number(settings.pity.dustValues[rarity.id]);
     settings.pity.dustValues[rarity.id] = Number.isFinite(value) && value >= 0 ? value : index + 1;
   }
+  settings.subRewards ||= {};
+  settings.subRewards.enabled = settings.subRewards.enabled !== false;
+  settings.subRewards.cardsPerSub = Number(settings.subRewards.cardsPerSub) > 0 ? Math.round(Number(settings.subRewards.cardsPerSub)) : 1;
   settings.obs ||= {
     enabled: false,
     host: "127.0.0.1",
@@ -821,6 +833,29 @@ export function normalizeSettings(settings) {
   settings.tournament.rewardGlobalCooldown = Number(settings.tournament.rewardGlobalCooldown) >= 0 ? Number(settings.tournament.rewardGlobalCooldown) : 0;
   settings.tournament.rewardIds ||= [];
 
+  // Team-Kampf ("Alle gegen den Streamer"): channel-points-triggered signup window, chat-command
+  // join, then a single HP-Leisten-Duell-style fight between the streamer's random lineup and the
+  // community's queue (signup order) once the window closes - see ResolveTeamBattleSignup
+  // server-side. Chat message texts are intentionally NOT admin-configurable here, same as
+  // tournament's round/bye/winner messages - only the numeric/toggle behavior is.
+  settings.teamBattle ||= {};
+  settings.teamBattle.enabled = settings.teamBattle.enabled === true;
+  settings.teamBattle.streamerCardCount = Number(settings.teamBattle.streamerCardCount) > 0 ? Math.round(Number(settings.teamBattle.streamerCardCount)) : 5;
+  settings.teamBattle.signupSeconds = Number(settings.teamBattle.signupSeconds) > 0 ? Math.round(Number(settings.teamBattle.signupSeconds)) : 60;
+  settings.teamBattle.rewardsEnabled = settings.teamBattle.rewardsEnabled !== false;
+  settings.teamBattle.drawsPerParticipant = Number(settings.teamBattle.drawsPerParticipant) >= 0 ? Math.round(Number(settings.teamBattle.drawsPerParticipant)) : 1;
+  settings.teamBattle.finisherBonusEnabled = settings.teamBattle.finisherBonusEnabled !== false;
+  settings.teamBattle.finisherBonusDraws = Number(settings.teamBattle.finisherBonusDraws) >= 0 ? Math.round(Number(settings.teamBattle.finisherBonusDraws)) : 1;
+  settings.teamBattle.loseCardOnDefeat = settings.teamBattle.loseCardOnDefeat === true;
+  settings.teamBattle.rewardName ||= "Team-Kampf starten";
+  settings.teamBattle.rewardCost = Number(settings.teamBattle.rewardCost) > 0 ? Number(settings.teamBattle.rewardCost) : 2000;
+  settings.teamBattle.rewardPrompt ||= "";
+  settings.teamBattle.rewardBackgroundColor ||= "#9147ff";
+  settings.teamBattle.rewardEnabled = settings.teamBattle.rewardEnabled !== false;
+  settings.teamBattle.rewardPaused = settings.teamBattle.rewardPaused === true;
+  settings.teamBattle.rewardGlobalCooldown = Number(settings.teamBattle.rewardGlobalCooldown) >= 0 ? Number(settings.teamBattle.rewardGlobalCooldown) : 0;
+  settings.teamBattle.rewardIds ||= [];
+
   // Per-animation position/size within the combined overlay canvas (always 1920x1080,
   // regardless of the actual OBS/Meld source resolution - scaling to the real canvas is the
   // browser source's job, same as everything else in overlays.html). marginLeft/marginTop mark
@@ -829,7 +864,7 @@ export function normalizeSettings(settings) {
   // applyOverlayLayout below. Default = centered at 100%, i.e. pixel-identical to before this
   // setting existed.
   settings.overlayLayout ||= {};
-  for (const key of ["draw", "collection", "trade", "battle", "ranking", "communityGoal", "liveTicker"]) {
+  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker"]) {
     const layout = settings.overlayLayout[key] || {};
     const scale = Number(layout.scale) > 0 ? Math.min(100, Math.max(10, Number(layout.scale))) : 100;
     const { w: boxW, h: boxH } = overlayLayoutBoxSize(key, scale);
@@ -1080,6 +1115,7 @@ export const OVERLAY_LAYOUT_NATURAL_SIZES = {
   draw: { w: 660, h: 460 },
   trade: { w: 720, h: 460 },
   battle: { w: 760, h: 520 },
+  gift: { w: 620, h: 440 },
   collection: { w: 1100, h: 780 },
   ranking: { w: 1000, h: 600 },
   communityGoal: { w: 560, h: 100 },

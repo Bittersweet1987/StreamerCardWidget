@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1784294738">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260718-jumpnavfix1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -336,6 +336,7 @@
             <a href="#jn-cp-draw" data-i18n="draw-reward-title">Kartenpack-Belohnung</a>
             <a href="#jn-cp-showcase" data-i18n="showcase-title">Sammlungs-Showcase</a>
             <a href="#jn-cp-tournament" data-i18n="tournament-reward-title">Turnier-Belohnung</a>
+            <a href="#jn-cp-teamkampf" data-i18n="teamkampf-reward-title">Team-Kampf-Belohnung</a>
           </nav>
           <section class="tool-panel channel-points-panel">
             <div class="section-heading">
@@ -456,6 +457,38 @@
               </div>
               <div class="status-line" id="tournament-reward-status" hidden></div>
             </article>
+
+            <article class="reward-entry teamkampf-entry" id="jn-cp-teamkampf">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="teamkampf-reward-eyebrow">Team-Kampf</p>
+                  <h3 data-i18n="teamkampf-reward-title">Team-Kampf-Belohnung</h3>
+                </div>
+              </div>
+              <div class="info-box">
+                <p data-i18n="teamkampf-reward-info-text">Löst ein Zuschauer diese Belohnung ein, stellt der Streamer sein Karten-Team zusammen und die Anmeldephase beginnt (siehe Einstellungen → Team-Kampf für Regeln wie Kartenanzahl und Anmeldezeit).</p>
+              </div>
+              <label class="switch-row">
+                <input id="teamkampf-reward-enabled" type="checkbox">
+                <span data-i18n="label-reward-enabled">Aktiviert</span>
+              </label>
+              <label class="switch-row compact-switch">
+                <input id="teamkampf-reward-paused" type="checkbox">
+                <span data-i18n="label-reward-paused">Pausiert</span>
+              </label>
+              <div class="form-grid">
+                <label data-i18n="label-showcase-reward-title">Reward-Titel<input id="teamkampf-reward-title" type="text"></label>
+                <label data-i18n="label-showcase-reward-cost">Kosten<input id="teamkampf-reward-cost" type="number" min="1" step="1"></label>
+                <label data-i18n="label-showcase-cooldown">Globaler Cooldown (Sek.)<input id="teamkampf-reward-cooldown" type="number" min="0" step="1"></label>
+                <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="teamkampf-reward-bg-color" type="color"></label>
+                <label class="full-row" data-i18n="label-reward-prompt">Beschreibung<input id="teamkampf-reward-prompt" type="text"></label>
+              </div>
+              <div class="button-row">
+                <button class="primary-button" id="teamkampf-reward-sync" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
+                <button class="danger-button" id="teamkampf-reward-delete" type="button" data-i18n="btn-delete-reward">Löschen</button>
+              </div>
+              <div class="status-line" id="teamkampf-reward-status" hidden></div>
+            </article>
           </section>
         </section>
 
@@ -474,8 +507,11 @@
             </div>
 
             <nav class="cc-jump-nav">
+              <a href="#cc-section-autohelp" data-i18n="cc-autohelp-title">Automatische Hilfe-Nachricht</a>
               <a href="#cc-section-pack" data-i18n="cc-pack-title">Pack-Befehl</a>
               <a href="#cc-section-collection" data-i18n="cc-collection-title">Sammlung-Befehl</a>
+              <a href="#cc-section-dust" data-i18n="cc-dust-title">Dust-Befehl</a>
+              <a href="#cc-section-gift" data-i18n="cc-gift-title">Geschenk-Befehl</a>
               <a href="#cc-section-trade" data-i18n="cc-trade-title">Tausch-Befehl</a>
               <a href="#cc-section-tradeyes" data-i18n="cc-tradeyes-title">Tausch-Annahme-Befehl</a>
               <a href="#cc-section-tradeno" data-i18n="cc-tradeno-title">Tausch-Ablehnungs-Befehl</a>
@@ -484,8 +520,8 @@
               <a href="#cc-section-battleno" data-i18n="cc-battleno-title">Kampf-Ablehnungs-Befehl</a>
               <a href="#cc-section-ranking" data-i18n="cc-ranking-title">Ranking-Befehl</a>
               <a href="#jn-cc-tournamentjoin" data-i18n="cc-tournamentjoin-title">Turnier-Beitritt</a>
+              <a href="#jn-cc-teamkampfjoin" data-i18n="cc-teamkampfjoin-title">Team-Kampf-Beitritt</a>
               <a href="#jn-cc-tournamentstart" data-i18n="cc-tournamentstart-title">Turnier-Start (Chat)</a>
-              <a href="#cc-section-autohelp" data-i18n="cc-autohelp-title">Automatische Hilfe-Nachricht</a>
             </nav>
 
             <article class="reward-entry command-card" id="cc-section-autohelp">
@@ -721,6 +757,103 @@
                     </div>
                   </div>
                   <textarea id="cc-dust-success-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-gift">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-gift-eyebrow">Geschenk</p>
+                  <h3 data-i18n="cc-gift-title">Geschenk-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-gift-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-gift-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-gift-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-gift-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-gift-hint">Verschenkt eine Karte einseitig an einen anderen Zuschauer: "!gift @Empfänger Kartenname". Die Karte wird direkt aus der eigenen Sammlung entfernt, keine Bestätigung durch den Empfänger nötig.</p>
+                <label class="switch-row compact-switch">
+                  <input id="cc-gift-chatoutput-enabled" type="checkbox">
+                  <span data-i18n="label-cc-gift-chatoutput-enabled">Erfolgsmeldung im Chat senden</span>
+                </label>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-gift-usage">Nachricht bei falscher Nutzung</span>
+                    <div class="var-chips" data-target="cc-gift-usage-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-gift-usage-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-gift-usernotfound">Nachricht bei unbekanntem Empfänger</span>
+                    <div class="var-chips" data-target="cc-gift-usernotfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Nutzer]">[Nutzer]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-gift-usernotfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-gift-notfound">Nachricht bei unbekannter Karte</span>
+                    <div class="var-chips" data-target="cc-gift-notfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[falscherName]">[falscherName]</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-gift-notfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-gift-notowned">Nachricht wenn Karte nicht besessen</span>
+                    <div class="var-chips" data-target="cc-gift-notowned-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-gift-notowned-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-gift-self">Nachricht bei Selbst-Geschenk</span>
+                    <div class="var-chips" data-target="cc-gift-self-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-gift-self-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-gift-success">Nachricht bei Erfolg</span>
+                    <div class="var-chips" data-target="cc-gift-success-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-gift-success-message" rows="2"></textarea>
                 </div>
               </div>
             </article>
@@ -1192,8 +1325,8 @@
               </div>
             </article>
 
-            <article class="cc-entry" id="jn-cc-tournamentjoin">
-              <header class="cc-entry-header">
+            <article class="reward-entry command-card" id="jn-cc-tournamentjoin">
+              <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-tournamentjoin-eyebrow">Turnier</p>
                   <h3 data-i18n="cc-tournamentjoin-title">Turnier-Beitritt</h3>
@@ -1215,8 +1348,31 @@
               </div>
             </article>
 
-            <article class="cc-entry" id="jn-cc-tournamentstart">
-              <header class="cc-entry-header">
+            <article class="reward-entry command-card" id="jn-cc-teamkampfjoin">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-teamkampfjoin-eyebrow">Team-Kampf</p>
+                  <h3 data-i18n="cc-teamkampfjoin-title">Team-Kampf-Beitritt</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-teamkampfjoin-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-teamkampfjoin-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-teamkampfjoin-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-teamkampfjoin-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-teamkampfjoin-hint">Mit diesem Befehl treten Zuschauer während der Anmeldezeit eines laufenden Team-Kampfes bei. Jeder Teilnehmer bekommt automatisch eine zufällige Karte aus der eigenen Sammlung zugeteilt (siehe Einstellungen → Team-Kampf).</p>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-tournamentstart">
+              <header class="command-card-head">
                 <div>
                   <p class="eyebrow" data-i18n="cc-tournamentstart-eyebrow">Turnier</p>
                   <h3 data-i18n="cc-tournamentstart-title">Turnier-Start (Chat)</h3>
@@ -1247,6 +1403,7 @@
               <a href="#jn-rahmenfarben-je-raritaet-design">Rahmenfarben je Rarität</a>
               <a href="#jn-gewichtung-je-raritaet-design">Gewichtung je Rarität</a>
               <a href="#jn-pity-system-design" data-i18n="pity-title">Garantie-System</a>
+              <a href="#jn-sub-belohnungen-design" data-i18n="subrewards-title">Sub-Belohnungen</a>
               <a href="#jn-kampfstaerke-je-seltenheit-design">Kampfstärke je Seltenheit</a>
             </nav>
             <section class="tool-panel" id="jn-farben-und-anzeige-design">
@@ -1410,6 +1567,23 @@
             </div>
           </section>
 
+          <section class="tool-panel" id="jn-sub-belohnungen-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="subrewards-eyebrow">Karten</p>
+                <h2 data-i18n="subrewards-title">Sub-Belohnungen</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="subrewards-hint">Vergibt automatisch Karten aus allen als "Sub-exklusiv" markierten Boostern (siehe Booster-Tab) bei neuem Sub, Resub oder verschenkten Subs. Diese Booster sind über Kanalpunkte/"!pack" nicht erreichbar.</p>
+            <label class="switch-row compact-switch">
+              <input id="subrewards-enabled" type="checkbox">
+              <span data-i18n="label-subrewards-enabled">Sub-Belohnungen aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-subrewards-cards-per-sub">Karten je Sub<input id="subrewards-cards-per-sub" type="number" min="1" step="1"></label>
+            </div>
+          </section>
+
           <section class="tool-panel battle-strength-panel" id="jn-kampfstaerke-je-seltenheit-design">
             <div class="section-heading">
               <div>
@@ -1437,10 +1611,12 @@
               <a href="#jn-pack-animation-design" data-i18n="pack-anim-title">Pack-Animation</a>
               <a href="#jn-sammlung-animation-design">Sammlung-Animation</a>
               <a href="#jn-tausch-animation-design">Tausch-Animation</a>
+              <a href="#jn-geschenk-animation-design" data-i18n="gift-anim-title">Geschenk-Animation</a>
               <a href="#jn-community-ziel-design" data-i18n="communitygoal-title">Community-Ziel</a>
               <a href="#jn-ranking-anzeige-design" data-i18n="ranking-anim-title">Ranking-Anzeige</a>
               <a href="#jn-kampf-animation-design">Kampf-Animation</a>
               <a href="#jn-turnier-modus-design" data-i18n="tournament-title">Turnier-Modus</a>
+              <a href="#jn-team-kampf-design" data-i18n="teamkampf-title">Team-Kampf</a>
               <a href="#jn-live-ticker-design" data-i18n="liveticker-title">Live-Ticker</a>
             </nav>
             <section class="tool-panel timing-panel" id="jn-pack-animation-design">
@@ -1519,6 +1695,34 @@
             </div>
             <p class="hint" data-i18n="trade-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und Karten. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
             <div id="overlay-layout-trade"></div>
+          </section>
+
+          <section class="tool-panel gift-anim-panel" id="jn-geschenk-animation-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="gift-anim-eyebrow">Geschenk</p>
+                <h2 data-i18n="gift-anim-title">Geschenk-Animation</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="gift-anim-hint">Wird abgespielt, wenn "!gift" erfolgreich eine Karte verschenkt (siehe Chat-Befehle → Geschenk-Befehl). Läuft über dieselbe Queue wie alle anderen Animationen, damit sich nichts überlagert.</p>
+            <label class="switch-row">
+              <input id="gift-anim-enabled" type="checkbox">
+              <span data-i18n="label-gift-anim-enabled">Geschenk-Animation aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-gift-anim-style">Animationsstil
+                <select id="gift-anim-style">
+                  <option value="handover" data-i18n="opt-gift-style-handover">Übergabe</option>
+                  <option value="spin" data-i18n="opt-gift-style-spin">Spin-Reveal</option>
+                  <option value="pixelate" data-i18n="opt-gift-style-pixelate">Pixel-Reveal</option>
+                </select>
+              </label>
+            </div>
+            <div class="button-row">
+              <button class="update-button" id="gift-anim-test" type="button" data-i18n="btn-gift-anim-test">Test starten</button>
+            </div>
+            <p class="hint" data-i18n="gift-anim-test-hint">Spielt die Animation einmal in OBS ab – mit zwei zufälligen Namen und einer zufälligen Karte. Funktioniert auch, wenn die Animation noch nicht aktiviert ist.</p>
+            <div id="overlay-layout-gift"></div>
           </section>
 
           <section class="tool-panel" id="jn-community-ziel-design">
@@ -1640,6 +1844,62 @@
             <div id="overlay-layout-tournament"></div>
           </section>
 
+          <section class="tool-panel" id="jn-team-kampf-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="teamkampf-eyebrow">Kämpfe</p>
+                <h2 data-i18n="teamkampf-title">Team-Kampf</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="teamkampf-hint">Alle gegen den Streamer: bei Einlösung der Kanalpunkte-Belohnung (unter Kanalpunkte) stellt der Streamer per Zufall ein Karten-Team zusammen (aus allen Boostern, auch Sub-exklusiven) und zeigt es im Overlay. Zuschauer treten während der Anmeldezeit per Chat-Befehl bei (unter Chat-Befehle einstellbar) - der Einlösende automatisch. Jeder Teilnehmer bekommt eine zufällige Karte aus der eigenen Sammlung. Nach Ablauf der Zeit kämpft im HP-Leisten-Duell-Stil Karte gegen Karte, in Anmeldereihenfolge - eine Karte bleibt im Kampf, bis sie besiegt ist, dann kommt die nächste (auf beiden Seiten).</p>
+            <label class="switch-row compact-switch">
+              <input id="teamkampf-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-enabled">Team-Kampf aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-teamkampf-card-count">Mindest-Kartenanzahl Streamer-Team (tatsächliche Anzahl ist zufällig)<input id="teamkampf-card-count" type="number" min="1" step="1"></label>
+              <label data-i18n="label-teamkampf-signup-seconds">Anmeldezeit (Sek.)<input id="teamkampf-signup-seconds" type="number" min="10" step="5"></label>
+            </div>
+            <label class="switch-row compact-switch">
+              <input id="teamkampf-rewards-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-rewards-enabled">Bei Sieg der Community bekommt jeder Teilnehmer Karten</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-teamkampf-draws-per-participant">Ziehungen je Teilnehmer<input id="teamkampf-draws-per-participant" type="number" min="0" step="1"></label>
+            </div>
+            <label class="switch-row compact-switch">
+              <input id="teamkampf-finisher-bonus-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-finisher-bonus-enabled">Wer die letzte Streamer-Karte besiegt, bekommt zusätzliche Ziehungen</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-teamkampf-finisher-bonus-draws">Bonus-Ziehungen für den Finisher<input id="teamkampf-finisher-bonus-draws" type="number" min="0" step="1"></label>
+            </div>
+            <label class="switch-row compact-switch">
+              <input id="teamkampf-lose-card-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-lose-card-enabled">Bei Niederlage verliert jeder Teilnehmer die eingesetzte Karte</span>
+            </label>
+            <label class="switch-row compact-switch">
+              <input id="teamkampf-lost-card-announce-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-lost-card-announce-enabled">Chat-Nachricht bei Kartenverlust</span>
+            </label>
+            <div class="message-field">
+              <div class="message-field-head">
+                <span class="message-field-label" data-i18n="label-teamkampf-lost-card-message">Nachricht bei Kartenverlust</span>
+                <div class="var-chips" data-target="teamkampf-lost-card-message">
+                  <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                  <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                  <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                </div>
+              </div>
+              <textarea id="teamkampf-lost-card-message" rows="2"></textarea>
+            </div>
+            <div class="status-line" id="teamkampf-status-line"></div>
+            <div class="button-row">
+              <button class="primary-button" id="teamkampf-start-now" type="button" data-i18n="btn-teamkampf-start-now">Team-Kampf jetzt starten</button>
+            </div>
+            <p class="hint" data-i18n="teamkampf-layout-hint">Der Team-Kampf läuft in derselben OBS-Quelle wie die Kampf-Animation an – diese Position/Skalierung gilt für beide gemeinsam.</p>
+          </section>
+
           <section class="tool-panel" id="jn-live-ticker-design">
             <div class="section-heading">
               <div>
@@ -1657,6 +1917,55 @@
               <label data-i18n="label-liveticker-speed">Geschwindigkeit (Px/Sek.)<input id="liveticker-speed" type="number" min="20" max="400" step="10"></label>
             </div>
             <div id="overlay-layout-liveTicker"></div>
+
+            <div class="field-group">
+              <p class="field-group-title" data-i18n="liveticker-group-messages">Texte</p>
+
+              <div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-liveticker-draw-message">Text bei Kartenziehung</span>
+                  <div class="var-chips" data-target="liveticker-draw-message">
+                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                  </div>
+                </div>
+                <textarea id="liveticker-draw-message" rows="2"></textarea>
+              </div>
+
+              <div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-liveticker-battle-message">Text bei Kartenduell</span>
+                  <div class="var-chips" data-target="liveticker-battle-message">
+                    <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                    <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                  </div>
+                </div>
+                <textarea id="liveticker-battle-message" rows="2"></textarea>
+              </div>
+
+              <div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-liveticker-tournament-message">Text bei Turniersieg</span>
+                  <div class="var-chips" data-target="liveticker-tournament-message">
+                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    <button class="var-chip" type="button" data-insert="[Teilnehmerzahl]">[Teilnehmerzahl]</button>
+                  </div>
+                </div>
+                <textarea id="liveticker-tournament-message" rows="2"></textarea>
+              </div>
+
+              <div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-liveticker-teambattle-message">Text bei Team-Kampf-Ergebnis</span>
+                  <div class="var-chips" data-target="liveticker-teambattle-message">
+                    <button class="var-chip" type="button" data-insert="[Sieger]">[Sieger]</button>
+                    <button class="var-chip" type="button" data-insert="@streamerName">@streamerName</button>
+                  </div>
+                </div>
+                <textarea id="liveticker-teambattle-message" rows="2"></textarea>
+              </div>
+            </div>
           </section>
         </section>
 
@@ -1833,6 +2142,11 @@
                   <input id="booster-enabled" type="checkbox">
                   <span data-i18n="label-booster-enabled">Booster aktiv</span>
                 </label>
+                <label class="switch-row compact-switch">
+                  <input id="booster-sub-exclusive" type="checkbox">
+                  <span data-i18n="label-booster-sub-exclusive">Sub-exklusiv</span>
+                </label>
+                <p class="hint" data-i18n="booster-sub-exclusive-hint">Karten aus diesem Booster gibt es nur über Sub-Ereignisse (neuer Sub, Resub, Sub verschenkt) – nicht über Kanalpunkte oder den Chat-Befehl "!pack".</p>
                 <label data-i18n="label-booster-title">Titel<input id="booster-title" type="text"></label>
                 <label data-i18n="label-booster-subtitle">Untertitel<input id="booster-subtitle" type="text"></label>
                 <label data-i18n="label-booster-score">Booster-Score<input id="booster-score" type="number" min="1" step="1"></label>
@@ -1952,7 +2266,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784294738"></script>
-    <script type="module" src="/assets/js/admin.js?v=1784294738"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260718-jumpnavfix1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260718-jumpnavfix1"></script>
   </body>
 </html>

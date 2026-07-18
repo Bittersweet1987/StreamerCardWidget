@@ -40,16 +40,10 @@ function escapeForOverlay(value) {
 
 function buildItem(entry) {
   const el = document.createElement("span");
-  el.className = "liveticker-item";
-  const boosterHtml = entry.boosterTitle
-    ? `<span class="liveticker-booster">(${escapeForOverlay(entry.boosterTitle)})</span>`
-    : "";
+  el.className = `liveticker-item liveticker-item-${entry.kind || "draw"}`;
   el.innerHTML = `
     <span class="liveticker-avatar-slot"></span>
-    <span class="liveticker-user">${escapeForOverlay(entry.user)}</span>
-    <span class="liveticker-sep">${settings?.language === "en" ? "drew" : "zog"}</span>
-    <span class="liveticker-card">${escapeForOverlay(entry.cardTitle)}</span>
-    ${boosterHtml}
+    <span class="liveticker-text">${escapeForOverlay(entry.text)}</span>
   `;
   const slot = el.querySelector(".liveticker-avatar-slot");
   if (entry.avatarUrl) {
@@ -146,8 +140,8 @@ function updateVisibility() {
 // card was drawn), not throttled by the sequential animation playback gap.
 function addEntry(event = {}) {
   if (!settings) return;
-  if (!event.cardTitle) return;
-  entries.push({ user: event.user || "Viewer", cardTitle: event.cardTitle, boosterTitle: event.boosterTitle, rarity: event.rarity, avatarUrl: event.avatarUrl });
+  if (!event.text) return;
+  entries.push({ kind: event.kind || "draw", text: event.text, avatarUrl: event.avatarUrl });
   const max = settings.liveTicker?.maxEntries || 8;
   if (entries.length > max) entries.splice(0, entries.length - max);
   updateVisibility();
@@ -203,12 +197,10 @@ async function init() {
   const recent = await getRecentLiveTickerEntries();
   if (recent.length) {
     entries = recent.map((entry) => ({
-      user: entry.user || "Viewer",
-      cardTitle: entry.cardTitle,
-      boosterTitle: entry.boosterTitle,
-      rarity: entry.rarity,
+      kind: entry.kind || "draw",
+      text: entry.text,
       avatarUrl: entry.avatarUrl
-    }));
+    })).filter((entry) => entry.text);
     updateVisibility();
   }
   bindServerEvents();

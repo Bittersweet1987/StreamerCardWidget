@@ -32,15 +32,21 @@ die live in OBS aufgehen, bauen ihre eigene **Sammlung** auf, können Karten unt
 - [Bot-Account für Chat](#bot-account-für-chat)
 - [OBS einrichten](#obs-einrichten)
 - [Booster anlegen](#booster-anlegen)
+- [Sub-exklusive Booster](#sub-exklusive-booster)
 - [Karten anlegen](#karten-anlegen)
 - [Seltenheiten & Gewichtung](#seltenheiten--gewichtung)
 - [Kanalpunkte-Belohnungen](#kanalpunkte-belohnungen)
 - [Sammlungs-Showcase](#sammlungs-showcase)
 - [Chat-Befehle](#chat-befehle)
+- [Verschenken (Gift)](#verschenken-gift)
 - [Tauschsystem](#tauschsystem)
 - [Tausch-Animation](#tausch-animation)
 - [Kartenduell (Kampf)](#kartenduell-kampf)
+- [Turnier-Modus](#turnier-modus)
+- [Team-Kampf](#team-kampf)
 - [Ranking](#ranking)
+- [Live-Ticker](#live-ticker)
+- [Community-Ziel](#community-ziel)
 - [Nutzung Befehle](#nutzung-befehle)
 - [Queue](#queue)
 - [Karten-Themes](#karten-themes)
@@ -160,6 +166,16 @@ da sie nur im Kanal des Exportierenden gültig sind.
 
 ---
 
+## Sub-exklusive Booster
+
+Ein Booster lässt sich als **„Sub-exklusiv"** markieren (Booster-Ansicht) – solche Booster sind
+über Kanalpunkte und `!pack` **nicht** erreichbar. Stattdessen vergibt die App bei jedem neuen
+**Sub, Resub oder verschenkten Sub** automatisch eine Karte aus einem zufälligen sub-exklusiven
+Booster, einstellbar unter **Einstellungen → Sub-Belohnungen**. So lassen sich exklusive Karten
+als Abo-Bonus reservieren, ohne dass sie im normalen Ziehungspool auftauchen.
+
+---
+
 ## Karten anlegen
 
 1. Tab **Karten** öffnen → **Karte hinzufügen**.
@@ -270,6 +286,23 @@ jeweiligen Textfeld und werden per Klick eingefügt.
 
 ---
 
+## Verschenken (Gift)
+
+Mit **`!gift @Empfänger Kartenname`** (Präfix/Befehlswort einstellbar) verschenkt ein Zuschauer
+eine Karte **einseitig** an einen anderen – ohne Bestätigung durch den Empfänger. Die Karte wird
+direkt aus der eigenen Sammlung des Schenkenden entfernt und dem Empfänger gutgeschrieben.
+
+Geprüft wird: Empfänger existiert, Kartenname stimmt (bei Tippfehlern kommt ein
+**„Meintest du …?"**-Vorschlag), die Karte wird tatsächlich besessen, und man sich nicht selbst
+beschenkt. Alle Chat-Nachrichten (Erfolg, unbekannter Empfänger, unbekannte Karte, nicht besessen,
+Selbst-Geschenk, falsche Nutzung) sind frei anpassbar.
+
+Optional läuft dazu eine eigene **Geschenk-Animation** in OBS (Einstellungen → Geschenk-Animation,
+eigene Browserquelle) – über dieselbe Queue wie alle anderen Animationen, damit sich nichts
+überlagert.
+
+---
+
 ## Tauschsystem
 
 Zuschauer können untereinander Karten tauschen (drei Befehle im Tab **Chat Befehle**, jeweils
@@ -366,6 +399,48 @@ so verrät der Chat nicht vorab, wer gewinnt.
 
 ---
 
+## Turnier-Modus
+
+Ein **Ausscheidungsturnier** für Kartenduelle – Zuschauer treten während einer Anmeldephase per
+Chat-Befehl bei (Befehlswort unter **Chat-Befehle → Turnier-Beitritt** einstellbar), danach
+werden alle Runden **automatisch nacheinander** über die normale Kampf-Animation ausgetragen,
+**ohne Risiko** für die eigenen Karten (anders als beim normalen `!battle`-Duell wechselt hier
+keine Karte den Besitzer). Der Turniersieger bekommt stattdessen eine konfigurierbare Anzahl
+**Kartenpack-Ziehungen**.
+
+Startbar über **Kanalpunkte-Belohnung** (Tab Verbindung → Channel Points), per **Chat-Befehl**
+(„Turnier-Start", Standard `!turnierstart`) oder per Knopf direkt unter **Einstellungen →
+Turnier-Modus**. Dort auch einstellbar: Mindest-Teilnehmerzahl, Anmeldezeit, Kartenanzahl pro
+Aufstellung, sowie ob **auch Runden-Gewinner** (nicht nur der Champion) eine Bonus-Ziehung
+bekommen. Bei ungerader Teilnehmerzahl bekommt einer pro Runde ein **Freilos**.
+
+---
+
+## Team-Kampf
+
+Die **Community gegen den Streamer**: eine konfigurierbare **Mindest-Kartenanzahl** (die
+tatsächliche Aufstellungsgröße wird pro Kampf leicht zufällig variiert) tritt gegen alle
+Zuschauer an, die sich während einer Anmeldephase per Chat-Befehl (Standard `!teamkampf`)
+angemeldet haben – jeder Teilnehmer wird automatisch mit einer zufälligen eigenen Karte
+vertreten.
+
+Während der Anmeldephase läuft im Overlay ein **Countdown mit Live-Teilnehmerliste**
+(Profilbild + Name, aktualisiert sich bei jedem neuen Beitritt) sowie die Anzahl der Karten, die
+es zu besiegen gilt – die Karten selbst bleiben bewusst **verdeckt** (keine Vorschau auf Motiv
+oder Seltenheit), damit die Community nicht taktisch vorplanen kann.
+
+Der eigentliche Kampf läuft als **HP-Leisten-Duell** (siehe Kartenduell-Kampfstile). Gewinnt die
+Community, bekommt jeder Teilnehmer eine konfigurierbare Anzahl Kartenpack-Ziehungen, und wer den
+**entscheidenden letzten Schlag** gelandet hat, bekommt zusätzlich einen einstellbaren
+Finisher-Bonus (eigene Chat-Nachricht dafür). Optional (Schalter „Bei Niederlage verliert jeder
+Teilnehmer die eingesetzte Karte") verlieren bei einer Niederlage alle Teilnehmer ihre
+eingesetzte Karte – dafür gibt es eine eigene, ein-/ausschaltbare Chat-Nachricht pro verlorener
+Karte.
+
+Startbar über **Kanalpunkte-Belohnung** oder per Knopf unter **Einstellungen → Team-Kampf**.
+
+---
+
 ## Ranking
 
 Über den **Ranking-Befehl** (Standard `!ranking`, Präfix/Befehlswort im Tab **Chat Befehle**
@@ -387,6 +462,31 @@ Die **Anzeigedauer** pro Ansicht ist beim Befehl einstellbar (Standard 8 Sekunde
 Kartennamen werden stillschweigend ignoriert.
 
 <p align="center"><img src="docs/media/ranking.gif" alt="Ranking-Overlay Vorschau" width="480"></p>
+
+---
+
+## Live-Ticker
+
+Ein durchlaufendes **Laufschrift-Banner** (wie ein Newsticker) in einer eigenen OBS-Quelle, das
+die letzten Ereignisse aller Zuschauer in einer Endlosschleife von rechts nach links zeigt –
+unabhängig von der Kartenpack-Animation, läuft also nicht gedrosselt durch deren Warteschlange.
+Gezeigt werden **Kartenziehungen, Kartenduelle, Turniersiege und Team-Kampf-Ergebnisse**; die
+Texte für alle vier Ereignis-Arten sind unter **Einstellungen → Live-Ticker → Texte** frei
+anpassbar (Variablen wie `@userName`, `[Kartenname]` etc. per Klick einfügbar).
+
+Die letzten **8 Ereignisse** werden dauerhaft gespeichert, damit der Ticker beim nächsten
+App-Start sofort wieder Inhalt zeigt statt leer zu starten. Einstellbar sind außerdem
+Umlauf-Anzahl und Scroll-Geschwindigkeit.
+
+---
+
+## Community-Ziel
+
+Ein **gemeinsamer Fortschrittsbalken** über alle Zuschauer hinweg – jede Ziehung (egal ob per
+Kanalpunkte oder Chat-Befehl) zählt +1. Wird das Ziel erreicht, postet der Bot eine
+**Feier-Nachricht** im Chat, die OBS-Quelle zeigt eine **Feier-Animation**, und jeder, der
+mitgezogen hat, bekommt automatisch einen **Bonus-Booster**. Einstellbar unter **Einstellungen →
+Community-Ziel**, inklusive manuellem Zurücksetzen des Fortschritts.
 
 ---
 
@@ -460,6 +560,13 @@ Alles liegt updatesicher im Ordner `data\`:
 - `command-usage.json` – Nutzungszähler & Cooldowns der Chat-Befehle (Pack, Tausch & Kampf)
 - `battle-stats.json` – dauerhafte Kampf-Statistik (Kämpfe/Siege/Niederlagen) fürs Ranking
 - `trade-stats.json` – dauerhafte Tausch-Statistik (Anzahl abgeschlossener Tausche) fürs Ranking
+- `tournament-stats.json` – dauerhafte Turnier-Statistik (Turniersiege)
+- `community-goal.json` – Fortschritt des aktuellen Community-Ziels
+- `liveticker-history.json` – die letzten 8 Live-Ticker-Einträge, damit der Ticker beim App-Start
+  sofort wieder Inhalt zeigt
+- `stats-install-id.txt` – zufällige, stabile ID für die anonyme Community-Statistik (nur zum
+  Zählen „wie viele Karten/Booster gibt es insgesamt über alle Installationen" – keinerlei
+  Bezug zu deinem Twitch-Account)
 - `twitch.json` / `twitch-bot.json` / `obs.json` – Zugangsdaten (getrennt gespeichert)
 
 > Der Ereignis-Log (Tab **Log**) ist nur eine Live-Diagnose und wird bei **jedem App-Start

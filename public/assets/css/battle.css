@@ -153,6 +153,117 @@ html, body {
   pointer-events: none;
 }
 
+/* Top-right corner, not bottom-center: the live-ticker banner defaults to a full-width band near
+   the BOTTOM of the canvas (see OVERLAY_LAYOUT_NATURAL_SIZES.liveTicker / its defaultTop in
+   render.js), so anything else anchored to the bottom risks sitting behind or on top of it. Anchoring
+   here to the top instead, with a capped max-height (own scrollbar once there are enough joined
+   participants to need one - see .teamkampf-participants below), guarantees this box can never grow
+   downward far enough to reach the ticker even with a large participant list. */
+.teamkampf-signup {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  background: rgba(20, 14, 34, .6);
+  pointer-events: none;
+  max-width: min(90vw, 420px);
+  max-height: 60vh;
+}
+
+/* The unconditional "display: flex" above is an author rule, which always beats the browser's
+   own default "[hidden] { display: none }" UA rule regardless of selector specificity - without
+   this override, setting the [hidden] attribute in JS (see hideTeamKampfSignup in battle.js) had
+   no visible effect and the box stayed on screen even after being "hidden". */
+.teamkampf-signup[hidden] {
+  display: none;
+}
+
+.teamkampf-signup-title {
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
+  white-space: nowrap;
+}
+
+.teamkampf-lineup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: min(80vw, 380px);
+}
+
+.teamkampf-lineup-card {
+  width: 64px;
+}
+
+.teamkampf-lineup-card .tcg-card {
+  width: 100%;
+}
+
+.teamkampf-participants-label {
+  color: rgba(255, 255, 255, .75);
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+/* Capped and independently scrollable - without this, a large enough participant list could grow
+   the whole .teamkampf-signup box past its own max-height and get clipped/overflow unpredictably.
+   This way only the participant chips scroll; the countdown title and streamer lineup above always
+   stay fully visible. */
+.teamkampf-participants {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  max-width: min(80vw, 380px);
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.teamkampf-participant {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .1);
+}
+
+.teamkampf-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.teamkampf-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.teamkampf-participant-name {
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .5);
+  white-space: nowrap;
+}
+
 .battle-header {
   display: flex;
   align-items: center;
