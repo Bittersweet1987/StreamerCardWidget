@@ -149,8 +149,10 @@ Ein **Booster** ist ein Karten-Pack mit einer eigenen Kanalpunkte-Belohnung.
    - **Titel** & **Untertitel** – stehen auf dem Pack im Overlay.
    - **Bild** – optionales Pack-Motiv.
    - **Akzentfarbe** – Farbe des Packs.
-   - **Score (Gewichtung)** – wie häufig dieser Booster gezogen wird, wenn die Belohnung
-     mehreren Boostern zugeordnet ist (höher = häufiger).
+   - **Score (Gewichtung)** – jede Ziehung (Kanalpunkte, `!pack`, Turnier-/Team-Kampf-Bonus …)
+     wählt zufällig unter **allen aktivierten Boostern** einen aus, gewichtet nach diesem Wert
+     (höher = häufiger). Gilt unabhängig davon, welche Belohnung oder welcher Befehl die Ziehung
+     ausgelöst hat.
 3. **Karten zuordnen**: In der Booster-Ansicht die gewünschten Karten anhaken (max. **100** pro Booster).
    Bereits einem anderen Booster zugeordnete Karten werden ausgeblendet – jede Karte gehört zu genau einem Booster.
 4. Speichern nicht vergessen (Button **Speichern** oben rechts).
@@ -299,9 +301,16 @@ Selbst-Geschenk, falsche Nutzung) sind frei anpassbar.
 
 Optional läuft dazu eine eigene **Geschenk-Animation** in OBS (Einstellungen → Geschenk-Animation,
 eigene Browserquelle) – über dieselbe Queue wie alle anderen Animationen, damit sich nichts
-überlagert.
+überlagert. Drei wählbare Stile: **Übergabe** (Karte wandert vom Schenkenden zum Empfänger),
+**Dreh-Reveal** (Karte dreht sich schnell ein und wird langsamer) und **Pixel-Auflösung** (Karte
+löst sich aus einem Pixelraster).
 
-<p align="center"><img src="docs/media/gift-success.gif" alt="Geschenk-Animation Vorschau" width="480"></p>
+<p align="center">
+  <img src="docs/media/gift-handover.gif" alt="Geschenk-Animation: Übergabe" width="260">
+  <img src="docs/media/gift-spin.gif" alt="Geschenk-Animation: Dreh-Reveal" width="260">
+  <img src="docs/media/gift-pixelate.gif" alt="Geschenk-Animation: Pixel-Auflösung" width="260">
+</p>
+<p align="center"><sub>Übergabe · Dreh-Reveal · Pixel-Auflösung</sub></p>
 
 ---
 
@@ -521,8 +530,8 @@ oder **alle löschen**.
 
 Im Tab **Themes** wählst du per Klick das **Aussehen aller Karten** – die Auswahl gilt sofort für
 Overlay, Sammlung, Tausch-Animation und alle Vorschauen. Mitgeliefert sind mehrere Presets
-(z. B. *Klassik*, *Onyx*, *Carbon*, *Prisma*, *Gold*, *Sunset*, *Mint*, *Ozean*, *Rosé*, *Wald*).
-*Klassik* ist der Standard.
+(*Klassik*, *Onyx*, *Carbon*, *Mitternacht*, *Schiefer*, *Prisma*, *Gold*, *Sunset*, *Mint*,
+*Ozean*, *Rosé*, *Wald*). *Klassik* ist der Standard.
 
 Oben lässt sich per Dropdown die **Vorschaukarte** wählen, damit du siehst, wie ein Theme mit einer
 bestimmten Karte wirkt.
@@ -540,12 +549,12 @@ Im Tab **Einstellungen**:
 - **Schriftart** & **Akzentfarbe** (Schrift wirkt nur auf das Widget, nicht auf die App-UI).
 - **Vorschau** mit Karten-Auswahl.
 - **Sammlungsleiste** und **Kartenrahmen** ein-/ausblenden.
-- **Position Einlöser-Name** im Overlay: Unten / Mitte / Oben.
+- **Position Einlöser-Name** im Overlay: Unten / Oben.
 - **Sounds** für Öffnen, Reveal, Tausch und Kampf + **Lautstärke**.
 - **Timing**: Karte sichtbar (Sek.), Cooldown, verdeckte Karten vor dem Reveal.
 
-Sprache (**DE / EN**) und Modus (**Hell ☀ / Dunkel 🌙**) schaltest du jederzeit über die beiden
-Schalter unten links in der Navigation um.
+Sprache (**DE / EN / FR / ES / TH**) und Modus (**Hell ☀ / Dunkel 🌙**) schaltest du jederzeit über
+die beiden Schalter unten links in der Navigation um.
 
 ---
 
