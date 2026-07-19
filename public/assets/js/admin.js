@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=20260719-rangfix1";
+} from "./api.js?v=20260719-search1";
 import {
   applyTheme,
   boosterMarkup,
@@ -63,7 +63,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=20260719-rangfix1";
+} from "./render.js?v=20260719-search1";
 
 let settings;
 let selectedCardId;
@@ -1391,6 +1391,16 @@ const I18N = {
     fr: "Ajouter une carte",
     es: "Añadir carta",
     th: "เพิ่มการ์ด"
+  },
+  "label-cards-search": { de: "Suche", en: "Search",
+    fr: "Recherche",
+    es: "Buscar",
+    th: "ค้นหา"
+  },
+  "placeholder-cards-search": { de: "Kartenname...", en: "Card name...",
+    fr: "Nom de la carte...",
+    es: "Nombre de la carta...",
+    th: "ชื่อการ์ด..."
   },
   "label-cards-sort": { de: "Sortieren nach", en: "Sort by",
     fr: "Trier par",
@@ -4679,12 +4689,24 @@ function cardEditorMarkup(card, index) {
 }
 
 let cardsSortMode = "default";
+let cardsSearchQuery = "";
+
+// Plain case-insensitive substring match (not "starts with") - e.g. typing "ut" finds
+// "MaschuTV", since "ut" occurs mid-word. Same normalization (lowercased, no special treatment
+// of diacritics/spacing) on both sides keeps this predictable and cheap for a list this size.
+function titleMatchesQuery(title, query) {
+  if (!query) return true;
+  return (title || "").toLowerCase().includes(query);
+}
+function matchesCardSearch(title) {
+  return titleMatchesQuery(title, cardsSearchQuery);
+}
 
 // Display-only ordering - never reorders settings.deck.cards itself, so nothing that indexes
 // cards by array position (insertCardEditor's "prepend new card at top" assumption, exports,
 // etc.) is affected. Only the rendered order changes.
 function sortedCards() {
-  const cards = settings.deck.cards;
+  const cards = cardsSearchQuery ? settings.deck.cards.filter((card) => matchesCardSearch(card.title)) : settings.deck.cards;
   if (cardsSortMode === "default") return cards;
   const copy = cards.slice();
   if (cardsSortMode === "name") {
@@ -4722,7 +4744,7 @@ function insertCardEditor(card) {
   // Prepending assumes the new card is displayed first, which is only true in the default
   // (insertion) order - any other sort mode needs the full (still cheap, one-off) rebuild so the
   // card lands in its actual sorted position instead of visually at the top.
-  if (cardsSortMode !== "default") {
+  if (cardsSortMode !== "default" || cardsSearchQuery) {
     renderCards();
     return;
   }
@@ -4859,6 +4881,8 @@ function ownerBoosterByCardId() {
   return owner;
 }
 
+let boosterCardSearchQuery = "";
+
 function renderBoosterCards() {
   const booster = selectedBooster();
   const assigned = new Set(booster.cardIds || []);
@@ -4866,11 +4890,16 @@ function renderBoosterCards() {
   $("#assigned-count").textContent = `${assigned.size}/${MAX_BOOSTER_CARDS}`;
   // Cards already assigned to a different booster are hidden entirely rather than shown
   // disabled - keeps the list short and focused on cards that could actually be picked here.
+  // Already-checked cards always stay visible regardless of the search text, so typing a filter
+  // can never make a currently-assigned card silently disappear from view (and thus from the
+  // rendered <input>, which would drop it from the DOM but NOT from booster.cardIds - a false
+  // impression that it got unassigned).
   $("#assigned-cards").innerHTML = settings.deck.cards
     .filter((card) => {
       const takenBy = owner.get(card.id);
       return !takenBy || takenBy.id === booster.id;
     })
+    .filter((card) => assigned.has(card.id) || titleMatchesQuery(card.title, boosterCardSearchQuery))
     .map((card) => `
       <label class="assignment-tile">
         <input type="checkbox" data-card-assignment="${card.id}" ${assigned.has(card.id) ? "checked" : ""}>
@@ -4919,6 +4948,10 @@ function bindBooster() {
     selectedBoosterId = button.dataset.boosterId;
     hydrateBooster();
     renderOverview();
+  });
+  $("#booster-card-search").addEventListener("input", (event) => {
+    boosterCardSearchQuery = event.target.value.trim().toLowerCase();
+    renderBoosterCards();
   });
   $("#delete-booster").addEventListener("click", () => {
     if (settings.boosters.length <= 1) {
@@ -7134,6 +7167,10 @@ function bindGlobalActions() {
   });
   $("#cards-sort").addEventListener("change", (event) => {
     cardsSortMode = event.target.value;
+    renderCards();
+  });
+  $("#cards-search").addEventListener("input", (event) => {
+    cardsSearchQuery = event.target.value.trim().toLowerCase();
     renderCards();
   });
   $("#import-card").addEventListener("change", async (event) => {
