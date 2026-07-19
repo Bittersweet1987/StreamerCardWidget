@@ -2030,6 +2030,30 @@ namespace CardPackWidgetApp
             }
         }
 
+        // Runtime difficulty rubber-banding: tracks how many Team-Kaempfe in a row the community
+        // has just lost, stored as a top-level "communityLossStreak" field in teamkampf-stats.json
+        // (a sibling of "users", not a per-user stat - this is about the fight itself, not any one
+        // viewer). StartTeamBattleSignup reads this to shrink the streamer's next lineup a little
+        // for every loss in a row, so a losing streak doesn't just look bad on the scoreboard but
+        // actually makes the next attempt easier. Resets to 0 the moment the community wins again.
+        internal void RecordTeamKampfDifficultyResult(bool communityWon)
+        {
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TeamKampfStatsPath(), "{}"));
+                stats["communityLossStreak"] = communityWon ? 0 : GetIntStat(stats, "communityLossStreak") + 1;
+                File.WriteAllText(TeamKampfStatsPath(), json.Serialize(stats), Encoding.UTF8);
+            }
+        }
+
+        internal int GetTeamKampfCommunityLossStreak()
+        {
+            lock (battleStatsLock)
+            {
+                return GetIntStat(ParseObject(ReadFile(TeamKampfStatsPath(), "{}")), "communityLossStreak");
+            }
+        }
+
         // Top N users by Team-Kampf wins, losses AND participations, for "!ranking teamkampf".
         internal Dictionary<string, object> BuildTeamKampfRanking(int limit)
         {
@@ -4479,6 +4503,11 @@ namespace CardPackWidgetApp
                 Dictionary<string, object> tbCfg = Obj(server.ReadSettingsObject(), "teamBattle");
                 bool communityWon = GetBool(item, "communityWon", false);
                 string streamerName = GetString(item, "streamerName", "Streamer");
+
+                // Once per fight (not once per participant, unlike RecordTeamKampfResult below) -
+                // see RecordTeamKampfDifficultyResult for how this feeds back into the next fight's
+                // streamer lineup size.
+                server.RecordTeamKampfDifficultyResult(communityWon);
                 object participantsObj;
                 var participants = new List<Dictionary<string, object>>();
                 if (item.TryGetValue("participants", out participantsObj) && participantsObj is List<Dictionary<string, object>>)
@@ -6387,6 +6416,20 @@ namespace CardPackWidgetApp
                 // single Team-Kampf. Safe to vary freely: ResolveHpElimination handles unequal
                 // streamer/community lineup lengths just fine (HP elimination, not paired rounds).
                 int streamerCardCountMin = Math.Max(1, GetInt(tbCfg, "streamerCardCount", 5));
+
+                // Difficulty rubber-banding: every Team-Kampf the community lost in a row (see
+                // RecordTeamKampfDifficultyResult) shaves cards off the streamer's MINIMUM for
+                // this next attempt - configurable step size, floored so the fight never becomes
+                // trivially small. Resets back to the full configured minimum the moment the
+                // community wins again.
+                if (GetBool(tbCfg, "difficultyRubberbandEnabled", true))
+                {
+                    int lossStreak = server.GetTeamKampfCommunityLossStreak();
+                    int stepDown = Math.Max(0, GetInt(tbCfg, "difficultyStepDown", 1));
+                    int floorCount = Math.Max(1, GetInt(tbCfg, "difficultyMinCardCount", 2));
+                    streamerCardCountMin = Math.Max(floorCount, streamerCardCountMin - lossStreak * stepDown);
+                }
+
                 int streamerCardCount;
                 lock (BattleRandom) { streamerCardCount = streamerCardCountMin + BattleRandom.Next(0, 5); }
                 int signupSeconds = Math.Max(10, GetInt(tbCfg, "signupSeconds", 60));

@@ -1891,6 +1891,32 @@ const I18N = {
   "label-teamkampf-enabled": { de: "Team-Kampf aktiviert", en: "Team battle enabled", fr: "Combat d'équipe activé", es: "Combate de equipo activado", th: "เปิดใช้งานการต่อสู้ทีม" },
   "label-teamkampf-card-count": { de: "Mindest-Kartenanzahl Streamer-Team (tatsächliche Anzahl ist zufällig)", en: "Minimum streamer team card count (actual count is randomized)", fr: "Nombre minimum de cartes de l'équipe du streamer (le nombre réel est aléatoire)", es: "Número mínimo de cartas del equipo del streamer (el número real es aleatorio)", th: "จำนวนการ์ดขั้นต่ำของทีมสตรีมเมอร์ (จำนวนจริงเป็นแบบสุ่ม)" },
   "label-teamkampf-signup-seconds": { de: "Anmeldezeit (Sek.)", en: "Signup time (sec.)", fr: "Temps d'inscription (sec.)", es: "Tiempo de inscripción (seg.)", th: "เวลาสมัคร (วินาที)" },
+  "label-teamkampf-difficulty-enabled": {
+    de: "Bei Niederlage der Community wird das nächste Streamer-Team kleiner",
+    en: "The streamer's next team shrinks after the community loses",
+    fr: "L'équipe du streamer rétrécit lors du prochain combat après une défaite de la communauté",
+    es: "El próximo equipo del streamer se reduce tras una derrota de la comunidad",
+    th: "ทีมสตรีมเมอร์ครั้งต่อไปจะเล็กลงเมื่อชุมชนแพ้"
+  },
+  "teamkampf-difficulty-hint": {
+    de: "Für jede verlorene Team-Kampf-Serie in Folge sinkt die Mindest-Kartenanzahl des Streamer-Teams um den angegebenen Wert (nach unten begrenzt). Gewinnt die Community, springt die Anzahl beim nächsten Team-Kampf wieder auf den normalen Wert zurück.",
+    en: "For every Team Battle the community loses in a row, the streamer team's minimum card count drops by this amount (floored). Once the community wins again, the count jumps back to the normal value for the next fight.",
+    fr: "Pour chaque combat d'équipe perdu de suite par la communauté, le nombre minimum de cartes de l'équipe du streamer diminue de cette valeur (avec un plancher). Dès que la communauté gagne à nouveau, le nombre revient à la valeur normale pour le prochain combat.",
+    es: "Por cada combate de equipo perdido consecutivamente por la comunidad, el número mínimo de cartas del equipo del streamer baja en esta cantidad (con un mínimo). En cuanto la comunidad gane de nuevo, el número vuelve al valor normal para el siguiente combate.",
+    th: "ทุกครั้งที่ชุมชนแพ้ทีมคัมภ์ติดต่อกัน จำนวนการ์ดขั้นต่ำของทีมสตรีมเมอร์จะลดลงตามค่านี้ (มีขั้นต่ำ) เมื่อชุมชนชนะอีกครั้ง จำนวนจะกลับไปเป็นค่าปกติสำหรับการต่อสู้ครั้งถัดไป"
+  },
+  "label-teamkampf-difficulty-step": {
+    de: "Kartenreduktion pro Niederlage in Folge", en: "Card reduction per loss in a row",
+    fr: "Réduction de cartes par défaite consécutive",
+    es: "Reducción de cartas por derrota consecutiva",
+    th: "ลดการ์ดต่อการแพ้ติดต่อกัน"
+  },
+  "label-teamkampf-difficulty-floor": {
+    de: "Mindestanzahl trotz Niederlagen", en: "Minimum count despite losses",
+    fr: "Nombre minimum malgré les défaites",
+    es: "Cantidad mínima a pesar de las derrotas",
+    th: "จำนวนขั้นต่ำแม้จะแพ้"
+  },
   "label-teamkampf-rewards-enabled": { de: "Bei Sieg der Community bekommt jeder Teilnehmer Karten", en: "On a community win, every participant gets cards", fr: "En cas de victoire de la communauté, chaque participant reçoit des cartes", es: "Si gana la comunidad, cada participante recibe cartas", th: "เมื่อชุมชนชนะ ผู้เข้าร่วมทุกคนจะได้รับการ์ด" },
   "label-teamkampf-draws-per-participant": { de: "Ziehungen je Teilnehmer", en: "Draws per participant", fr: "Tirages par participant", es: "Tiradas por participante", th: "จำนวนการจับสลากต่อผู้เข้าร่วม" },
   "label-teamkampf-finisher-bonus-enabled": { de: "Wer die letzte Streamer-Karte besiegt, bekommt zusätzliche Ziehungen", en: "Whoever defeats the streamer's last card gets extra draws", fr: "Celui qui bat la dernière carte du streamer reçoit des tirages supplémentaires", es: "Quien derrote la última carta del streamer recibe tiradas adicionales", th: "ผู้ที่เอาชนะการ์ดใบสุดท้ายของสตรีมเมอร์จะได้รับการจับสลากเพิ่มเติม" },
@@ -5905,6 +5931,9 @@ function hydrateDesign() {
   $("#teamkampf-enabled").checked = settings.teamBattle?.enabled === true;
   $("#teamkampf-card-count").value = settings.teamBattle?.streamerCardCount ?? 5;
   $("#teamkampf-signup-seconds").value = settings.teamBattle?.signupSeconds ?? 60;
+  $("#teamkampf-difficulty-enabled").checked = settings.teamBattle?.difficultyRubberbandEnabled !== false;
+  $("#teamkampf-difficulty-step").value = settings.teamBattle?.difficultyStepDown ?? 1;
+  $("#teamkampf-difficulty-floor").value = settings.teamBattle?.difficultyMinCardCount ?? 2;
   $("#teamkampf-rewards-enabled").checked = settings.teamBattle?.rewardsEnabled !== false;
   $("#teamkampf-draws-per-participant").value = settings.teamBattle?.drawsPerParticipant ?? 1;
   $("#teamkampf-finisher-bonus-enabled").checked = settings.teamBattle?.finisherBonusEnabled !== false;
@@ -6584,6 +6613,21 @@ function bindDesign() {
   $("#teamkampf-signup-seconds").addEventListener("input", (event) => {
     settings.teamBattle ||= {};
     settings.teamBattle.signupSeconds = Math.max(10, Math.round(Number(event.target.value) || 10));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-difficulty-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.difficultyRubberbandEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-difficulty-step").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.difficultyStepDown = Math.max(0, Math.round(Number(event.target.value) || 0));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-difficulty-floor").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.difficultyMinCardCount = Math.max(1, Math.round(Number(event.target.value) || 1));
     scheduleAutoSave();
   });
   $("#teamkampf-rewards-enabled").addEventListener("change", (event) => {

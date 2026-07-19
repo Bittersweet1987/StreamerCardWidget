@@ -935,6 +935,13 @@ export function normalizeSettings(settings) {
   settings.teamBattle.enabled = settings.teamBattle.enabled === true;
   settings.teamBattle.streamerCardCount = Number(settings.teamBattle.streamerCardCount) > 0 ? Math.round(Number(settings.teamBattle.streamerCardCount)) : 5;
   settings.teamBattle.signupSeconds = Number(settings.teamBattle.signupSeconds) > 0 ? Math.round(Number(settings.teamBattle.signupSeconds)) : 60;
+  // Difficulty rubber-banding: every Team-Kampf the community lost in a row shaves this many
+  // cards off the streamer's minimum lineup for the NEXT attempt (floored at difficultyMinCard
+  // Count), resetting the moment the community wins again - see RecordTeamKampfDifficultyResult/
+  // GetTeamKampfCommunityLossStreak server-side.
+  settings.teamBattle.difficultyRubberbandEnabled = settings.teamBattle.difficultyRubberbandEnabled !== false;
+  settings.teamBattle.difficultyStepDown = Number(settings.teamBattle.difficultyStepDown) >= 0 ? Math.round(Number(settings.teamBattle.difficultyStepDown)) : 1;
+  settings.teamBattle.difficultyMinCardCount = Number(settings.teamBattle.difficultyMinCardCount) > 0 ? Math.round(Number(settings.teamBattle.difficultyMinCardCount)) : 2;
   settings.teamBattle.rewardsEnabled = settings.teamBattle.rewardsEnabled !== false;
   settings.teamBattle.drawsPerParticipant = Number(settings.teamBattle.drawsPerParticipant) >= 0 ? Math.round(Number(settings.teamBattle.drawsPerParticipant)) : 1;
   settings.teamBattle.finisherBonusEnabled = settings.teamBattle.finisherBonusEnabled !== false;

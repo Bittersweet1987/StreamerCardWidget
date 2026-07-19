@@ -1886,6 +1886,15 @@
               <label data-i18n="label-teamkampf-signup-seconds">Anmeldezeit (Sek.)<input id="teamkampf-signup-seconds" type="number" min="10" step="5"></label>
             </div>
             <label class="switch-row compact-switch">
+              <input id="teamkampf-difficulty-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-difficulty-enabled">Bei Niederlage der Community wird das nächste Streamer-Team kleiner</span>
+            </label>
+            <p class="hint" data-i18n="teamkampf-difficulty-hint">Für jede verlorene Team-Kampf-Serie in Folge sinkt die Mindest-Kartenanzahl des Streamer-Teams um den angegebenen Wert (nach unten begrenzt). Gewinnt die Community, springt die Anzahl beim nächsten Team-Kampf wieder auf den normalen Wert zurück.</p>
+            <div class="form-grid">
+              <label data-i18n="label-teamkampf-difficulty-step">Kartenreduktion pro Niederlage in Folge<input id="teamkampf-difficulty-step" type="number" min="0" step="1"></label>
+              <label data-i18n="label-teamkampf-difficulty-floor">Mindestanzahl trotz Niederlagen<input id="teamkampf-difficulty-floor" type="number" min="1" step="1"></label>
+            </div>
+            <label class="switch-row compact-switch">
               <input id="teamkampf-rewards-enabled" type="checkbox">
               <span data-i18n="label-teamkampf-rewards-enabled">Bei Sieg der Community bekommt jeder Teilnehmer Karten</span>
             </label>
