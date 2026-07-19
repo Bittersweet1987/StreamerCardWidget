@@ -6174,48 +6174,70 @@ namespace CardPackWidgetApp
         // spoil the final winner) - it is sent from ProcessQueueItem only once the queue actually
         // reaches that specific item, so commentary timing always tracks real animation playback.
 
+        // Network I/O (chat messages, avatar lookups) must NEVER happen while tournamentLock is
+        // held. ResolveTournamentSignup (fired by the signup timer) needs the very same lock to
+        // start the bracket - if a join lands right as the timer elapses and that join is still
+        // holding the lock through a slow/hung Twitch API call (WebClient has no explicit timeout,
+        // so a stalled request can sit for up to 100s - see TwitchGet), the resolve is blocked
+        // behind it, turning "timer ran out" into "wait minutes for a stuck HTTP request". Both
+        // methods below only mutate state under the lock, then fire chat/broadcast calls
+        // afterward with the lock already released - same fix applied to Team-Kampf.
         public string StartTournamentSignup(string login, string displayName, string source)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> tCfg = Obj(settings, "tournament");
             if (!GetBool(tCfg, "enabled", false)) return "disabled";
 
+            bool alreadyRunning = false;
+            string startMessage = null;
+            string deadlineUtc = null;
+            int minParticipantsForBroadcast = 0;
+
             lock (tournamentLock)
             {
                 if (activeTournament != null)
                 {
-                    SendChatMessageSafe(GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
-                        .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
-                    return "already_running";
+                    alreadyRunning = true;
                 }
-
-                int minParticipants = Math.Max(2, GetInt(tCfg, "minParticipants", 3));
-                int signupSeconds = Math.Max(10, GetInt(tCfg, "signupSeconds", 90));
-                Dictionary<string, object> joinCfg = Obj(Obj(settings, "chatCommands"), "tournamentJoin");
-                string joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "turnier");
-                string deadlineUtc = DateTime.UtcNow.AddSeconds(signupSeconds).ToString("o");
-
-                activeTournament = new Dictionary<string, object>
+                else
                 {
-                    { "state", "signup" },
-                    { "participants", new List<object>() },
-                    { "minParticipants", minParticipants },
-                    { "lineupSize", Math.Max(1, GetInt(tCfg, "lineupSize", 3)) },
-                    { "winnerDraws", Math.Max(1, GetInt(tCfg, "winnerDraws", 1)) },
-                    { "deadlineUtc", deadlineUtc },
-                    { "startedAt", DateTime.UtcNow.ToString("o") }
-                };
+                    int minParticipants = Math.Max(2, GetInt(tCfg, "minParticipants", 3));
+                    int signupSeconds = Math.Max(10, GetInt(tCfg, "signupSeconds", 90));
+                    Dictionary<string, object> joinCfg = Obj(Obj(settings, "chatCommands"), "tournamentJoin");
+                    string joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "turnier");
+                    deadlineUtc = DateTime.UtcNow.AddSeconds(signupSeconds).ToString("o");
 
-                SendChatMessageSafe(GetString(tCfg, "signupStartMessage", DefaultTournamentSignupStart)
-                    .Replace("[Befehl]", joinCommandText)
-                    .Replace("[Sekunden]", signupSeconds.ToString())
-                    .Replace("[Mindestteilnehmer]", minParticipants.ToString()));
+                    activeTournament = new Dictionary<string, object>
+                    {
+                        { "state", "signup" },
+                        { "participants", new List<object>() },
+                        { "minParticipants", minParticipants },
+                        { "lineupSize", Math.Max(1, GetInt(tCfg, "lineupSize", 3)) },
+                        { "winnerDraws", Math.Max(1, GetInt(tCfg, "winnerDraws", 1)) },
+                        { "deadlineUtc", deadlineUtc },
+                        { "startedAt", DateTime.UtcNow.ToString("o") }
+                    };
 
-                BroadcastTournamentSignupState();
+                    startMessage = GetString(tCfg, "signupStartMessage", DefaultTournamentSignupStart)
+                        .Replace("[Befehl]", joinCommandText)
+                        .Replace("[Sekunden]", signupSeconds.ToString())
+                        .Replace("[Mindestteilnehmer]", minParticipants.ToString());
+                    minParticipantsForBroadcast = minParticipants;
 
-                if (tournamentSignupTimer != null) tournamentSignupTimer.Dispose();
-                tournamentSignupTimer = new System.Threading.Timer(delegate { ResolveTournamentSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
+                    if (tournamentSignupTimer != null) tournamentSignupTimer.Dispose();
+                    tournamentSignupTimer = new System.Threading.Timer(delegate { ResolveTournamentSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
+                }
             }
+
+            if (alreadyRunning)
+            {
+                SendChatMessageSafe(GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
+                    .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
+                return "already_running";
+            }
+
+            SendChatMessageSafe(startMessage);
+            BroadcastTournamentSignupState(new List<object>(), deadlineUtc, minParticipantsForBroadcast);
 
             // Whoever spent the channel points to start the tournament obviously wants to play in
             // it - join them automatically instead of making them also type the join command.
@@ -6231,6 +6253,12 @@ namespace CardPackWidgetApp
 
         private void JoinTournament(string login, string displayName)
         {
+            string notEligibleMessage = null;
+            string joinAckMessage = null;
+            List<object> participantsSnapshot = null;
+            string deadlineUtc = null;
+            int minParticipantsForBroadcast = 0;
+
             lock (tournamentLock)
             {
                 if (activeTournament == null || GetString(activeTournament, "state", "") != "signup") return;
@@ -6248,37 +6276,45 @@ namespace CardPackWidgetApp
                 List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
                 if (owned.Count < lineupSize)
                 {
-                    SendChatMessageSafe(GetString(tCfg, "notEligibleMessage", DefaultTournamentNotEligible)
+                    notEligibleMessage = GetString(tCfg, "notEligibleMessage", DefaultTournamentNotEligible)
                         .Replace("@userName", "@" + displayName)
-                        .Replace("[Anzahl]", lineupSize.ToString()));
-                    return;
+                        .Replace("[Anzahl]", lineupSize.ToString());
                 }
-
-                participants.Add(new Dictionary<string, object> { { "login", loginKey }, { "displayName", displayName } });
-
-                if (GetBool(tCfg, "announceJoins", true))
+                else
                 {
-                    SendChatMessageSafe(GetString(tCfg, "joinAckMessage", DefaultTournamentJoinAck)
-                        .Replace("@userName", "@" + displayName)
-                        .Replace("[Anzahl]", participants.Count.ToString()));
+                    participants.Add(new Dictionary<string, object> { { "login", loginKey }, { "displayName", displayName } });
+                    if (GetBool(tCfg, "announceJoins", true))
+                    {
+                        joinAckMessage = GetString(tCfg, "joinAckMessage", DefaultTournamentJoinAck)
+                            .Replace("@userName", "@" + displayName)
+                            .Replace("[Anzahl]", participants.Count.ToString());
+                    }
+                    // Snapshot (copy), not the live list reference - BroadcastTournamentSignupState
+                    // runs after the lock is released, so it must never iterate the actual
+                    // mutable list another thread could be adding to concurrently.
+                    participantsSnapshot = new List<object>(participants);
+                    deadlineUtc = GetString(activeTournament, "deadlineUtc", "");
+                    minParticipantsForBroadcast = GetInt(activeTournament, "minParticipants", 3);
                 }
-
-                BroadcastTournamentSignupState();
             }
+
+            if (notEligibleMessage != null) { SendChatMessageSafe(notEligibleMessage); return; }
+            if (joinAckMessage != null) SendChatMessageSafe(joinAckMessage);
+            if (participantsSnapshot != null) BroadcastTournamentSignupState(participantsSnapshot, deadlineUtc, minParticipantsForBroadcast);
         }
 
-        // Broadcasts the FULL current signup state (live participant list with avatars, deadline)
+        // Broadcasts a SNAPSHOT of the signup state (live participant list with avatars, deadline)
         // - called once at signup start and again after every successful join, so the overlay can
-        // show who's already in without waiting for the bracket itself. Always resends the same
-        // deadlineUtc (never recomputed), so the client's local countdown never jumps or restarts
-        // when a new participant joins mid-countdown. Mirrors BroadcastTeamBattleSignupState -
-        // same roster box, same overlay markup (see signup-roster in battle.css/js), just without
-        // a revealed lineup row (a tournament bracket has nothing to reveal before it starts).
-        private void BroadcastTournamentSignupState()
+        // show who's already in without waiting for the bracket itself. Takes its data as
+        // parameters rather than reading activeTournament directly, since callers now invoke this
+        // AFTER releasing tournamentLock (see StartTournamentSignup/JoinTournament) - it must never
+        // touch the live mutable state. Always resends the same deadlineUtc (never recomputed), so
+        // the client's local countdown never jumps or restarts when a new participant joins
+        // mid-countdown. Mirrors BroadcastTeamBattleSignupState - same roster box, same overlay
+        // markup (see signup-roster in battle.css/js), just without a revealed lineup row (a
+        // tournament bracket has nothing to reveal before it starts).
+        private void BroadcastTournamentSignupState(List<object> participants, string deadlineUtc, int minParticipants)
         {
-            if (activeTournament == null) return;
-            var participants = (List<object>)activeTournament["participants"];
-
             var participantsForBroadcast = new object[participants.Count];
             for (int i = 0; i < participants.Count; i++)
             {
@@ -6295,8 +6331,8 @@ namespace CardPackWidgetApp
             server.Broadcast("tournamentsignup", server.Serializer.Serialize(new Dictionary<string, object>
             {
                 { "active", true },
-                { "deadlineUtc", GetString(activeTournament, "deadlineUtc", "") },
-                { "minParticipants", GetInt(activeTournament, "minParticipants", 3) },
+                { "deadlineUtc", deadlineUtc },
+                { "minParticipants", minParticipants },
                 { "participants", participantsForBroadcast }
             }));
         }
@@ -6430,73 +6466,100 @@ namespace CardPackWidgetApp
             return lineup;
         }
 
+        // Network I/O (chat messages, avatar lookups) must NEVER happen while teamBattleLock is
+        // held - see the identical comment on StartTournamentSignup for why: it can block
+        // ResolveTeamBattleSignup (which needs the same lock) behind a slow/hung Twitch API call,
+        // turning "timer ran out" into "wait minutes for a stuck HTTP request". Both methods below
+        // only mutate state under the lock, then fire chat/broadcast calls afterward with the lock
+        // already released.
         public string StartTeamBattleSignup(string login, string displayName, string source)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
             if (!GetBool(tbCfg, "enabled", false)) return "disabled";
 
+            bool alreadyRunning = false;
+            bool noCards = false;
+            string startMessage = null;
+            List<Dictionary<string, string>> streamerLineupForBroadcast = null;
+            string deadlineUtc = null;
+
             lock (teamBattleLock)
             {
                 if (activeTeamBattle != null)
                 {
-                    SendChatMessageSafe(GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
-                        .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
-                    return "already_running";
+                    alreadyRunning = true;
                 }
-
-                // "Kartenanzahl Streamer-Team" is only the MINIMUM - the actual lineup size is
-                // randomized (min..min+4) so the streamer's side isn't the exact same size every
-                // single Team-Kampf. Safe to vary freely: ResolveHpElimination handles unequal
-                // streamer/community lineup lengths just fine (HP elimination, not paired rounds).
-                int streamerCardCountMin = Math.Max(1, GetInt(tbCfg, "streamerCardCount", 5));
-
-                // Difficulty rubber-banding: every Team-Kampf the community lost in a row (see
-                // RecordTeamKampfDifficultyResult) shaves cards off the streamer's MINIMUM for
-                // this next attempt - configurable step size, floored so the fight never becomes
-                // trivially small. Resets back to the full configured minimum the moment the
-                // community wins again.
-                if (GetBool(tbCfg, "difficultyRubberbandEnabled", true))
+                else
                 {
-                    int lossStreak = server.GetTeamKampfCommunityLossStreak();
-                    int stepDown = Math.Max(0, GetInt(tbCfg, "difficultyStepDown", 1));
-                    int floorCount = Math.Max(1, GetInt(tbCfg, "difficultyMinCardCount", 2));
-                    streamerCardCountMin = Math.Max(floorCount, streamerCardCountMin - lossStreak * stepDown);
+                    // "Kartenanzahl Streamer-Team" is only the MINIMUM - the actual lineup size is
+                    // randomized (min..min+4) so the streamer's side isn't the exact same size every
+                    // single Team-Kampf. Safe to vary freely: ResolveHpElimination handles unequal
+                    // streamer/community lineup lengths just fine (HP elimination, not paired rounds).
+                    int streamerCardCountMin = Math.Max(1, GetInt(tbCfg, "streamerCardCount", 5));
+
+                    // Difficulty rubber-banding: every Team-Kampf the community lost in a row (see
+                    // RecordTeamKampfDifficultyResult) shaves cards off the streamer's MINIMUM for
+                    // this next attempt - configurable step size, floored so the fight never becomes
+                    // trivially small. Resets back to the full configured minimum the moment the
+                    // community wins again.
+                    if (GetBool(tbCfg, "difficultyRubberbandEnabled", true))
+                    {
+                        int lossStreak = server.GetTeamKampfCommunityLossStreak();
+                        int stepDown = Math.Max(0, GetInt(tbCfg, "difficultyStepDown", 1));
+                        int floorCount = Math.Max(1, GetInt(tbCfg, "difficultyMinCardCount", 2));
+                        streamerCardCountMin = Math.Max(floorCount, streamerCardCountMin - lossStreak * stepDown);
+                    }
+
+                    int streamerCardCount;
+                    lock (BattleRandom) { streamerCardCount = streamerCardCountMin + BattleRandom.Next(0, 5); }
+                    int signupSeconds = Math.Max(10, GetInt(tbCfg, "signupSeconds", 60));
+                    List<Dictionary<string, string>> streamerLineup = DrawTeamBattleStreamerLineup(streamerCardCount);
+                    if (streamerLineup.Count == 0)
+                    {
+                        noCards = true;
+                    }
+                    else
+                    {
+                        Dictionary<string, object> joinCfg = Obj(Obj(settings, "chatCommands"), "teamBattleJoin");
+                        string joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "teamkampf");
+                        deadlineUtc = DateTime.UtcNow.AddSeconds(signupSeconds).ToString("o");
+
+                        activeTeamBattle = new Dictionary<string, object>
+                        {
+                            { "state", "signup" },
+                            { "participants", new List<object>() },
+                            { "streamerLineup", streamerLineup },
+                            { "deadlineUtc", deadlineUtc },
+                            { "startedAt", DateTime.UtcNow.ToString("o") }
+                        };
+
+                        startMessage = GetString(tbCfg, "signupStartMessage", DefaultTeamBattleSignupStart)
+                            .Replace("[Befehl]", joinCommandText)
+                            .Replace("[Sekunden]", signupSeconds.ToString())
+                            .Replace("[Anzahl]", streamerCardCount.ToString());
+                        streamerLineupForBroadcast = streamerLineup;
+
+                        if (teamBattleSignupTimer != null) teamBattleSignupTimer.Dispose();
+                        teamBattleSignupTimer = new System.Threading.Timer(delegate { ResolveTeamBattleSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
+                    }
                 }
-
-                int streamerCardCount;
-                lock (BattleRandom) { streamerCardCount = streamerCardCountMin + BattleRandom.Next(0, 5); }
-                int signupSeconds = Math.Max(10, GetInt(tbCfg, "signupSeconds", 60));
-                List<Dictionary<string, string>> streamerLineup = DrawTeamBattleStreamerLineup(streamerCardCount);
-                if (streamerLineup.Count == 0)
-                {
-                    server.Log("battle", "error", "Team-Kampf konnte nicht gestartet werden: keine Karten verfuegbar.");
-                    return "no_cards";
-                }
-
-                Dictionary<string, object> joinCfg = Obj(Obj(settings, "chatCommands"), "teamBattleJoin");
-                string joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "teamkampf");
-                string deadlineUtc = DateTime.UtcNow.AddSeconds(signupSeconds).ToString("o");
-
-                activeTeamBattle = new Dictionary<string, object>
-                {
-                    { "state", "signup" },
-                    { "participants", new List<object>() },
-                    { "streamerLineup", streamerLineup },
-                    { "deadlineUtc", deadlineUtc },
-                    { "startedAt", DateTime.UtcNow.ToString("o") }
-                };
-
-                SendChatMessageSafe(GetString(tbCfg, "signupStartMessage", DefaultTeamBattleSignupStart)
-                    .Replace("[Befehl]", joinCommandText)
-                    .Replace("[Sekunden]", signupSeconds.ToString())
-                    .Replace("[Anzahl]", streamerCardCount.ToString()));
-
-                BroadcastTeamBattleSignupState();
-
-                if (teamBattleSignupTimer != null) teamBattleSignupTimer.Dispose();
-                teamBattleSignupTimer = new System.Threading.Timer(delegate { ResolveTeamBattleSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
             }
+
+            if (alreadyRunning)
+            {
+                SendChatMessageSafe(GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
+                    .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
+                return "already_running";
+            }
+            if (noCards)
+            {
+                server.Log("battle", "error", "Team-Kampf konnte nicht gestartet werden: keine Karten verfuegbar.");
+                return "no_cards";
+            }
+
+            SendChatMessageSafe(startMessage);
+            BroadcastTeamBattleSignupState(streamerLineupForBroadcast, new List<object>(), deadlineUtc);
 
             // Whoever spent the channel points obviously wants their own card in the fight too.
             if (source == "channelpoints" && !String.IsNullOrEmpty(login))
@@ -6507,17 +6570,16 @@ namespace CardPackWidgetApp
             return "started";
         }
 
-        // Broadcasts the FULL current signup state (streamer lineup, live participant list with
+        // Broadcasts a SNAPSHOT of the signup state (streamer lineup, live participant list with
         // avatars, deadline) - called once at signup start and again after every successful join,
-        // so the overlay can show who's already in without waiting for the fight itself. Always
-        // resends the same deadlineUtc (never recomputed), so the client's local countdown never
-        // jumps or restarts when a new participant joins mid-countdown.
-        private void BroadcastTeamBattleSignupState()
+        // so the overlay can show who's already in without waiting for the fight itself. Takes its
+        // data as parameters rather than reading activeTeamBattle directly, since callers now
+        // invoke this AFTER releasing teamBattleLock (see StartTeamBattleSignup/JoinTeamBattle) -
+        // it must never touch the live mutable state. Always resends the same deadlineUtc (never
+        // recomputed), so the client's local countdown never jumps or restarts when a new
+        // participant joins mid-countdown.
+        private void BroadcastTeamBattleSignupState(List<Dictionary<string, string>> streamerLineup, List<object> participants, string deadlineUtc)
         {
-            if (activeTeamBattle == null) return;
-            var streamerLineup = (List<Dictionary<string, string>>)activeTeamBattle["streamerLineup"];
-            var participants = (List<object>)activeTeamBattle["participants"];
-
             var participantsForBroadcast = new object[participants.Count];
             for (int i = 0; i < participants.Count; i++)
             {
@@ -6538,7 +6600,7 @@ namespace CardPackWidgetApp
             server.Broadcast("teamkampfsignup", server.Serializer.Serialize(new Dictionary<string, object>
             {
                 { "active", true },
-                { "deadlineUtc", GetString(activeTeamBattle, "deadlineUtc", "") },
+                { "deadlineUtc", deadlineUtc },
                 { "streamerLineupCount", streamerLineup.Count },
                 { "participants", participantsForBroadcast }
             }));
@@ -6546,49 +6608,73 @@ namespace CardPackWidgetApp
 
         private void JoinTeamBattle(string login, string displayName)
         {
+            string noActiveMessage = null;
+            string alreadyMessage = null;
+            string notOwnedMessage = null;
+            string successMessage = null;
+            List<Dictionary<string, string>> streamerLineupForBroadcast = null;
+            List<object> participantsSnapshot = null;
+            string deadlineUtc = null;
+
             lock (teamBattleLock)
             {
                 if (activeTeamBattle == null || GetString(activeTeamBattle, "state", "") != "signup")
                 {
                     Dictionary<string, object> tbCfgIdle = Obj(server.ReadSettingsObject(), "teamBattle");
-                    SendChatMessageSafe(GetString(tbCfgIdle, "noActiveMessage", DefaultTeamBattleNoActive).Replace("@userName", "@" + displayName));
-                    return;
+                    noActiveMessage = GetString(tbCfgIdle, "noActiveMessage", DefaultTeamBattleNoActive).Replace("@userName", "@" + displayName);
                 }
-
-                var participants = (List<object>)activeTeamBattle["participants"];
-                string loginKey = login.ToLowerInvariant();
-                Dictionary<string, object> settings = server.ReadSettingsObject();
-                Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
-                foreach (object p in participants)
+                else
                 {
-                    Dictionary<string, object> existing = p as Dictionary<string, object>;
-                    if (existing != null && GetString(existing, "login", "") == loginKey)
+                    var participants = (List<object>)activeTeamBattle["participants"];
+                    string loginKey = login.ToLowerInvariant();
+                    Dictionary<string, object> settings = server.ReadSettingsObject();
+                    Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
+                    bool alreadyIn = false;
+                    foreach (object p in participants)
                     {
-                        SendChatMessageSafe(GetString(tbCfg, "joinAlreadyMessage", DefaultTeamBattleJoinAlready).Replace("@userName", "@" + displayName));
-                        return;
+                        Dictionary<string, object> existing = p as Dictionary<string, object>;
+                        if (existing != null && GetString(existing, "login", "") == loginKey) { alreadyIn = true; break; }
+                    }
+
+                    if (alreadyIn)
+                    {
+                        alreadyMessage = GetString(tbCfg, "joinAlreadyMessage", DefaultTeamBattleJoinAlready).Replace("@userName", "@" + displayName);
+                    }
+                    else
+                    {
+                        List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
+                        if (owned.Count == 0)
+                        {
+                            notOwnedMessage = GetString(tbCfg, "joinNotOwnedMessage", DefaultTeamBattleJoinNotOwned).Replace("@userName", "@" + displayName);
+                        }
+                        else
+                        {
+                            Dictionary<string, string> card = DrawRandomLineup(owned, 1)[0];
+                            participants.Add(new Dictionary<string, object>
+                            {
+                                { "login", loginKey }, { "displayName", displayName },
+                                { "boosterId", card["boosterId"] }, { "cardId", card["cardId"] }
+                            });
+
+                            successMessage = GetString(tbCfg, "joinSuccessMessage", DefaultTeamBattleJoinSuccess)
+                                .Replace("@userName", "@" + displayName)
+                                .Replace("[Anzahl]", participants.Count.ToString());
+                            streamerLineupForBroadcast = (List<Dictionary<string, string>>)activeTeamBattle["streamerLineup"];
+                            // Snapshot (copy), not the live list reference - the broadcast runs
+                            // after the lock is released, so it must never iterate the actual
+                            // mutable list another thread could be adding to concurrently.
+                            participantsSnapshot = new List<object>(participants);
+                            deadlineUtc = GetString(activeTeamBattle, "deadlineUtc", "");
+                        }
                     }
                 }
-
-                List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
-                if (owned.Count == 0)
-                {
-                    SendChatMessageSafe(GetString(tbCfg, "joinNotOwnedMessage", DefaultTeamBattleJoinNotOwned).Replace("@userName", "@" + displayName));
-                    return;
-                }
-                Dictionary<string, string> card = DrawRandomLineup(owned, 1)[0];
-
-                participants.Add(new Dictionary<string, object>
-                {
-                    { "login", loginKey }, { "displayName", displayName },
-                    { "boosterId", card["boosterId"] }, { "cardId", card["cardId"] }
-                });
-
-                SendChatMessageSafe(GetString(tbCfg, "joinSuccessMessage", DefaultTeamBattleJoinSuccess)
-                    .Replace("@userName", "@" + displayName)
-                    .Replace("[Anzahl]", participants.Count.ToString()));
-
-                BroadcastTeamBattleSignupState();
             }
+
+            if (noActiveMessage != null) { SendChatMessageSafe(noActiveMessage); return; }
+            if (alreadyMessage != null) { SendChatMessageSafe(alreadyMessage); return; }
+            if (notOwnedMessage != null) { SendChatMessageSafe(notOwnedMessage); return; }
+            SendChatMessageSafe(successMessage);
+            BroadcastTeamBattleSignupState(streamerLineupForBroadcast, participantsSnapshot, deadlineUtc);
         }
 
         // Timer callback once the signup window closes - runs off the chat/HTTP threads, so it is
@@ -7910,9 +7996,25 @@ namespace CardPackWidgetApp
             return null;
         }
 
+        // Plain WebClient has no exposed Timeout property and defaults to the underlying
+        // HttpWebRequest's ~100s timeout - a single stalled Twitch API call (network hiccup, rate
+        // limiting) could otherwise hang for well over a minute. Now that avatar/chat calls run
+        // outside the tournament/Team-Kampf locks (see StartTournamentSignup etc.), a stuck request
+        // no longer blocks the fight from starting, but it should still fail fast rather than tie
+        // up a thread-pool thread for a minute-plus.
+        private sealed class TimedWebClient : WebClient
+        {
+            protected override WebRequest GetWebRequest(Uri address)
+            {
+                WebRequest request = base.GetWebRequest(address);
+                request.Timeout = 15000;
+                return request;
+            }
+        }
+
         private Dictionary<string, object> TwitchGet(string url, string clientId, string token)
         {
-            using (var client = new WebClient())
+            using (var client = new TimedWebClient())
             {
                 client.Encoding = Encoding.UTF8;
                 if (!String.IsNullOrWhiteSpace(clientId)) client.Headers["Client-Id"] = clientId;
@@ -7937,7 +8039,7 @@ namespace CardPackWidgetApp
 
         private string TwitchRaw(string method, string url, string clientId, string token, string payload)
         {
-            using (var client = new WebClient())
+            using (var client = new TimedWebClient())
             {
                 client.Encoding = Encoding.UTF8;
                 client.Headers["Client-Id"] = clientId;
