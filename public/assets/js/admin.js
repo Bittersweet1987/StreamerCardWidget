@@ -11,6 +11,7 @@ import {
   clearQueue,
   getCommandUsage,
   getPityState,
+  getUserStats,
   getCommunityGoal,
   resetCommunityGoal,
   getFonts,
@@ -39,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=20260718-jumpnavfix1";
+} from "./api.js?v=2.12.2";
 import {
   applyTheme,
   boosterMarkup,
@@ -62,7 +63,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=20260718-jumpnavfix1";
+} from "./render.js?v=2.12.2";
 
 let settings;
 let selectedCardId;
@@ -143,7 +144,7 @@ async function syncCommunityCounts(force) {
     // Anonymous, best-effort - never surface this to the user.
   }
 }
-const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions channel:read:subscriptions user:read:chat user:write:chat";
+const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions channel:read:subscriptions bits:read user:read:chat user:write:chat";
 const TWITCH_BOT_SCOPES = "user:read:chat user:write:chat";
 
 const I18N = {
@@ -736,11 +737,11 @@ const I18N = {
     th: "ระยะเวลาแสดงผล (วินาที)"
   },
   "cc-ranking-hint": {
-    de: "Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle“ wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „turnier“ wechselt die Anzeige durch: meiste Turniersiege → meiste Turnierteilnahmen (je Top 5). Bei „tausch“ erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.",
-    en: "Shows the ranking exclusively in its own OBS source (Connection → Ranking source name) – deliberately no chat output. For “battle” the display cycles through: most fights → most wins → most defeats → best win/loss ratio (top 5 each). For “tournament” the display cycles through: most tournament wins → most tournament participations (top 5 each). For “trade” it shows the 5 users with the most completed trades. The display duration applies per view.",
-    fr: "Affiche le classement uniquement dans sa propre source OBS (Connexion → Nom de la source de classement) – volontairement aucune sortie chat. Pour « duel » l'affichage défile : plus de combats → plus de victoires → plus de défaites → meilleur ratio victoires/défaites (top 5 chacun). Pour « échange » il montre les 5 utilisateurs avec le plus d'échanges terminés. La durée d'affichage s'applique par vue.",
-    es: "Muestra la clasificación exclusivamente en su propia fuente de OBS (Conexión → Nombre de fuente de clasificación) – deliberadamente sin salida en el chat. Para “duelo” la vista rota entre: más combates → más victorias → más derrotas → mejor ratio victorias/derrotas (top 5 cada uno). Para “intercambio” muestra los 5 usuarios con más intercambios completados. La duración de visualización aplica por vista.",
-    th: "แสดงอันดับเฉพาะในซอร์ส OBS ของตัวเอง (การเชื่อมต่อ → ชื่อซอร์สอันดับ) โดยตั้งใจไม่ส่งข้อความในแชท สำหรับ \"การดวล\" จะวนแสดง: ต่อสู้มากที่สุด → ชนะมากที่สุด → แพ้มากที่สุด → อัตราส่วนชนะ/แพ้ดีที่สุด (5 อันดับแรกแต่ละหมวด) สำหรับ \"การแลกเปลี่ยน\" จะแสดงผู้ใช้ 5 อันดับที่แลกเปลี่ยนสำเร็จมากที่สุด ระยะเวลาแสดงผลใช้ต่อหนึ่งมุมมอง"
+    de: "Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle“ wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „turnier“ wechselt die Anzeige durch: meiste Turniersiege → meiste Turnierteilnahmen (je Top 5). Bei „teamkampf“ wechselt die Anzeige durch: meiste Team-Kampf-Teilnahmen → meiste Siege → meiste Niederlagen (je Top 5). Bei „tausch“ erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.",
+    en: "Shows the ranking exclusively in its own OBS source (Connection → Ranking source name) – deliberately no chat output. For “battle” the display cycles through: most fights → most wins → most defeats → best win/loss ratio (top 5 each). For “tournament” the display cycles through: most tournament wins → most tournament participations (top 5 each). For “teamkampf” the display cycles through: most Team Battle participations → most wins → most defeats (top 5 each). For “trade” it shows the 5 users with the most completed trades. The display duration applies per view.",
+    fr: "Affiche le classement uniquement dans sa propre source OBS (Connexion → Nom de la source de classement) – volontairement aucune sortie chat. Pour « duel » l'affichage défile : plus de combats → plus de victoires → plus de défaites → meilleur ratio victoires/défaites (top 5 chacun). Pour « turnier » l'affichage défile : plus de victoires en tournoi → plus de participations en tournoi (top 5 chacun). Pour « teamkampf » l'affichage défile : plus de participations au combat d'équipe → plus de victoires → plus de défaites (top 5 chacun). Pour « échange » il montre les 5 utilisateurs avec le plus d'échanges terminés. La durée d'affichage s'applique par vue.",
+    es: "Muestra la clasificación exclusivamente en su propia fuente de OBS (Conexión → Nombre de fuente de clasificación) – deliberadamente sin salida en el chat. Para “duelo” la vista rota entre: más combates → más victorias → más derrotas → mejor ratio victorias/derrotas (top 5 cada uno). Para “turnier” la vista rota entre: más victorias en torneo → más participaciones en torneo (top 5 cada uno). Para “teamkampf” la vista rota entre: más participaciones en combate de equipo → más victorias → más derrotas (top 5 cada uno). Para “intercambio” muestra los 5 usuarios con más intercambios completados. La duración de visualización aplica por vista.",
+    th: "แสดงอันดับเฉพาะในซอร์ส OBS ของตัวเอง (การเชื่อมต่อ → ชื่อซอร์สอันดับ) โดยตั้งใจไม่ส่งข้อความในแชท สำหรับ \"การดวล\" จะวนแสดง: ต่อสู้มากที่สุด → ชนะมากที่สุด → แพ้มากที่สุด → อัตราส่วนชนะ/แพ้ดีที่สุด (5 อันดับแรกแต่ละหมวด) สำหรับ \"turnier\" จะวนแสดง: ชนะทัวร์นาเมนต์มากที่สุด → เข้าร่วมทัวร์นาเมนต์มากที่สุด (5 อันดับแรกแต่ละหมวด) สำหรับ \"teamkampf\" จะวนแสดง: เข้าร่วมทีมคัมภ์มากที่สุด → ชนะมากที่สุด → แพ้มากที่สุด (5 อันดับแรกแต่ละหมวด) สำหรับ \"การแลกเปลี่ยน\" จะแสดงผู้ใช้ 5 อันดับที่แลกเปลี่ยนสำเร็จมากที่สุด ระยะเวลาแสดงผลใช้ต่อหนึ่งมุมมอง"
   },
   "label-obs-ranking-source": { de: "Quellenname Ranking", en: "Source name ranking",
     fr: "Nom de source classement",
@@ -1612,6 +1613,24 @@ const I18N = {
     es: "Cartas por suscripción",
     th: "การ์ดต่อการสมัครสมาชิก"
   },
+  "bits-eyebrow": { de: "Karten", en: "Cards", fr: "Cartes", es: "Cartas", th: "การ์ด" },
+  "bits-title": { de: "Bits-Belohnung", en: "Bits reward", fr: "Récompense en bits", es: "Recompensa por bits", th: "รางวัลบิต" },
+  "bits-hint": {
+    de: "Vergibt automatisch eine Kartenziehung je \"Bits je Ziehung\" gespendeter Bits (Cheers). Übrige Bits unter der Schwelle werden je Zuschauer gespeichert und zählen beim nächsten Cheer weiter - z. B. bei 100 Bits je Ziehung löst ein 250-Bits-Cheer sofort 2 Ziehungen aus und speichert 50 Bits; ein weiterer 50-Bits-Cheer löst dann die dritte Ziehung aus.",
+    en: "Automatically awards one card draw per \"bits per draw\" of donated bits (cheers). Leftover bits below the threshold are banked per viewer and carry over to the next cheer - e.g. at 100 bits per draw, a 250-bit cheer immediately earns 2 draws and banks 50 bits; a further 50-bit cheer then earns the third draw.",
+    fr: "Attribue automatiquement un tirage de carte par tranche de \"bits par tirage\" de bits donnés (cheers). Les bits restants sous le seuil sont mis en réserve par spectateur et reportés au prochain cheer - p. ex. à 100 bits par tirage, un cheer de 250 bits rapporte immédiatement 2 tirages et met 50 bits en réserve ; un cheer supplémentaire de 50 bits rapporte alors le troisième tirage.",
+    es: "Otorga automáticamente una tirada de carta por cada \"bits por tirada\" de bits donados (cheers). Los bits restantes por debajo del umbral se acumulan por espectador y se trasladan al siguiente cheer - p. ej. con 100 bits por tirada, un cheer de 250 bits otorga de inmediato 2 tiradas y acumula 50 bits; un cheer adicional de 50 bits otorga entonces la tercera tirada.",
+    th: "มอบการจับสลากการ์ดหนึ่งครั้งโดยอัตโนมัติต่อทุก \"บิตต่อการจับสลาก\" ของบิตที่บริจาค (cheers) บิตส่วนที่เหลือต่ำกว่าเกณฑ์จะถูกเก็บสะสมต่อผู้ชมและยกไปรวมกับ cheer ครั้งถัดไป - เช่น ที่ 100 บิตต่อการจับสลาก การ cheer 250 บิตจะได้รับ 2 การจับสลากทันทีและเก็บสะสม 50 บิต การ cheer เพิ่มอีก 50 บิตจะได้รับการจับสลากครั้งที่สาม"
+  },
+  "label-bits-enabled": { de: "Bits-Belohnung aktiviert", en: "Bits reward enabled", fr: "Récompense en bits activée", es: "Recompensa por bits activada", th: "เปิดใช้งานรางวัลบิต" },
+  "label-bits-per-draw": { de: "Bits je Ziehung", en: "Bits per draw", fr: "Bits par tirage", es: "Bits por tirada", th: "บิตต่อการจับสลาก" },
+  "bits-scope-hint": {
+    de: "Benötigt die Berechtigung \"bits:read\" - falls die App von einer älteren Version aktualisiert wurde, den Hauptaccount einmal neu unter Verbindung anmelden, damit diese Berechtigung erteilt wird.",
+    en: "Requires the \"bits:read\" permission - if the app was updated from an older version, re-log in the main account once under Connection so this permission gets granted.",
+    fr: "Nécessite l'autorisation \"bits:read\" - si l'application a été mise à jour depuis une version antérieure, reconnectez une fois le compte principal sous Connexion pour que cette autorisation soit accordée.",
+    es: "Requiere el permiso \"bits:read\" - si la app se actualizó desde una versión anterior, vuelve a iniciar sesión una vez con la cuenta principal en Conexión para que se conceda este permiso.",
+    th: "ต้องการสิทธิ์ \"bits:read\" - หากอัปเดตแอปจากเวอร์ชันเก่า ให้เข้าสู่ระบบบัญชีหลักใหม่อีกครั้งที่แท็บการเชื่อมต่อเพื่อให้ได้รับสิทธิ์นี้"
+  },
   "label-booster-sub-exclusive": { de: "Sub-exklusiv", en: "Sub-exclusive",
     fr: "Exclusif aux abonnés",
     es: "Exclusivo para suscriptores",
@@ -1669,6 +1688,24 @@ const I18N = {
     fr: "Tirages avant la rareté garantie / crédit banqué via !dust",
     es: "Tiradas hasta la rareza garantizada / crédito acumulado por !dust",
     th: "จำนวนครั้งจนถึงการันตี / เครดิตที่สะสมจาก !dust"
+  },
+  "label-bits-banked": { de: "Gespeicherte Bits:", en: "Banked bits:", fr: "Bits en réserve :", es: "Bits acumulados:", th: "บิตที่เก็บสะสม:" },
+  "hint-bits-banked": {
+    de: "Bits unter der Schwelle für die nächste Kartenziehung, gespeichert bis zum nächsten Cheer",
+    en: "Bits below the threshold for the next card draw, banked until the next cheer",
+    fr: "Bits sous le seuil du prochain tirage de carte, mis en réserve jusqu'au prochain cheer",
+    es: "Bits por debajo del umbral para la próxima tirada de carta, guardados hasta el próximo cheer",
+    th: "บิตที่ต่ำกว่าเกณฑ์สำหรับการจับสลากครั้งถัดไป เก็บสะสมไว้จนกว่าจะมี cheer ครั้งต่อไป"
+  },
+  "label-user-stats-battle": { de: "Kämpfe (S/N, gesamt):", en: "Duels (W/L, total):", fr: "Duels (V/D, total) :", es: "Duelos (V/D, total):", th: "การดวล (ชนะ/แพ้, รวม):" },
+  "label-user-stats-tournament": { de: "Turniersiege:", en: "Tournament wins:", fr: "Victoires en tournoi :", es: "Victorias en torneo:", th: "ชัยชนะทัวร์นาเมนต์:" },
+  "label-user-stats-teamkampf": { de: "Team-Kampf (S/N, Teiln.):", en: "Team battle (W/L, part.):", fr: "Combat d'équipe (V/D, part.) :", es: "Combate de equipo (V/D, part.):", th: "ทีมคัมภ์ (ชนะ/แพ้, เข้าร่วม):" },
+  "hint-user-stats": {
+    de: "Kartenduelle (Siege/Niederlagen, Gesamtzahl) · Turniersiege · Team-Kampf (Siege/Niederlagen, Teilnahmen)",
+    en: "Card duels (wins/losses, total) · tournament wins · team battle (wins/losses, participations)",
+    fr: "Duels de cartes (victoires/défaites, total) · victoires en tournoi · combat d'équipe (victoires/défaites, participations)",
+    es: "Duelos de cartas (victorias/derrotas, total) · victorias en torneo · combate de equipo (victorias/derrotas, participaciones)",
+    th: "การดวลการ์ด (ชนะ/แพ้, รวม) · ชัยชนะทัวร์นาเมนต์ · ทีมคัมภ์ (ชนะ/แพ้, เข้าร่วม)"
   },
   "communitygoal-eyebrow": { de: "Community", en: "Community",
     fr: "Communauté",
@@ -4930,6 +4967,8 @@ function buildUserIndex() {
 }
 
 let pityByLogin = {};
+let bitsByLogin = {};
+let userStatsByLogin = {};
 
 async function loadUsers() {
   collections = await getCollections();
@@ -4939,6 +4978,14 @@ async function loadUsers() {
   } catch {
     // Best-effort - the user cards themselves are more important than the pity info.
     pityByLogin = {};
+  }
+  try {
+    const result = await getUserStats();
+    bitsByLogin = result.bits || {};
+    userStatsByLogin = result.stats || {};
+  } catch {
+    bitsByLogin = {};
+    userStatsByLogin = {};
   }
 }
 
@@ -4995,12 +5042,23 @@ function renderUsers() {
     const pityHtml = settings.pity?.enabled
       ? `<span class="user-pity-info" title="${t("hint-pity-info")}">${t("label-pity-streak")} ${pityEntry?.streak ?? 0}/${settings.pity.threshold} · ${t("label-pity-bank")} ${pityEntry?.bank ?? 0}</span>`
       : "";
+    const lowerKey = user.key?.toLowerCase();
+    const bankedBits = bitsByLogin[user.key] ?? bitsByLogin[lowerKey];
+    const bitsHtml = settings.bits?.enabled && bankedBits != null
+      ? `<span class="user-stat-info" title="${t("hint-bits-banked")}">${t("label-bits-banked")} ${bankedBits}</span>`
+      : "";
+    const statsEntry = userStatsByLogin[user.key] || userStatsByLogin[lowerKey];
+    const statsHtml = statsEntry
+      ? `<span class="user-stat-info" title="${t("hint-user-stats")}">${t("label-user-stats-battle")} ${statsEntry.battleWins ?? 0}/${statsEntry.battleLosses ?? 0} (${statsEntry.battleFights ?? 0}) · ${t("label-user-stats-tournament")} ${statsEntry.tournamentWins ?? 0} · ${t("label-user-stats-teamkampf")} ${statsEntry.teamkampfWins ?? 0}/${statsEntry.teamkampfLosses ?? 0} (${statsEntry.teamkampfParticipations ?? 0})</span>`
+      : "";
     return `
       <div class="user-card" data-user="${escapeHtml(user.key)}">
         <div class="user-card-header">
           <strong>${escapeHtml(user.displayName)}</strong>
           <span>${total} ${t("unit-cards")}</span>
           ${pityHtml}
+          ${bitsHtml}
+          ${statsHtml}
           <button class="danger-button" type="button" data-action="delete-user" data-user="${escapeHtml(user.key)}">${t("btn-delete-user")}</button>
         </div>
         <div class="user-card-cards">${rows}</div>
@@ -5795,6 +5853,8 @@ function hydrateDesign() {
   }
   $("#subrewards-enabled").checked = settings.subRewards?.enabled !== false;
   $("#subrewards-cards-per-sub").value = settings.subRewards?.cardsPerSub ?? 1;
+  $("#bits-enabled").checked = settings.bits?.enabled === true;
+  $("#bits-per-draw").value = settings.bits?.bitsPerDraw ?? 100;
   $("#communitygoal-enabled").checked = settings.communityGoal?.enabled === true;
   $("#communitygoal-target").value = settings.communityGoal?.target ?? 500;
   $("#communitygoal-message").value = settings.communityGoal?.celebrationMessage || "";
@@ -6302,6 +6362,16 @@ function bindDesign() {
   $("#subrewards-cards-per-sub").addEventListener("input", (event) => {
     settings.subRewards ||= {};
     settings.subRewards.cardsPerSub = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#bits-enabled").addEventListener("change", (event) => {
+    settings.bits ||= {};
+    settings.bits.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#bits-per-draw").addEventListener("input", (event) => {
+    settings.bits ||= {};
+    settings.bits.bitsPerDraw = Math.max(1, Math.round(Number(event.target.value) || 1));
     scheduleAutoSave();
   });
   $("#pity-enabled").addEventListener("change", (event) => {

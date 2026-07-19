@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260718-jumpnavfix1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.2">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -1321,7 +1321,7 @@
                   <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-ranking-helptext" type="text"></label>
                 </div>
                 <p class="hint">Nutzung im Chat: <code>!ranking [Kartenname]</code>, <code>!ranking battle</code>, <code>!ranking turnier</code> oder <code>!ranking tausch</code></p>
-                <p class="hint" data-i18n="cc-ranking-hint">Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle" wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „tausch" erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.</p>
+                <p class="hint" data-i18n="cc-ranking-hint">Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle" wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „turnier" wechselt die Anzeige durch: meiste Turniersiege → meiste Turnierteilnahmen (je Top 5). Bei „teamkampf" wechselt die Anzeige durch: meiste Team-Kampf-Teilnahmen → meiste Siege → meiste Niederlagen (je Top 5). Bei „tausch" erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.</p>
               </div>
             </article>
 
@@ -1404,6 +1404,7 @@
               <a href="#jn-gewichtung-je-raritaet-design">Gewichtung je Rarität</a>
               <a href="#jn-pity-system-design" data-i18n="pity-title">Garantie-System</a>
               <a href="#jn-sub-belohnungen-design" data-i18n="subrewards-title">Sub-Belohnungen</a>
+              <a href="#jn-bits-belohnung-design" data-i18n="bits-title">Bits-Belohnung</a>
               <a href="#jn-kampfstaerke-je-seltenheit-design">Kampfstärke je Seltenheit</a>
             </nav>
             <section class="tool-panel" id="jn-farben-und-anzeige-design">
@@ -1582,6 +1583,24 @@
             <div class="form-grid">
               <label data-i18n="label-subrewards-cards-per-sub">Karten je Sub<input id="subrewards-cards-per-sub" type="number" min="1" step="1"></label>
             </div>
+          </section>
+
+          <section class="tool-panel" id="jn-bits-belohnung-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="bits-eyebrow">Karten</p>
+                <h2 data-i18n="bits-title">Bits-Belohnung</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="bits-hint">Vergibt automatisch eine Kartenziehung je "Bits je Ziehung" gespendeter Bits (Cheers). Übrige Bits unter der Schwelle werden je Zuschauer gespeichert und zählen beim nächsten Cheer weiter - z. B. bei 100 Bits je Ziehung löst ein 250-Bits-Cheer sofort 2 Ziehungen aus und speichert 50 Bits; ein weiterer 50-Bits-Cheer löst dann die dritte Ziehung aus.</p>
+            <label class="switch-row compact-switch">
+              <input id="bits-enabled" type="checkbox">
+              <span data-i18n="label-bits-enabled">Bits-Belohnung aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-bits-per-draw">Bits je Ziehung<input id="bits-per-draw" type="number" min="1" step="1"></label>
+            </div>
+            <p class="hint" data-i18n="bits-scope-hint">Benötigt die Berechtigung "bits:read" - falls die App von einer älteren Version aktualisiert wurde, den Hauptaccount einmal neu unter Verbindung anmelden, damit diese Berechtigung erteilt wird.</p>
           </section>
 
           <section class="tool-panel battle-strength-panel" id="jn-kampfstaerke-je-seltenheit-design">
@@ -2266,7 +2285,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260718-jumpnavfix1"></script>
-    <script type="module" src="/assets/js/admin.js?v=20260718-jumpnavfix1"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.2"></script>
+    <script type="module" src="/assets/js/admin.js?v=2.12.2"></script>
   </body>
 </html>

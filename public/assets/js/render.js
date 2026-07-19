@@ -603,6 +603,11 @@ export function normalizeSettings(settings) {
   settings.subRewards ||= {};
   settings.subRewards.enabled = settings.subRewards.enabled !== false;
   settings.subRewards.cardsPerSub = Number(settings.subRewards.cardsPerSub) > 0 ? Math.round(Number(settings.subRewards.cardsPerSub)) : 1;
+  // Bits/Cheers: every "bitsPerDraw" bits earns one card draw, leftover bits bank server-side
+  // (data/command-usage.json "bits" section) and carry over to the next cheer from that viewer.
+  settings.bits ||= {};
+  settings.bits.enabled = settings.bits.enabled === true;
+  settings.bits.bitsPerDraw = Number(settings.bits.bitsPerDraw) > 0 ? Math.round(Number(settings.bits.bitsPerDraw)) : 100;
   settings.obs ||= {
     enabled: false,
     host: "127.0.0.1",

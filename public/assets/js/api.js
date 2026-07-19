@@ -266,6 +266,14 @@ export async function getPityState() {
   return response.json();
 }
 
+// Combined per-user overview for the admin User tab: banked bits plus battle/tournament/
+// Team-Kampf statistics (see GetUserStatsOverview/GetBitsState in CardPackWidgetApp.cs).
+export async function getUserStats() {
+  const response = await fetch("/api/userstats", { cache: "no-store" });
+  if (!response.ok) throw new Error("Nutzer-Statistiken konnten nicht geladen werden.");
+  return response.json();
+}
+
 export async function getCommunityGoal() {
   const response = await fetch("/api/community-goal", { cache: "no-store" });
   if (!response.ok) throw new Error("Community-Ziel-Daten konnten nicht geladen werden.");

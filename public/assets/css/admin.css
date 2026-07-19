@@ -1527,7 +1527,8 @@ body[data-theme="dark"] .showcase-entry {
   margin-left: 12px;
 }
 
-.user-pity-info {
+.user-pity-info,
+.user-stat-info {
   color: #9a94ab;
   font-weight: 600;
   font-size: 0.85rem;

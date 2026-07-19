@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.1";
-        public const string ReleaseDate = "2026-07-18";
+        public const string Version = "2.12.2";
+        public const string ReleaseDate = "2026-07-19";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -856,6 +856,17 @@ namespace CardPackWidgetApp
                 {
                     { "ok", true },
                     { "pity", twitchBridge.GetPityState() }
+                }));
+                return;
+            }
+
+            if (request.Method == "GET" && request.Path == "/api/userstats")
+            {
+                SendJson(stream, 200, json.Serialize(new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "bits", twitchBridge.GetBitsState() },
+                    { "stats", GetUserStatsOverview() }
                 }));
                 return;
             }
@@ -1963,6 +1974,138 @@ namespace CardPackWidgetApp
                 { "wins", TopByField(entries, "wins", limit) },
                 { "participations", TopByField(entries, "participations", limit) }
             };
+        }
+
+        // ---- Team-Kampf (Community vs. streamer) statistics - separate file from
+        // battle-stats.json/tournament-stats.json, a Team-Kampf outcome is its own kind of
+        // achievement (won/lost together with the whole community, not a 1v1 duel or bracket). ----
+
+        private string TeamKampfStatsPath()
+        {
+            return Path.Combine(dataDir, "teamkampf-stats.json");
+        }
+
+        // Called once per participant when a Team-Kampf signup window closes and the fight
+        // actually happens (mirrors RecordTournamentParticipation).
+        internal void RecordTeamKampfParticipation(string login, string displayName)
+        {
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TeamKampfStatsPath(), "{}"));
+                object usersObj;
+                Dictionary<string, object> users;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>) users = (Dictionary<string, object>)usersObj;
+                else { users = new Dictionary<string, object>(); stats["users"] = users; }
+                string key = NormalizeUser(login).ToLowerInvariant();
+                object o;
+                Dictionary<string, object> entry;
+                if (users.TryGetValue(key, out o) && o is Dictionary<string, object>) entry = (Dictionary<string, object>)o;
+                else { entry = new Dictionary<string, object>(); users[key] = entry; }
+                if (!String.IsNullOrWhiteSpace(displayName)) entry["displayName"] = displayName;
+                entry["participations"] = GetIntStat(entry, "participations") + 1;
+                File.WriteAllText(TeamKampfStatsPath(), json.Serialize(stats), Encoding.UTF8);
+            }
+        }
+
+        // Called once per participant once the fight resolves, crediting a win or a loss
+        // depending on whether the community won as a whole.
+        internal void RecordTeamKampfResult(string login, string displayName, bool won)
+        {
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TeamKampfStatsPath(), "{}"));
+                object usersObj;
+                Dictionary<string, object> users;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>) users = (Dictionary<string, object>)usersObj;
+                else { users = new Dictionary<string, object>(); stats["users"] = users; }
+                string key = NormalizeUser(login).ToLowerInvariant();
+                object o;
+                Dictionary<string, object> entry;
+                if (users.TryGetValue(key, out o) && o is Dictionary<string, object>) entry = (Dictionary<string, object>)o;
+                else { entry = new Dictionary<string, object>(); users[key] = entry; }
+                if (!String.IsNullOrWhiteSpace(displayName)) entry["displayName"] = displayName;
+                if (won) entry["wins"] = GetIntStat(entry, "wins") + 1;
+                else entry["losses"] = GetIntStat(entry, "losses") + 1;
+                File.WriteAllText(TeamKampfStatsPath(), json.Serialize(stats), Encoding.UTF8);
+            }
+        }
+
+        // Top N users by Team-Kampf wins, losses AND participations, for "!ranking teamkampf".
+        internal Dictionary<string, object> BuildTeamKampfRanking(int limit)
+        {
+            var entries = new List<Dictionary<string, object>>();
+            lock (battleStatsLock)
+            {
+                Dictionary<string, object> stats = ParseObject(ReadFile(TeamKampfStatsPath(), "{}"));
+                object usersObj;
+                if (stats.TryGetValue("users", out usersObj) && usersObj is Dictionary<string, object>)
+                {
+                    foreach (KeyValuePair<string, object> kv in (Dictionary<string, object>)usersObj)
+                    {
+                        Dictionary<string, object> e = kv.Value as Dictionary<string, object>;
+                        if (e == null) continue;
+                        int wins = GetIntStat(e, "wins");
+                        int losses = GetIntStat(e, "losses");
+                        int participations = GetIntStat(e, "participations");
+                        if (wins < 1 && losses < 1 && participations < 1) continue;
+                        entries.Add(new Dictionary<string, object>
+                        {
+                            { "user", GetString(e, "displayName", kv.Key) },
+                            { "wins", wins }, { "losses", losses }, { "participations", participations }
+                        });
+                    }
+                }
+            }
+            return new Dictionary<string, object>
+            {
+                { "participations", TopByField(entries, "participations", limit) },
+                { "wins", TopByField(entries, "wins", limit) },
+                { "losses", TopByField(entries, "losses", limit) }
+            };
+        }
+
+        // Combined per-user stats snapshot for the admin User tab: battle fights/wins/losses,
+        // tournament wins/participations, Team-Kampf participations/wins/losses (bits are read
+        // separately via TwitchBridge.GetBitsState, they live in command-usage.json not here).
+        // Best-effort - any single stats file failing to parse just leaves that part of the
+        // result empty rather than failing the whole overview. Source field names are prefixed
+        // per category (battleWins vs. tournamentWins vs. teamkampfWins) so merging three files
+        // into one flat per-user dictionary can never have one category silently overwrite another.
+        internal Dictionary<string, object> GetUserStatsOverview()
+        {
+            var result = new Dictionary<string, object>();
+            Action<string, string, string[]> merge = delegate(string path, string prefix, string[] fields)
+            {
+                try
+                {
+                    Dictionary<string, object> stats = ParseObject(ReadFile(path, "{}"));
+                    object usersObj;
+                    if (!stats.TryGetValue("users", out usersObj) || !(usersObj is Dictionary<string, object>)) return;
+                    foreach (KeyValuePair<string, object> kv in (Dictionary<string, object>)usersObj)
+                    {
+                        Dictionary<string, object> e = kv.Value as Dictionary<string, object>;
+                        if (e == null) continue;
+                        Dictionary<string, object> outEntry;
+                        object existing;
+                        if (result.TryGetValue(kv.Key, out existing) && existing is Dictionary<string, object>) outEntry = (Dictionary<string, object>)existing;
+                        else { outEntry = new Dictionary<string, object>(); result[kv.Key] = outEntry; }
+                        if (!outEntry.ContainsKey("displayName")) outEntry["displayName"] = GetString(e, "displayName", kv.Key);
+                        foreach (string field in fields)
+                        {
+                            string camelField = field.Length > 0 ? Char.ToUpperInvariant(field[0]) + field.Substring(1) : field;
+                            outEntry[prefix + camelField] = GetIntStat(e, field);
+                        }
+                    }
+                }
+                catch { }
+            };
+            lock (battleStatsLock)
+            {
+                merge(BattleStatsPath(), "battle", new[] { "fights", "wins", "losses" });
+                merge(TournamentStatsPath(), "tournament", new[] { "wins", "participations" });
+                merge(TeamKampfStatsPath(), "teamkampf", new[] { "wins", "losses", "participations" });
+            }
+            return result;
         }
 
         // Top N users by completed trade count, for "!ranking tausch".
@@ -3292,6 +3435,11 @@ namespace CardPackWidgetApp
                 HandleSubscriptionEvent(subType, Obj(payload, "event"));
                 return;
             }
+            if (subType == "channel.cheer")
+            {
+                HandleCheerEvent(Obj(payload, "event"));
+                return;
+            }
             if (subType != "channel.channel_points_custom_reward_redemption.add") return;
             Dictionary<string, object> ev = Obj(payload, "event");
             string rewardId = GetString(Obj(ev, "reward"), "id", "");
@@ -3398,6 +3546,87 @@ namespace CardPackWidgetApp
             server.Log("draw", "info", displayName + " hat " + totalCards + " Sub-Belohnungskarte(n) ausgeloest (" + source + ").");
             var extra = new Dictionary<string, object> { { "boosterPool", "subExclusive" } };
             for (int i = 0; i < totalCards; i++) Enqueue("draw", login, displayName, source, extra);
+        }
+
+        // Bits/Cheers: every "bitsPerDraw" bits (config-defined threshold) earns one card draw.
+        // Leftover bits below the threshold are banked per user (data/command-usage.json, "bits"
+        // section) and carry over to the NEXT cheer - e.g. bitsPerDraw=100, a 250-bit cheer earns
+        // 2 draws immediately and banks 50; a later 50-bit cheer from the same user then earns the
+        // 3rd draw and empties the bank. Anonymous cheers carry no user to credit and are skipped.
+        private void HandleCheerEvent(Dictionary<string, object> ev)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> bitsCfg = Obj(settings, "bits");
+            if (!GetBool(bitsCfg, "enabled", false)) return;
+            int bitsPerDraw = Math.Max(1, GetInt(bitsCfg, "bitsPerDraw", 100));
+
+            if (GetBool(ev, "is_anonymous", false)) return;
+            string login = GetString(ev, "user_login", "");
+            string displayName = GetString(ev, "user_name", login);
+            int bits = Math.Max(0, GetInt(ev, "bits", 0));
+            if (String.IsNullOrWhiteSpace(login) || bits <= 0) return;
+
+            int totalDraws;
+            int remainder;
+            lock (usageLock)
+            {
+                Dictionary<string, object> entry = GetOrCreateBitsEntry(login, displayName);
+                int banked = GetInt(entry, "banked", 0) + bits;
+                totalDraws = banked / bitsPerDraw;
+                remainder = banked % bitsPerDraw;
+                entry["banked"] = remainder;
+                SaveUsage();
+            }
+
+            server.Log("draw", "info", displayName + " hat " + bits + " Bits gespendet - " + totalDraws +
+                " Kartenziehung(en) ausgeloest, " + remainder + " Bits verbleiben bis zur naechsten.");
+            for (int i = 0; i < totalDraws; i++) Enqueue("draw", login, displayName, "bits");
+        }
+
+        // ---- Bits usage tracking (separate namespace inside command-usage.json) ----
+
+        private Dictionary<string, object> BitsSection()
+        {
+            EnsureUsageLoaded();
+            object obj;
+            if (usageData.TryGetValue("bits", out obj) && obj is Dictionary<string, object>) return (Dictionary<string, object>)obj;
+            Dictionary<string, object> section = new Dictionary<string, object> { { "users", new Dictionary<string, object>() } };
+            usageData["bits"] = section;
+            return section;
+        }
+
+        private Dictionary<string, object> GetOrCreateBitsEntry(string login, string displayName)
+        {
+            Dictionary<string, object> section = BitsSection();
+            Dictionary<string, object> users = section["users"] as Dictionary<string, object>;
+            if (users == null) { users = new Dictionary<string, object>(); section["users"] = users; }
+            string key = login.Trim().ToLowerInvariant();
+            Dictionary<string, object> entry;
+            if (users.ContainsKey(key) && users[key] is Dictionary<string, object>) entry = (Dictionary<string, object>)users[key];
+            else { entry = new Dictionary<string, object> { { "banked", 0 } }; users[key] = entry; }
+            if (!String.IsNullOrWhiteSpace(displayName)) entry["displayName"] = displayName;
+            return entry;
+        }
+
+        // Exposes every viewer's currently banked (not-yet-a-draw) bits, for display in the
+        // admin User tab.
+        public Dictionary<string, object> GetBitsState()
+        {
+            lock (usageLock)
+            {
+                Dictionary<string, object> section = BitsSection();
+                Dictionary<string, object> users = section["users"] as Dictionary<string, object>;
+                var result = new Dictionary<string, object>();
+                if (users != null)
+                {
+                    foreach (KeyValuePair<string, object> kv in users)
+                    {
+                        Dictionary<string, object> entry = kv.Value as Dictionary<string, object>;
+                        if (entry != null) result[kv.Key] = GetInt(entry, "banked", 0);
+                    }
+                }
+                return result;
+            }
         }
 
         private static readonly Random RandomSource = new Random();
@@ -4157,6 +4386,15 @@ namespace CardPackWidgetApp
                 if (item.TryGetValue("participants", out participantsObj) && participantsObj is List<Dictionary<string, object>>)
                 {
                     participants = (List<Dictionary<string, object>>)participantsObj;
+                }
+
+                foreach (Dictionary<string, object> statParticipant in participants)
+                {
+                    string statLogin = GetString(statParticipant, "login", "");
+                    string statName = GetString(statParticipant, "displayName", statLogin);
+                    if (String.IsNullOrEmpty(statLogin)) continue;
+                    server.RecordTeamKampfParticipation(statLogin, statName);
+                    server.RecordTeamKampfResult(statLogin, statName, communityWon);
                 }
 
                 SendChatMessageSafe((communityWon
@@ -6674,6 +6912,20 @@ namespace CardPackWidgetApp
                 return;
             }
 
+            if (lower == "teamkampf" || lower == "team" || lower == "teambattle")
+            {
+                Dictionary<string, object> lists = server.BuildTeamKampfRanking(5);
+                var teamKampfPayload = new Dictionary<string, object>
+                {
+                    { "type", "teamkampf" },
+                    { "displaySeconds", displaySeconds },
+                    { "lists", lists }
+                };
+                Enqueue("ranking", login, displayName, "chat", teamKampfPayload);
+                server.Log("commands", "info", displayName + " hat das Team-Kampf-Ranking angefordert.");
+                return;
+            }
+
             if (lower == "tausch" || lower == "trade" || lower == "trades")
             {
                 object[] top = server.BuildTradeRanking(5);
@@ -7057,7 +7309,7 @@ namespace CardPackWidgetApp
             // Sub-Belohnungen (channel:read:subscriptions): optional on top of the redemption
             // subscription above - wrapped individually so a token still missing this scope
             // doesn't prevent channel points from working.
-            foreach (string subEventType in new[] { "channel.subscribe", "channel.subscription.message", "channel.subscription.gift" })
+            foreach (string subEventType in new[] { "channel.subscribe", "channel.subscription.message", "channel.subscription.gift", "channel.cheer" })
             {
                 try
                 {

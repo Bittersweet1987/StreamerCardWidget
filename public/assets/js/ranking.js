@@ -55,6 +55,7 @@ async function runQueue() {
       if (event.type === "battle") await playBattleRanking(event);
       else if (event.type === "trade") await playTradeRanking(event);
       else if (event.type === "tournament") await playTournamentRanking(event);
+      else if (event.type === "teamkampf") await playTeamKampfRanking(event);
       else await playCardRanking(event);
     } catch (error) {
       addLog("ranking", "error", `Ranking-Anzeige fehlgeschlagen: ${error.message}`);
@@ -133,6 +134,15 @@ function tournamentPhaseTitles() {
   };
 }
 
+function teamKampfPhaseTitles() {
+  const en = settings?.language === "en";
+  return {
+    participations: en ? "Most Team Battle participations" : "Meiste Team-Kampf-Teilnahmen",
+    wins: en ? "Most Team Battle wins" : "Meiste Team-Kampf-Siege",
+    losses: en ? "Most Team Battle defeats" : "Meiste Team-Kampf-Niederlagen"
+  };
+}
+
 async function playTournamentRanking(event) {
   const lists = event.lists || {};
   const seconds = Math.max(2, Number(event.displaySeconds) || 8);
@@ -151,6 +161,37 @@ async function playTournamentRanking(event) {
       <div class="ranking-list-pane">
         <div class="ranking-heading">
           <span class="ranking-eyebrow">${settings?.language === "en" ? "Tournament ranking" : "Turnier-Ranking"}</span>
+          <h2>${escapeForOverlay(phase.title)}</h2>
+        </div>
+        ${listMarkup(phase.entries)}
+      </div>
+    `;
+    await delay(seconds * 1000);
+  }
+  scene.classList.add("is-out");
+  await delay(450);
+  scene.remove();
+  completeQueueItem(event.eventId);
+}
+
+async function playTeamKampfRanking(event) {
+  const lists = event.lists || {};
+  const seconds = Math.max(2, Number(event.displaySeconds) || 8);
+  const titles = teamKampfPhaseTitles();
+  const phases = ["participations", "wins", "losses"]
+    .map((key) => ({ key, title: titles[key], entries: lists[key] || [] }))
+    .filter((phase) => phase.entries.length > 0);
+  if (!phases.length) { completeQueueItem(event.eventId); return; } // no recorded Team-Kaempfe yet
+
+  const scene = document.createElement("div");
+  scene.className = "ranking-scene is-tournament";
+  stage.append(scene);
+
+  for (const phase of phases) {
+    scene.innerHTML = `
+      <div class="ranking-list-pane">
+        <div class="ranking-heading">
+          <span class="ranking-eyebrow">${settings?.language === "en" ? "Team battle ranking" : "Team-Kampf-Ranking"}</span>
           <h2>${escapeForOverlay(phase.title)}</h2>
         </div>
         ${listMarkup(phase.entries)}
