@@ -5576,9 +5576,15 @@ namespace CardPackWidgetApp
 
             if (GetBool(giftCfg, "chatOutputEnabled", true))
             {
+                // "@userNameB" must be replaced BEFORE the bare "@userName" - String.Replace is a
+                // plain substring replace, and "@userName" is itself a prefix of "@userNameB". In
+                // the old order, replacing "@userName" first also ate the "@userName" part of
+                // every "@userNameB" occurrence, leaving a stray "...B" glued onto the SENDER'S
+                // name instead of the recipient ever being substituted - e.g. "@giver" became
+                // "@giverB" while the real recipient name silently vanished from the message.
                 SendChatMessageSafe(GetString(giftCfg, "successMessage", DefaultGiftSuccess)
-                    .Replace("@userName", "@" + displayName)
                     .Replace("@userNameB", "@" + recipientRaw)
+                    .Replace("@userName", "@" + displayName)
                     .Replace("[Kartenname]", cardTitle));
             }
 
