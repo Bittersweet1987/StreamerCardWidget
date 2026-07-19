@@ -3,7 +3,7 @@ export function clamp(value, min, max) {
 }
 
 // Safety cap against runaway/corrupt data, not a design limit — raise here if ever needed.
-export const MAX_BOOSTER_CARDS = 100;
+export const MAX_BOOSTER_CARDS = 200;
 
 export function linesToArray(value) {
   return String(value || "")
