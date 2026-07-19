@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=20260719-search1";
+} from "./api.js?v=20260719-negmargin1";
 import {
   applyTheme,
   boosterMarkup,
@@ -63,7 +63,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=20260719-search1";
+} from "./render.js?v=20260719-negmargin1";
 
 let settings;
 let selectedCardId;
@@ -6239,12 +6239,17 @@ function overlayLayoutRedrawOne(state) {
   const scale = Number(layout.scale) > 0 ? layout.scale : 100;
   const { w, h } = overlayLayoutBoxSize(key, scale);
 
-  const marginLeft = Math.min(Math.max(0, layout.marginLeft || 0), Math.max(0, OVERLAY_LAYOUT_CANVAS_W - w));
-  const marginTop = Math.min(Math.max(0, layout.marginTop || 0), Math.max(0, OVERLAY_LAYOUT_CANVAS_H - h));
+  // Deliberately unclamped: negative margins (and margins pushing the box past the opposite
+  // edge) are valid - that's how a card/animation gets positioned flush against, or partially
+  // past, the canvas edge instead of always leaving at least a sliver of margin. See
+  // applyOverlayLayout in render.js, which already applies these as a plain translate with no
+  // clamping of its own.
+  const marginLeft = layout.marginLeft || 0;
+  const marginTop = layout.marginTop || 0;
   layout.marginLeft = marginLeft;
   layout.marginTop = marginTop;
-  layout.marginRight = Math.max(0, OVERLAY_LAYOUT_CANVAS_W - marginLeft - w);
-  layout.marginBottom = Math.max(0, OVERLAY_LAYOUT_CANVAS_H - marginTop - h);
+  layout.marginRight = OVERLAY_LAYOUT_CANVAS_W - marginLeft - w;
+  layout.marginBottom = OVERLAY_LAYOUT_CANVAS_H - marginTop - h;
   layout.scale = scale;
 
   const previewScale = OVERLAY_LAYOUT_PREVIEW_W / OVERLAY_LAYOUT_CANVAS_W;
@@ -6316,13 +6321,13 @@ function buildOverlayLayoutEditor(container, key) {
   container.classList.add("overlay-layout-editor");
   container.innerHTML = `
     <div class="oly-grid">
-      <div class="oly-field oly-top"><label>${t("label-oly-top")}</label><input type="number" min="0" step="1" data-oly="top"></div>
+      <div class="oly-field oly-top"><label>${t("label-oly-top")}</label><input type="number" step="1" data-oly="top"></div>
       <div class="oly-row">
-        <div class="oly-field oly-left"><label>${t("label-oly-left")}</label><input type="number" min="0" step="1" data-oly="left"></div>
+        <div class="oly-field oly-left"><label>${t("label-oly-left")}</label><input type="number" step="1" data-oly="left"></div>
         <div class="oly-preview"><div class="oly-box"></div><div class="oly-dot"></div></div>
-        <div class="oly-field oly-right"><label>${t("label-oly-right")}</label><input type="number" min="0" step="1" data-oly="right"></div>
+        <div class="oly-field oly-right"><label>${t("label-oly-right")}</label><input type="number" step="1" data-oly="right"></div>
       </div>
-      <div class="oly-field oly-bottom"><label>${t("label-oly-bottom")}</label><input type="number" min="0" step="1" data-oly="bottom"></div>
+      <div class="oly-field oly-bottom"><label>${t("label-oly-bottom")}</label><input type="number" step="1" data-oly="bottom"></div>
     </div>
     <div class="oly-actions">
       <button type="button" class="update-button" data-oly="center">${t("btn-oly-center")}</button>
@@ -6353,26 +6358,26 @@ function buildOverlayLayoutEditor(container, key) {
   overlayLayoutRedraw(state);
 
   els.top.addEventListener("input", () => {
-    settings.overlayLayout[key].marginTop = Math.max(0, Number(els.top.value) || 0);
+    settings.overlayLayout[key].marginTop = Number(els.top.value) || 0;
     overlayLayoutRedraw(state);
     scheduleAutoSave();
   });
   els.left.addEventListener("input", () => {
-    settings.overlayLayout[key].marginLeft = Math.max(0, Number(els.left.value) || 0);
+    settings.overlayLayout[key].marginLeft = Number(els.left.value) || 0;
     overlayLayoutRedraw(state);
     scheduleAutoSave();
   });
   els.right.addEventListener("input", () => {
     const layout = settings.overlayLayout[key];
     const { w } = overlayLayoutBoxSize(key, layout.scale);
-    layout.marginLeft = Math.max(0, OVERLAY_LAYOUT_CANVAS_W - (Number(els.right.value) || 0) - w);
+    layout.marginLeft = OVERLAY_LAYOUT_CANVAS_W - (Number(els.right.value) || 0) - w;
     overlayLayoutRedraw(state);
     scheduleAutoSave();
   });
   els.bottom.addEventListener("input", () => {
     const layout = settings.overlayLayout[key];
     const { h } = overlayLayoutBoxSize(key, layout.scale);
-    layout.marginTop = Math.max(0, OVERLAY_LAYOUT_CANVAS_H - (Number(els.bottom.value) || 0) - h);
+    layout.marginTop = OVERLAY_LAYOUT_CANVAS_H - (Number(els.bottom.value) || 0) - h;
     overlayLayoutRedraw(state);
     scheduleAutoSave();
   });

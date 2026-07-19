@@ -994,13 +994,17 @@ export function normalizeSettings(settings) {
     // top of the card animation, so it defaults to horizontally centered along the bottom edge.
     const defaultLeft = Math.max(0, (OVERLAY_LAYOUT_CANVAS_W - boxW) / 2);
     const defaultTop = key === "liveTicker" ? Math.max(0, OVERLAY_LAYOUT_CANVAS_H - boxH - 40) : Math.max(0, (OVERLAY_LAYOUT_CANVAS_H - boxH) / 2);
-    const marginLeft = typeof layout.marginLeft === "number" ? Math.max(0, layout.marginLeft) : defaultLeft;
-    const marginTop = typeof layout.marginTop === "number" ? Math.max(0, layout.marginTop) : defaultTop;
+    // Deliberately NOT clamped to >= 0 here: a negative margin (or one pushing the box past the
+    // opposite edge) is a valid, intentional position - it's how a card/animation ends up flush
+    // against, or partially past, the canvas edge instead of always keeping at least a sliver of
+    // margin. Only the "no stored value yet" default falls back to the centered position.
+    const marginLeft = typeof layout.marginLeft === "number" ? layout.marginLeft : defaultLeft;
+    const marginTop = typeof layout.marginTop === "number" ? layout.marginTop : defaultTop;
     settings.overlayLayout[key] = {
       marginTop,
       marginLeft,
-      marginRight: Math.max(0, OVERLAY_LAYOUT_CANVAS_W - marginLeft - boxW),
-      marginBottom: Math.max(0, OVERLAY_LAYOUT_CANVAS_H - marginTop - boxH),
+      marginRight: OVERLAY_LAYOUT_CANVAS_W - marginLeft - boxW,
+      marginBottom: OVERLAY_LAYOUT_CANVAS_H - marginTop - boxH,
       scale
     };
   }
