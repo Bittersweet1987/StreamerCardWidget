@@ -461,6 +461,13 @@ const DEFAULT_MESSAGES = {
     es: "@userNameA, @userNameB rechazó tu solicitud de intercambio, te quedan [Anzahl] solicitudes hasta las [Uhrzeit].",
     th: "@userNameA @userNameB ปฏิเสธคำขอแลกเปลี่ยนของคุณ คุณเหลือคำขอแลกเปลี่ยนอีก [Anzahl] ครั้งจนถึงเวลา [Uhrzeit]"
   },
+  battleUsage: {
+    de: "@userName, Nutzung: !battle @userNameB",
+    en: "@userName, usage: !battle @userNameB",
+    fr: "@userName, utilisation : !battle @userNameB",
+    es: "@userName, uso: !battle @userNameB",
+    th: "@userName วิธีใช้: !battle @userNameB"
+  },
   battleUserNotFound: {
     de: "@userName, der Nutzer [Nutzer] wurde nicht gefunden.",
     en: "@userName, the user [Nutzer] was not found.",
@@ -828,6 +835,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.battle.resetUnit = ["minutes", "hours", "days"].includes(settings.chatCommands.battle.resetUnit) ? settings.chatCommands.battle.resetUnit : "hours";
   settings.chatCommands.battle.resetValue = Number(settings.chatCommands.battle.resetValue) > 0 ? Number(settings.chatCommands.battle.resetValue) : 8;
   settings.chatCommands.battle.requestTimeoutSeconds = Number(settings.chatCommands.battle.requestTimeoutSeconds) > 0 ? Number(settings.chatCommands.battle.requestTimeoutSeconds) : 120;
+  settings.chatCommands.battle.usageMessage ||= pickDefault(settings.language, "battleUsage");
   settings.chatCommands.battle.userNotFoundMessage ||= pickDefault(settings.language, "battleUserNotFound");
   settings.chatCommands.battle.selfChallengeMessage ||= pickDefault(settings.language, "battleSelfChallenge");
   settings.chatCommands.battle.notEnoughCardsMessage ||= pickDefault(settings.language, "battleNotEnoughCards");

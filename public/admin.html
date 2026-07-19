@@ -1133,6 +1133,16 @@
 
                 <div class="message-field">
                   <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-battle-usage">Nachricht bei falscher Nutzung (kein Gegner angegeben)</span>
+                    <div class="var-chips" data-target="cc-battle-usage-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-battle-usage-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
                     <span class="message-field-label" data-i18n="label-cc-battle-offer">Herausforderung an den Gegner</span>
                     <div class="var-chips" data-target="cc-battle-offer-message">
                       <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>

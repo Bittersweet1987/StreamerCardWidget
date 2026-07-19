@@ -656,6 +656,11 @@ const I18N = {
     es: "Desafío al oponente",
     th: "คำท้าถึงคู่ต่อสู้"
   },
+  "label-cc-battle-usage": { de: "Nachricht bei falscher Nutzung (kein Gegner angegeben)", en: "Message for incorrect usage (no opponent given)",
+    fr: "Message en cas d'utilisation incorrecte (aucun adversaire indiqué)",
+    es: "Mensaje de uso incorrecto (no se indicó oponente)",
+    th: "ข้อความเมื่อใช้งานผิด (ไม่ได้ระบุคู่ต่อสู้)"
+  },
   "label-cc-battle-usernotfound": { de: "Gegner nicht gefunden", en: "Opponent not found",
     fr: "Adversaire introuvable",
     es: "Oponente no encontrado",
@@ -5446,6 +5451,7 @@ function hydrateChatCommands() {
   $("#cc-battle-reset-value").value = battle.resetValue ?? 8;
   $("#cc-battle-reset-unit").value = battle.resetUnit || "hours";
   $("#cc-battle-timeout").value = battle.requestTimeoutSeconds ?? 120;
+  $("#cc-battle-usage-message").value = battle.usageMessage || "";
   $("#cc-battle-offer-message").value = battle.offerMessage || "";
   $("#cc-battle-usernotfound-message").value = battle.userNotFoundMessage || "";
   $("#cc-battle-selfchallenge-message").value = battle.selfChallengeMessage || "";
@@ -5590,6 +5596,7 @@ function readChatCommandsFromForm() {
   cc.battle.resetValue = Math.max(1, Math.round(Number($("#cc-battle-reset-value").value) || 1));
   cc.battle.resetUnit = $("#cc-battle-reset-unit").value || "hours";
   cc.battle.requestTimeoutSeconds = Math.max(10, Math.round(Number($("#cc-battle-timeout").value) || 120));
+  cc.battle.usageMessage = $("#cc-battle-usage-message").value;
   cc.battle.offerMessage = $("#cc-battle-offer-message").value;
   cc.battle.userNotFoundMessage = $("#cc-battle-usernotfound-message").value;
   cc.battle.selfChallengeMessage = $("#cc-battle-selfchallenge-message").value;

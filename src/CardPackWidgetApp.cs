@@ -3099,6 +3099,7 @@ namespace CardPackWidgetApp
         private const string DefaultGiftSelf = "@userName, du kannst dir nicht selbst etwas schenken.";
         private const string DefaultGiftSuccess = "@userName hat [Kartenname] an @userNameB verschenkt!";
 
+        private const string DefaultBattleUsage = "@userName, Nutzung: !battle @userNameB";
         private const string DefaultBattleUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
         private const string DefaultBattleSelfChallenge = "@userName, du kannst nicht dich selbst herausfordern.";
         private const string DefaultBattleNotEnoughCards = "@userName, für ein Kartenduell braucht ihr beide mindestens [Anzahl] verschiedene Karten.";
@@ -5831,7 +5832,11 @@ namespace CardPackWidgetApp
         private void HandleBattleCommand(string login, string displayName, string args, Dictionary<string, object> battleCfg)
         {
             string partnerRaw = args.Trim().TrimStart('@');
-            if (partnerRaw.Length == 0) return;
+            if (partnerRaw.Length == 0)
+            {
+                SendChatMessageSafe(GetString(battleCfg, "usageMessage", DefaultBattleUsage).Replace("@userName", "@" + displayName));
+                return;
+            }
             string partnerLogin = partnerRaw.ToLowerInvariant();
 
             int lineupSize = Math.Max(1, GetInt(battleCfg, "lineupSize", 3));
