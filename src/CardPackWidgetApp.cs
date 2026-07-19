@@ -1371,7 +1371,11 @@ namespace CardPackWidgetApp
                 }
             }
 
-            if (changed) File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
+            if (changed)
+            {
+                File.WriteAllText(SettingsPath(), json.Serialize(settings), Encoding.UTF8);
+                InvalidateCardRarityCache();
+            }
         }
 
         // The "open a pack" reward used to be stored per-booster (each booster could carry its
@@ -2239,16 +2243,45 @@ namespace CardPackWidgetApp
         }
 
         // Looks up a card's rarity id (normalized, e.g. "legendary") for battle-strength lookups.
+        // Cached cardId -> rarity lookup. CardRarity used to call ReadSettingsObject() (which
+        // re-reads and re-parses settings.json/twitch.json/obs.json/boosters.json/cards.json from
+        // disk EVERY call - cards.json in particular holds every card's base64 image, easily
+        // several MB) on every single invocation. Battle resolution calls this once or twice per
+        // HIT (see CardBattleStrength/ResolveHpElimination), and a Team-Kampf or tournament match
+        // can rack up dozens of hits - that turned "resolve one fight" into dozens of full
+        // multi-MB file reads happening synchronously inside the signup-timer callback, which is
+        // exactly why tournament/Team-Kampf fights took so long to actually start after the signup
+        // window closed. Built lazily on first use, invalidated (see InvalidateCardRarityCache)
+        // whenever the card list can change - settings.json save or the one-time cards.json
+        // migration - so it can never serve a stale rarity for a renamed/re-rarified card.
+        private readonly object cardRarityCacheLock = new object();
+        private Dictionary<string, string> cardRarityCache;
+
         internal string CardRarity(string cardId)
         {
-            object[] cards = SettingsCards(ReadSettingsObject());
-            foreach (object co in cards)
+            lock (cardRarityCacheLock)
             {
-                Dictionary<string, object> card = co as Dictionary<string, object>;
-                if (card == null) continue;
-                if (GetString(card, "id", "") == cardId) return NormalizeRarityIdShared(GetString(card, "rarity", ""));
+                if (cardRarityCache == null)
+                {
+                    cardRarityCache = new Dictionary<string, string>();
+                    object[] cards = SettingsCards(ReadSettingsObject());
+                    foreach (object co in cards)
+                    {
+                        Dictionary<string, object> card = co as Dictionary<string, object>;
+                        if (card == null) continue;
+                        string id = GetString(card, "id", "");
+                        if (String.IsNullOrEmpty(id)) continue;
+                        cardRarityCache[id] = NormalizeRarityIdShared(GetString(card, "rarity", ""));
+                    }
+                }
+                string rarity;
+                return cardRarityCache.TryGetValue(cardId, out rarity) ? rarity : "common";
             }
-            return "common";
+        }
+
+        private void InvalidateCardRarityCache()
+        {
+            lock (cardRarityCacheLock) { cardRarityCache = null; }
         }
 
         // Looks up a card's title/booster title purely for display purposes (chat messages, animation).
@@ -2556,6 +2589,7 @@ namespace CardPackWidgetApp
                 toStore["updatedAt"] = DateTime.UtcNow.ToString("o");
                 File.WriteAllText(SettingsPath(), json.Serialize(toStore), Encoding.UTF8);
             }
+            InvalidateCardRarityCache();
             Broadcast("settings", "{\"updatedAt\":\"" + EscapeJson(DateTime.UtcNow.ToString("o")) + "\"}");
         }
 
