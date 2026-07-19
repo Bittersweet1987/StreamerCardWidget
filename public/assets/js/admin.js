@@ -85,6 +85,20 @@ async function hashForStats(text) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// The local dev/test build (see AppInfo.IsTestInstall server-side) must never contribute its
+// card/booster counts or connect-events to the anonymous community stats - it's not a real
+// streamer's install, just a repeatedly-rebuilt testbed, and would otherwise inflate the
+// aggregate every time it's used for testing. Cached after the first check (isTestInstall never
+// changes for a running process) rather than re-fetching /api/version on every sync attempt.
+let cachedIsTestInstall = null;
+async function isTestInstall() {
+  if (cachedIsTestInstall === null) {
+    try { cachedIsTestInstall = (await getVersion())?.isTestInstall === true; }
+    catch { cachedIsTestInstall = false; }
+  }
+  return cachedIsTestInstall;
+}
+
 let statsLoaded = false;
 async function loadCommunityStats(force) {
   if (statsLoaded && !force) return;
@@ -102,7 +116,7 @@ async function loadCommunityStats(force) {
 }
 
 async function reportTwitchConnected(broadcasterId) {
-  if (!broadcasterId) return;
+  if (!broadcasterId || await isTestInstall()) return;
   try {
     await fetch(`${STATS_ENDPOINT}/event`, {
       method: "POST",
@@ -120,6 +134,7 @@ async function reportTwitchConnected(broadcasterId) {
 // picks up cards/boosters that already existed before this feature shipped, on the next save.
 let cachedStatsInstallId = null;
 async function syncCommunityCounts(force) {
+  if (await isTestInstall()) return;
   const now = Date.now();
   if (!force && now - lastStatsSyncAt < STATS_SYNC_MIN_INTERVAL_MS) return;
   lastStatsSyncAt = now;

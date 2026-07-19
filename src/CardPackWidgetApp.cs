@@ -238,6 +238,16 @@ namespace CardPackWidgetApp
         private bool running;
         private int port;
 
+        // True when this install's own folder is the local dev/test build (see CLAUDE.md:
+        // "CardPackWidget-TestApp/ — lokale Testinstanz"), never a real user's install. Used to
+        // keep the local TestApp instance's card/booster counts out of the anonymous community
+        // stats (syncCommunityCounts in admin.js) - a dev running the TestApp repeatedly for
+        // testing must never inflate the aggregate that real installs contribute to.
+        internal bool IsTestInstall
+        {
+            get { return rootDir.IndexOf("TestApp", StringComparison.OrdinalIgnoreCase) >= 0; }
+        }
+
         public CardPackServer(string rootDir)
         {
             this.rootDir = rootDir;
@@ -554,7 +564,8 @@ namespace CardPackWidgetApp
                     { "version", AppInfo.Version },
                     { "releaseDate", AppInfo.ReleaseDate },
                     { "repo", AppInfo.GitHubRepo },
-                    { "bootId", AppInfo.BootId }
+                    { "bootId", AppInfo.BootId },
+                    { "isTestInstall", IsTestInstall }
                 }));
                 return;
             }
