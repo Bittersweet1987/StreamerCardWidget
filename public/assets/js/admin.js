@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.3";
+} from "./api.js?v=20260719-rangfix1";
 import {
   applyTheme,
   boosterMarkup,
@@ -63,7 +63,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.3";
+} from "./render.js?v=20260719-rangfix1";
 
 let settings;
 let selectedCardId;
@@ -747,6 +747,23 @@ const I18N = {
     fr: "Affiche le classement uniquement dans sa propre source OBS (Connexion → Nom de la source de classement) – volontairement aucune sortie chat. Pour « duel » l'affichage défile : plus de combats → plus de victoires → plus de défaites → meilleur ratio victoires/défaites (top 5 chacun). Pour « turnier » l'affichage défile : plus de victoires en tournoi → plus de participations en tournoi (top 5 chacun). Pour « teamkampf » l'affichage défile : plus de participations au combat d'équipe → plus de victoires → plus de défaites (top 5 chacun). Pour « échange » il montre les 5 utilisateurs avec le plus d'échanges terminés. La durée d'affichage s'applique par vue.",
     es: "Muestra la clasificación exclusivamente en su propia fuente de OBS (Conexión → Nombre de fuente de clasificación) – deliberadamente sin salida en el chat. Para “duelo” la vista rota entre: más combates → más victorias → más derrotas → mejor ratio victorias/derrotas (top 5 cada uno). Para “turnier” la vista rota entre: más victorias en torneo → más participaciones en torneo (top 5 cada uno). Para “teamkampf” la vista rota entre: más participaciones en combate de equipo → más victorias → más derrotas (top 5 cada uno). Para “intercambio” muestra los 5 usuarios con más intercambios completados. La duración de visualización aplica por vista.",
     th: "แสดงอันดับเฉพาะในซอร์ส OBS ของตัวเอง (การเชื่อมต่อ → ชื่อซอร์สอันดับ) โดยตั้งใจไม่ส่งข้อความในแชท สำหรับ \"การดวล\" จะวนแสดง: ต่อสู้มากที่สุด → ชนะมากที่สุด → แพ้มากที่สุด → อัตราส่วนชนะ/แพ้ดีที่สุด (5 อันดับแรกแต่ละหมวด) สำหรับ \"turnier\" จะวนแสดง: ชนะทัวร์นาเมนต์มากที่สุด → เข้าร่วมทัวร์นาเมนต์มากที่สุด (5 อันดับแรกแต่ละหมวด) สำหรับ \"teamkampf\" จะวนแสดง: เข้าร่วมทีมคัมภ์มากที่สุด → ชนะมากที่สุด → แพ้มากที่สุด (5 อันดับแรกแต่ละหมวด) สำหรับ \"การแลกเปลี่ยน\" จะแสดงผู้ใช้ 5 อันดับที่แลกเปลี่ยนสำเร็จมากที่สุด ระยะเวลาแสดงผลใช้ต่อหนึ่งมุมมอง"
+  },
+  "cc-ranking-messages-hint": {
+    de: "Nur diese beiden Fehlerfälle bei !ranking [Kartenname] senden eine Chat-Nachricht (bei Erfolg bleibt der Befehl bewusst still, siehe oben).",
+    en: "Only these two error cases for !ranking [card name] send a chat message (on success the command deliberately stays silent, see above).",
+    fr: "Seuls ces deux cas d'erreur pour !ranking [nom de carte] envoient un message dans le chat (en cas de succès, la commande reste volontairement silencieuse, voir ci-dessus).",
+    es: "Solo estos dos casos de error de !ranking [nombre de carta] envían un mensaje al chat (en caso de éxito, el comando permanece deliberadamente en silencio, ver arriba).",
+    th: "มีเพียงสองกรณีข้อผิดพลาดนี้ของ !ranking [ชื่อการ์ด] ที่จะส่งข้อความในแชท (เมื่อสำเร็จคำสั่งจะเงียบโดยตั้งใจ ดูด้านบน)"
+  },
+  "label-cc-ranking-notfound": { de: "Nachricht bei unbekannter Karte", en: "Message for unknown card",
+    fr: "Message pour carte inconnue",
+    es: "Mensaje para carta desconocida",
+    th: "ข้อความเมื่อไม่พบการ์ด"
+  },
+  "label-cc-ranking-noowners": { de: "Nachricht bei noch nicht gezogener Karte", en: "Message for a card nobody has drawn yet",
+    fr: "Message pour une carte que personne n'a encore tirée",
+    es: "Mensaje para una carta que nadie ha sacado todavía",
+    th: "ข้อความสำหรับการ์ดที่ยังไม่มีใครสุ่มได้"
   },
   "label-obs-ranking-source": { de: "Quellenname Ranking", en: "Source name ranking",
     fr: "Nom de source classement",
@@ -5506,6 +5523,8 @@ function hydrateChatCommands() {
   $("#cc-ranking-command").value = ranking.command || "ranking";
   $("#cc-ranking-seconds").value = ranking.displaySeconds ?? 8;
   $("#cc-ranking-helptext").value = ranking.helpText || "";
+  $("#cc-ranking-notfound-message").value = ranking.cardNotFoundMessage || "";
+  $("#cc-ranking-noowners-message").value = ranking.noOwnersMessage || "";
 
   const tournamentJoin = cc.tournamentJoin || {};
   $("#cc-tournamentjoin-enabled").checked = tournamentJoin.enabled !== false;
@@ -5651,6 +5670,8 @@ function readChatCommandsFromForm() {
   cc.ranking.command = $("#cc-ranking-command").value.trim() || "ranking";
   cc.ranking.displaySeconds = Math.max(2, Math.round(Number($("#cc-ranking-seconds").value) || 8));
   cc.ranking.helpText = $("#cc-ranking-helptext").value;
+  cc.ranking.cardNotFoundMessage = $("#cc-ranking-notfound-message").value;
+  cc.ranking.noOwnersMessage = $("#cc-ranking-noowners-message").value;
 
   cc.tournamentJoin ||= {};
   cc.tournamentJoin.enabled = $("#cc-tournamentjoin-enabled").checked;

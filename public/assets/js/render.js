@@ -237,6 +237,20 @@ const DEFAULT_MESSAGES = {
     es: "muestra una clasificación (carta o combates)",
     th: "แสดงอันดับ (การ์ดหรือการดวล)"
   },
+  rankingCardNotFound: {
+    de: "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?",
+    en: "@userName, the card [falscherName] doesn't exist. Did you mean [Kartenname] instead?",
+    fr: "@userName, la carte [falscherName] n'existe pas. Voulais-tu dire [Kartenname] ?",
+    es: "@userName, la carta [falscherName] no existe. ¿Quisiste decir [Kartenname]?",
+    th: "@userName ไม่มีการ์ด [falscherName] คุณหมายถึง [Kartenname] ใช่ไหม?"
+  },
+  rankingNoOwners: {
+    de: "@userName, die Karte [Kartenname] wurde bisher von niemandem gezogen - es gibt noch kein Ranking dafür.",
+    en: "@userName, nobody has drawn the card [Kartenname] yet - there's no ranking for it yet.",
+    fr: "@userName, personne n'a encore tiré la carte [Kartenname] - il n'y a pas encore de classement pour elle.",
+    es: "@userName, nadie ha sacado todavía la carta [Kartenname] - todavía no hay clasificación para ella.",
+    th: "@userName ยังไม่มีใครสุ่มได้การ์ด [Kartenname] เลย - ยังไม่มีอันดับสำหรับการ์ดนี้"
+  },
   helpTournamentJoin: {
     de: "tritt dem laufenden Turnier bei",
     en: "joins the current tournament signup",
@@ -865,6 +879,12 @@ export function normalizeSettings(settings) {
   settings.chatCommands.ranking.command ||= "ranking";
   settings.chatCommands.ranking.displaySeconds = Number(settings.chatCommands.ranking.displaySeconds) > 0 ? Number(settings.chatCommands.ranking.displaySeconds) : 8;
   settings.chatCommands.ranking.helpText ||= pickDefault(settings.language, "helpRanking");
+  // "!ranking <Kartenname>" stays deliberately silent in chat on success (result shown only in
+  // the OBS overlay), but these two dead-end cases (unknown card, or a real card nobody has drawn
+  // yet) get a chat message - without one the command looks like it silently failed, since there
+  // is no overlay animation to fall back on either.
+  settings.chatCommands.ranking.cardNotFoundMessage ||= pickDefault(settings.language, "rankingCardNotFound");
+  settings.chatCommands.ranking.noOwnersMessage ||= pickDefault(settings.language, "rankingNoOwners");
 
   settings.ranking ||= {};
   settings.ranking.sourceName ||= "Streamer Card Ranking";

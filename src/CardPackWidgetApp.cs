@@ -7197,8 +7197,14 @@ namespace CardPackWidgetApp
 
         // ---- Ranking command: !ranking battle / !ranking <Kartenname> ----
 
-        // Deliberately silent in chat (by design): the result is shown exclusively in the
-        // dedicated OBS ranking overlay. Unknown card names are silently ignored too.
+        private const string DefaultRankingCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
+        private const string DefaultRankingNoOwners = "@userName, die Karte [Kartenname] wurde bisher von niemandem gezogen - es gibt noch kein Ranking dafuer.";
+
+        // Deliberately silent in chat for the SUCCESS case (by design): the result is shown
+        // exclusively in the dedicated OBS ranking overlay. The two dead-end cases below (unknown
+        // card name, or a real card nobody owns yet) get a chat message though - without one,
+        // "!ranking <Karte>" would look like the bot never even saw the command, since there is no
+        // overlay animation to fall back on either (playCardRanking bails out with zero owners).
         private void HandleRankingCommand(string login, string displayName, string args, Dictionary<string, object> rankingCfg)
         {
             string arg = args.Trim();
@@ -7263,9 +7269,24 @@ namespace CardPackWidgetApp
             }
 
             Dictionary<string, object> card = server.ResolveCardByName(arg);
-            if (!Convert.ToBoolean(card["found"])) return;
+            if (!Convert.ToBoolean(card["found"]))
+            {
+                SendChatMessageSafe(GetString(rankingCfg, "cardNotFoundMessage", DefaultRankingCardNotFound)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[falscherName]", arg)
+                    .Replace("[Kartenname]", GetString(card, "suggestion", "")));
+                return;
+            }
             string cardId = GetString(card, "cardId", "");
             string boosterId = GetString(card, "boosterId", "");
+            object[] owners = server.GetTopCardOwners(boosterId, cardId, 5);
+            if (owners.Length == 0)
+            {
+                SendChatMessageSafe(GetString(rankingCfg, "noOwnersMessage", DefaultRankingNoOwners)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Kartenname]", GetString(card, "cardTitle", "")));
+                return;
+            }
             var cardPayload = new Dictionary<string, object>
             {
                 { "type", "card" },
@@ -7274,7 +7295,7 @@ namespace CardPackWidgetApp
                 { "boosterId", boosterId },
                 { "cardTitle", GetString(card, "cardTitle", "") },
                 { "boosterTitle", GetString(card, "boosterTitle", "") },
-                { "owners", server.GetTopCardOwners(boosterId, cardId, 5) }
+                { "owners", owners }
             };
             Enqueue("ranking", login, displayName, "chat", cardPayload);
             server.Log("commands", "info", displayName + " hat das Ranking fuer Karte \"" + GetString(card, "cardTitle", "") + "\" angefordert.");
