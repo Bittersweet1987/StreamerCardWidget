@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.8">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.9">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -381,6 +381,8 @@
                     <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                     <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
                     <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                    <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
+                    <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
                   </div>
                 </div>
                 <textarea id="reward-post-message" rows="2"></textarea>
@@ -506,11 +508,25 @@
               <button class="danger-button" id="reset-message-defaults" type="button" data-i18n="btn-reset-message-defaults">Alle Texte zurücksetzen</button>
             </div>
 
+            <div class="form-grid">
+              <label data-i18n="label-rarity-language">Sprache für [Seltenheit]<select id="cc-rarity-language">
+                <option value="de">Deutsch</option>
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+                <option value="th">ไทย</option>
+              </select></label>
+            </div>
+            <p class="hint" data-i18n="hint-rarity-language">Gilt für die Chat-Variable [Seltenheit] überall (Ziehungs-Nachrichten, !dustset, !dustall) - unabhängig von der Admin-Oberflächen-Sprache oben.</p>
+
             <nav class="cc-jump-nav">
               <a href="#cc-section-autohelp" data-i18n="cc-autohelp-title">Automatische Hilfe-Nachricht</a>
               <a href="#cc-section-pack" data-i18n="cc-pack-title">Pack-Befehl</a>
+              <a href="#jn-cc-packs" data-i18n="cc-packs-title">Booster-Übersicht-Befehl</a>
               <a href="#cc-section-collection" data-i18n="cc-collection-title">Sammlung-Befehl</a>
               <a href="#cc-section-dust" data-i18n="cc-dust-title">Dust-Befehl</a>
+              <a href="#jn-cc-dustset" data-i18n="cc-dustset-title">Dust-Auswahl-Befehl</a>
+              <a href="#jn-cc-dustall" data-i18n="cc-dustall-title">Dust-Alle-Befehl</a>
               <a href="#cc-section-gift" data-i18n="cc-gift-title">Geschenk-Befehl</a>
               <a href="#cc-section-trade" data-i18n="cc-trade-title">Tausch-Befehl</a>
               <a href="#cc-section-tradeyes" data-i18n="cc-tradeyes-title">Tausch-Annahme-Befehl</a>
@@ -522,6 +538,7 @@
               <a href="#jn-cc-tournamentjoin" data-i18n="cc-tournamentjoin-title">Turnier-Beitritt</a>
               <a href="#jn-cc-teamkampfjoin" data-i18n="cc-teamkampfjoin-title">Team-Kampf-Beitritt</a>
               <a href="#jn-cc-tournamentstart" data-i18n="cc-tournamentstart-title">Turnier-Start (Chat)</a>
+              <a href="#jn-cc-teambattlestart" data-i18n="cc-teambattlestart-title">Team-Kampf-Start (Chat)</a>
             </nav>
 
             <article class="reward-entry command-card" id="cc-section-autohelp">
@@ -599,6 +616,8 @@
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                       <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
                       <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                      <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
+                      <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
                     </div>
                   </div>
                   <textarea id="cc-pack-success-message" rows="2"></textarea>
@@ -624,6 +643,60 @@
                     </div>
                   </div>
                   <textarea id="cc-pack-cooldown-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-packs">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-pack-eyebrow">Kartenpack</p>
+                  <h3 data-i18n="cc-packs-title">Booster-Übersicht-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-packs-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-packs-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-packs-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-packs-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-packs-hint">Listet alle aktuell verfügbaren Booster im Chat auf, jeweils als "Titel Untertitel" mit tatsächlicher Ziehchance dahinter (identisch berechnet wie beim echten Ziehen). Sub-exklusive Booster werden ebenfalls aufgeführt, aber mit dem Hinweis "Sub Only" statt einer Prozentzahl, da sie nicht über !pack/Kanalpunkte erreichbar sind.</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-packs-header">Einleitung vor der Liste</span>
+                    <div class="var-chips" data-target="cc-packs-header-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-packs-header-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-packs-empty">Nachricht ohne verfügbaren Booster</span>
+                    <div class="var-chips" data-target="cc-packs-empty-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-packs-empty-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-packs-subonly">Hinweistext für Sub-exklusive Booster</span>
+                  </div>
+                  <input id="cc-packs-subonly-label" type="text">
                 </div>
               </div>
             </article>
@@ -659,6 +732,11 @@
                   <input id="cc-collection-chatoutput-enabled" type="checkbox">
                   <span data-i18n="label-cc-collection-chatoutput">Kartennamen zusätzlich im Chat auflisten</span>
                 </label>
+                <label data-i18n="label-cc-collection-outputmode">Versandart<select id="cc-collection-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
               </div>
 
               <div class="field-group">
@@ -757,6 +835,107 @@
                     </div>
                   </div>
                   <textarea id="cc-dust-success-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-dustset">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
+                  <h3 data-i18n="cc-dustset-title">Dust-Auswahl-Befehl</h3>
+                </div>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dustset-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dustset-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-dustset-hint">Nutzt immer das Präfix von !dust (siehe oben) - nur das Befehlswort ist eigenständig. Legt fest, bis zu welcher Seltenheit "!dustall" automatisch Duplikate opfert, z.B. "!dustset legendär". Die Seltenheit kann in jeder unterstützten Sprache eingegeben werden (de/en/fr/es/th). Standard: Ungewöhnlich (also praktisch deaktiviert, bis der Viewer aktiv eine höhere Seltenheit setzt).</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dustset-usage">Nachricht bei fehlender Angabe</span>
+                    <div class="var-chips" data-target="cc-dustset-usage-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dustset-usage-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dustset-invalid">Nachricht bei unbekannter Seltenheit</span>
+                    <div class="var-chips" data-target="cc-dustset-invalid-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Eingabe]">[Eingabe]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dustset-invalid-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dustset-success">Nachricht bei Erfolg</span>
+                    <div class="var-chips" data-target="cc-dustset-success-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dustset-success-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-dustall">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
+                  <h3 data-i18n="cc-dustall-title">Dust-Alle-Befehl</h3>
+                </div>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dustall-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dustall-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-dustall-hint">Nutzt immer das Präfix von !dust (siehe oben) - nur das Befehlswort ist eigenständig. Opfert automatisch ALLE doppelt besessenen Karten bis zur mit "!dustset" gewählten Seltenheit (Standard: Ungewöhnlich) auf einmal - mindestens 1 Exemplar bleibt je Karte immer erhalten.</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dustall-nothing">Nachricht ohne Duplikate</span>
+                    <div class="var-chips" data-target="cc-dustall-nothing-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dustall-nothing-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-dustall-success">Nachricht bei Erfolg</span>
+                    <div class="var-chips" data-target="cc-dustall-success-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Aufschluesselung]">[Aufschluesselung]</button>
+                      <button class="var-chip" type="button" data-insert="[Gesamtanzahl]">[Gesamtanzahl]</button>
+                      <button class="var-chip" type="button" data-insert="[Punkte]">[Punkte]</button>
+                      <button class="var-chip" type="button" data-insert="[GarantieRest]">[GarantieRest]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-dustall-success-message" rows="2"></textarea>
                 </div>
               </div>
             </article>
@@ -1428,7 +1607,66 @@
                   <label data-i18n="label-cc-command">Befehlswort<input id="cc-tournamentstart-command" type="text"></label>
                   <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-tournamentstart-helptext" type="text"></label>
                 </div>
-                <p class="hint" data-i18n="cc-tournamentstart-hint">Optionaler Chat-Befehl, um die Turnier-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel.</p>
+                <p class="hint" data-i18n="cc-tournamentstart-hint">Optionaler Chat-Befehl, um die Turnier-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel. Nützlich für Nicht-Affiliates/Partner ohne Kanalpunkte.</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit &amp; Cooldown</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-global-cooldown">Globaler Cooldown (Sek.)<input id="cc-tournamentstart-cooldown" type="number" min="0" step="1"></label>
+                </div>
+                <p class="hint" data-i18n="hint-cc-global-cooldown">Gilt für den Chat-Befehl insgesamt (nicht pro Viewer) - verhindert, dass direkt nach Ende eines Turniers sofort das nächste gestartet wird. 0 = kein Cooldown.</p>
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-tournamentstart-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-tournamentstart-cooldown-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-teambattlestart">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-teambattlestart-eyebrow">Team-Kampf</p>
+                  <h3 data-i18n="cc-teambattlestart-title">Team-Kampf-Start (Chat)</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-teambattlestart-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-teambattlestart-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-teambattlestart-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-teambattlestart-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-teambattlestart-hint">Optionaler Chat-Befehl, um die Team-Kampf-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel. Nützlich für Nicht-Affiliates/Partner ohne Kanalpunkte.</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit &amp; Cooldown</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-global-cooldown">Globaler Cooldown (Sek.)<input id="cc-teambattlestart-cooldown" type="number" min="0" step="1"></label>
+                </div>
+                <p class="hint" data-i18n="hint-cc-global-cooldown">Gilt für den Chat-Befehl insgesamt (nicht pro Viewer) - verhindert, dass direkt nach Ende eines Team-Kampfes sofort der nächste gestartet wird. 0 = kein Cooldown.</p>
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-teambattlestart-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-teambattlestart-cooldown-message" rows="2"></textarea>
+                </div>
               </div>
             </article>
           </section>
@@ -2337,7 +2575,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.8"></script>
-    <script type="module" src="/assets/js/admin.js?v=2.12.8"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.9"></script>
+    <script type="module" src="/assets/js/admin.js?v=2.12.9"></script>
   </body>
 </html>

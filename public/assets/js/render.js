@@ -227,11 +227,11 @@ const DEFAULT_MESSAGES = {
     th: "@userName คุณยังไม่มีการ์ดเลย"
   },
   communityGoalReached: {
-    de: "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch einen Bonus-Booster.",
-    en: "🎉 Community goal reached ([Ziel] draws)! Every participant automatically gets a bonus booster.",
-    fr: "🎉 Objectif communautaire atteint ([Ziel] tirages) ! Tous les participants reçoivent automatiquement un booster bonus.",
-    es: "🎉 ¡Meta comunitaria alcanzada ([Ziel] tiradas)! Todos los participantes reciben automáticamente un sobre extra.",
-    th: "🎉 บรรลุเป้าหมายชุมชนแล้ว ([Ziel] ครั้ง)! ผู้เข้าร่วมทุกคนจะได้รับบูสเตอร์โบนัสอัตโนมัติ"
+    de: "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch [Karten] Bonus-Booster.",
+    en: "🎉 Community goal reached ([Ziel] draws)! Every participant automatically gets [Karten] bonus boosters.",
+    fr: "🎉 Objectif communautaire atteint ([Ziel] tirages) ! Tous les participants reçoivent automatiquement [Karten] boosters bonus.",
+    es: "🎉 ¡Meta comunitaria alcanzada ([Ziel] tiradas)! Todos los participantes reciben automáticamente [Karten] sobres extra.",
+    th: "🎉 บรรลุเป้าหมายชุมชนแล้ว ([Ziel] ครั้ง)! ผู้เข้าร่วมทุกคนจะได้รับบูสเตอร์โบนัสอัตโนมัติ [Karten] ใบ"
   },
   helpPack: {
     de: "zieht ein zufälliges Kartenpack",
@@ -240,12 +240,47 @@ const DEFAULT_MESSAGES = {
     es: "saca un sobre de cartas al azar",
     th: "สุ่มเปิดบูสเตอร์การ์ด"
   },
+  helpPacks: {
+    de: "listet alle verfügbaren Booster mit Ziehchance auf",
+    en: "lists every available booster with its draw chance",
+    fr: "liste tous les boosters disponibles avec leur chance de tirage",
+    es: "lista todos los sobres disponibles con su probabilidad",
+    th: "แสดงรายการบูสเตอร์ที่ใช้ได้พร้อมโอกาสสุ่ม"
+  },
+  packsHeader: {
+    de: "@userName, verfügbare Booster:",
+    en: "@userName, available boosters:",
+    fr: "@userName, boosters disponibles :",
+    es: "@userName, sobres disponibles:",
+    th: "@userName บูสเตอร์ที่ใช้งานได้:"
+  },
+  packsEmpty: {
+    de: "@userName, aktuell ist kein Booster verfügbar.",
+    en: "@userName, no booster is currently available.",
+    fr: "@userName, aucun booster n'est disponible pour le moment.",
+    es: "@userName, actualmente no hay ningún sobre disponible.",
+    th: "@userName ตอนนี้ไม่มีบูสเตอร์ที่ใช้งานได้"
+  },
   helpDust: {
     de: "verwandelt doppelte Karten in Pity-Punkte",
     en: "converts duplicate cards into pity points",
     fr: "convertit les cartes en double en points de pitié",
     es: "convierte cartas duplicadas en puntos de compensación",
     th: "แปลงการ์ดที่ซ้ำเป็นแต้มการันตี"
+  },
+  helpDustSet: {
+    de: "legt fest, bis zu welcher Seltenheit !dustall opfert",
+    en: "sets up to which rarity !dustall sacrifices",
+    fr: "définit jusqu'à quelle rareté !dustall sacrifie",
+    es: "define hasta qué rareza sacrifica !dustall",
+    th: "กำหนดระดับความหายากสูงสุดที่ !dustall จะสังเวย"
+  },
+  helpDustAll: {
+    de: "opfert alle Duplikate bis zur eingestellten Seltenheit",
+    en: "sacrifices all duplicates up to the set rarity",
+    fr: "sacrifie tous les doublons jusqu'à la rareté définie",
+    es: "sacrifica todos los duplicados hasta la rareza definida",
+    th: "สังเวยการ์ดซ้ำทั้งหมดจนถึงระดับความหายากที่ตั้งไว้"
   },
   helpGift: {
     de: "verschenkt eine Karte an einen anderen Zuschauer",
@@ -309,6 +344,20 @@ const DEFAULT_MESSAGES = {
     fr: "démarre la phase d'inscription au tournoi",
     es: "inicia la fase de inscripción del torneo",
     th: "เริ่มช่วงเวลาสมัครทัวร์นาเมนต์"
+  },
+  helpTeamBattleJoin: {
+    de: "tritt dem laufenden Team-Kampf bei",
+    en: "joins the current team battle signup",
+    fr: "rejoint l'inscription au combat d'équipe en cours",
+    es: "se une a la inscripción del combate de equipo actual",
+    th: "เข้าร่วมการสมัครการต่อสู้ทีมปัจจุบัน"
+  },
+  helpTeamBattleStart: {
+    de: "startet die Team-Kampf-Anmeldephase",
+    en: "starts the team battle signup phase",
+    fr: "démarre la phase d'inscription au combat d'équipe",
+    es: "inicia la fase de inscripción del combate de equipo",
+    th: "เริ่มช่วงเวลาสมัครการต่อสู้ทีม"
   },
   tournamentSignupStart: {
     de: "🏆 Turnier-Anmeldung gestartet! Tritt mit [Befehl] bei - [Sekunden] Sekunden Zeit, mindestens [Mindestteilnehmer] Teilnehmer nötig.",
@@ -400,6 +449,41 @@ const DEFAULT_MESSAGES = {
     fr: "@userName a sacrifié [Anzahl]x [Kartenname] (+[Punkte] points de pitié). Encore [GarantieRest] tirages avant la rareté garantie.",
     es: "@userName sacrificó [Anzahl]x [Kartenname] (+[Punkte] puntos de compensación). Faltan [GarantieRest] tiradas para la rareza garantizada.",
     th: "@userName สังเวย [Kartenname] จำนวน [Anzahl] ใบ (+[Punkte] แต้มการันตี) เหลืออีก [GarantieRest] ครั้งจนถึงการันตี"
+  },
+  dustSetUsage: {
+    de: "@userName, Nutzung: !dustset <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit !dustall automatisch Duplikate opfert.",
+    en: "@userName, usage: !dustset <rarity> (e.g. legendary) - sets up to which rarity !dustall automatically sacrifices duplicates.",
+    fr: "@userName, utilisation : !dustset <rareté> (ex. légendaire) - définit jusqu'à quelle rareté !dustall sacrifie automatiquement les doublons.",
+    es: "@userName, uso: !dustset <rareza> (p. ej. legendaria) - define hasta qué rareza !dustall sacrifica duplicados automáticamente.",
+    th: "@userName วิธีใช้: !dustset <ระดับความหายาก> (เช่น ตำนาน) - กำหนดว่า !dustall จะสังเวยการ์ดซ้ำอัตโนมัติสูงสุดถึงระดับใด"
+  },
+  dustSetInvalid: {
+    de: "@userName, \"[Eingabe]\" ist keine bekannte Seltenheit. Gültig: Gewöhnlich, Ungewöhnlich, Selten, Episch, Legendär, Holo.",
+    en: "@userName, \"[Eingabe]\" isn't a known rarity. Valid: Common, Uncommon, Rare, Epic, Legendary, Holo.",
+    fr: "@userName, \"[Eingabe]\" n'est pas une rareté connue. Valides : Commune, Peu commune, Rare, Épique, Légendaire, Holo.",
+    es: "@userName, \"[Eingabe]\" no es una rareza conocida. Válidas: Común, Poco común, Rara, Épica, Legendaria, Holo.",
+    th: "@userName \"[Eingabe]\" ไม่ใช่ระดับความหายากที่รู้จัก ใช้ได้: ธรรมดา, ไม่ธรรมดา, หายาก, เอพิก, ตำนาน, โฮโล"
+  },
+  dustSetSuccess: {
+    de: "@userName, !dustall opfert ab jetzt automatisch alle Duplikate bis einschließlich [Seltenheit].",
+    en: "@userName, !dustall will now automatically sacrifice all duplicates up to and including [Seltenheit].",
+    fr: "@userName, !dustall sacrifiera désormais automatiquement tous les doublons jusqu'à [Seltenheit] inclus.",
+    es: "@userName, !dustall ahora sacrificará automáticamente todos los duplicados hasta [Seltenheit] inclusive.",
+    th: "@userName ตอนนี้ !dustall จะสังเวยการ์ดซ้ำทั้งหมดโดยอัตโนมัติจนถึง [Seltenheit]"
+  },
+  dustAllNothing: {
+    de: "@userName, du hast aktuell keine Duplikate unterhalb von [Seltenheit] zum Opfern.",
+    en: "@userName, you currently have no duplicates below [Seltenheit] to sacrifice.",
+    fr: "@userName, tu n'as actuellement aucun doublon en dessous de [Seltenheit] à sacrifier.",
+    es: "@userName, actualmente no tienes duplicados por debajo de [Seltenheit] para sacrificar.",
+    th: "@userName ตอนนี้คุณไม่มีการ์ดซ้ำต่ำกว่า [Seltenheit] ให้สังเวย"
+  },
+  dustAllSuccess: {
+    de: "@userName hat [Gesamtanzahl] doppelte Karten geopfert ([Aufschluesselung]), +[Punkte] Garantie-Punkte. Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.",
+    en: "@userName sacrificed [Gesamtanzahl] duplicate cards ([Aufschluesselung]), +[Punkte] pity points. [GarantieRest] more draws until the guaranteed rarity.",
+    fr: "@userName a sacrifié [Gesamtanzahl] cartes en double ([Aufschluesselung]), +[Punkte] points de pitié. Encore [GarantieRest] tirages avant la rareté garantie.",
+    es: "@userName sacrificó [Gesamtanzahl] cartas duplicadas ([Aufschluesselung]), +[Punkte] puntos de compensación. Faltan [GarantieRest] tiradas para la rareza garantizada.",
+    th: "@userName สังเวยการ์ดซ้ำ [Gesamtanzahl] ใบ ([Aufschluesselung]) +[Punkte] แต้มการันตี เหลืออีก [GarantieRest] ครั้งจนถึงการันตี"
   },
   giftUsage: {
     de: "@userName, Nutzung: !gift @userNameB <Kartenname>",
@@ -795,6 +879,9 @@ export function normalizeSettings(settings) {
   // (no limit, no cooldown, no usage tracking) - mirrors the channel-point draw/showcase rewards.
   settings.chatCommands ||= {};
   settings.chatCommands.enabled = settings.chatCommands.enabled === true;
+  // Language the [Seltenheit] chat variable is written out in (draw messages, !dustset/!dustall) -
+  // independent of the admin UI language.
+  settings.chatCommands.rarityLanguage = SUPPORTED_LANGUAGES.includes(settings.chatCommands.rarityLanguage) ? settings.chatCommands.rarityLanguage : "de";
   settings.chatCommands.pack ||= {};
   settings.chatCommands.pack.enabled = settings.chatCommands.pack.enabled !== false;
   settings.chatCommands.pack.prefix ||= "!";
@@ -812,6 +899,15 @@ export function normalizeSettings(settings) {
       || settings.chatCommands.pack.successMessage === "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.") {
     settings.chatCommands.pack.successMessage = pickDefault(settings.language, "drawPost");
   }
+  settings.chatCommands.packs ||= {};
+  settings.chatCommands.packs.enabled = settings.chatCommands.packs.enabled !== false;
+  settings.chatCommands.packs.prefix ||= "!";
+  settings.chatCommands.packs.command ||= "packs";
+  settings.chatCommands.packs.helpText ||= pickDefault(settings.language, "helpPacks");
+  settings.chatCommands.packs.headerMessage ||= pickDefault(settings.language, "packsHeader");
+  settings.chatCommands.packs.emptyMessage ||= pickDefault(settings.language, "packsEmpty");
+  settings.chatCommands.packs.subOnlyLabel ||= "Sub Only";
+
   settings.chatCommands.dust ||= {};
   settings.chatCommands.dust.enabled = settings.chatCommands.dust.enabled === true;
   settings.chatCommands.dust.prefix ||= "!";
@@ -821,6 +917,21 @@ export function normalizeSettings(settings) {
   settings.chatCommands.dust.cardNotFoundMessage ||= pickDefault(settings.language, "dustCardNotFound");
   settings.chatCommands.dust.notEnoughMessage ||= pickDefault(settings.language, "dustNotEnough");
   settings.chatCommands.dust.successMessage ||= pickDefault(settings.language, "dustSuccess");
+
+  // "!dustset"/"!dustall" are sub-commands of !dust - no prefix of their own (always uses dust's),
+  // only the command word + messages are independently configurable.
+  settings.chatCommands.dustSet ||= {};
+  settings.chatCommands.dustSet.command ||= "dustset";
+  settings.chatCommands.dustSet.helpText ||= pickDefault(settings.language, "helpDustSet");
+  settings.chatCommands.dustSet.usageMessage ||= pickDefault(settings.language, "dustSetUsage");
+  settings.chatCommands.dustSet.invalidMessage ||= pickDefault(settings.language, "dustSetInvalid");
+  settings.chatCommands.dustSet.successMessage ||= pickDefault(settings.language, "dustSetSuccess");
+
+  settings.chatCommands.dustAll ||= {};
+  settings.chatCommands.dustAll.command ||= "dustall";
+  settings.chatCommands.dustAll.helpText ||= pickDefault(settings.language, "helpDustAll");
+  settings.chatCommands.dustAll.nothingMessage ||= pickDefault(settings.language, "dustAllNothing");
+  settings.chatCommands.dustAll.successMessage ||= pickDefault(settings.language, "dustAllSuccess");
   // "!gift @recipient <card>" - one-sided, no confirmation needed from the recipient (see
   // HandleGiftCommand server-side). Was missing its own normalization block entirely, which left
   // every chat message here as an empty string ("" survives GetString's fallback check on the
@@ -846,6 +957,8 @@ export function normalizeSettings(settings) {
   // Besides the overlay showcase, !collection can also list the caller's card names as chat
   // text (own toggle, on by default).
   settings.chatCommands.collection.chatOutputEnabled = settings.chatCommands.collection.chatOutputEnabled !== false;
+  // Whether that chat text goes to public chat or as a whisper (private message) to the caller.
+  settings.chatCommands.collection.outputMode = settings.chatCommands.collection.outputMode === "whisper" ? "whisper" : "chat";
   settings.chatCommands.collection.headerMessage ||= pickDefault(settings.language, "collectionHeader");
   settings.chatCommands.collection.emptyMessage ||= pickDefault(settings.language, "collectionEmpty");
 
@@ -949,10 +1062,24 @@ export function normalizeSettings(settings) {
     const legacyMessage = settings.communityGoal.celebrationMessage || pickDefault(settings.language, "communityGoalReached");
     settings.communityGoal.stages = [{ target: legacyTarget, bonusCards: 1, celebrationMessage: legacyMessage }];
   }
+  // One-time repair: earlier versions' default celebration text never actually said how many
+  // bonus boosters were awarded ("...einen Bonus-Booster" with no [Karten] variable at all) - any
+  // stage still carrying that exact old wording (in any supported language, so an untouched stage
+  // gets fixed regardless of which language it was created under) is almost certainly unmodified
+  // by the streamer, so it's safe to refresh to the current default with [Karten] included.
+  const staleCommunityGoalMessages = new Set([
+    "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch einen Bonus-Booster.",
+    "🎉 Community goal reached ([Ziel] draws)! Every participant automatically gets a bonus booster.",
+    "🎉 Objectif communautaire atteint ([Ziel] tirages) ! Tous les participants reçoivent automatiquement un booster bonus.",
+    "🎉 ¡Meta comunitaria alcanzada ([Ziel] tiradas)! Todos los participantes reciben automáticamente un sobre extra.",
+    "🎉 บรรลุเป้าหมายชุมชนแล้ว ([Ziel] ครั้ง)! ผู้เข้าร่วมทุกคนจะได้รับบูสเตอร์โบนัสอัตโนมัติ"
+  ]);
   settings.communityGoal.stages = settings.communityGoal.stages.slice(0, 5).map((stage) => ({
     target: Number(stage?.target) > 0 ? Math.round(Number(stage.target)) : 500,
     bonusCards: Number(stage?.bonusCards) > 0 ? Math.round(Number(stage.bonusCards)) : 1,
-    celebrationMessage: stage?.celebrationMessage || pickDefault(settings.language, "communityGoalReached")
+    celebrationMessage: stage?.celebrationMessage && !staleCommunityGoalMessages.has(stage.celebrationMessage)
+      ? stage.celebrationMessage
+      : pickDefault(settings.language, "communityGoalReached")
   }));
   delete settings.communityGoal.target;
   delete settings.communityGoal.celebrationMessage;
@@ -1073,6 +1200,24 @@ export function normalizeSettings(settings) {
   settings.chatCommands.tournamentStart.prefix ||= "!";
   settings.chatCommands.tournamentStart.command ||= "turnierstart";
   settings.chatCommands.tournamentStart.helpText ||= pickDefault(settings.language, "helpTournamentStart");
+  // Global (not per-user) cooldown so chat can't immediately re-spam a new signup right after
+  // the previous tournament ends - see IsGlobalCommandOnCooldown server-side.
+  settings.chatCommands.tournamentStart.cooldownSeconds = Number(settings.chatCommands.tournamentStart.cooldownSeconds) >= 0 ? Number(settings.chatCommands.tournamentStart.cooldownSeconds) : 0;
+  settings.chatCommands.tournamentStart.cooldownMessage ||= pickDefault(settings.language, "packCooldown");
+
+  settings.chatCommands.teamBattleJoin ||= {};
+  settings.chatCommands.teamBattleJoin.enabled = settings.chatCommands.teamBattleJoin.enabled !== false;
+  settings.chatCommands.teamBattleJoin.prefix ||= "!";
+  settings.chatCommands.teamBattleJoin.command ||= "teamkampf";
+  settings.chatCommands.teamBattleJoin.helpText ||= pickDefault(settings.language, "helpTeamBattleJoin");
+
+  settings.chatCommands.teamBattleStart ||= {};
+  settings.chatCommands.teamBattleStart.enabled = settings.chatCommands.teamBattleStart.enabled !== false;
+  settings.chatCommands.teamBattleStart.prefix ||= "!";
+  settings.chatCommands.teamBattleStart.command ||= "teamkampfstart";
+  settings.chatCommands.teamBattleStart.helpText ||= pickDefault(settings.language, "helpTeamBattleStart");
+  settings.chatCommands.teamBattleStart.cooldownSeconds = Number(settings.chatCommands.teamBattleStart.cooldownSeconds) >= 0 ? Number(settings.chatCommands.teamBattleStart.cooldownSeconds) : 0;
+  settings.chatCommands.teamBattleStart.cooldownMessage ||= pickDefault(settings.language, "packCooldown");
 
   // Automatic "which commands are available" chat message - see CheckAutoHelp (server-side) for
   // the trigger logic (fires after N minutes and/or N chat messages, whichever comes first).

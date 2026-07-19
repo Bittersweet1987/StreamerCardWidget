@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.8";
+} from "./api.js?v=2.12.9";
 import {
   applyTheme,
   autoImagePosition,
@@ -68,7 +68,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.8";
+} from "./render.js?v=2.12.9";
 
 let settings;
 let selectedCardId;
@@ -164,8 +164,8 @@ async function syncCommunityCounts(force) {
     // Anonymous, best-effort - never surface this to the user.
   }
 }
-const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions channel:read:subscriptions bits:read user:read:chat user:write:chat";
-const TWITCH_BOT_SCOPES = "user:read:chat user:write:chat";
+const TWITCH_REQUIRED_SCOPES = "channel:read:redemptions channel:manage:redemptions channel:read:subscriptions bits:read user:read:chat user:write:chat user:manage:whispers";
+const TWITCH_BOT_SCOPES = "user:read:chat user:write:chat user:manage:whispers";
 
 const I18N = {
   "nav-overview": { de: "Übersicht", en: "Overview",
@@ -546,6 +546,18 @@ const I18N = {
     es: "Define con qué comandos de chat los espectadores pueden abrir un sobre o mostrar su colección. Cada comando se puede activar por separado.",
     th: "กำหนดคำสั่งแชทที่ให้ผู้ชมเปิดแพ็กหรือแสดงคอลเลกชันของตน แต่ละคำสั่งเปิดใช้งานแยกกันได้"
   },
+  "label-rarity-language": { de: "Sprache für [Seltenheit]", en: "Language for [Seltenheit]",
+    fr: "Langue pour [Seltenheit]",
+    es: "Idioma para [Seltenheit]",
+    th: "ภาษาสำหรับ [Seltenheit]"
+  },
+  "hint-rarity-language": {
+    de: "Gilt für die Chat-Variable [Seltenheit] überall (Ziehungs-Nachrichten, !dustset, !dustall) - unabhängig von der Admin-Oberflächen-Sprache oben.",
+    en: "Applies to the [Seltenheit] chat variable everywhere (draw messages, !dustset, !dustall) - independent of the admin UI language above.",
+    fr: "S'applique à la variable de chat [Seltenheit] partout (messages de tirage, !dustset, !dustall) - indépendamment de la langue de l'interface d'administration ci-dessus.",
+    es: "Se aplica a la variable de chat [Seltenheit] en todas partes (mensajes de tirada, !dustset, !dustall) - independiente del idioma de la interfaz de administración de arriba.",
+    th: "ใช้กับตัวแปรแชท [Seltenheit] ทุกที่ (ข้อความการสุ่ม, !dustset, !dustall) - ไม่ขึ้นกับภาษาของหน้าผู้ดูแลระบบด้านบน"
+  },
   "cc-group-command": { de: "Befehl", en: "Command",
     fr: "Commande",
     es: "Comando",
@@ -839,6 +851,28 @@ const I18N = {
     es: "Listar también los nombres de cartas en el chat",
     th: "แสดงรายชื่อการ์ดในแชทด้วย"
   },
+  "label-cc-collection-outputmode": { de: "Versandart", en: "Delivery",
+    fr: "Mode d'envoi",
+    es: "Modo de envío",
+    th: "วิธีการส่ง"
+  },
+  "option-cc-outputmode-chat": { de: "Öffentlich im Chat", en: "Publicly in chat",
+    fr: "Publiquement dans le chat",
+    es: "Públicamente en el chat",
+    th: "แสดงในแชทสาธารณะ"
+  },
+  "option-cc-outputmode-whisper": { de: "Als Flüster-Nachricht (privat)", en: "As a whisper (private)",
+    fr: "En message privé (chuchotement)",
+    es: "Como susurro (privado)",
+    th: "แบบข้อความกระซิบ (ส่วนตัว)"
+  },
+  "hint-cc-collection-outputmode": {
+    de: "Flüster-Nachrichten benötigen die Berechtigung \"user:manage:whispers\" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).",
+    en: "Whispers need the \"user:manage:whispers\" permission - if the app was updated from an older version, reconnect the main or bot account once under Connection. Twitch also only allows whispers to accounts that accept them (e.g. not complete strangers, depending on the recipient's Twitch settings).",
+    fr: "Les chuchotements nécessitent l'autorisation \"user:manage:whispers\" – si l'app a été mise à jour depuis une version plus ancienne, reconnecte une fois le compte principal ou bot sous Connexion. Twitch n'autorise en outre les chuchotements que vers des comptes qui les acceptent (pas de parfaits inconnus selon les réglages Twitch du destinataire).",
+    es: "Los susurros requieren el permiso \"user:manage:whispers\" – si la app se actualizó desde una versión anterior, reconecta una vez la cuenta principal o de bot en Conexión. Twitch además solo permite susurros a cuentas que los aceptan (no completos desconocidos, según los ajustes de Twitch del destinatario).",
+    th: "ข้อความกระซิบต้องมีสิทธิ์ \"user:manage:whispers\" – หากแอปอัปเดตจากเวอร์ชันเก่า ให้เชื่อมต่อบัญชีหลักหรือบอทใหม่อีกครั้งที่การเชื่อมต่อ นอกจากนี้ Twitch อนุญาตข้อความกระซิบเฉพาะไปยังบัญชีที่ยอมรับเท่านั้น (ไม่ใช่คนแปลกหน้าทั้งหมด ขึ้นอยู่กับการตั้งค่า Twitch ของผู้รับ)"
+  },
   "label-cc-cards-header": { de: "Einleitung vor der Kartenliste", en: "Intro before the card list",
     fr: "Intro avant la liste de cartes",
     es: "Intro antes de la lista de cartas",
@@ -848,6 +882,33 @@ const I18N = {
     fr: "Message quand l'utilisateur ne possède aucune carte",
     es: "Mensaje cuando el usuario no posee cartas",
     th: "ข้อความเมื่อผู้ใช้ไม่มีการ์ดเลย"
+  },
+  "cc-packs-title": { de: "Booster-Übersicht-Befehl", en: "Booster overview command",
+    fr: "Commande de liste des boosters",
+    es: "Comando de listado de sobres",
+    th: "คำสั่งแสดงรายการบูสเตอร์"
+  },
+  "cc-packs-hint": {
+    de: "Listet alle aktuell verfügbaren Booster im Chat auf, jeweils als \"Titel Untertitel\" mit tatsächlicher Ziehchance dahinter (identisch berechnet wie beim echten Ziehen). Sub-exklusive Booster werden ebenfalls aufgeführt, aber mit dem Hinweis \"Sub Only\" statt einer Prozentzahl, da sie nicht über !pack/Kanalpunkte erreichbar sind.",
+    en: "Lists every currently available booster in chat, each as \"Title Subtitle\" followed by its actual draw chance (calculated exactly like a real draw). Sub-exclusive boosters are listed too, but with a \"Sub Only\" note instead of a percentage, since they aren't reachable via !pack/channel points.",
+    fr: "Liste tous les boosters actuellement disponibles dans le chat, chacun sous la forme « Titre Sous-titre » suivi de sa chance de tirage réelle (calculée exactement comme un vrai tirage). Les boosters sub-exclusifs sont aussi listés, mais avec la mention « Sub Only » au lieu d'un pourcentage, car ils ne sont pas accessibles via !pack/points de chaîne.",
+    es: "Lista todos los sobres actualmente disponibles en el chat, cada uno como \"Título Subtítulo\" seguido de su probabilidad de tirada real (calculada igual que en una tirada real). Los sobres exclusivos para subs también se listan, pero con la nota \"Sub Only\" en vez de un porcentaje, ya que no son accesibles vía !pack/puntos de canal.",
+    th: "แสดงรายการบูสเตอร์ที่ใช้งานได้ทั้งหมดในแชท แต่ละรายการเป็น \"ชื่อ คำบรรยาย\" ตามด้วยโอกาสสุ่มจริง (คำนวณเหมือนการสุ่มจริง) บูสเตอร์เฉพาะซับก็จะแสดงด้วยเช่นกัน แต่จะมีข้อความ \"Sub Only\" แทนเปอร์เซ็นต์ เนื่องจากไม่สามารถเข้าถึงผ่าน !pack/แชนแนลพอยท์ได้"
+  },
+  "label-cc-packs-header": { de: "Einleitung vor der Liste", en: "Intro before the list",
+    fr: "Intro avant la liste",
+    es: "Intro antes de la lista",
+    th: "ข้อความนำก่อนรายการ"
+  },
+  "label-cc-packs-empty": { de: "Nachricht ohne verfügbaren Booster", en: "Message when no booster is available",
+    fr: "Message si aucun booster disponible",
+    es: "Mensaje sin sobres disponibles",
+    th: "ข้อความเมื่อไม่มีบูสเตอร์ที่ใช้งานได้"
+  },
+  "label-cc-packs-subonly": { de: "Hinweistext für Sub-exklusive Booster", en: "Note for sub-exclusive boosters",
+    fr: "Mention pour les boosters sub-exclusifs",
+    es: "Nota para sobres exclusivos de subs",
+    th: "ข้อความสำหรับบูสเตอร์เฉพาะซับ"
   },
   "label-cc-prefix": { de: "Präfix", en: "Prefix",
     fr: "Préfixe",
@@ -1768,6 +1829,14 @@ const I18N = {
     es: "Tiradas hasta la rareza garantizada / crédito acumulado por !dust",
     th: "จำนวนครั้งจนถึงการันตี / เครดิตที่สะสมจาก !dust"
   },
+  "label-dustall-rarity": { de: "!dustall bis:", en: "!dustall up to:", fr: "!dustall jusqu'à :", es: "!dustall hasta:", th: "!dustall ถึง:" },
+  "hint-dustall-rarity": {
+    de: "Bis zu dieser Seltenheit opfert !dustall bei diesem Viewer automatisch Duplikate (per !dustset selbst eingestellt, Standard: Ungewöhnlich).",
+    en: "Up to this rarity, !dustall automatically sacrifices this viewer's duplicates (set by them via !dustset, default: Uncommon).",
+    fr: "Jusqu'à cette rareté, !dustall sacrifie automatiquement les doublons de ce spectateur (défini par lui via !dustset, par défaut : Peu commune).",
+    es: "Hasta esta rareza, !dustall sacrifica automáticamente los duplicados de este espectador (definido por él con !dustset, predeterminado: Poco común).",
+    th: "!dustall จะสังเวยการ์ดซ้ำของผู้ชมคนนี้โดยอัตโนมัติจนถึงระดับนี้ (ตั้งค่าเองผ่าน !dustset ค่าเริ่มต้น: ไม่ธรรมดา)"
+  },
   "label-bits-banked": { de: "Gespeicherte Bits:", en: "Banked bits:", fr: "Bits en réserve :", es: "Bits acumulados:", th: "บิตที่เก็บสะสม:" },
   "hint-bits-banked": {
     de: "Bits unter der Schwelle für die nächste Kartenziehung, gespeichert bis zum nächsten Cheer",
@@ -2023,11 +2092,28 @@ const I18N = {
   "cc-tournamentstart-eyebrow": { de: "Turnier", en: "Tournament", fr: "Tournoi", es: "Torneo", th: "ทัวร์นาเมนต์" },
   "cc-tournamentstart-title": { de: "Turnier-Start (Chat)", en: "Tournament start (chat)", fr: "Démarrage du tournoi (chat)", es: "Inicio de torneo (chat)", th: "เริ่มทัวร์นาเมนต์ (แชท)" },
   "cc-tournamentstart-hint": {
-    de: "Optionaler Chat-Befehl, um die Turnier-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel.",
-    en: "Optional chat command to start the tournament signup phase - in addition to the channel-point reward and the admin panel's start button.",
-    fr: "Commande de chat optionnelle pour démarrer la phase d'inscription au tournoi - en plus de la récompense de points de chaîne et du bouton de démarrage du panneau d'administration.",
-    es: "Comando de chat opcional para iniciar la fase de inscripción del torneo, además de la recompensa de puntos de canal y el botón de inicio del panel de administración.",
-    th: "คำสั่งแชทเสริมสำหรับเริ่มช่วงสมัครทัวร์นาเมนต์ - นอกเหนือจากรางวัลแชนแนลพอยท์และปุ่มเริ่มในแผงผู้ดูแลระบบ"
+    de: "Optionaler Chat-Befehl, um die Turnier-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel. Nützlich für Nicht-Affiliates/Partner ohne Kanalpunkte.",
+    en: "Optional chat command to start the tournament signup phase - in addition to the channel-point reward and the admin panel's start button. Useful for non-Affiliates/Partners without channel points.",
+    fr: "Commande de chat optionnelle pour démarrer la phase d'inscription au tournoi - en plus de la récompense de points de chaîne et du bouton de démarrage du panneau d'administration. Utile pour les non-Affiliés/Partenaires sans points de chaîne.",
+    es: "Comando de chat opcional para iniciar la fase de inscripción del torneo, además de la recompensa de puntos de canal y el botón de inicio del panel de administración. Útil para no Afiliados/Socios sin puntos de canal.",
+    th: "คำสั่งแชทเสริมสำหรับเริ่มช่วงสมัครทัวร์นาเมนต์ - นอกเหนือจากรางวัลแชนแนลพอยท์และปุ่มเริ่มในแผงผู้ดูแลระบบ เหมาะสำหรับผู้ที่ไม่ใช่ Affiliate/Partner ที่ไม่มีแชนแนลพอยท์"
+  },
+  "cc-teambattlestart-eyebrow": { de: "Team-Kampf", en: "Team battle", fr: "Combat d'équipe", es: "Combate de equipo", th: "การต่อสู้ทีม" },
+  "cc-teambattlestart-title": { de: "Team-Kampf-Start (Chat)", en: "Team battle start (chat)", fr: "Démarrage du combat d'équipe (chat)", es: "Inicio de combate de equipo (chat)", th: "เริ่มการต่อสู้ทีม (แชท)" },
+  "cc-teambattlestart-hint": {
+    de: "Optionaler Chat-Befehl, um die Team-Kampf-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel. Nützlich für Nicht-Affiliates/Partner ohne Kanalpunkte.",
+    en: "Optional chat command to start the team battle signup phase - in addition to the channel-point reward and the admin panel's start button. Useful for non-Affiliates/Partners without channel points.",
+    fr: "Commande de chat optionnelle pour démarrer la phase d'inscription au combat d'équipe - en plus de la récompense de points de chaîne et du bouton de démarrage du panneau d'administration. Utile pour les non-Affiliés/Partenaires sans points de chaîne.",
+    es: "Comando de chat opcional para iniciar la fase de inscripción del combate de equipo, además de la recompensa de puntos de canal y el botón de inicio del panel de administración. Útil para no Afiliados/Socios sin puntos de canal.",
+    th: "คำสั่งแชทเสริมสำหรับเริ่มช่วงสมัครการต่อสู้ทีม - นอกเหนือจากรางวัลแชนแนลพอยท์และปุ่มเริ่มในแผงผู้ดูแลระบบ เหมาะสำหรับผู้ที่ไม่ใช่ Affiliate/Partner ที่ไม่มีแชนแนลพอยท์"
+  },
+  "label-cc-global-cooldown": { de: "Globaler Cooldown (Sek.)", en: "Global cooldown (sec.)", fr: "Cooldown global (sec.)", es: "Cooldown global (seg.)", th: "คูลดาวน์รวม (วินาที)" },
+  "hint-cc-global-cooldown": {
+    de: "Gilt für den Chat-Befehl insgesamt (nicht pro Viewer) - verhindert, dass direkt nach Ende des vorigen Events sofort das nächste gestartet wird. 0 = kein Cooldown.",
+    en: "Applies to the chat command as a whole (not per viewer) - prevents the next event from being started immediately after the previous one ends. 0 = no cooldown.",
+    fr: "S'applique à la commande de chat dans son ensemble (pas par spectateur) - empêche le prochain événement de démarrer immédiatement après la fin du précédent. 0 = pas de cooldown.",
+    es: "Se aplica al comando de chat en su conjunto (no por espectador) - evita que el siguiente evento se inicie inmediatamente después de que termine el anterior. 0 = sin cooldown.",
+    th: "ใช้กับคำสั่งแชททั้งหมด (ไม่ใช่ต่อผู้ชม) - ป้องกันไม่ให้กิจกรรมถัดไปเริ่มทันทีหลังจากกิจกรรมก่อนหน้าจบลง 0 = ไม่มีคูลดาวน์"
   },
   "cc-dust-eyebrow": { de: "Garantie", en: "Pity",
     fr: "Pitié",
@@ -2062,6 +2148,55 @@ const I18N = {
     th: "ข้อความเมื่อการ์ดซ้ำไม่พอ"
   },
   "label-cc-dust-success": { de: "Nachricht bei Erfolg", en: "Message on success",
+    fr: "Message de réussite",
+    es: "Mensaje de éxito",
+    th: "ข้อความเมื่อสำเร็จ"
+  },
+  "cc-dustset-title": { de: "Dust-Auswahl-Befehl", en: "Dust preference command",
+    fr: "Commande de préférence de sacrifice",
+    es: "Comando de preferencia de sacrificio",
+    th: "คำสั่งตั้งค่าการสังเวย"
+  },
+  "cc-dustset-hint": {
+    de: "Nutzt immer das Präfix von !dust (siehe oben) - nur das Befehlswort ist eigenständig. Legt fest, bis zu welcher Seltenheit \"!dustall\" automatisch Duplikate opfert, z.B. \"!dustset legendär\". Die Seltenheit kann in jeder unterstützten Sprache eingegeben werden (de/en/fr/es/th). Standard: Ungewöhnlich (also praktisch deaktiviert, bis der Viewer aktiv eine höhere Seltenheit setzt).",
+    en: "Always uses !dust's prefix (see above) - only the command word is its own. Sets up to which rarity \"!dustall\" automatically sacrifices duplicates, e.g. \"!dustset legendary\". The rarity can be typed in any supported language (de/en/fr/es/th). Default: Uncommon (effectively off until the viewer actively sets a higher rarity).",
+    fr: "Utilise toujours le préfixe de !dust (voir ci-dessus) - seul le mot de commande est propre. Définit jusqu'à quelle rareté \"!dustall\" sacrifie automatiquement les doublons, ex. \"!dustset légendaire\". La rareté peut être saisie dans n'importe quelle langue prise en charge (de/en/fr/es/th). Par défaut : Peu commune (donc pratiquement désactivé tant que le spectateur ne fixe pas activement une rareté plus élevée).",
+    es: "Siempre usa el prefijo de !dust (ver arriba) - solo la palabra de comando es propia. Define hasta qué rareza \"!dustall\" sacrifica duplicados automáticamente, p. ej. \"!dustset legendaria\". La rareza se puede escribir en cualquier idioma compatible (de/en/fr/es/th). Predeterminado: Poco común (prácticamente desactivado hasta que el espectador establezca activamente una rareza mayor).",
+    th: "ใช้คำนำหน้าของ !dust เสมอ (ดูด้านบน) - มีเพียงคำสั่งเท่านั้นที่แยกต่างหาก กำหนดว่า \"!dustall\" จะสังเวยการ์ดซ้ำโดยอัตโนมัติสูงสุดถึงระดับความหายากใด เช่น \"!dustset ตำนาน\" สามารถพิมพ์ระดับความหายากได้ทุกภาษาที่รองรับ (de/en/fr/es/th) ค่าเริ่มต้น: ไม่ธรรมดา (แทบไม่มีผลจนกว่าผู้ชมจะตั้งค่าระดับที่สูงขึ้นเอง)"
+  },
+  "label-cc-dustset-usage": { de: "Nachricht bei fehlender Angabe", en: "Message when no rarity given",
+    fr: "Message si aucune rareté indiquée",
+    es: "Mensaje sin rareza indicada",
+    th: "ข้อความเมื่อไม่ระบุระดับความหายาก"
+  },
+  "label-cc-dustset-invalid": { de: "Nachricht bei unbekannter Seltenheit", en: "Message on unknown rarity",
+    fr: "Message pour rareté inconnue",
+    es: "Mensaje por rareza desconocida",
+    th: "ข้อความเมื่อไม่รู้จักระดับความหายาก"
+  },
+  "label-cc-dustset-success": { de: "Nachricht bei Erfolg", en: "Message on success",
+    fr: "Message de réussite",
+    es: "Mensaje de éxito",
+    th: "ข้อความเมื่อสำเร็จ"
+  },
+  "cc-dustall-title": { de: "Dust-Alle-Befehl", en: "Dust-all command",
+    fr: "Commande de sacrifice total",
+    es: "Comando de sacrificio total",
+    th: "คำสั่งสังเวยทั้งหมด"
+  },
+  "cc-dustall-hint": {
+    de: "Nutzt immer das Präfix von !dust (siehe oben) - nur das Befehlswort ist eigenständig. Opfert automatisch ALLE doppelt besessenen Karten bis zur mit \"!dustset\" gewählten Seltenheit (Standard: Ungewöhnlich) auf einmal - mindestens 1 Exemplar bleibt je Karte immer erhalten.",
+    en: "Always uses !dust's prefix (see above) - only the command word is its own. Automatically sacrifices ALL duplicate cards up to the rarity chosen with \"!dustset\" (default: Uncommon) at once - at least 1 copy of each card is always kept.",
+    fr: "Utilise toujours le préfixe de !dust (voir ci-dessus) - seul le mot de commande est propre. Sacrifie automatiquement TOUS les doublons jusqu'à la rareté choisie avec \"!dustset\" (par défaut : Peu commune) en une fois - au moins 1 exemplaire de chaque carte est toujours conservé.",
+    es: "Siempre usa el prefijo de !dust (ver arriba) - solo la palabra de comando es propia. Sacrifica automáticamente TODOS los duplicados hasta la rareza elegida con \"!dustset\" (predeterminado: Poco común) de una vez - siempre se conserva al menos 1 copia de cada carta.",
+    th: "ใช้คำนำหน้าของ !dust เสมอ (ดูด้านบน) - มีเพียงคำสั่งเท่านั้นที่แยกต่างหาก สังเวยการ์ดซ้ำทั้งหมดโดยอัตโนมัติสูงสุดถึงระดับความหายากที่ตั้งไว้ด้วย \"!dustset\" (ค่าเริ่มต้น: ไม่ธรรมดา) ในครั้งเดียว - จะเหลือการ์ดอย่างน้อย 1 ใบต่อชนิดเสมอ"
+  },
+  "label-cc-dustall-nothing": { de: "Nachricht ohne Duplikate", en: "Message when nothing to dust",
+    fr: "Message si aucun doublon",
+    es: "Mensaje sin duplicados",
+    th: "ข้อความเมื่อไม่มีการ์ดซ้ำ"
+  },
+  "label-cc-dustall-success": { de: "Nachricht bei Erfolg", en: "Message on success",
     fr: "Message de réussite",
     es: "Mensaje de éxito",
     th: "ข้อความเมื่อสำเร็จ"
@@ -5269,6 +5404,11 @@ function renderUsers() {
     const pityHtml = settings.pity?.enabled
       ? `<span class="user-pity-info" title="${t("hint-pity-info")}">${t("label-pity-streak")} ${pityEntry?.streak ?? 0}/${settings.pity.threshold} · ${t("label-pity-bank")} ${pityEntry?.bank ?? 0}</span>`
       : "";
+    // "!dustset" per-viewer preference (see server-side GetDustAllRarity) - always shown,
+    // independent of the pity toggle above, since !dust/!dustall work regardless of settings.pity.
+    const dustAllRarityId = pityEntry?.dustAllRarity || "uncommon";
+    const dustAllRarityLabel = t("rarity-" + dustAllRarityId);
+    const dustAllHtml = `<span class="user-pity-info" title="${t("hint-dustall-rarity")}">${t("label-dustall-rarity")} ${dustAllRarityLabel}</span>`;
     const lowerKey = user.key?.toLowerCase();
     const bankedBits = bitsByLogin[user.key] ?? bitsByLogin[lowerKey];
     const bitsHtml = settings.bits?.enabled && bankedBits != null
@@ -5284,6 +5424,7 @@ function renderUsers() {
           <strong>${escapeHtml(user.displayName)}</strong>
           <span>${total} ${t("unit-cards")}</span>
           ${pityHtml}
+          ${dustAllHtml}
           ${bitsHtml}
           ${statsHtml}
           <button class="danger-button" type="button" data-action="delete-user" data-user="${escapeHtml(user.key)}">${t("btn-delete-user")}</button>
@@ -5558,6 +5699,7 @@ function isQueueTabActive() {
 function hydrateChatCommands() {
   settings.chatCommands ||= {};
   const cc = settings.chatCommands;
+  $("#cc-rarity-language").value = cc.rarityLanguage || "de";
   cc.pack ||= {};
   cc.collection ||= {};
   $("#cc-pack-enabled").checked = cc.pack.enabled !== false;
@@ -5572,9 +5714,18 @@ function hydrateChatCommands() {
   $("#cc-pack-limit-message").value = cc.pack.limitMessage || "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
   $("#cc-pack-cooldown-message").value = cc.pack.cooldownMessage || "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
   $("#cc-pack-helptext").value = cc.pack.helpText || "";
+  cc.packs ||= {};
+  $("#cc-packs-enabled").checked = cc.packs.enabled !== false;
+  $("#cc-packs-prefix").value = cc.packs.prefix || "!";
+  $("#cc-packs-command").value = cc.packs.command || "packs";
+  $("#cc-packs-helptext").value = cc.packs.helpText || "";
+  $("#cc-packs-header-message").value = cc.packs.headerMessage || "";
+  $("#cc-packs-empty-message").value = cc.packs.emptyMessage || "";
+  $("#cc-packs-subonly-label").value = cc.packs.subOnlyLabel || "Sub Only";
   $("#cc-collection-prefix").value = cc.collection.prefix || "!";
   $("#cc-collection-command").value = cc.collection.command || "collection";
   $("#cc-collection-chatoutput-enabled").checked = cc.collection.chatOutputEnabled !== false;
+  $("#cc-collection-outputmode").value = cc.collection.outputMode === "whisper" ? "whisper" : "chat";
   $("#cc-collection-header-message").value = cc.collection.headerMessage || "";
   $("#cc-collection-empty-message").value = cc.collection.emptyMessage || "";
   cc.dust ||= {};
@@ -5586,6 +5737,17 @@ function hydrateChatCommands() {
   $("#cc-dust-notenough-message").value = cc.dust.notEnoughMessage || "";
   $("#cc-dust-success-message").value = cc.dust.successMessage || "";
   $("#cc-dust-helptext").value = cc.dust.helpText || "";
+  cc.dustSet ||= {};
+  $("#cc-dustset-command").value = cc.dustSet.command || "dustset";
+  $("#cc-dustset-helptext").value = cc.dustSet.helpText || "";
+  $("#cc-dustset-usage-message").value = cc.dustSet.usageMessage || "";
+  $("#cc-dustset-invalid-message").value = cc.dustSet.invalidMessage || "";
+  $("#cc-dustset-success-message").value = cc.dustSet.successMessage || "";
+  cc.dustAll ||= {};
+  $("#cc-dustall-command").value = cc.dustAll.command || "dustall";
+  $("#cc-dustall-helptext").value = cc.dustAll.helpText || "";
+  $("#cc-dustall-nothing-message").value = cc.dustAll.nothingMessage || "";
+  $("#cc-dustall-success-message").value = cc.dustAll.successMessage || "";
   cc.gift ||= {};
   $("#cc-gift-enabled").checked = cc.gift.enabled === true;
   $("#cc-gift-prefix").value = cc.gift.prefix || "!";
@@ -5695,6 +5857,16 @@ function hydrateChatCommands() {
   $("#cc-tournamentstart-prefix").value = tournamentStart.prefix || "!";
   $("#cc-tournamentstart-command").value = tournamentStart.command || "turnierstart";
   $("#cc-tournamentstart-helptext").value = tournamentStart.helpText || "";
+  $("#cc-tournamentstart-cooldown").value = tournamentStart.cooldownSeconds ?? 0;
+  $("#cc-tournamentstart-cooldown-message").value = tournamentStart.cooldownMessage || "";
+
+  const teamBattleStart = cc.teamBattleStart || {};
+  $("#cc-teambattlestart-enabled").checked = teamBattleStart.enabled !== false;
+  $("#cc-teambattlestart-prefix").value = teamBattleStart.prefix || "!";
+  $("#cc-teambattlestart-command").value = teamBattleStart.command || "teamkampfstart";
+  $("#cc-teambattlestart-helptext").value = teamBattleStart.helpText || "";
+  $("#cc-teambattlestart-cooldown").value = teamBattleStart.cooldownSeconds ?? 0;
+  $("#cc-teambattlestart-cooldown-message").value = teamBattleStart.cooldownMessage || "";
 
   const autoHelp = settings.autoHelp || {};
   $("#autohelp-enabled").checked = autoHelp.enabled === true;
@@ -5706,6 +5878,7 @@ function hydrateChatCommands() {
 function readChatCommandsFromForm() {
   settings.chatCommands ||= {};
   const cc = settings.chatCommands;
+  cc.rarityLanguage = $("#cc-rarity-language").value || "de";
   cc.pack ||= {};
   cc.collection ||= {};
   cc.enabled = true;
@@ -5721,9 +5894,18 @@ function readChatCommandsFromForm() {
   cc.pack.limitMessage = $("#cc-pack-limit-message").value;
   cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
   cc.pack.helpText = $("#cc-pack-helptext").value;
+  cc.packs ||= {};
+  cc.packs.enabled = $("#cc-packs-enabled").checked;
+  cc.packs.prefix = $("#cc-packs-prefix").value || "!";
+  cc.packs.command = $("#cc-packs-command").value.trim() || "packs";
+  cc.packs.helpText = $("#cc-packs-helptext").value;
+  cc.packs.headerMessage = $("#cc-packs-header-message").value;
+  cc.packs.emptyMessage = $("#cc-packs-empty-message").value;
+  cc.packs.subOnlyLabel = $("#cc-packs-subonly-label").value || "Sub Only";
   cc.collection.prefix = $("#cc-collection-prefix").value || "!";
   cc.collection.command = $("#cc-collection-command").value.trim() || "collection";
   cc.collection.chatOutputEnabled = $("#cc-collection-chatoutput-enabled").checked;
+  cc.collection.outputMode = $("#cc-collection-outputmode").value === "whisper" ? "whisper" : "chat";
   cc.collection.headerMessage = $("#cc-collection-header-message").value;
   cc.collection.emptyMessage = $("#cc-collection-empty-message").value;
   cc.collection.helpText = $("#cc-collection-helptext").value;
@@ -5737,6 +5919,19 @@ function readChatCommandsFromForm() {
   cc.dust.notEnoughMessage = $("#cc-dust-notenough-message").value;
   cc.dust.successMessage = $("#cc-dust-success-message").value;
   cc.dust.helpText = $("#cc-dust-helptext").value;
+
+  cc.dustSet ||= {};
+  cc.dustSet.command = $("#cc-dustset-command").value.trim() || "dustset";
+  cc.dustSet.helpText = $("#cc-dustset-helptext").value;
+  cc.dustSet.usageMessage = $("#cc-dustset-usage-message").value;
+  cc.dustSet.invalidMessage = $("#cc-dustset-invalid-message").value;
+  cc.dustSet.successMessage = $("#cc-dustset-success-message").value;
+
+  cc.dustAll ||= {};
+  cc.dustAll.command = $("#cc-dustall-command").value.trim() || "dustall";
+  cc.dustAll.helpText = $("#cc-dustall-helptext").value;
+  cc.dustAll.nothingMessage = $("#cc-dustall-nothing-message").value;
+  cc.dustAll.successMessage = $("#cc-dustall-success-message").value;
 
   cc.gift ||= {};
   cc.gift.enabled = $("#cc-gift-enabled").checked;
@@ -5842,6 +6037,16 @@ function readChatCommandsFromForm() {
   cc.tournamentStart.prefix = $("#cc-tournamentstart-prefix").value || "!";
   cc.tournamentStart.command = $("#cc-tournamentstart-command").value.trim() || "turnierstart";
   cc.tournamentStart.helpText = $("#cc-tournamentstart-helptext").value;
+  cc.tournamentStart.cooldownSeconds = Number($("#cc-tournamentstart-cooldown").value || 0);
+  cc.tournamentStart.cooldownMessage = $("#cc-tournamentstart-cooldown-message").value;
+
+  cc.teamBattleStart ||= {};
+  cc.teamBattleStart.enabled = $("#cc-teambattlestart-enabled").checked;
+  cc.teamBattleStart.prefix = $("#cc-teambattlestart-prefix").value || "!";
+  cc.teamBattleStart.command = $("#cc-teambattlestart-command").value.trim() || "teamkampfstart";
+  cc.teamBattleStart.helpText = $("#cc-teambattlestart-helptext").value;
+  cc.teamBattleStart.cooldownSeconds = Number($("#cc-teambattlestart-cooldown").value || 0);
+  cc.teamBattleStart.cooldownMessage = $("#cc-teambattlestart-cooldown-message").value;
 
   settings.autoHelp ||= {};
   settings.autoHelp.enabled = $("#autohelp-enabled").checked;

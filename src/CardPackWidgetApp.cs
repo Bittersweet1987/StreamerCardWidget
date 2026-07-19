@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.8";
+        public const string Version = "2.12.9";
         public const string ReleaseDate = "2026-07-19";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -1759,6 +1759,11 @@ namespace CardPackWidgetApp
             "common", "uncommon", "rare", "epic", "legendary", "holo"
         };
 
+        internal static bool KnownRarityId(string rarity)
+        {
+            return !String.IsNullOrEmpty(rarity) && KnownRarityIds.Contains(rarity);
+        }
+
         // Normalizes a rarity value (English id or German label) to its canonical English id.
         // Mirrors TwitchBridge.NormalizeRarityId; kept as a separate copy since that one is
         // private to TwitchBridge and this needs to be usable from CardPackServer.
@@ -2346,6 +2351,71 @@ namespace CardPackWidgetApp
             }
         }
 
+        // Bulk version of RemoveCardCopies for "!dustall" - dusts EVERY duplicate (keeping exactly
+        // 1) of every card type the viewer owns whose rarity rank is STRICTLY BELOW maxRarityRank
+        // (see TwitchBridge.GetRarityRank / the dustAllRarity per-user setting), in one single
+        // collections.json read+write instead of one file round-trip per card type (see CLAUDE.md's
+        // "Batch-Loading statt Pro-Item-Reads" - this can otherwise touch dozens of card types).
+        // Returns one entry per card type that was actually reduced.
+        internal List<Dictionary<string, string>> DustAllDuplicates(string login, string displayName, int maxRarityRank)
+        {
+            var result = new List<Dictionary<string, string>>();
+            string key = NormalizeUser(login).ToLowerInvariant();
+            lock (collectionWriteLock)
+            {
+                Dictionary<string, object> collections = ParseObject(ReadFile(CollectionsPath(), "{}"));
+                Dictionary<string, object> settings = ReadSettingsObject();
+                object[] cardsArr = SettingsCards(settings);
+                var cardInfoById = new Dictionary<string, Dictionary<string, string>>();
+                foreach (object co in cardsArr)
+                {
+                    Dictionary<string, object> card = co as Dictionary<string, object>;
+                    if (card == null) continue;
+                    string id = GetString(card, "id", "");
+                    if (String.IsNullOrEmpty(id)) continue;
+                    cardInfoById[id] = new Dictionary<string, string> { { "title", GetString(card, "title", id) }, { "rarity", GetString(card, "rarity", "common") } };
+                }
+
+                bool changed = false;
+                foreach (KeyValuePair<string, object> kv in collections)
+                {
+                    Dictionary<string, object> booster = kv.Value as Dictionary<string, object>;
+                    if (booster == null) continue;
+                    object usersObj;
+                    if (!booster.TryGetValue("users", out usersObj) || !(usersObj is Dictionary<string, object>)) continue;
+                    object uObj;
+                    if (!((Dictionary<string, object>)usersObj).TryGetValue(key, out uObj) || !(uObj is Dictionary<string, object>)) continue;
+                    object cObj;
+                    if (!((Dictionary<string, object>)uObj).TryGetValue("cards", out cObj) || !(cObj is Dictionary<string, object>)) continue;
+                    Dictionary<string, object> cards = (Dictionary<string, object>)cObj;
+                    foreach (string cardId in new List<string>(cards.Keys))
+                    {
+                        int count = CardCount(cards, cardId);
+                        if (count < 2) continue;
+                        string cardTitle = cardId;
+                        string rarity = "common";
+                        Dictionary<string, string> info;
+                        if (cardInfoById.TryGetValue(cardId, out info)) { cardTitle = info["title"]; rarity = info["rarity"]; }
+                        if (GetRarityRank(rarity) >= maxRarityRank) continue;
+                        int removed = count - 1;
+                        SetCount(cards, cardId, 1);
+                        changed = true;
+                        result.Add(new Dictionary<string, string>
+                        {
+                            { "boosterId", kv.Key }, { "cardId", cardId }, { "cardTitle", cardTitle },
+                            { "rarity", rarity }, { "removedCount", removed.ToString() }
+                        });
+                    }
+                }
+                if (changed)
+                {
+                    File.WriteAllText(CollectionsPath(), json.Serialize(collections), Encoding.UTF8);
+                    Broadcast("collections", "{\"updated\":true}");
+                }
+                return result;
+            }
+        }
+
         // Removes "count" copies of a card from a viewer's collection (used by "!dust") - always
         // keeps at least 1 copy; returns false without changing anything if the viewer doesn't
         // have enough duplicates to spare.
@@ -2923,6 +2993,28 @@ namespace CardPackWidgetApp
             }
         }
 
+        // "!dustset" per-viewer preference: up to which rarity "!dustall" is allowed to auto-dust
+        // duplicates. Stored alongside the streak/bank in the same pity.json entry (it's pity-
+        // adjacent state, not worth a separate data file for). Default "uncommon" means "!dustall"
+        // only ever touches common duplicates until the viewer actively raises it - effectively a
+        // no-op default, so nobody loses cards to auto-dust without opting in first.
+        private string GetDustAllRarity(string login)
+        {
+            Dictionary<string, object> entry = GetPityEntry(login);
+            string rarity = GetString(entry, "dustAllRarity", "uncommon");
+            return CardPackServer.KnownRarityId(rarity) ? rarity : "uncommon";
+        }
+
+        private void SetDustAllRarity(string login, string rarityId)
+        {
+            lock (pityLock)
+            {
+                Dictionary<string, object> entry = GetPityEntry(login);
+                entry["dustAllRarity"] = rarityId;
+                SavePityEntry(login, entry);
+            }
+        }
+
         // ---- Community goal: a shared progress bar across every viewer's draws (any trigger).
         // Persisted separately from settings.json since it's runtime state, not configuration -
         // "enabled"/"target"/messages/source name live in settings.communityGoal instead.
@@ -3160,6 +3252,11 @@ namespace CardPackWidgetApp
         private const string DefaultDustCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
         private const string DefaultDustNotEnough = "@userName, du hast nicht genug Duplikate von [Kartenname] (du besitzt [Besitz], mindestens 1 muss dir erhalten bleiben).";
         private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.";
+        private const string DefaultDustSetUsage = "@userName, Nutzung: !dustset <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit !dustall automatisch Duplikate opfert.";
+        private const string DefaultDustSetInvalid = "@userName, \"[Eingabe]\" ist keine bekannte Seltenheit. Gültig: Gewöhnlich, Ungewöhnlich, Selten, Episch, Legendär, Holo.";
+        private const string DefaultDustSetSuccess = "@userName, !dustall opfert ab jetzt automatisch alle Duplikate bis einschließlich [Seltenheit].";
+        private const string DefaultDustAllNothing = "@userName, du hast aktuell keine Duplikate unterhalb von [Seltenheit] zum Opfern.";
+        private const string DefaultDustAllSuccess = "@userName hat [Gesamtanzahl] doppelte Karten geopfert ([Aufschluesselung]), +[Punkte] Garantie-Punkte. Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.";
 
         private const string DefaultGiftUsage = "@userName, Nutzung: !gift @userNameB <Kartenname>";
         private const string DefaultGiftUserNotFound = "@userName, den Nutzer [Nutzer] kennt die Sammlung noch nicht.";
@@ -3209,6 +3306,9 @@ namespace CardPackWidgetApp
 
         private const string DefaultCardsEmpty = "@userName, du besitzt noch keine Karten.";
         private const string DefaultCardsHeader = "@userName, deine Karten:";
+        private const string DefaultPacksHeader = "@userName, verfügbare Booster:";
+        private const string DefaultPacksEmpty = "@userName, aktuell ist kein Booster verfügbar.";
+        private const string DefaultPacksSubOnlyLabel = "Sub Only";
 
         private const double DefaultBattleVariance = 0.6;
 
@@ -3830,6 +3930,76 @@ namespace CardPackWidgetApp
             return GetString(pool[pool.Count - 1], "id", "");
         }
 
+        // ---- "!packs" - lists every currently available booster (title + subtitle as one
+        // continuous name, same convention as the draw chat message) together with its actual
+        // draw probability - mirrors PickRandomBoosterId(subOnly:false)'s exact eligibility and
+        // score-weighting so the percentages shown always match real draw odds. Sub-exclusive
+        // boosters are listed too (they're real and available, just not via !pack/Kanalpunkte) but
+        // marked with a configurable "(Sub Only)" label instead of a percentage, since they aren't
+        // part of the normal weighted pool at all. ----
+        private static string BoosterDisplayName(Dictionary<string, object> booster)
+        {
+            string title = GetString(booster, "title", "Booster");
+            string subtitle = GetString(booster, "subtitle", "");
+            return String.IsNullOrEmpty(subtitle) ? title : title + " " + subtitle;
+        }
+
+        private void HandlePacksCommand(string login, string displayName, Dictionary<string, object> packsCfg)
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            object boostersObj;
+            var normalPool = new List<Dictionary<string, object>>();
+            var subOnlyList = new List<Dictionary<string, object>>();
+            if (settings.TryGetValue("boosters", out boostersObj) && boostersObj is object[])
+            {
+                foreach (object bo in (object[])boostersObj)
+                {
+                    Dictionary<string, object> booster = bo as Dictionary<string, object>;
+                    if (booster == null) continue;
+                    if (!GetBool(booster, "enabled", true)) continue;
+                    object[] cardIds = booster.ContainsKey("cardIds") && booster["cardIds"] is object[] ? (object[])booster["cardIds"] : new object[0];
+                    if (cardIds.Length == 0) continue;
+                    if (!BoosterHasEnabledCard(settings, cardIds)) continue;
+                    if (GetBool(booster, "subExclusive", false)) subOnlyList.Add(booster);
+                    else normalPool.Add(booster);
+                }
+            }
+
+            if (normalPool.Count == 0 && subOnlyList.Count == 0)
+            {
+                SendChatMessageSafe(GetString(packsCfg, "emptyMessage", DefaultPacksEmpty).Replace("@userName", "@" + displayName));
+                return;
+            }
+
+            // Same weighting as PickRandomBoosterId(subOnly:false): boosters with score <= 0 are
+            // excluded from the weighted pool unless ALL of them are <= 0 (even-split fallback).
+            var scored = new List<Dictionary<string, object>>();
+            foreach (Dictionary<string, object> booster in normalPool)
+            {
+                if (GetDouble(booster, "score", 100) > 0) scored.Add(booster);
+            }
+            List<Dictionary<string, object>> pool = scored.Count > 0 ? scored : normalPool;
+            double total = 0;
+            foreach (Dictionary<string, object> booster in pool) total += Math.Max(0, GetDouble(booster, "score", 100));
+
+            var names = new List<string>();
+            foreach (Dictionary<string, object> booster in normalPool)
+            {
+                double score = Math.Max(0, GetDouble(booster, "score", 100));
+                double odd = total > 0 ? score / total * 100 : (pool.Count > 0 ? 100.0 / pool.Count : 0);
+                string pct = odd > 0 && odd < 1 ? "<1" : Math.Round(odd).ToString();
+                names.Add(BoosterDisplayName(booster) + " · " + pct + "%");
+            }
+            string subOnlyLabel = GetString(packsCfg, "subOnlyLabel", DefaultPacksSubOnlyLabel);
+            foreach (Dictionary<string, object> booster in subOnlyList)
+            {
+                names.Add(BoosterDisplayName(booster) + " (" + subOnlyLabel + ")");
+            }
+
+            string header = GetString(packsCfg, "headerMessage", DefaultPacksHeader).Replace("@userName", "@" + displayName);
+            SendCardListChunked(login, "chat", header, names);
+        }
+
         private static readonly Dictionary<string, double> DefaultRarityWeights = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
         {
             { "common", 100 }, { "uncommon", 60 }, { "rare", 30 }, { "epic", 12 }, { "legendary", 4 }, { "holo", 1 }
@@ -4162,12 +4332,32 @@ namespace CardPackWidgetApp
             // the overlay-reported ones are only a fallback for older cached overlays.
             string cardT = GetString(item, "cardTitle", "");
             if (String.IsNullOrEmpty(cardT)) cardT = cardTitle ?? "";
+            // The card's subtitle (if any) is appended directly after the name so [Kartenname]
+            // reads as one continuous phrase ("Titel Untertitel") instead of the subtitle needing
+            // its own separate chat variable/placement.
+            string cardSubtitle = GetString(item, "cardSubtitle", "");
+            if (!String.IsNullOrEmpty(cardSubtitle)) cardT = cardT + " " + cardSubtitle;
             string boosterT = GetString(item, "boosterTitle", "");
             if (String.IsNullOrEmpty(boosterT)) boosterT = boosterTitle ?? "";
+            // Count is read AFTER the overlay's own /api/collection persist call (it awaits that
+            // before ever calling /api/queue/announce, which is what triggers this), so it already
+            // reflects this draw - no off-by-one workaround needed here.
+            string login = GetString(item, "userLogin", "");
+            string cardId = GetString(item, "cardId", "");
+            string boosterId = GetString(item, "boosterId", "");
+            string count = "";
+            if (!String.IsNullOrEmpty(login) && !String.IsNullOrEmpty(cardId) && !String.IsNullOrEmpty(boosterId))
+            {
+                count = server.GetCardCount(login, boosterId, cardId).ToString();
+            }
+            string rarityLang = GetString(Obj(settings, "chatCommands"), "rarityLanguage", "de");
+            string rarityLabel = String.IsNullOrEmpty(cardId) ? "" : RarityLabel(server.CardRarity(cardId), rarityLang);
             string msg = template
                 .Replace("@userName", "@" + user)
                 .Replace("[Kartenname]", cardT)
-                .Replace("[Boostername]", boosterT);
+                .Replace("[Boostername]", boosterT)
+                .Replace("[Besitz]", count)
+                .Replace("[Seltenheit]", rarityLabel);
             SendChatMessageSafe(msg);
         }
 
@@ -4708,9 +4898,13 @@ namespace CardPackWidgetApp
 
                 string cardId = card != null ? GetString(card, "id", "") : "";
                 string cardTitle = card != null ? GetString(card, "title", "") : "";
+                string cardSubtitle = card != null ? GetString(card, "subtitle", "") : "";
                 string boosterTitle = booster != null ? GetString(booster, "title", "") : "";
                 item["cardTitle"] = cardTitle;
+                item["cardSubtitle"] = cardSubtitle;
                 item["boosterTitle"] = boosterTitle;
+                item["cardId"] = cardId;
+                item["boosterId"] = boosterId;
                 server.Log("draw", "info", user + " hat \"" + cardTitle + "\" aus \"" + boosterTitle + "\" gezogen.");
                 var drawEvent = new Dictionary<string, object>
                 {
@@ -4817,10 +5011,15 @@ namespace CardPackWidgetApp
             // depends on which account reads chat and whether any command is active at all.
             bool anyEnabled =
                 GetBool(Obj(cc, "pack"), "enabled", true) ||
+                GetBool(Obj(cc, "packs"), "enabled", true) ||
                 GetBool(Obj(cc, "collection"), "enabled", true) ||
                 GetBool(Obj(cc, "trade"), "enabled", true) ||
                 GetBool(Obj(cc, "tradeyes"), "enabled", true) ||
-                GetBool(Obj(cc, "tradeno"), "enabled", true);
+                GetBool(Obj(cc, "tradeno"), "enabled", true) ||
+                GetBool(Obj(cc, "tournamentStart"), "enabled", true) ||
+                GetBool(Obj(cc, "tournamentJoin"), "enabled", true) ||
+                GetBool(Obj(cc, "teamBattleStart"), "enabled", true) ||
+                GetBool(Obj(cc, "teamBattleJoin"), "enabled", true);
 
             Dictionary<string, object> chat = ChatCredential();
             string token = GetString(chat, "accessToken", "");
@@ -4938,7 +5137,20 @@ namespace CardPackWidgetApp
                 } while (!result.EndOfMessage);
 
                 string text = Encoding.UTF8.GetString(bytes.ToArray());
-                HandleChatEventSubMessage(text);
+                // Dispatched onto a background thread instead of awaited inline: this loop must
+                // get back to ReceiveAsync immediately so the NEXT frame is read right away.
+                // HandleChatEventSubMessage does synchronous work (full settings.json parse,
+                // Twitch API calls for chat replies/avatar lookups) that can easily take a few
+                // hundred ms; awaiting it here meant Twitch could queue up several more chat
+                // messages behind it before this loop ever looked at them again - the actual
+                // cause of chat commands (including !turnier/!teamkampf/!dust, which don't touch
+                // the draw queue at all) seeming to "miss" messages or react late.
+                string dispatchedText = text;
+                Task.Factory.StartNew(delegate
+                {
+                    try { HandleChatEventSubMessage(dispatchedText); }
+                    catch (Exception ex) { server.Log("twitch", "error", "Chat-Nachricht-Verarbeitung fehlgeschlagen: " + ex.Message); }
+                });
             }
         }
 
@@ -5032,13 +5244,17 @@ namespace CardPackWidgetApp
         }
 
         // Part of !collection's chat output (alongside the overlay showcase) - lists every card
-        // the caller owns as plain text, split across multiple messages if needed.
+        // the caller owns as plain text, split across multiple messages if needed. Whether that
+        // list goes to public chat or as a whisper (private message) to the redeemer/caller is
+        // configurable per settings.chatCommands.collection.outputMode ("chat"/"whisper") -
+        // purely a display preference, doesn't change what's counted/rewarded.
         private void HandleCardsCommand(string login, string displayName, Dictionary<string, object> collectionCfg)
         {
+            string mode = GetString(collectionCfg, "outputMode", "chat");
             List<Dictionary<string, string>> owned = server.GetUserOwnedCardsWithInfo(login);
             if (owned.Count == 0)
             {
-                SendChatMessageSafe(GetString(collectionCfg, "emptyMessage", DefaultCardsEmpty).Replace("@userName", "@" + displayName));
+                SendCollectionOutput(login, mode, GetString(collectionCfg, "emptyMessage", DefaultCardsEmpty).Replace("@userName", "@" + displayName));
                 return;
             }
 
@@ -5058,12 +5274,13 @@ namespace CardPackWidgetApp
             foreach (KeyValuePair<string, string> entry in entries) names.Add(entry.Value);
 
             string header = GetString(collectionCfg, "headerMessage", DefaultCardsHeader).Replace("@userName", "@" + displayName);
-            SendCardListChunked(header, names);
+            SendCardListChunked(login, mode, header, names);
         }
 
-        // Splits the (potentially long) card name list into multiple chat messages that each
-        // stay under Twitch's length limit, numbering them "(1/3)" etc. when there's more than one.
-        private void SendCardListChunked(string header, List<string> names)
+        // Splits the (potentially long) card name list into multiple chat/whisper messages that
+        // each stay under Twitch's length limit, numbering them "(1/3)" etc. when there's more
+        // than one.
+        private void SendCardListChunked(string login, string mode, string header, List<string> names)
         {
             int budget = Math.Max(50, MaxChatMessageLength - header.Length - 12);
             var chunks = new List<string>();
@@ -5097,7 +5314,7 @@ namespace CardPackWidgetApp
                         if (i > 0) Thread.Sleep(1500);
                         string prefix = chunks.Count > 1 ? header + " (" + (i + 1) + "/" + chunks.Count + ") " : header + " ";
                         server.Log("draw", "info", "SendCardListChunked: sende Teil " + (i + 1) + "/" + chunks.Count + ".");
-                        SendChatMessageSafe(prefix + chunks[i]);
+                        SendCollectionOutput(login, mode, prefix + chunks[i]);
                     }
                 }
                 catch (Exception ex)
@@ -5105,6 +5322,15 @@ namespace CardPackWidgetApp
                     server.Log("draw", "error", "SendCardListChunked-Hintergrundtask fehlgeschlagen: " + ex.Message);
                 }
             });
+        }
+
+        // Routes !collection's output to either public chat or a whisper (private message) to
+        // the caller, per settings.chatCommands.collection.outputMode - a display preference only,
+        // independent from whatever queued/triggered the collection listing in the first place.
+        private void SendCollectionOutput(string login, string mode, string message)
+        {
+            if (String.Equals(mode, "whisper", StringComparison.OrdinalIgnoreCase)) SendWhisperMessageSafe(login, message);
+            else SendChatMessageSafe(message);
         }
 
         private void SendChatMessageSafe(string message)
@@ -5142,6 +5368,49 @@ namespace CardPackWidgetApp
                     server.Log("twitch", "warn", "Chat-Nachricht von Twitch verworfen (" + reason.Trim() + "): " + (message.Length > 80 ? message.Substring(0, 80) + "..." : message));
                 }
             }
+        }
+
+        private void SendWhisperMessageSafe(string login, string message)
+        {
+            try { SendWhisperMessage(login, message); }
+            catch (Exception ex) { server.Log("twitch", "error", "Fluester-Nachricht konnte nicht gesendet werden: " + ex.Message); }
+        }
+
+        // Resolves the recipient's user id on demand (whispers address by id, chat commands only
+        // carry the login) and sends via Helix's whisper endpoint. Requires "user:manage:whispers"
+        // on whichever account ChatCredential() resolves to (bot if connected, else the main
+        // account) - an older connection made before this scope existed needs a one-time
+        // reconnect under Verbindung, same as the earlier bits:read case.
+        private void SendWhisperMessage(string login, string message)
+        {
+            if (String.IsNullOrWhiteSpace(message) || String.IsNullOrWhiteSpace(login)) return;
+            Dictionary<string, object> chat = ChatCredential();
+            string fromId = GetString(chat, "broadcasterId", "");
+            string clientId = GetString(chat, "clientId", "");
+            string token = GetString(chat, "accessToken", "");
+            if (String.IsNullOrWhiteSpace(token) || String.IsNullOrWhiteSpace(fromId)) return;
+            string toId = GetTwitchUserId(login, clientId, token);
+            if (String.IsNullOrWhiteSpace(toId))
+            {
+                server.Log("twitch", "warn", "Fluester-Nachricht: Twitch-User-ID fuer '" + login + "' nicht gefunden.");
+                return;
+            }
+            if (toId == fromId) return; // Twitch rejects whispering yourself.
+            var body = new Dictionary<string, object> { { "message", message } };
+            string url = "https://api.twitch.tv/helix/whispers?from_user_id=" + Uri.EscapeDataString(fromId) + "&to_user_id=" + Uri.EscapeDataString(toId);
+            TwitchRaw("POST", url, clientId, token, server.Serializer.Serialize(body));
+        }
+
+        private string GetTwitchUserId(string login, string clientId, string token)
+        {
+            Dictionary<string, object> response = TwitchGet("https://api.twitch.tv/helix/users?login=" + Uri.EscapeDataString(login), clientId, token);
+            object dataObj;
+            if (response.TryGetValue("data", out dataObj) && dataObj is object[] && ((object[])dataObj).Length > 0)
+            {
+                Dictionary<string, object> entry = ((object[])dataObj)[0] as Dictionary<string, object>;
+                if (entry != null) return GetString(entry, "id", "");
+            }
+            return "";
         }
 
         // ---- Automatic "which commands are available" help message: fires after N minutes
@@ -5231,7 +5500,7 @@ namespace CardPackWidgetApp
         private string BuildAutoHelpCommandList(Dictionary<string, object> cc)
         {
             var parts = new List<string>();
-            foreach (string key in new[] { "pack", "dust", "collection", "trade", "battle", "ranking" })
+            foreach (string key in new[] { "pack", "packs", "dust", "collection", "trade", "battle", "ranking", "tournamentStart", "teamBattleStart" })
             {
                 Dictionary<string, object> command = Obj(cc, key);
                 if (!GetBool(command, "enabled", key != "dust")) continue;
@@ -5254,7 +5523,10 @@ namespace CardPackWidgetApp
             if (text.Length == 0) return;
 
             Dictionary<string, object> pack = Obj(cc, "pack");
+            Dictionary<string, object> packs = Obj(cc, "packs");
             Dictionary<string, object> dust = Obj(cc, "dust");
+            Dictionary<string, object> dustSet = Obj(cc, "dustSet");
+            Dictionary<string, object> dustAll = Obj(cc, "dustAll");
             Dictionary<string, object> gift = Obj(cc, "gift");
             Dictionary<string, object> collection = Obj(cc, "collection");
             Dictionary<string, object> trade = Obj(cc, "trade");
@@ -5266,6 +5538,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> ranking = Obj(cc, "ranking");
             Dictionary<string, object> tournamentStart = Obj(cc, "tournamentStart");
             Dictionary<string, object> tournamentJoin = Obj(cc, "tournamentJoin");
+            Dictionary<string, object> teamBattleStart = Obj(cc, "teamBattleStart");
             Dictionary<string, object> teamBattleJoin = Obj(cc, "teamBattleJoin");
 
             if (MatchesCommand(text, pack))
@@ -5273,9 +5546,29 @@ namespace CardPackWidgetApp
                 if (GetBool(pack, "enabled", true)) HandlePackCommand(login, displayName, pack);
                 return;
             }
+            if (MatchesCommand(text, packs))
+            {
+                if (GetBool(packs, "enabled", true)) HandlePacksCommand(login, displayName, packs);
+                return;
+            }
             if (MatchesCommand(text, dust))
             {
                 if (GetBool(dust, "enabled", false)) HandleDustCommand(login, displayName, ArgsAfterCommand(text, dust), dust);
+                return;
+            }
+            // "!dustset"/"!dustall" are sub-commands of "!dust": no prefix field of their own,
+            // they always use dust's prefix - only their command WORD is independently
+            // renameable. Gated on dust's own "enabled" toggle, same dependency.
+            Dictionary<string, object> dustSetMatch = new Dictionary<string, object> { { "prefix", GetString(dust, "prefix", "!") }, { "command", GetString(dustSet, "command", "dustset") } };
+            if (MatchesCommand(text, dustSetMatch))
+            {
+                if (GetBool(dust, "enabled", false)) HandleDustSetCommand(login, displayName, ArgsAfterCommand(text, dustSetMatch), dust, dustSet);
+                return;
+            }
+            Dictionary<string, object> dustAllMatch = new Dictionary<string, object> { { "prefix", GetString(dust, "prefix", "!") }, { "command", GetString(dustAll, "command", "dustall") } };
+            if (MatchesCommand(text, dustAllMatch))
+            {
+                if (GetBool(dust, "enabled", false)) HandleDustAllCommand(login, displayName, dust, dustAll);
                 return;
             }
             if (MatchesCommand(text, collection))
@@ -5337,12 +5630,29 @@ namespace CardPackWidgetApp
             }
             if (MatchesCommand(text, tournamentStart))
             {
-                if (GetBool(tournamentStart, "enabled", true)) StartTournamentSignup(login, displayName, "chat");
+                if (GetBool(tournamentStart, "enabled", true))
+                {
+                    int cooldownSeconds = Math.Max(0, GetInt(tournamentStart, "cooldownSeconds", 0));
+                    string cooldownMessage = GetString(tournamentStart, "cooldownMessage", DefaultCooldownMessage);
+                    if (!IsGlobalCommandOnCooldown("tournamentStart", cooldownSeconds, displayName, cooldownMessage))
+                        StartTournamentSignup(login, displayName, "chat");
+                }
                 return;
             }
             if (MatchesCommand(text, tournamentJoin))
             {
                 if (GetBool(tournamentJoin, "enabled", true)) JoinTournament(login, displayName);
+                return;
+            }
+            if (MatchesCommand(text, teamBattleStart))
+            {
+                if (GetBool(teamBattleStart, "enabled", true))
+                {
+                    int cooldownSeconds = Math.Max(0, GetInt(teamBattleStart, "cooldownSeconds", 0));
+                    string cooldownMessage = GetString(teamBattleStart, "cooldownMessage", DefaultCooldownMessage);
+                    if (!IsGlobalCommandOnCooldown("teamBattleStart", cooldownSeconds, displayName, cooldownMessage))
+                        StartTeamBattleSignup(login, displayName, "chat");
+                }
                 return;
             }
             if (MatchesCommand(text, teamBattleJoin))
@@ -5362,6 +5672,34 @@ namespace CardPackWidgetApp
             if (String.Compare(text, 0, full, 0, full.Length, StringComparison.OrdinalIgnoreCase) != 0) return false;
             // Require a word boundary so e.g. "!packs" does not match the "!pack" command.
             return text.Length == full.Length || Char.IsWhiteSpace(text[full.Length]);
+        }
+
+        // Global (not per-user) cooldown for chat commands that start a shared/community event
+        // (tournament, team battle) - mirrors the "Globaler Cooldown" already used for these same
+        // actions' channel-point rewards, so a Nicht-Affiliate/Partner using the chat command
+        // instead gets the same spam protection. Returns true (and sends the cooldown message) if
+        // still blocked; otherwise marks the cooldown as started and returns false.
+        private readonly object commandCooldownLock = new object();
+        private readonly Dictionary<string, DateTime> commandCooldownUntil = new Dictionary<string, DateTime>();
+
+        private bool IsGlobalCommandOnCooldown(string key, int cooldownSeconds, string displayName, string cooldownMessageTemplate)
+        {
+            if (cooldownSeconds <= 0) return false;
+            DateTime now = DateTime.UtcNow;
+            lock (commandCooldownLock)
+            {
+                DateTime until;
+                if (commandCooldownUntil.TryGetValue(key, out until) && until > now)
+                {
+                    int remaining = (int)Math.Ceiling((until - now).TotalSeconds);
+                    SendChatMessageSafe(cooldownMessageTemplate
+                        .Replace("@userName", "@" + displayName)
+                        .Replace("[Restzeit]", remaining.ToString()));
+                    return true;
+                }
+                commandCooldownUntil[key] = now.AddSeconds(cooldownSeconds);
+                return false;
+            }
         }
 
         private void HandlePackCommand(string login, string displayName, Dictionary<string, object> packCfg)
@@ -5501,6 +5839,163 @@ namespace CardPackWidgetApp
                 .Replace("[Kartenname]", cardTitle)
                 .Replace("[Anzahl]", count.ToString())
                 .Replace("[Punkte]", points.ToString())
+                .Replace("[GarantieRest]", pityRest.ToString()));
+        }
+
+        // Rarity name aliases accepted by "!dustset", one set per supported UI language (see
+        // admin.js's "rarity-*" i18n keys - kept in sync with those exact translations) plus their
+        // ASCII/no-diacritics form so a viewer typing without special characters (e.g. "legendaer"
+        // instead of "legendär") still matches. Canonical English rarity id -> list of accepted
+        // spoken words across de/en/fr/es/th.
+        private static readonly Dictionary<string, string[]> DustSetRarityAliases = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "common", new[] { "common", "gewöhnlich", "gewoehnlich", "commune", "commun", "común", "comun", "ธรรมดา" } },
+            { "uncommon", new[] { "uncommon", "ungewöhnlich", "ungewoehnlich", "peu commune", "peu commun", "poco común", "poco comun", "ไม่ธรรมดา" } },
+            { "rare", new[] { "rare", "selten", "rara", "หายาก" } },
+            { "epic", new[] { "epic", "episch", "épique", "epique", "épica", "epica", "เอพิก" } },
+            { "legendary", new[] { "legendary", "legendär", "legendaer", "légendaire", "legendaire", "legendaria", "ตำนาน" } },
+            { "holo", new[] { "holo", "โฮโล" } }
+        };
+
+        // Parses a "!dustset <rarity>" argument (the whole remainder of the message, since some
+        // language's rarity names contain a space, e.g. French "peu commune") against every
+        // supported language's rarity name. Returns null if nothing matches.
+        private static string ParseDustSetRarity(string input)
+        {
+            string normalized = (input ?? "").Trim().ToLowerInvariant();
+            if (normalized.Length == 0) return null;
+            foreach (KeyValuePair<string, string[]> kv in DustSetRarityAliases)
+            {
+                foreach (string alias in kv.Value)
+                {
+                    if (String.Equals(normalized, alias, StringComparison.OrdinalIgnoreCase)) return kv.Key;
+                }
+            }
+            return null;
+        }
+
+        // ---- "!dustset <Seltenheit>" - per-viewer preference for "!dustall" (see
+        // GetDustAllRarity/SetDustAllRarity). Accepts the rarity name in any of the app's 5
+        // supported languages (see ParseDustSetRarity/DustSetRarityAliases). ----
+        private void HandleDustSetCommand(string login, string displayName, string args, Dictionary<string, object> dustCfg, Dictionary<string, object> dustSetCfg)
+        {
+            string arg = (args ?? "").Trim();
+            if (arg.Length == 0)
+            {
+                SendChatMessageSafe(GetString(dustSetCfg, "usageMessage", DefaultDustSetUsage).Replace("@userName", "@" + displayName));
+                return;
+            }
+            string rarity = ParseDustSetRarity(arg);
+            if (rarity == null)
+            {
+                SendChatMessageSafe(GetString(dustSetCfg, "invalidMessage", DefaultDustSetInvalid)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Eingabe]", arg));
+                return;
+            }
+            SetDustAllRarity(login, rarity);
+            SendChatMessageSafe(GetString(dustSetCfg, "successMessage", DefaultDustSetSuccess)
+                .Replace("@userName", "@" + displayName)
+                .Replace("[Seltenheit]", RarityLabel(rarity, RarityOutputLanguage())));
+        }
+
+        // Which language the [Seltenheit] chat variable is written out in - one app-wide setting
+        // (settings.chatCommands.rarityLanguage) rather than per-message, since it's the same
+        // rarity vocabulary everywhere (draw messages, !dustset/!dustall). Falls back to German,
+        // matching every other hardcoded default string in this file.
+        private string RarityOutputLanguage()
+        {
+            Dictionary<string, object> cc = Obj(server.ReadSettingsObject(), "chatCommands");
+            string lang = GetString(cc, "rarityLanguage", "de");
+            switch (lang) { case "en": case "fr": case "es": case "th": return lang; default: return "de"; }
+        }
+
+        // Localized rarity display name for the [Seltenheit] chat variable, in any of the app's 5
+        // supported languages - mirrors admin.js's "rarity-*" i18n keys (kept in sync with those
+        // exact translations).
+        private static string RarityLabel(string rarity, string language)
+        {
+            switch (language)
+            {
+                case "en":
+                    switch (rarity) { case "uncommon": return "Uncommon"; case "rare": return "Rare"; case "epic": return "Epic"; case "legendary": return "Legendary"; case "holo": return "Holo"; default: return "Common"; }
+                case "fr":
+                    switch (rarity) { case "uncommon": return "Peu commune"; case "rare": return "Rare"; case "epic": return "Épique"; case "legendary": return "Légendaire"; case "holo": return "Holo"; default: return "Commune"; }
+                case "es":
+                    switch (rarity) { case "uncommon": return "Poco común"; case "rare": return "Rara"; case "epic": return "Épica"; case "legendary": return "Legendaria"; case "holo": return "Holo"; default: return "Común"; }
+                case "th":
+                    switch (rarity) { case "uncommon": return "ไม่ธรรมดา"; case "rare": return "หายาก"; case "epic": return "เอพิก"; case "legendary": return "ตำนาน"; case "holo": return "โฮโล"; default: return "ธรรมดา"; }
+                default:
+                    switch (rarity) { case "uncommon": return "Ungewöhnlich"; case "rare": return "Selten"; case "epic": return "Episch"; case "legendary": return "Legendär"; case "holo": return "Holo"; default: return "Gewöhnlich"; }
+            }
+        }
+
+        // ---- "!dustall" - dusts EVERY owned duplicate (keeping exactly 1 of each) up to the
+        // viewer's own "!dustset" threshold in one shot, converting them all into pity points at
+        // once. No cooldown/usage tracking, same reasoning as "!dust" - the natural cost (giving
+        // up every spare duplicate up to that rarity) is the limiting factor. ----
+        private void HandleDustAllCommand(string login, string displayName, Dictionary<string, object> dustCfg, Dictionary<string, object> dustAllCfg)
+        {
+            string thresholdRarity = GetDustAllRarity(login);
+            int maxRarityRank = CardPackServer.GetRarityRank(thresholdRarity);
+            string rarityLanguage = RarityOutputLanguage();
+
+            List<Dictionary<string, string>> dusted = server.DustAllDuplicates(login, displayName, maxRarityRank);
+            if (dusted.Count == 0)
+            {
+                SendChatMessageSafe(GetString(dustAllCfg, "nothingMessage", DefaultDustAllNothing)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Seltenheit]", RarityLabel(thresholdRarity, rarityLanguage)));
+                return;
+            }
+
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> pityCfg = Obj(settings, "pity");
+            int pityThreshold = Math.Max(1, GetInt(pityCfg, "threshold", 10));
+            Dictionary<string, object> dustValues = Obj(pityCfg, "dustValues");
+
+            var perRarityCount = new Dictionary<string, int>();
+            int totalCards = 0;
+            int totalPoints = 0;
+            foreach (Dictionary<string, string> entry in dusted)
+            {
+                string rarity = entry["rarity"];
+                int removed = Int32.Parse(entry["removedCount"]);
+                double perCard = GetDouble(dustValues, rarity, 1);
+                totalPoints += Math.Max(0, (int)Math.Round(perCard * removed));
+                totalCards += removed;
+                int existing;
+                perRarityCount[rarity] = (perRarityCount.TryGetValue(rarity, out existing) ? existing : 0) + removed;
+            }
+
+            var breakdownParts = new List<string>();
+            foreach (string rarityId in new[] { "common", "uncommon", "rare", "epic", "legendary", "holo" })
+            {
+                int c;
+                if (perRarityCount.TryGetValue(rarityId, out c) && c > 0) breakdownParts.Add(c + "x " + RarityLabel(rarityId, rarityLanguage));
+            }
+            string breakdown = String.Join(", ", breakdownParts.ToArray());
+
+            int pityRest;
+            lock (pityLock)
+            {
+                Dictionary<string, object> entry = GetPityEntry(login);
+                int streak = GetInt(entry, "streak", 0);
+                int bank = GetInt(entry, "bank", 0);
+                int applied = Math.Min(totalPoints, pityThreshold - streak);
+                streak += applied;
+                bank += totalPoints - applied;
+                entry["streak"] = streak;
+                entry["bank"] = bank;
+                SavePityEntry(login, entry);
+                pityRest = Math.Max(0, pityThreshold - streak);
+            }
+
+            SendChatMessageSafe(GetString(dustAllCfg, "successMessage", DefaultDustAllSuccess)
+                .Replace("@userName", "@" + displayName)
+                .Replace("[Aufschluesselung]", breakdown)
+                .Replace("[Gesamtanzahl]", totalCards.ToString())
+                .Replace("[Punkte]", totalPoints.ToString())
                 .Replace("[GarantieRest]", pityRest.ToString()));
         }
 
@@ -7064,14 +7559,25 @@ namespace CardPackWidgetApp
         }
 
         // One round: strength (from rarity, via the configurable table) times a random variance
-        // factor decides the winner. Returns true if cardA wins.
+        // factor decides the winner. Best-of-3 independent attacks (each with its OWN variance
+        // roll) rather than a single roll - a single roll only ever gives variance one chance to
+        // matter for the whole matchup, which barely shows against a real strength gap. Rolling
+        // three separate "attacks" and taking the majority lets variance compound (or cancel out)
+        // attack to attack, the way it already visibly does in HP-Duell mode (ResolveHpElimination
+        // re-rolls variance per hit too).
         private bool RollRound(Dictionary<string, string> cardA, Dictionary<string, string> cardB, Dictionary<string, object> strengthCfg, double variance)
         {
             double strengthA = CardBattleStrength(cardA["cardId"], strengthCfg);
             double strengthB = CardBattleStrength(cardB["cardId"], strengthCfg);
-            double rollA = strengthA * (1 + BattleRandom.NextDouble() * variance);
-            double rollB = strengthB * (1 + BattleRandom.NextDouble() * variance);
-            return rollA >= rollB;
+            const int attacks = 3;
+            int winsA = 0, winsB = 0;
+            for (int i = 0; i < attacks; i++)
+            {
+                double rollA = strengthA * (1 + BattleRandom.NextDouble() * variance);
+                double rollB = strengthB * (1 + BattleRandom.NextDouble() * variance);
+                if (rollA >= rollB) winsA++; else winsB++;
+            }
+            return winsA >= winsB;
         }
 
         private double CardBattleStrength(string cardId, Dictionary<string, object> strengthCfg)
@@ -7506,7 +8012,10 @@ namespace CardPackWidgetApp
                     Dictionary<string, object> entry = kvp.Value as Dictionary<string, object>;
                     if (entry != null)
                     {
-                        result[kvp.Key] = new Dictionary<string, object> { { "streak", GetInt(entry, "streak", 0) }, { "bank", GetInt(entry, "bank", 0) } };
+                        result[kvp.Key] = new Dictionary<string, object> {
+                            { "streak", GetInt(entry, "streak", 0) }, { "bank", GetInt(entry, "bank", 0) },
+                            { "dustAllRarity", GetString(entry, "dustAllRarity", "uncommon") }
+                        };
                     }
                     else
                     {
