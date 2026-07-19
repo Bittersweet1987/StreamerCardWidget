@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.5";
+} from "./api.js?v=2.12.6";
 import {
   applyTheme,
   boosterMarkup,
@@ -63,7 +63,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.5";
+} from "./render.js?v=2.12.6";
 
 let settings;
 let selectedCardId;
