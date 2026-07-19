@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=20260719-txtpaste1";
+} from "./api.js?v=20260719-autofit3";
 import {
   applyTheme,
   autoImagePosition,
@@ -57,6 +57,7 @@ import {
   DEFAULT_RARITY_WEIGHTS,
   escapeHtml,
   getImageDimensions,
+  IMAGE_AUTO_FIT_VERSION,
   MAX_BOOSTER_CARDS,
   normalizeSettings,
   OVERLAY_LAYOUT_NATURAL_SIZES,
@@ -67,7 +68,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=20260719-txtpaste1";
+} from "./render.js?v=20260719-autofit3";
 
 let settings;
 let selectedCardId;
@@ -7494,6 +7495,13 @@ function renderAll() {
 // the default center crop) must never be re-analyzed and flip-flop on every startup.
 async function migrateImageSizes() {
   let changed = false;
+  // Forces a full one-time re-run of autoImagePosition for every existing image (not just
+  // undefined ones) whenever the heuristic itself changed - see IMAGE_AUTO_FIT_VERSION in
+  // render.js. Without this, images already tagged imagePosition:"" under an OLDER, narrower
+  // heuristic (e.g. v1 only handled "too tall", not "too wide") would never get re-evaluated
+  // under the newer one and would keep their stale (wrong) verdict forever.
+  settings.style ||= {};
+  const forceRecheck = settings.style.imageAutoFitVersion !== IMAGE_AUTO_FIT_VERSION;
   for (const card of settings.deck.cards) {
     if (!card.image) continue;
     const resized = await compressImageDataUrl(card.image);
@@ -7501,9 +7509,9 @@ async function migrateImageSizes() {
       card.image = resized;
       changed = true;
     }
-    if (card.imagePosition === undefined) {
-      card.imagePosition = autoImagePosition(await getImageDimensions(card.image), CARD_ART_RATIO);
-      changed = true;
+    if (card.imagePosition === undefined || forceRecheck) {
+      const next = autoImagePosition(await getImageDimensions(card.image), CARD_ART_RATIO);
+      if (next !== card.imagePosition) { card.imagePosition = next; changed = true; }
     }
   }
   for (const booster of settings.boosters) {
@@ -7513,11 +7521,12 @@ async function migrateImageSizes() {
       booster.image = resized;
       changed = true;
     }
-    if (booster.imagePosition === undefined) {
-      booster.imagePosition = autoImagePosition(await getImageDimensions(booster.image), BOOSTER_ART_RATIO);
-      changed = true;
+    if (booster.imagePosition === undefined || forceRecheck) {
+      const next = autoImagePosition(await getImageDimensions(booster.image), BOOSTER_ART_RATIO);
+      if (next !== booster.imagePosition) { booster.imagePosition = next; changed = true; }
     }
   }
+  if (forceRecheck) { settings.style.imageAutoFitVersion = IMAGE_AUTO_FIT_VERSION; changed = true; }
   if (changed) {
     renderCards();
     renderBoosterList();

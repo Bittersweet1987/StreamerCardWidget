@@ -169,6 +169,9 @@ select {
    "[data-image-fit=...] .card-art img" rules above, so an explicit global top/bottom/left/right
    choice always still wins over the automatic one). */
 .card-art img[data-position="top"] { object-position: top; }
+/* Image is proportionally too WIDE for the frame (e.g. a square profile picture) - cover-cropping
+   would trim the left/right edges with no reliable auto-anchor, so show the whole image instead. */
+.card-art img[data-position="contain"] { object-fit: contain; object-position: center; }
 
 .fallback-art {
   display: grid;
@@ -378,8 +381,9 @@ select {
 .booster-pack[data-image-fit="left"] .pack-body img { object-position: left; }
 .booster-pack[data-image-fit="right"] .pack-body img { object-position: right; }
 
-/* Per-image auto-detected crop anchor, see the matching .card-art rule above for why. */
+/* Per-image auto-detected crop anchor, see the matching .card-art rules above for why. */
 .pack-body img[data-position="top"] { object-position: top; }
+.pack-body img[data-position="contain"] { object-fit: contain; object-position: center; }
 
 .fallback-booster {
   display: grid;

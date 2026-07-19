@@ -70,20 +70,31 @@ export function getImageDimensions(dataUrl) {
   });
 }
 
-// Auto-picks an object-position anchor for a cropped (object-fit:cover) image. The art area
-// always crops to fill its frame - when the image is proportionally TALLER than the frame,
-// cropping trims the top and bottom, and centering that crop is what makes uploaded character/
-// portrait art look "oddly scaled": a face near the top of the image gets cut off. Anchoring to
-// the top instead keeps it in frame, which is the single most common failure case for this kind
-// of upload. When the image is proportionally WIDER than the frame (or close to it), cropping
-// trims the sides instead, and "center" (the existing default) already crops evenly - there's no
-// reliable left/right anchor to auto-detect without actual content analysis, so those cases are
-// deliberately left alone.
+// Auto-picks a crop/fit mode for an uploaded image against the card/booster art frame. The art
+// area crops to fill its frame by default (object-fit:cover) - two failure modes come from that:
+//   - Image proportionally TALLER than the frame: cropping trims top/bottom. Centering that crop
+//     is what makes uploaded character/portrait art look "oddly scaled" - a face near the top of
+//     the image gets cut off. Anchoring to the top instead keeps it in frame.
+//   - Image proportionally WIDER than the frame (including square images going into the
+//     portrait 5:7/4:5.25 card/booster frame - e.g. a 500x500 profile picture): cropping trims
+//     the LEFT and RIGHT sides instead, and unlike the top-crop case there's no reliable
+//     horizontal anchor to auto-detect without real content analysis - centering can still cut
+//     off meaningful content on either edge. Switching to object-fit:contain here instead shows
+//     the WHOLE image (letterboxed within the frame) rather than guessing which side to crop.
+// Close-to-matching ratios fall through to "" (the existing default center crop) since there's
+// nothing meaningfully wrong with cropping evenly in that case.
 export function autoImagePosition(dimensions, targetRatio) {
   if (!dimensions || !dimensions.width || !dimensions.height) return "";
   const imageRatio = dimensions.width / dimensions.height;
-  return imageRatio < targetRatio * 0.85 ? "top" : "";
+  if (imageRatio < targetRatio * 0.85) return "top";
+  if (imageRatio > targetRatio * 1.15) return "contain";
+  return "";
 }
+
+// Bump whenever autoImagePosition's heuristic changes in a way that should re-run for every
+// already-uploaded image, not just new ones - see migrateImageSizes in admin.js, which recomputes
+// everything once when settings.style.imageAutoFitVersion is behind this.
+export const IMAGE_AUTO_FIT_VERSION = 2;
 
 export function createId(prefix = "card") {
   if (crypto.randomUUID) return crypto.randomUUID();
@@ -1161,7 +1172,7 @@ export function cardMarkup(card, options = {}) {
   const compact = options.compact ? " is-compact-card" : "";
   // NOTE: do not add loading="lazy" here - it broke card reveal animations in OBS's Browser
   // Source (CEF), which doesn't fire the load in time for the overlay's viewport there.
-  const cardPositionAttr = card?.imagePosition === "top" ? ' data-position="top"' : "";
+  const cardPositionAttr = card?.imagePosition ? ` data-position="${escapeHtml(card.imagePosition)}"` : "";
   const image = card?.image
     ? `<img src="${escapeHtml(card.image)}" alt=""${cardPositionAttr}>`
     : `<div class="fallback-art">${escapeHtml((card?.title || "?").slice(0, 1))}</div>`;
@@ -1197,7 +1208,7 @@ export function cardMarkup(card, options = {}) {
 }
 
 export function boosterMarkup(booster = {}) {
-  const boosterPositionAttr = booster.imagePosition === "top" ? ' data-position="top"' : "";
+  const boosterPositionAttr = booster.imagePosition ? ` data-position="${escapeHtml(booster.imagePosition)}"` : "";
   const image = booster.image
     ? `<img src="${escapeHtml(booster.image)}" alt=""${boosterPositionAttr}>`
     : `<div class="fallback-booster">${escapeHtml(booster.title || "Pack")}</div>`;
