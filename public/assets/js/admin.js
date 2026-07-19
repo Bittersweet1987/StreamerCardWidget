@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.6";
+} from "./api.js?v=20260719-txtimport1";
 import {
   applyTheme,
   boosterMarkup,
@@ -63,7 +63,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.6";
+} from "./render.js?v=20260719-txtimport1";
 
 let settings;
 let selectedCardId;
@@ -1451,6 +1451,23 @@ const I18N = {
     fr: "Importer une carte",
     es: "Importar carta",
     th: "นำเข้าการ์ด"
+  },
+  "btn-import-cards-text": { de: "Textliste importieren", en: "Import text list",
+    fr: "Importer une liste texte",
+    es: "Importar lista de texto",
+    th: "นำเข้ารายการข้อความ"
+  },
+  "hint-import-cards-text": {
+    de: "Erstellt für jede Zeile einer Textdatei eine neue Karte mit diesem Namen (ohne Bild) - danach nur noch Bilder hochladen.",
+    en: "Creates a new card (no image) for every line in a text file, using that line as the card's name - just upload images afterward.",
+    fr: "Crée une nouvelle carte (sans image) pour chaque ligne d'un fichier texte, en utilisant cette ligne comme nom de la carte - il ne reste plus qu'à téléverser les images.",
+    es: "Crea una nueva carta (sin imagen) por cada línea de un archivo de texto, usando esa línea como nombre de la carta - luego solo falta subir las imágenes.",
+    th: "สร้างการ์ดใหม่ (ไม่มีรูป) สำหรับทุกบรรทัดในไฟล์ข้อความ โดยใช้บรรทัดนั้นเป็นชื่อการ์ด - จากนั้นอัปโหลดรูปภาพทีหลังได้เลย"
+  },
+  "notice-cards-text-imported": { de: "Karten aus Textliste erstellt.", en: "Cards created from text list.",
+    fr: "Cartes créées à partir de la liste texte.",
+    es: "Cartas creadas a partir de la lista de texto.",
+    th: "สร้างการ์ดจากรายการข้อความแล้ว"
   },
   "btn-export-card": { de: "Exportieren", en: "Export",
     fr: "Exporter",
@@ -3613,6 +3630,30 @@ async function importBoosterFromFile(file) {
   renderOverview();
   scheduleAutoSave();
   showNotice(t("notice-booster-imported"));
+}
+
+// Bulk card creation from a plain-text list: one line = one new card, using the line as the
+// card's title, no image (uploaded manually afterward per card - this is meant to save typing
+// out titles for a big batch, not to be a full import pipeline). Same "push everything, one
+// renderCards() at the end" pattern as importBoosterFromFile, not one insertCardEditor() call
+// per line - much cheaper for a list of any real size.
+async function importCardsFromTextFile(file) {
+  let text;
+  try { text = await file.text(); } catch { showNotice(t("error-import-invalid"), "error"); return; }
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) { showNotice(t("error-import-invalid"), "error"); return; }
+  let firstId = null;
+  for (const title of lines) {
+    const card = blankCard();
+    card.title = title;
+    if (!firstId) firstId = card.id;
+    settings.deck.cards.push(card);
+  }
+  selectedCardId = firstId;
+  renderCards();
+  renderOverview();
+  scheduleAutoSave();
+  showNotice(t("notice-cards-text-imported"));
 }
 
 function randomUsername() {
@@ -7197,6 +7238,11 @@ function bindGlobalActions() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (file) await importCardFromFile(file);
+  });
+  $("#import-cards-text").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) await importCardsFromTextFile(file);
   });
   $("#save-settings").addEventListener("click", async () => {
     workspaceDirty = false;

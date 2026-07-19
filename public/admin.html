@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260719-varlimit1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260719-txtimport1">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -2167,8 +2167,10 @@
                 <option value="status" data-i18n="option-cards-sort-status">Status (aktiv zuerst)</option>
               </select></label>
               <label class="upload-button file-label" data-i18n="btn-import-card">Karte importieren<input id="import-card" type="file" accept=".json,application/json"></label>
+              <label class="upload-button file-label" data-i18n="btn-import-cards-text">Textliste importieren<input id="import-cards-text" type="file" accept=".txt,text/plain"></label>
               <button class="primary-button" id="add-card" type="button" data-i18n="btn-add-card">Karte hinzufügen</button>
             </div>
+            <p class="hint" data-i18n="hint-import-cards-text">Erstellt für jede Zeile einer Textdatei eine neue Karte mit diesem Namen (ohne Bild) - danach nur noch Bilder hochladen.</p>
           </div>
           <div class="cards-layout">
             <div class="card-list" id="card-list"></div>
@@ -2330,7 +2332,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260719-varlimit1"></script>
-    <script type="module" src="/assets/js/admin.js?v=20260719-varlimit1"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=20260719-txtimport1"></script>
+    <script type="module" src="/assets/js/admin.js?v=20260719-txtimport1"></script>
   </body>
 </html>
