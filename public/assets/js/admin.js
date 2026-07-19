@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=20260719-autofit1";
+} from "./api.js?v=20260719-txtpaste1";
 import {
   applyTheme,
   autoImagePosition,
@@ -67,7 +67,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=20260719-autofit1";
+} from "./render.js?v=20260719-txtpaste1";
 
 let settings;
 let selectedCardId;
@@ -1456,17 +1456,27 @@ const I18N = {
     es: "Importar carta",
     th: "นำเข้าการ์ด"
   },
-  "btn-import-cards-text": { de: "Textliste importieren", en: "Import text list",
-    fr: "Importer une liste texte",
-    es: "Importar lista de texto",
-    th: "นำเข้ารายการข้อความ"
+  "btn-import-cards-text": { de: "Textdatei importieren", en: "Import text file",
+    fr: "Importer un fichier texte",
+    es: "Importar archivo de texto",
+    th: "นำเข้าไฟล์ข้อความ"
   },
   "hint-import-cards-text": {
-    de: "Erstellt für jede Zeile einer Textdatei eine neue Karte mit diesem Namen (ohne Bild) - danach nur noch Bilder hochladen.",
-    en: "Creates a new card (no image) for every line in a text file, using that line as the card's name - just upload images afterward.",
-    fr: "Crée une nouvelle carte (sans image) pour chaque ligne d'un fichier texte, en utilisant cette ligne comme nom de la carte - il ne reste plus qu'à téléverser les images.",
-    es: "Crea una nueva carta (sin imagen) por cada línea de un archivo de texto, usando esa línea como nombre de la carta - luego solo falta subir las imágenes.",
-    th: "สร้างการ์ดใหม่ (ไม่มีรูป) สำหรับทุกบรรทัดในไฟล์ข้อความ โดยใช้บรรทัดนั้นเป็นชื่อการ์ด - จากนั้นอัปโหลดรูปภาพทีหลังได้เลย"
+    de: "Eine Zeile = eine neue Karte (ohne Bild), erscheint oben in der Liste - danach nur noch Bilder hochladen. Entweder hier direkt eintippen oder eine Textdatei importieren.",
+    en: "One line = one new card (no image), appears at the top of the list - just upload images afterward. Either type directly here or import a text file.",
+    fr: "Une ligne = une nouvelle carte (sans image), apparaît en haut de la liste - il ne reste plus qu'à téléverser les images. Tape directement ici ou importe un fichier texte.",
+    es: "Una línea = una nueva carta (sin imagen), aparece arriba en la lista - luego solo falta subir las imágenes. Escribe directamente aquí o importa un archivo de texto.",
+    th: "หนึ่งบรรทัด = หนึ่งการ์ดใหม่ (ไม่มีรูป) จะปรากฏด้านบนสุดของรายการ - จากนั้นอัปโหลดรูปภาพทีหลังได้เลย พิมพ์ที่นี่โดยตรงหรือนำเข้าไฟล์ข้อความก็ได้"
+  },
+  "placeholder-cards-text-paste": { de: "Kartenname 1\nKartenname 2\nKartenname 3", en: "Card name 1\nCard name 2\nCard name 3",
+    fr: "Nom de carte 1\nNom de carte 2\nNom de carte 3",
+    es: "Nombre de carta 1\nNombre de carta 2\nNombre de carta 3",
+    th: "ชื่อการ์ด 1\nชื่อการ์ด 2\nชื่อการ์ด 3"
+  },
+  "btn-cards-text-create": { de: "Karten erstellen", en: "Create cards",
+    fr: "Créer les cartes",
+    es: "Crear cartas",
+    th: "สร้างการ์ด"
   },
   "notice-cards-text-imported": { de: "Karten aus Textliste erstellt.", en: "Cards created from text list.",
     fr: "Cartes créées à partir de la liste texte.",
@@ -3641,23 +3651,31 @@ async function importBoosterFromFile(file) {
 // out titles for a big batch, not to be a full import pipeline). Same "push everything, one
 // renderCards() at the end" pattern as importBoosterFromFile, not one insertCardEditor() call
 // per line - much cheaper for a list of any real size.
-async function importCardsFromTextFile(file) {
-  let text;
-  try { text = await file.text(); } catch { showNotice(t("error-import-invalid"), "error"); return; }
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) { showNotice(t("error-import-invalid"), "error"); return; }
-  let firstId = null;
-  for (const title of lines) {
+// Shared by the .txt file import and the direct-paste textarea below - one line = one new card,
+// inserted at the FRONT of the list (in the same top-to-bottom order as the text) so a freshly
+// created batch shows up right where the admin is already looking, instead of buried at the
+// bottom of a 200+ card list.
+function createCardsFromText(text) {
+  const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return false;
+  const newCards = lines.map((title) => {
     const card = blankCard();
     card.title = title;
-    if (!firstId) firstId = card.id;
-    settings.deck.cards.push(card);
-  }
-  selectedCardId = firstId;
+    return card;
+  });
+  settings.deck.cards.unshift(...newCards);
+  selectedCardId = newCards[0].id;
   renderCards();
   renderOverview();
   scheduleAutoSave();
   showNotice(t("notice-cards-text-imported"));
+  return true;
+}
+
+async function importCardsFromTextFile(file) {
+  let text;
+  try { text = await file.text(); } catch { showNotice(t("error-import-invalid"), "error"); return; }
+  if (!createCardsFromText(text)) showNotice(t("error-import-invalid"), "error");
 }
 
 function randomUsername() {
@@ -7250,6 +7268,10 @@ function bindGlobalActions() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (file) await importCardsFromTextFile(file);
+  });
+  $("#cards-text-create").addEventListener("click", () => {
+    const textarea = $("#cards-text-paste");
+    if (createCardsFromText(textarea.value)) textarea.value = "";
   });
   $("#save-settings").addEventListener("click", async () => {
     workspaceDirty = false;

@@ -932,6 +932,23 @@ body[data-theme="dark"] .pattern-block + .pattern-block {
   font-size: .9rem;
 }
 
+.cards-text-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cards-text-input textarea {
+  width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.cards-text-input button {
+  align-self: flex-start;
+}
+
 .changelog-entry {
   padding: 14px 0;
   border-bottom: 1px solid #ece8f2;
