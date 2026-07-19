@@ -202,6 +202,13 @@ const DEFAULT_MESSAGES = {
     es: "convierte cartas duplicadas en puntos de compensación",
     th: "แปลงการ์ดที่ซ้ำเป็นแต้มการันตี"
   },
+  helpGift: {
+    de: "verschenkt eine Karte an einen anderen Zuschauer",
+    en: "gifts a card to another viewer",
+    fr: "offre une carte à un autre spectateur",
+    es: "regala una carta a otro espectador",
+    th: "มอบการ์ดให้ผู้ชมคนอื่น"
+  },
   helpCollection: {
     de: "zeigt deine Kartensammlung",
     en: "shows your card collection",
@@ -334,6 +341,48 @@ const DEFAULT_MESSAGES = {
     fr: "@userName a sacrifié [Anzahl]x [Kartenname] (+[Punkte] points de pitié). Encore [GarantieRest] tirages avant la rareté garantie.",
     es: "@userName sacrificó [Anzahl]x [Kartenname] (+[Punkte] puntos de compensación). Faltan [GarantieRest] tiradas para la rareza garantizada.",
     th: "@userName สังเวย [Kartenname] จำนวน [Anzahl] ใบ (+[Punkte] แต้มการันตี) เหลืออีก [GarantieRest] ครั้งจนถึงการันตี"
+  },
+  giftUsage: {
+    de: "@userName, Nutzung: !gift @userNameB <Kartenname>",
+    en: "@userName, usage: !gift @userNameB <card name>",
+    fr: "@userName, utilisation : !gift @userNameB <nom de la carte>",
+    es: "@userName, uso: !gift @userNameB <nombre de la carta>",
+    th: "@userName วิธีใช้: !gift @userNameB <ชื่อการ์ด>"
+  },
+  giftUserNotFound: {
+    de: "@userName, den Nutzer [Nutzer] kennt die Sammlung noch nicht.",
+    en: "@userName, the collection doesn't know the user [Nutzer] yet.",
+    fr: "@userName, la collection ne connaît pas encore l'utilisateur [Nutzer].",
+    es: "@userName, la colección aún no conoce al usuario [Nutzer].",
+    th: "@userName ยังไม่มีผู้ใช้ [Nutzer] ในคอลเลกชัน"
+  },
+  giftCardNotFound: {
+    de: "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?",
+    en: "@userName, the card [falscherName] doesn't exist. Did you mean [Kartenname] instead?",
+    fr: "@userName, la carte [falscherName] n'existe pas. Voulais-tu dire [Kartenname] ?",
+    es: "@userName, la carta [falscherName] no existe. ¿Quisiste decir [Kartenname]?",
+    th: "@userName ไม่มีการ์ด [falscherName] คุณหมายถึง [Kartenname] ใช่ไหม?"
+  },
+  giftNotOwned: {
+    de: "@userName, du besitzt [Kartenname] gar nicht.",
+    en: "@userName, you don't own [Kartenname] at all.",
+    fr: "@userName, tu ne possèdes pas du tout [Kartenname].",
+    es: "@userName, no posees [Kartenname] en absoluto.",
+    th: "@userName คุณไม่มีการ์ด [Kartenname] เลย"
+  },
+  giftSelf: {
+    de: "@userName, du kannst dir nicht selbst etwas schenken.",
+    en: "@userName, you can't gift yourself something.",
+    fr: "@userName, tu ne peux pas t'offrir un cadeau à toi-même.",
+    es: "@userName, no puedes regalarte algo a ti mismo.",
+    th: "@userName คุณไม่สามารถให้ของขวัญตัวเองได้"
+  },
+  giftSuccess: {
+    de: "@userName hat [Kartenname] an @userNameB verschenkt!",
+    en: "@userName gifted [Kartenname] to @userNameB!",
+    fr: "@userName a offert [Kartenname] à @userNameB !",
+    es: "¡@userName regaló [Kartenname] a @userNameB!",
+    th: "@userName มอบการ์ด [Kartenname] ให้ @userNameB แล้ว!"
   },
   tradeCardNotFound: {
     de: "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?",
@@ -706,6 +755,23 @@ export function normalizeSettings(settings) {
   settings.chatCommands.dust.cardNotFoundMessage ||= pickDefault(settings.language, "dustCardNotFound");
   settings.chatCommands.dust.notEnoughMessage ||= pickDefault(settings.language, "dustNotEnough");
   settings.chatCommands.dust.successMessage ||= pickDefault(settings.language, "dustSuccess");
+  // "!gift @recipient <card>" - one-sided, no confirmation needed from the recipient (see
+  // HandleGiftCommand server-side). Was missing its own normalization block entirely, which left
+  // every chat message here as an empty string ("" survives GetString's fallback check on the
+  // server, since GetString only falls back when the KEY itself is absent) instead of the
+  // intended default text - the bug this block fixes.
+  settings.chatCommands.gift ||= {};
+  settings.chatCommands.gift.enabled = settings.chatCommands.gift.enabled === true;
+  settings.chatCommands.gift.prefix ||= "!";
+  settings.chatCommands.gift.command ||= "gift";
+  settings.chatCommands.gift.helpText ||= pickDefault(settings.language, "helpGift");
+  settings.chatCommands.gift.chatOutputEnabled = settings.chatCommands.gift.chatOutputEnabled !== false;
+  settings.chatCommands.gift.usageMessage ||= pickDefault(settings.language, "giftUsage");
+  settings.chatCommands.gift.userNotFoundMessage ||= pickDefault(settings.language, "giftUserNotFound");
+  settings.chatCommands.gift.cardNotFoundMessage ||= pickDefault(settings.language, "giftCardNotFound");
+  settings.chatCommands.gift.notOwnedMessage ||= pickDefault(settings.language, "giftNotOwned");
+  settings.chatCommands.gift.selfGiftMessage ||= pickDefault(settings.language, "giftSelf");
+  settings.chatCommands.gift.successMessage ||= pickDefault(settings.language, "giftSuccess");
   settings.chatCommands.collection ||= {};
   settings.chatCommands.collection.enabled = settings.chatCommands.collection.enabled !== false;
   settings.chatCommands.collection.prefix ||= "!";
@@ -800,9 +866,23 @@ export function normalizeSettings(settings) {
   // here - this is just the admin-configurable part.
   settings.communityGoal ||= {};
   settings.communityGoal.enabled = settings.communityGoal.enabled === true;
-  settings.communityGoal.target = Number(settings.communityGoal.target) > 0 ? Math.round(Number(settings.communityGoal.target)) : 500;
-  settings.communityGoal.celebrationMessage ||= pickDefault(settings.language, "communityGoalReached");
+  settings.communityGoal.label ||= "";
   settings.communityGoal.sourceName ||= "Streamer Card Community-Ziel";
+  // Up to 5 goal stages, each with its own target, bonus-card count and celebration text (shown
+  // both in chat and in the overlay). Older settings.json (pre-multi-stage) only had a single
+  // "target"/"celebrationMessage" pair - migrate that into a one-stage array once, then drop it.
+  if (!Array.isArray(settings.communityGoal.stages) || !settings.communityGoal.stages.length) {
+    const legacyTarget = Number(settings.communityGoal.target) > 0 ? Math.round(Number(settings.communityGoal.target)) : 500;
+    const legacyMessage = settings.communityGoal.celebrationMessage || pickDefault(settings.language, "communityGoalReached");
+    settings.communityGoal.stages = [{ target: legacyTarget, bonusCards: 1, celebrationMessage: legacyMessage }];
+  }
+  settings.communityGoal.stages = settings.communityGoal.stages.slice(0, 5).map((stage) => ({
+    target: Number(stage?.target) > 0 ? Math.round(Number(stage.target)) : 500,
+    bonusCards: Number(stage?.bonusCards) > 0 ? Math.round(Number(stage.bonusCards)) : 1,
+    celebrationMessage: stage?.celebrationMessage || pickDefault(settings.language, "communityGoalReached")
+  }));
+  delete settings.communityGoal.target;
+  delete settings.communityGoal.celebrationMessage;
 
   // Tournament Mode: signup via chat command and/or channel points and/or the admin "Turnier
   // starten" button; a single bracket resolves automatically once the signup window closes (see

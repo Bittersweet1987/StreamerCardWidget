@@ -137,29 +137,16 @@ html, body {
   font-weight: 600;
 }
 
-/* Deliberately understated - a small corner readout, not a big countdown clock, so it doesn't
-   compete with whatever else is on screen during the signup window. */
-.tournament-signup-countdown {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(20, 14, 34, .55);
-  color: rgba(255, 255, 255, .75);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: .01em;
-  pointer-events: none;
-}
-
-/* Top-right corner, not bottom-center: the live-ticker banner defaults to a full-width band near
+/* Shared by BOTH the tournament and the Team-Kampf signup box (see handleTournamentSignupEvent/
+   handleTeamBattleSignupEvent in battle.js) - identical look for both, just optionally with the
+   lineup row (Team-Kampf only, tournaments don't reveal any cards during signup).
+   Top-right corner, not bottom-center: the live-ticker banner defaults to a full-width band near
    the BOTTOM of the canvas (see OVERLAY_LAYOUT_NATURAL_SIZES.liveTicker / its defaultTop in
    render.js), so anything else anchored to the bottom risks sitting behind or on top of it. Anchoring
    here to the top instead, with a capped max-height (own scrollbar once there are enough joined
-   participants to need one - see .teamkampf-participants below), guarantees this box can never grow
-   downward far enough to reach the ticker even with a large participant list. */
-.teamkampf-signup {
+   participants to need one - see .signup-roster-participants below), guarantees this box can never
+   grow downward far enough to reach the ticker even with a large participant list. */
+.signup-roster {
   position: absolute;
   top: 24px;
   right: 24px;
@@ -177,13 +164,14 @@ html, body {
 
 /* The unconditional "display: flex" above is an author rule, which always beats the browser's
    own default "[hidden] { display: none }" UA rule regardless of selector specificity - without
-   this override, setting the [hidden] attribute in JS (see hideTeamKampfSignup in battle.js) had
-   no visible effect and the box stayed on screen even after being "hidden". */
-.teamkampf-signup[hidden] {
+   this override, setting the [hidden] attribute in JS (see hideTeamKampfSignup/
+   hideTournamentSignup in battle.js) had no visible effect and the box stayed on screen even
+   after being "hidden". */
+.signup-roster[hidden] {
   display: none;
 }
 
-.teamkampf-signup-title {
+.signup-roster-title {
   color: #fff;
   font-weight: 800;
   font-size: 1.1rem;
@@ -191,7 +179,7 @@ html, body {
   white-space: nowrap;
 }
 
-.teamkampf-lineup {
+.signup-roster-lineup {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -199,15 +187,15 @@ html, body {
   max-width: min(80vw, 380px);
 }
 
-.teamkampf-lineup-card {
+.signup-roster-lineup-card {
   width: 64px;
 }
 
-.teamkampf-lineup-card .tcg-card {
+.signup-roster-lineup-card .tcg-card {
   width: 100%;
 }
 
-.teamkampf-participants-label {
+.signup-roster-participants-label {
   color: rgba(255, 255, 255, .75);
   font-size: .8rem;
   font-weight: 600;
@@ -216,10 +204,10 @@ html, body {
 }
 
 /* Capped and independently scrollable - without this, a large enough participant list could grow
-   the whole .teamkampf-signup box past its own max-height and get clipped/overflow unpredictably.
-   This way only the participant chips scroll; the countdown title and streamer lineup above always
-   stay fully visible. */
-.teamkampf-participants {
+   the whole .signup-roster box past its own max-height and get clipped/overflow unpredictably.
+   This way only the participant chips scroll; the countdown title (and streamer lineup, for
+   Team-Kampf) above always stay fully visible. */
+.signup-roster-participants {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -229,7 +217,7 @@ html, body {
   overflow-y: auto;
 }
 
-.teamkampf-participant {
+.signup-roster-participant {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -238,7 +226,7 @@ html, body {
   background: rgba(255, 255, 255, .1);
 }
 
-.teamkampf-avatar {
+.signup-roster-avatar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -246,7 +234,7 @@ html, body {
   flex: none;
 }
 
-.teamkampf-avatar-fallback {
+.signup-roster-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -256,7 +244,7 @@ html, body {
   font-weight: 700;
 }
 
-.teamkampf-participant-name {
+.signup-roster-participant-name {
   color: #fff;
   font-size: .8rem;
   font-weight: 600;

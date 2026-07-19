@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.2";
+} from "./api.js?v=2.12.3";
 import {
   applyTheme,
   boosterMarkup,
@@ -63,7 +63,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.2";
+} from "./render.js?v=2.12.3";
 
 let settings;
 let selectedCardId;
@@ -1718,26 +1718,53 @@ const I18N = {
     th: "เป้าหมายชุมชน"
   },
   "communitygoal-hint": {
-    de: "Ein gemeinsamer Fortschrittsbalken über alle Zuschauer hinweg – jede Ziehung (egal ob per Kanalpunkte oder Chat-Befehl) zählt +1. Wird das Ziel erreicht, postet der Bot eine Feier-Nachricht im Chat, die OBS-Quelle zeigt eine Feier-Animation, und jeder, der mitgezogen hat, bekommt automatisch einen Bonus-Booster.",
-    en: "A shared progress bar across every viewer - each draw (channel points or chat command) counts +1. Once the goal is reached, the bot posts a celebration message in chat, the OBS source plays a celebration animation, and everyone who participated automatically gets a bonus booster.",
-    fr: "Une barre de progression partagée entre tous les spectateurs - chaque tirage (points de chaîne ou commande de chat) compte +1. Une fois l'objectif atteint, le bot publie un message de célébration dans le chat, la source OBS joue une animation de célébration, et tous les participants reçoivent automatiquement un booster bonus.",
-    es: "Una barra de progreso compartida entre todos los espectadores - cada tirada (puntos de canal o comando de chat) cuenta +1. Al alcanzar la meta, el bot publica un mensaje de celebración en el chat, la fuente de OBS reproduce una animación de celebración, y todos los participantes reciben automáticamente un sobre extra.",
-    th: "แถบความคืบหน้าที่ใช้ร่วมกันของผู้ชมทุกคน - แต่ละครั้งที่สุ่ม (แชนแนลพอยท์หรือคำสั่งแชท) นับ +1 เมื่อบรรลุเป้าหมาย บอทจะโพสต์ข้อความฉลองในแชท ซอร์ส OBS จะเล่นแอนิเมชันฉลอง และทุกคนที่เข้าร่วมจะได้รับบูสเตอร์โบนัสอัตโนมัติ"
+    de: "Ein gemeinsamer Fortschrittsbalken über alle Zuschauer hinweg – jede Ziehung (egal ob per Kanalpunkte, Chat-Befehl oder Bits) zählt +1. Wird eine Zielstufe erreicht, postet der Bot deren Feier-Nachricht im Chat, die OBS-Quelle zeigt sie als Feier-Animation, und jeder, der mitgezogen hat, bekommt automatisch die dafür festgelegte Anzahl Bonus-Booster.",
+    en: "A shared progress bar across every viewer - each draw (channel points, chat command or bits) counts +1. Once a goal stage is reached, the bot posts that stage's celebration message in chat, the OBS source plays it as a celebration animation, and everyone who participated automatically gets that stage's bonus booster count.",
+    fr: "Une barre de progression partagée entre tous les spectateurs - chaque tirage (points de chaîne, commande de chat ou bits) compte +1. Une fois une étape atteinte, le bot publie son message de célébration dans le chat, la source OBS le joue en animation de célébration, et tous les participants reçoivent automatiquement le nombre de boosters bonus défini pour cette étape.",
+    es: "Una barra de progreso compartida entre todos los espectadores - cada tirada (puntos de canal, comando de chat o bits) cuenta +1. Al alcanzar una etapa, el bot publica su mensaje de celebración en el chat, la fuente de OBS lo reproduce como animación de celebración, y todos los participantes reciben automáticamente la cantidad de sobres bonus definida para esa etapa.",
+    th: "แถบความคืบหน้าที่ใช้ร่วมกันของผู้ชมทุกคน - แต่ละครั้งที่สุ่ม (แชนแนลพอยท์, คำสั่งแชท หรือบิต) นับ +1 เมื่อบรรลุแต่ละขั้น บอทจะโพสต์ข้อความฉลองของขั้นนั้นในแชท ซอร์ส OBS จะเล่นเป็นแอนิเมชันฉลอง และทุกคนที่เข้าร่วมจะได้รับจำนวนบูสเตอร์โบนัสตามที่กำหนดไว้สำหรับขั้นนั้นโดยอัตโนมัติ"
+  },
+  "communitygoal-stages-hint": {
+    de: "Bis zu 5 Zielstufen – jede Stufe hat ein eigenes Ziel, eine eigene Bonus-Kartenzahl je Teilnehmer und eine eigene Feier-Nachricht (Chat & Overlay). [Ziel] und [Karten] werden automatisch ersetzt.",
+    en: "Up to 5 goal stages - each has its own target, its own bonus-card count per participant and its own celebration message (chat & overlay). [Ziel] and [Karten] are replaced automatically.",
+    fr: "Jusqu'à 5 étapes - chacune a son propre objectif, son propre nombre de cartes bonus par participant et son propre message de célébration (chat et overlay). [Ziel] et [Karten] sont remplacés automatiquement.",
+    es: "Hasta 5 etapas - cada una con su propia meta, su propia cantidad de cartas bonus por participante y su propio mensaje de celebración (chat y overlay). [Ziel] y [Karten] se reemplazan automáticamente.",
+    th: "สูงสุด 5 ขั้น - แต่ละขั้นมีเป้าหมาย จำนวนการ์ดโบนัสต่อผู้เข้าร่วม และข้อความฉลอง (แชทและโอเวอร์เลย์) ของตัวเอง [Ziel] และ [Karten] จะถูกแทนที่โดยอัตโนมัติ"
   },
   "label-communitygoal-enabled": { de: "Community-Ziel aktiviert", en: "Community goal enabled",
     fr: "Objectif communautaire activé",
     es: "Meta comunitaria activada",
     th: "เปิดใช้งานเป้าหมายชุมชน"
   },
+  "label-communitygoal-label": { de: "Anzeige-Text im Overlay", en: "Overlay display text",
+    fr: "Texte affiché dans l'overlay",
+    es: "Texto mostrado en el overlay",
+    th: "ข้อความที่แสดงในโอเวอร์เลย์"
+  },
+  "label-communitygoal-stage": { de: "Stufe", en: "Stage",
+    fr: "Étape",
+    es: "Etapa",
+    th: "ขั้น"
+  },
   "label-communitygoal-target": { de: "Ziel (Anzahl Ziehungen)", en: "Goal (number of draws)",
     fr: "Objectif (nombre de tirages)",
     es: "Meta (número de tiradas)",
     th: "เป้าหมาย (จำนวนครั้ง)"
   },
-  "label-communitygoal-message": { de: "Feier-Nachricht im Chat", en: "Celebration message in chat",
-    fr: "Message de célébration dans le chat",
-    es: "Mensaje de celebración en el chat",
-    th: "ข้อความฉลองในแชท"
+  "label-communitygoal-bonus-cards": { de: "Bonus-Karten je Teilnehmer", en: "Bonus cards per participant",
+    fr: "Cartes bonus par participant",
+    es: "Cartas bonus por participante",
+    th: "การ์ดโบนัสต่อผู้เข้าร่วม"
+  },
+  "label-communitygoal-message": { de: "Feier-Nachricht (Chat & Overlay)", en: "Celebration message (chat & overlay)",
+    fr: "Message de célébration (chat et overlay)",
+    es: "Mensaje de celebración (chat y overlay)",
+    th: "ข้อความฉลอง (แชทและโอเวอร์เลย์)"
+  },
+  "btn-communitygoal-add-stage": { de: "+ Stufe hinzufügen", en: "+ Add stage",
+    fr: "+ Ajouter une étape",
+    es: "+ Añadir etapa",
+    th: "+ เพิ่มขั้น"
   },
   "btn-communitygoal-reset": { de: "Fortschritt zurücksetzen", en: "Reset progress",
     fr: "Réinitialiser la progression",
@@ -5856,8 +5883,8 @@ function hydrateDesign() {
   $("#bits-enabled").checked = settings.bits?.enabled === true;
   $("#bits-per-draw").value = settings.bits?.bitsPerDraw ?? 100;
   $("#communitygoal-enabled").checked = settings.communityGoal?.enabled === true;
-  $("#communitygoal-target").value = settings.communityGoal?.target ?? 500;
-  $("#communitygoal-message").value = settings.communityGoal?.celebrationMessage || "";
+  $("#communitygoal-label").value = settings.communityGoal?.label || "";
+  renderCommunityGoalStages();
   refreshCommunityGoalProgress();
   $("#tournament-enabled").checked = settings.tournament?.enabled === true;
   $("#tournament-min-participants").value = settings.tournament?.minParticipants ?? 3;
@@ -6012,10 +6039,70 @@ async function refreshCommunityGoalProgress() {
   try {
     const result = await getCommunityGoal();
     const goal = result.goal || {};
-    line.textContent = `${goal.current ?? 0} / ${goal.target ?? 0}${goal.reached ? " – " + t("label-communitygoal-reached") : ""}`;
+    const stages = Array.isArray(goal.stages) ? goal.stages : [];
+    const reachedCount = goal.reachedCount ?? 0;
+    const nextStage = stages[reachedCount];
+    const stageInfo = nextStage
+      ? ` (${t("label-communitygoal-stage")} ${reachedCount + 1}/${stages.length})`
+      : "";
+    const nextTarget = nextStage ? nextStage.target : stages[stages.length - 1]?.target ?? 0;
+    line.textContent = `${goal.current ?? 0} / ${nextTarget}${stageInfo}${goal.reached ? " – " + t("label-communitygoal-reached") : ""}`;
   } catch {
     line.textContent = "";
   }
+}
+
+// Rebuilds the up-to-5 stage rows from settings.communityGoal.stages. Each row's inputs write
+// straight back into that array; called on hydrate and after every add/remove.
+function renderCommunityGoalStages() {
+  const container = $("#communitygoal-stages");
+  if (!container) return;
+  const stages = settings.communityGoal?.stages || [];
+  container.innerHTML = stages.map((stage, index) => `
+    <article class="reward-entry command-card" data-stage-index="${index}">
+      <header class="command-card-head">
+        <h3>${t("label-communitygoal-stage")} ${index + 1}</h3>
+        <button class="danger-button" type="button" data-stage-remove="${index}" ${stages.length <= 1 ? "disabled" : ""}>&times;</button>
+      </header>
+      <div class="field-group">
+        <div class="form-grid">
+          <label data-i18n="label-communitygoal-target">${t("label-communitygoal-target")}<input type="number" min="1" step="1" data-stage-field="target" data-stage-index="${index}" value="${stage.target}"></label>
+          <label data-i18n="label-communitygoal-bonus-cards">${t("label-communitygoal-bonus-cards")}<input type="number" min="1" step="1" data-stage-field="bonusCards" data-stage-index="${index}" value="${stage.bonusCards}"></label>
+        </div>
+        <div class="message-field">
+          <div class="message-field-head">
+            <span class="message-field-label">${t("label-communitygoal-message")}</span>
+            <div class="var-chips" data-target="communitygoal-stage-message-${index}">
+              <button class="var-chip" type="button" data-insert="[Ziel]">[Ziel]</button>
+              <button class="var-chip" type="button" data-insert="[Karten]">[Karten]</button>
+            </div>
+          </div>
+          <textarea id="communitygoal-stage-message-${index}" rows="2" data-stage-field="celebrationMessage" data-stage-index="${index}">${stage.celebrationMessage}</textarea>
+        </div>
+      </div>
+    </article>
+  `).join("");
+  container.querySelectorAll("[data-stage-field]").forEach((field) => {
+    const eventName = field.tagName === "TEXTAREA" || field.type === "number" ? "input" : "change";
+    field.addEventListener(eventName, (event) => {
+      const index = Number(event.target.dataset.stageIndex);
+      const key = event.target.dataset.stageField;
+      const stage = settings.communityGoal.stages[index];
+      if (!stage) return;
+      stage[key] = key === "celebrationMessage" ? event.target.value : Math.max(1, Math.round(Number(event.target.value) || 1));
+      scheduleAutoSave();
+    });
+  });
+  container.querySelectorAll("[data-stage-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (settings.communityGoal.stages.length <= 1) return;
+      settings.communityGoal.stages.splice(Number(button.dataset.stageRemove), 1);
+      renderCommunityGoalStages();
+      scheduleAutoSave();
+    });
+  });
+  const addButton = $("#communitygoal-add-stage");
+  if (addButton) addButton.disabled = stages.length >= 5;
 }
 
 async function refreshTournamentStatus() {
@@ -6402,14 +6489,22 @@ function bindDesign() {
     settings.communityGoal.enabled = event.target.checked;
     scheduleAutoSave();
   });
-  $("#communitygoal-target").addEventListener("input", (event) => {
+  $("#communitygoal-label").addEventListener("input", (event) => {
     settings.communityGoal ||= {};
-    settings.communityGoal.target = Math.max(1, Math.round(Number(event.target.value) || 1));
+    settings.communityGoal.label = event.target.value;
     scheduleAutoSave();
   });
-  $("#communitygoal-message").addEventListener("input", (event) => {
+  $("#communitygoal-add-stage").addEventListener("click", () => {
     settings.communityGoal ||= {};
-    settings.communityGoal.celebrationMessage = event.target.value;
+    settings.communityGoal.stages ||= [];
+    if (settings.communityGoal.stages.length >= 5) return;
+    const lastTarget = settings.communityGoal.stages[settings.communityGoal.stages.length - 1]?.target || 0;
+    settings.communityGoal.stages.push({
+      target: lastTarget + 500,
+      bonusCards: 1,
+      celebrationMessage: pickDefault(settings.language, "communityGoalReached")
+    });
+    renderCommunityGoalStages();
     scheduleAutoSave();
   });
   $("#communitygoal-reset").addEventListener("click", async () => {

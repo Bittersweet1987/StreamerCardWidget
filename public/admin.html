@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.2">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.3">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -1751,22 +1751,18 @@
                 <h2 data-i18n="communitygoal-title">Community-Ziel</h2>
               </div>
             </div>
-            <p class="hint" data-i18n="communitygoal-hint">Ein gemeinsamer Fortschrittsbalken über alle Zuschauer hinweg – jede Ziehung (egal ob per Kanalpunkte oder Chat-Befehl) zählt +1. Wird das Ziel erreicht, postet der Bot eine Feier-Nachricht im Chat, die OBS-Quelle zeigt eine Feier-Animation, und jeder, der mitgezogen hat, bekommt automatisch einen Bonus-Booster.</p>
+            <p class="hint" data-i18n="communitygoal-hint">Ein gemeinsamer Fortschrittsbalken über alle Zuschauer hinweg – jede Ziehung (egal ob per Kanalpunkte, Chat-Befehl oder Bits) zählt +1. Wird eine Zielstufe erreicht, postet der Bot deren Feier-Nachricht im Chat, die OBS-Quelle zeigt sie als Feier-Animation, und jeder, der mitgezogen hat, bekommt automatisch die dafür festgelegte Anzahl Bonus-Booster.</p>
             <label class="switch-row compact-switch">
               <input id="communitygoal-enabled" type="checkbox">
               <span data-i18n="label-communitygoal-enabled">Community-Ziel aktiviert</span>
             </label>
             <div class="form-grid">
-              <label data-i18n="label-communitygoal-target">Ziel (Anzahl Ziehungen)<input id="communitygoal-target" type="number" min="1" step="1"></label>
+              <label data-i18n="label-communitygoal-label">Anzeige-Text im Overlay<input id="communitygoal-label" type="text" maxlength="60" placeholder="Community-Ziel"></label>
             </div>
-            <div class="message-field">
-              <div class="message-field-head">
-                <span class="message-field-label" data-i18n="label-communitygoal-message">Feier-Nachricht im Chat</span>
-                <div class="var-chips" data-target="communitygoal-message">
-                  <button class="var-chip" type="button" data-insert="[Ziel]">[Ziel]</button>
-                </div>
-              </div>
-              <textarea id="communitygoal-message" rows="2"></textarea>
+            <p class="hint" data-i18n="communitygoal-stages-hint">Bis zu 5 Zielstufen – jede Stufe hat ein eigenes Ziel, eine eigene Bonus-Kartenzahl je Teilnehmer und eine eigene Feier-Nachricht (Chat &amp; Overlay). [Ziel] und [Karten] werden automatisch ersetzt.</p>
+            <div id="communitygoal-stages" class="communitygoal-stage-list"></div>
+            <div class="button-row">
+              <button class="secondary-button" id="communitygoal-add-stage" type="button" data-i18n="btn-communitygoal-add-stage">+ Stufe hinzufügen</button>
             </div>
             <div class="status-line" id="communitygoal-progress-line"></div>
             <div class="button-row">
@@ -2285,7 +2281,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.2"></script>
-    <script type="module" src="/assets/js/admin.js?v=2.12.2"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.3"></script>
+    <script type="module" src="/assets/js/admin.js?v=2.12.3"></script>
   </body>
 </html>

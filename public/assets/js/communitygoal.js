@@ -22,12 +22,14 @@ function setStatus(text, show = false) {
 }
 
 function goalLabel() {
+  const custom = settings?.communityGoal?.label?.trim();
+  if (custom) return custom;
   return settings?.language === "en" ? "Community goal" : "Community-Ziel";
 }
 
-// Bar is only ever visible while a goal is enabled, has a target, and hasn't been reached yet -
-// once reached, the celebration takes over and the bar has nothing left to show until the next
-// admin reset (which broadcasts reached:false again).
+// Bar is only ever visible while a goal is enabled and hasn't fully run through every stage yet -
+// once every stage is reached, the last celebration takes over and the bar has nothing left to
+// show until the next admin reset (which broadcasts reached:false again).
 function renderProgress(current, target, reached) {
   const enabled = settings?.communityGoal?.enabled === true;
   barWrap.hidden = !enabled || !target || reached;
@@ -42,21 +44,24 @@ async function loadProgress() {
   try {
     const result = await getCommunityGoal();
     const goal = result.goal || {};
-    renderProgress(goal.current || 0, goal.target || 0, goal.reached === true);
+    const stages = Array.isArray(goal.stages) ? goal.stages : [];
+    const reachedCount = goal.reachedCount ?? 0;
+    const nextTarget = stages[reachedCount]?.target ?? stages[stages.length - 1]?.target ?? 0;
+    renderProgress(goal.current || 0, nextTarget, goal.reached === true);
   } catch {
     // Best-effort - the bar just stays hidden if this fails.
   }
 }
 
 // This plays as its own item in the server's serialized draw queue (see ProcessQueueItem's
-// "communitygoalreached" handling) so it never overlaps the draw that completed the goal or the
+// "communitygoalreached" handling) so it never overlaps the draw that completed the stage or the
 // bonus draws that follow - completeQueueItem() releases the queue for the next item once this
-// animation is done, same as every other overlay's queued animation.
-async function playCelebration(target, eventId) {
-  const text = settings?.language === "en"
-    ? `Goal reached! (${target} draws) Everyone gets a bonus booster.`
-    : `Ziel erreicht! (${target} Ziehungen) Alle bekommen einen Bonus-Booster.`;
-  celebrationText.textContent = text;
+// animation is done, same as every other overlay's queued animation. The text itself is the
+// admin's own celebration message for that stage (settings.communityGoal.stages[i].celebration
+// Message, [Ziel]/[Karten] already replaced server-side) - not a hardcoded overlay string, so
+// whatever the admin writes for chat is exactly what shows up here too.
+async function playCelebration(message, eventId) {
+  celebrationText.textContent = message || goalLabel();
   celebration.hidden = false;
   celebration.classList.add("is-playing");
   await new Promise((resolve) => setTimeout(resolve, 6000));
@@ -75,7 +80,7 @@ async function loadSettings() {
 function bindServerEvents() {
   connectEventStream({
     communitygoalprogress: (event) => renderProgress(event.current || 0, event.target || 0, event.reached === true),
-    communitygoalreached: (event) => playCelebration(event.target || 0, event.eventId),
+    communitygoalreached: (event) => playCelebration(event.message, event.eventId),
     settings: () => loadSettings(),
     collections: () => {},
     draw: () => {},
@@ -87,7 +92,7 @@ function bindServerEvents() {
 }
 
 function bindDebugHooks() {
-  window.communityGoalOverlay = { reload: loadSettings, celebrate: () => playCelebration(settings?.communityGoal?.target || 500) };
+  window.communityGoalOverlay = { reload: loadSettings, celebrate: () => playCelebration(settings?.communityGoal?.stages?.[0]?.celebrationMessage) };
 }
 
 async function init() {

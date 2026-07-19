@@ -87,11 +87,12 @@ function playBattleSound(kind) {
 }
 
 function enqueueBattle(event = {}) {
-  // A Team-Kampf fight starting is a guaranteed signal the signup window is over - force the
-  // countdown/participant box away right now instead of only trusting its own local timer (which
-  // must independently reach the same conclusion from deadlineUtc; this is a second, redundant
-  // path to the same outcome so the box can never linger visible into the fight itself).
+  // A Team-Kampf/tournament fight starting is a guaranteed signal the signup window is over -
+  // force the countdown/participant box away right now instead of only trusting its own local
+  // timer (which must independently reach the same conclusion from deadlineUtc; this is a second,
+  // redundant path to the same outcome so the box can never linger visible into the fight itself).
   if (event.teamBattle) hideTeamKampfSignup();
+  if (event.tournamentRound) hideTournamentSignup();
   // A test event always previews (so it can be checked before enabling); real events obey the
   // toggle. Real events are gated by the server-side queue (see runQueue's finally below) - if
   // the animation is off, the event is dropped here but must still be acked immediately,
@@ -491,59 +492,93 @@ async function loadSettings() {
   applyOverlayLayout(stage, settings.overlayLayout?.battle, "battle");
 }
 
-// Subtle, always-on-top countdown of the remaining tournament signup window - separate from the
-// queued battle animations (this has no animation of its own and must never block the queue), so
-// it lives outside enqueueBattle/runQueue entirely and just reacts to its own SSE event directly.
+// Shared avatar-chip markup for both the tournament and the Team-Kampf signup roster.
+function signupAvatarHtml(name, avatarUrl) {
+  const safeName = escapeForOverlay(name || "");
+  const img = avatarUrl
+    ? `<img class="signup-roster-avatar" src="${escapeForOverlay(avatarUrl)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'signup-roster-avatar signup-roster-avatar-fallback',textContent:'?'}))">`
+    : `<span class="signup-roster-avatar signup-roster-avatar-fallback">?</span>`;
+  return `<div class="signup-roster-participant">${img}<span class="signup-roster-participant-name">${safeName}</span></div>`;
+}
+
+// Own countdown, outside the queue: this has no animation of its own and must never block the
+// queue, so it lives outside enqueueBattle/runQueue entirely and just reacts to its own SSE event
+// directly. A live-updating row of joined participants (avatar + name - see
+// BroadcastTournamentSignupState, which re-sends this on every join, not just once at start) so
+// viewers see who else has already signed up, same as the Team-Kampf roster below.
 let signupCountdownTimer = null;
 let signupCountdownEl = null;
 
 function ensureSignupCountdownEl() {
   if (signupCountdownEl) return signupCountdownEl;
   signupCountdownEl = document.createElement("div");
-  signupCountdownEl.className = "tournament-signup-countdown";
+  signupCountdownEl.className = "signup-roster";
   signupCountdownEl.hidden = true;
   stage.append(signupCountdownEl);
   return signupCountdownEl;
 }
 
+// Unconditional hide, independent of whatever the local countdown interval thinks the remaining
+// time is - mirrors hideTeamKampfSignup below.
+function hideTournamentSignup() {
+  clearInterval(signupCountdownTimer);
+  if (signupCountdownEl) signupCountdownEl.hidden = true;
+}
+
 function handleTournamentSignupEvent(event = {}) {
   const el = ensureSignupCountdownEl();
-  clearInterval(signupCountdownTimer);
   if (!event.active || !event.deadlineUtc) {
-    el.hidden = true;
+    hideTournamentSignup();
     return;
   }
   const deadline = new Date(event.deadlineUtc).getTime();
   const label = settings?.language === "en" ? "Tournament signup" : "Turnier-Anmeldung";
+  const participants = Array.isArray(event.participants) ? event.participants : [];
+  const participantsHtml = participants.map((p) => signupAvatarHtml(p?.displayName, p?.avatarUrl)).join("");
+  const participantsLabel = settings?.language === "en" ? "Joined" : "Angemeldet";
+  // Rebuilding the whole innerHTML on every join (not just at signup start) is deliberate and
+  // cheap here - this box has no ongoing CSS animation to interrupt, unlike the queued battle
+  // scenes, so there's no continuity to preserve across rebuilds the way liveticker.js's
+  // append-only conveyor has to.
+  el.innerHTML = `
+    <div class="signup-roster-title"></div>
+    ${participants.length ? `
+      <div class="signup-roster-participants-label">${participantsLabel} (${participants.length})</div>
+      <div class="signup-roster-participants">${participantsHtml}</div>
+    ` : ""}
+  `;
+  const titleEl = el.querySelector(".signup-roster-title");
+  // A fresh interval per event is intentional: clearing+recreating on every join keeps exactly one
+  // ticking interval alive at all times (never zero, never more than one), and since it always
+  // reads the SAME deadline (see BroadcastTournamentSignupState - the deadline is never
+  // recomputed), the displayed countdown itself never jumps or resets when someone joins.
+  clearInterval(signupCountdownTimer);
   const tick = () => {
     const remainingMs = deadline - Date.now();
     if (remainingMs <= 0) {
-      el.hidden = true;
-      clearInterval(signupCountdownTimer);
+      hideTournamentSignup();
       return;
     }
     const totalSeconds = Math.ceil(remainingMs / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     el.hidden = false;
-    el.textContent = `🏆 ${label}: ${minutes}:${String(seconds).padStart(2, "0")}`;
+    if (titleEl) titleEl.textContent = `🏆 ${label}: ${minutes}:${String(seconds).padStart(2, "0")}`;
   };
   tick();
   signupCountdownTimer = setInterval(tick, 1000);
 }
 
-// Same "own countdown, outside the queue" pattern as the tournament signup countdown above, plus
-// a row of the streamer's revealed lineup (drawn up front by the server, see
-// DrawTeamBattleStreamerLineup) and a live-updating row of joined participants (avatar + name -
-// see BroadcastTeamBattleSignupState, which re-sends this on every join, not just once at start)
-// so viewers know both what they're up against and who else has already joined.
+// Same pattern as the tournament roster above, plus a row of the streamer's revealed lineup
+// (drawn up front by the server, see DrawTeamBattleStreamerLineup) so viewers also know what
+// they're up against, not just who else has already joined.
 let teamKampfCountdownTimer = null;
 let teamKampfEl = null;
 
 function ensureTeamKampfEl() {
   if (teamKampfEl) return teamKampfEl;
   teamKampfEl = document.createElement("div");
-  teamKampfEl.className = "teamkampf-signup";
+  teamKampfEl.className = "signup-roster";
   teamKampfEl.hidden = true;
   stage.append(teamKampfEl);
   return teamKampfEl;
@@ -555,14 +590,6 @@ function ensureTeamKampfEl() {
 function hideTeamKampfSignup() {
   clearInterval(teamKampfCountdownTimer);
   if (teamKampfEl) teamKampfEl.hidden = true;
-}
-
-function teamKampfAvatarHtml(name, avatarUrl) {
-  const safeName = escapeForOverlay(name || "");
-  const img = avatarUrl
-    ? `<img class="teamkampf-avatar" src="${escapeForOverlay(avatarUrl)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'teamkampf-avatar teamkampf-avatar-fallback',textContent:'?'}))">`
-    : `<span class="teamkampf-avatar teamkampf-avatar-fallback">?</span>`;
-  return `<div class="teamkampf-participant">${img}<span class="teamkampf-participant-name">${safeName}</span></div>`;
 }
 
 function handleTeamBattleSignupEvent(event = {}) {
@@ -578,23 +605,23 @@ function handleTeamBattleSignupEvent(event = {}) {
   // spot in the lineup). The server only sends a count (see BroadcastTeamBattleSignupState), not
   // the actual card identities, so there's nothing to reveal even by inspecting the raw event.
   const lineupCount = Math.max(0, Number(event.streamerLineupCount) || 0);
-  const lineupHtml = Array.from({ length: lineupCount }, () => `<div class="teamkampf-lineup-card">${cardMarkup(null, { compact: true, hidden: true })}</div>`).join("");
+  const lineupHtml = Array.from({ length: lineupCount }, () => `<div class="signup-roster-lineup-card">${cardMarkup(null, { compact: true, hidden: true })}</div>`).join("");
   const participants = Array.isArray(event.participants) ? event.participants : [];
-  const participantsHtml = participants.map((p) => teamKampfAvatarHtml(p?.displayName, p?.avatarUrl)).join("");
+  const participantsHtml = participants.map((p) => signupAvatarHtml(p?.displayName, p?.avatarUrl)).join("");
   const participantsLabel = settings?.language === "en" ? "Joined" : "Angemeldet";
   // Rebuilding the whole innerHTML on every join (not just at signup start) is deliberate and
   // cheap here - this box has no ongoing CSS animation to interrupt, unlike the queued battle
   // scenes, so there's no continuity to preserve across rebuilds the way liveticker.js's
   // append-only conveyor has to.
   el.innerHTML = `
-    <div class="teamkampf-signup-title"></div>
-    <div class="teamkampf-lineup">${lineupHtml}</div>
+    <div class="signup-roster-title"></div>
+    <div class="signup-roster-lineup">${lineupHtml}</div>
     ${participants.length ? `
-      <div class="teamkampf-participants-label">${participantsLabel} (${participants.length})</div>
-      <div class="teamkampf-participants">${participantsHtml}</div>
+      <div class="signup-roster-participants-label">${participantsLabel} (${participants.length})</div>
+      <div class="signup-roster-participants">${participantsHtml}</div>
     ` : ""}
   `;
-  const titleEl = el.querySelector(".teamkampf-signup-title");
+  const titleEl = el.querySelector(".signup-roster-title");
   // A fresh interval per event is intentional: clearing+recreating on every join keeps exactly one
   // ticking interval alive at all times (never zero, never more than one), and since it always
   // reads the SAME deadline (see BroadcastTeamBattleSignupState - the deadline is never

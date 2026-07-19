@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.2";
+        public const string Version = "2.12.3";
         public const string ReleaseDate = "2026-07-19";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -2876,24 +2876,58 @@ namespace CardPackWidgetApp
             catch (Exception ex) { server.Log("draw", "error", "Community-Ziel-Speicherung fehlgeschlagen: " + ex.Message); }
         }
 
+        // Reads up to 5 goal stages from settings.communityGoal.stages (each with its own target,
+        // bonus-card count and celebration text), sorted ascending by target. Falls back to a
+        // single stage built from the pre-multi-stage "target"/"celebrationMessage" fields if no
+        // stages array is present yet (older settings.json / first run).
+        private List<Dictionary<string, object>> GetGoalStages(Dictionary<string, object> goalCfg)
+        {
+            var result = new List<Dictionary<string, object>>();
+            object stagesObj;
+            if (goalCfg.TryGetValue("stages", out stagesObj) && stagesObj is object[])
+            {
+                foreach (object so in (object[])stagesObj)
+                {
+                    Dictionary<string, object> stage = so as Dictionary<string, object>;
+                    if (stage == null) continue;
+                    int target = GetInt(stage, "target", 0);
+                    if (target <= 0) continue;
+                    int bonusCards = Math.Max(1, GetInt(stage, "bonusCards", 1));
+                    string message = GetString(stage, "celebrationMessage", DefaultCommunityGoalMessage);
+                    result.Add(new Dictionary<string, object> { { "target", target }, { "bonusCards", bonusCards }, { "celebrationMessage", message } });
+                    if (result.Count >= 5) break;
+                }
+            }
+            if (result.Count == 0)
+            {
+                int legacyTarget = Math.Max(1, GetInt(goalCfg, "target", 500));
+                string legacyMessage = GetString(goalCfg, "celebrationMessage", DefaultCommunityGoalMessage);
+                result.Add(new Dictionary<string, object> { { "target", legacyTarget }, { "bonusCards", 1 }, { "celebrationMessage", legacyMessage } });
+            }
+            result.Sort(delegate(Dictionary<string, object> a, Dictionary<string, object> b) { return GetInt(a, "target", 0).CompareTo(GetInt(b, "target", 0)); });
+            return result;
+        }
+
         // Called from the same central "draw" handling as the pity system (see ProcessQueueItem)
-        // so every trigger (channel points or chat command) contributes equally.
+        // so every trigger (channel points, chat command or bits) contributes equally.
         private void RegisterCommunityGoalDraw(string login, string displayName)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> goalCfg = Obj(settings, "communityGoal");
             if (!GetBool(goalCfg, "enabled", false)) return;
-            int target = Math.Max(1, GetInt(goalCfg, "target", 500));
+            List<Dictionary<string, object>> stages = GetGoalStages(goalCfg);
 
-            bool justReached = false;
-            Dictionary<string, object> participants = null;
+            int current;
+            int reachedCount;
+            bool allDone;
+            var newlyReached = new List<Dictionary<string, object>>();
+            Dictionary<string, object> participantsSnapshot = null;
             lock (communityGoalLock)
             {
                 EnsureCommunityGoalLoaded();
-                bool reached = GetBool(communityGoalState, "reached", false);
-                if (reached) return; // frozen at target until an admin resets it
+                if (GetBool(communityGoalState, "reached", false)) return; // frozen until an admin resets it
 
-                int current = GetInt(communityGoalState, "current", 0) + 1;
+                current = GetInt(communityGoalState, "current", 0) + 1;
                 communityGoalState["current"] = current;
                 object participantsObj;
                 if (!communityGoalState.TryGetValue("participants", out participantsObj) || !(participantsObj is Dictionary<string, object>))
@@ -2903,75 +2937,114 @@ namespace CardPackWidgetApp
                 }
                 ((Dictionary<string, object>)participantsObj)[login] = displayName;
 
-                if (current >= target)
+                reachedCount = GetInt(communityGoalState, "reachedCount", 0);
+                // Stages are sorted ascending, so reaching stage i implies every earlier stage is
+                // already reached too - walking forward from the last-known reachedCount is
+                // enough, no need to recheck stages already marked.
+                while (reachedCount < stages.Count && GetInt(stages[reachedCount], "target", 0) <= current)
                 {
-                    communityGoalState["reached"] = true;
-                    justReached = true;
-                    participants = new Dictionary<string, object>((Dictionary<string, object>)participantsObj);
+                    newlyReached.Add(stages[reachedCount]);
+                    reachedCount++;
                 }
+                communityGoalState["reachedCount"] = reachedCount;
+                allDone = reachedCount >= stages.Count;
+                if (allDone) communityGoalState["reached"] = true;
+
+                if (newlyReached.Count > 0) participantsSnapshot = new Dictionary<string, object>((Dictionary<string, object>)participantsObj);
                 SaveCommunityGoalState();
             }
 
+            int nextTarget = GetInt(stages[allDone ? stages.Count - 1 : reachedCount], "target", current);
             server.Broadcast("communitygoalprogress", server.Serializer.Serialize(new Dictionary<string, object>
             {
-                { "current", GetInt(communityGoalState, "current", 0) },
-                { "target", target },
-                { "reached", justReached }
+                { "current", current },
+                { "target", nextTarget },
+                { "reached", allDone },
+                { "stageNumber", reachedCount },
+                { "stageCount", stages.Count }
             }));
 
-            if (!justReached) return;
+            if (newlyReached.Count == 0) return;
 
             // Don't play the celebration or grant bonus draws right here - we're still in the
-            // middle of processing the draw THAT reached the goal, whose own animation hasn't
+            // middle of processing the draw THAT reached the stage, whose own animation hasn't
             // even been broadcast yet (that happens further down in ProcessQueueItem). Firing the
             // celebration synchronously made it visually stomp on that draw's animation (and the
             // subsequent bonus draws), since none of this went through the serialized action
-            // queue. Enqueueing it as its own item instead makes it play in its proper turn, after
-            // the goal-completing draw's animation finishes.
-            server.Log("draw", "info", "Community-Ziel erreicht (" + target + " Ziehungen) - " + participants.Count + " Teilnehmer erhalten einen Bonus-Booster.");
-            var participantList = new List<object>();
-            foreach (var kvp in participants)
+            // queue. Enqueueing each reached stage as its own item instead makes it play in its
+            // proper turn, after the goal-completing draw's animation finishes.
+            foreach (Dictionary<string, object> stage in newlyReached)
             {
-                participantList.Add(new Dictionary<string, object> { { "login", kvp.Key }, { "displayName", Convert.ToString(kvp.Value) } });
+                int stageTarget = GetInt(stage, "target", 0);
+                int bonusCards = GetInt(stage, "bonusCards", 1);
+                string celebrationMessage = GetString(stage, "celebrationMessage", DefaultCommunityGoalMessage)
+                    .Replace("[Ziel]", stageTarget.ToString())
+                    .Replace("[Karten]", bonusCards.ToString());
+                server.Log("draw", "info", "Community-Ziel-Stufe erreicht (" + stageTarget + " Ziehungen) - " + participantsSnapshot.Count + " Teilnehmer erhalten je " + bonusCards + " Bonus-Booster.");
+                var participantList = new List<object>();
+                foreach (var kvp in participantsSnapshot)
+                {
+                    participantList.Add(new Dictionary<string, object> { { "login", kvp.Key }, { "displayName", Convert.ToString(kvp.Value) } });
+                }
+                Enqueue("communitygoalreached", "", "", "system", new Dictionary<string, object>
+                {
+                    { "target", stageTarget },
+                    { "bonusCards", bonusCards },
+                    { "celebrationMessage", celebrationMessage },
+                    { "participants", participantList.ToArray() }
+                });
             }
-            Enqueue("communitygoalreached", "", "", "system", new Dictionary<string, object>
-            {
-                { "target", target },
-                { "participants", participantList.ToArray() }
-            });
         }
 
-        private const string DefaultCommunityGoalMessage = "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch einen Bonus-Booster.";
+        private const string DefaultCommunityGoalMessage = "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch [Karten] Bonus-Booster.";
 
-        // Exposes current progress for the admin panel and the OBS overlay's initial load.
+        // Exposes current progress (plus every stage's target/reached state) for the admin panel
+        // and the OBS overlay's initial load.
         public Dictionary<string, object> GetCommunityGoalState()
         {
             lock (communityGoalLock)
             {
                 EnsureCommunityGoalLoaded();
                 Dictionary<string, object> settings = server.ReadSettingsObject();
-                int target = Math.Max(1, GetInt(Obj(settings, "communityGoal"), "target", 500));
+                Dictionary<string, object> goalCfg = Obj(settings, "communityGoal");
+                List<Dictionary<string, object>> stages = GetGoalStages(goalCfg);
+                int reachedCount = GetInt(communityGoalState, "reachedCount", 0);
+                var stageList = new List<object>();
+                for (int i = 0; i < stages.Count; i++)
+                {
+                    stageList.Add(new Dictionary<string, object>
+                    {
+                        { "target", GetInt(stages[i], "target", 0) },
+                        { "bonusCards", GetInt(stages[i], "bonusCards", 1) },
+                        { "reached", i < reachedCount }
+                    });
+                }
                 return new Dictionary<string, object>
                 {
                     { "current", GetInt(communityGoalState, "current", 0) },
-                    { "target", target },
+                    { "stages", stageList.ToArray() },
+                    { "reachedCount", reachedCount },
                     { "reached", GetBool(communityGoalState, "reached", false) }
                 };
             }
         }
 
-        // Manual admin reset - starts a fresh run at 0/target, clearing participants so a past
-        // run's contributors don't silently carry over into the next one's bonus-booster payout.
+        // Manual admin reset - starts a fresh run at 0/first-stage, clearing participants so a
+        // past run's contributors don't silently carry over into the next one's bonus payout.
         public void ResetCommunityGoal()
         {
-            int target;
+            List<Dictionary<string, object>> stages;
             lock (communityGoalLock)
             {
-                communityGoalState = new Dictionary<string, object> { { "current", 0 }, { "reached", false }, { "participants", new Dictionary<string, object>() } };
+                communityGoalState = new Dictionary<string, object> { { "current", 0 }, { "reached", false }, { "reachedCount", 0 }, { "participants", new Dictionary<string, object>() } };
                 SaveCommunityGoalState();
-                target = Math.Max(1, GetInt(Obj(server.ReadSettingsObject(), "communityGoal"), "target", 500));
+                stages = GetGoalStages(Obj(server.ReadSettingsObject(), "communityGoal"));
             }
-            server.Broadcast("communitygoalprogress", server.Serializer.Serialize(new Dictionary<string, object> { { "current", 0 }, { "target", target }, { "reached", false } }));
+            int firstTarget = stages.Count > 0 ? GetInt(stages[0], "target", 0) : 0;
+            server.Broadcast("communitygoalprogress", server.Serializer.Serialize(new Dictionary<string, object>
+            {
+                { "current", 0 }, { "target", firstTarget }, { "reached", false }, { "stageNumber", 0 }, { "stageCount", stages.Count }
+            }));
         }
 
         private bool usageLoaded;
@@ -3828,6 +3901,14 @@ namespace CardPackWidgetApp
         // into the queue item so ProcessQueueItem can broadcast it once this item's turn comes up.
         public void Enqueue(string kind, string login, string displayName, string source, Dictionary<string, object> extra)
         {
+            var item = BuildQueueItem(kind, login, displayName, source, extra);
+            lock (queueLock) { actionQueue.Add(item); }
+            BroadcastQueue();
+            queueSignal.Set();
+        }
+
+        private static Dictionary<string, object> BuildQueueItem(string kind, string login, string displayName, string source, Dictionary<string, object> extra)
+        {
             var item = new Dictionary<string, object>
             {
                 { "id", Guid.NewGuid().ToString("N") },
@@ -3841,7 +3922,19 @@ namespace CardPackWidgetApp
             {
                 foreach (KeyValuePair<string, object> kv in extra) item[kv.Key] = kv.Value;
             }
-            lock (queueLock) { actionQueue.Add(item); }
+            return item;
+        }
+
+        // Atomically inserts a whole batch of already-built items at the FRONT of the queue -
+        // ahead of anything already waiting - in a single locked operation, so nothing else can
+        // get interleaved between them and pack draws already queued during the signup window
+        // don't delay the start. Used by tournament/Team-Kampf resolution (see
+        // ResolveTournamentSignup/ResolveTeamBattleSignup) so the bracket/team fight begins the
+        // instant signup closes and plays start-to-finish without anything landing in the middle.
+        private void EnqueueBatchAtFront(List<Dictionary<string, object>> items)
+        {
+            if (items == null || items.Count == 0) return;
+            lock (queueLock) { actionQueue.InsertRange(0, items); }
             BroadcastQueue();
             queueSignal.Set();
         }
@@ -4222,18 +4315,22 @@ namespace CardPackWidgetApp
             if (kind == "communitygoalreached")
             {
                 // Plays as its own serialized queue item (see RegisterCommunityGoalDraw) so it
-                // never overlaps the draw that completed the goal. The chat message and bonus
+                // never overlaps the draw that completed the stage. The chat message and bonus
                 // draws for every participant are triggered here, once it's this item's turn.
+                // Target/bonusCards/celebrationMessage are baked in at enqueue time (rather than
+                // re-read from settings.communityGoal.stages by index) so a later admin edit to
+                // the stage list can never point this already-queued item at the wrong stage.
                 int target = GetInt(item, "target", 0);
-                Dictionary<string, object> settings = server.ReadSettingsObject();
-                Dictionary<string, object> goalCfg = Obj(settings, "communityGoal");
-                string celebrationMessage = GetString(goalCfg, "celebrationMessage", DefaultCommunityGoalMessage).Replace("[Ziel]", target.ToString());
+                int bonusCards = Math.Max(1, GetInt(item, "bonusCards", 1));
+                string celebrationMessage = GetString(item, "celebrationMessage", DefaultCommunityGoalMessage);
                 SendChatMessageSafe(celebrationMessage);
 
                 var celebrationEvent = new Dictionary<string, object>
                 {
                     { "eventId", GetString(item, "id", DateTime.UtcNow.Ticks.ToString()) },
-                    { "target", target }
+                    { "target", target },
+                    { "bonusCards", bonusCards },
+                    { "message", celebrationMessage }
                 };
                 server.Broadcast("communitygoalreached", server.Serializer.Serialize(celebrationEvent));
 
@@ -4247,7 +4344,7 @@ namespace CardPackWidgetApp
                         string pLogin = GetString(participant, "login", "");
                         string pName = GetString(participant, "displayName", pLogin);
                         if (String.IsNullOrEmpty(pLogin)) continue;
-                        Enqueue("draw", pLogin, pName, "communitygoal");
+                        for (int i = 0; i < bonusCards; i++) Enqueue("draw", pLogin, pName, "communitygoal");
                     }
                 }
                 return;
@@ -6037,6 +6134,7 @@ namespace CardPackWidgetApp
                     { "minParticipants", minParticipants },
                     { "lineupSize", Math.Max(1, GetInt(tCfg, "lineupSize", 3)) },
                     { "winnerDraws", Math.Max(1, GetInt(tCfg, "winnerDraws", 1)) },
+                    { "deadlineUtc", deadlineUtc },
                     { "startedAt", DateTime.UtcNow.ToString("o") }
                 };
 
@@ -6045,14 +6143,7 @@ namespace CardPackWidgetApp
                     .Replace("[Sekunden]", signupSeconds.ToString())
                     .Replace("[Mindestteilnehmer]", minParticipants.ToString()));
 
-                // Lets the overlay show a subtle countdown of the remaining signup window - the
-                // client just computes "deadline minus now" locally and ticks it down itself
-                // rather than the server pushing a tick every second.
-                server.Broadcast("tournamentsignup", server.Serializer.Serialize(new Dictionary<string, object>
-                {
-                    { "active", true },
-                    { "deadlineUtc", deadlineUtc }
-                }));
+                BroadcastTournamentSignupState();
 
                 if (tournamentSignupTimer != null) tournamentSignupTimer.Dispose();
                 tournamentSignupTimer = new System.Threading.Timer(delegate { ResolveTournamentSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
@@ -6103,7 +6194,43 @@ namespace CardPackWidgetApp
                         .Replace("@userName", "@" + displayName)
                         .Replace("[Anzahl]", participants.Count.ToString()));
                 }
+
+                BroadcastTournamentSignupState();
             }
+        }
+
+        // Broadcasts the FULL current signup state (live participant list with avatars, deadline)
+        // - called once at signup start and again after every successful join, so the overlay can
+        // show who's already in without waiting for the bracket itself. Always resends the same
+        // deadlineUtc (never recomputed), so the client's local countdown never jumps or restarts
+        // when a new participant joins mid-countdown. Mirrors BroadcastTeamBattleSignupState -
+        // same roster box, same overlay markup (see signup-roster in battle.css/js), just without
+        // a revealed lineup row (a tournament bracket has nothing to reveal before it starts).
+        private void BroadcastTournamentSignupState()
+        {
+            if (activeTournament == null) return;
+            var participants = (List<object>)activeTournament["participants"];
+
+            var participantsForBroadcast = new object[participants.Count];
+            for (int i = 0; i < participants.Count; i++)
+            {
+                Dictionary<string, object> p = participants[i] as Dictionary<string, object>;
+                if (p == null) continue;
+                participantsForBroadcast[i] = new Dictionary<string, object>
+                {
+                    { "login", GetString(p, "login", "") },
+                    { "displayName", GetString(p, "displayName", "") },
+                    { "avatarUrl", GetUserAvatarUrl(GetString(p, "login", "")) }
+                };
+            }
+
+            server.Broadcast("tournamentsignup", server.Serializer.Serialize(new Dictionary<string, object>
+            {
+                { "active", true },
+                { "deadlineUtc", GetString(activeTournament, "deadlineUtc", "") },
+                { "minParticipants", GetInt(activeTournament, "minParticipants", 3) },
+                { "participants", participantsForBroadcast }
+            }));
         }
 
         public Dictionary<string, object> GetTournamentState()
@@ -6464,8 +6591,15 @@ namespace CardPackWidgetApp
                 { "finisherLogin", finisherLogin }, { "finisherDisplayName", finisherDisplayName },
                 { "streamerName", streamerName }
             };
-            Enqueue("battle", "", streamerName, "teamkampf", battleEvent);
-            Enqueue("teamkampfresult", "", streamerName, "teamkampf", resultExtra);
+            // Built and flushed as one atomic batch at the FRONT of the queue (see
+            // EnqueueBatchAtFront) so the Team-Kampf starts the instant signup closes - ahead of
+            // any pack draws already waiting - and nothing else can land between the fight
+            // animation and its result/reward item.
+            EnqueueBatchAtFront(new List<Dictionary<string, object>>
+            {
+                BuildQueueItem("battle", "", streamerName, "teamkampf", battleEvent),
+                BuildQueueItem("teamkampfresult", "", streamerName, "teamkampf", resultExtra)
+            });
         }
 
         // Timer callback once the signup window closes. Runs entirely off the chat/HTTP threads,
@@ -6548,6 +6682,9 @@ namespace CardPackWidgetApp
             // concluded, back to back with the champion's bonus draws, so the ongoing bracket
             // isn't interrupted by pack-opening animations mid-tournament.
             var perRoundWinners = new List<object>();
+            // Every match/bye/champion item is BUILT here but not yet added to the live queue -
+            // see the EnqueueBatchAtFront call at the end of this method for why.
+            var priorityItems = new List<Dictionary<string, object>>();
 
             while (round.Count > 1)
             {
@@ -6587,7 +6724,7 @@ namespace CardPackWidgetApp
                         { "currentRoundIndex", currentRoundIndex },
                         { "currentMatchIndex", currentMatchIndex }
                     };
-                    Enqueue("battle", loginA, userA, "tournament", duelEvent);
+                    priorityItems.Add(BuildQueueItem("battle", loginA, userA, "tournament", duelEvent));
 
                     bool winnerIsA = GetString(duelEvent, "winner", "A") == "A";
                     matchData["winner"] = winnerIsA ? "a" : "b";
@@ -6614,7 +6751,7 @@ namespace CardPackWidgetApp
                         { "b", null }, { "winner", "a" }, { "bye", true }
                     };
                     roundMatches.Add(byeMatchData);
-                    Enqueue("tournamentbye", GetString(byeUser, "login", ""), GetString(byeUser, "displayName", ""), "tournament",
+                    priorityItems.Add(BuildQueueItem("tournamentbye", GetString(byeUser, "login", ""), GetString(byeUser, "displayName", ""), "tournament",
                         new Dictionary<string, object>
                         {
                             { "tournamentRound", roundLabel },
@@ -6625,7 +6762,7 @@ namespace CardPackWidgetApp
                                     { "currentMatchIndex", roundMatches.Count - 1 }
                                 }
                             }
-                        });
+                        }));
                 }
 
                 round = winners;
@@ -6633,18 +6770,25 @@ namespace CardPackWidgetApp
             }
 
             lock (tournamentLock) { activeTournament = null; }
-            if (round.Count == 0) return;
+            if (round.Count == 0) { EnqueueBatchAtFront(priorityItems); return; }
 
             Dictionary<string, object> championEntry = round[0];
             string championLogin = GetString(championEntry, "login", "");
             string championUser = GetString(championEntry, "displayName", championLogin);
 
-            Enqueue("tournamentwon", championLogin, championUser, "tournament", new Dictionary<string, object>
+            priorityItems.Add(BuildQueueItem("tournamentwon", championLogin, championUser, "tournament", new Dictionary<string, object>
             {
                 { "totalParticipants", totalParticipants },
                 { "winnerDraws", championDrawsEnabled ? winnerDraws : 0 },
                 { "perRoundDraws", perRoundWinners.ToArray() }
-            });
+            }));
+
+            // Every match/bye/champion item is flushed into the live queue in one atomic batch,
+            // inserted at the FRONT, only now that the whole bracket has been fully resolved -
+            // see EnqueueBatchAtFront's comment for why: this is what makes the tournament start
+            // the instant signup closes (ahead of any pack draws already waiting) and play
+            // straight through without another draw landing in the middle of it.
+            EnqueueBatchAtFront(priorityItems);
         }
 
         // Deep-clones the bracket-so-far into plain Dictionary/List primitives suitable for
