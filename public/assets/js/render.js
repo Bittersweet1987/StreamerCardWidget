@@ -51,6 +51,40 @@ export function compressImageDataUrl(dataUrl, maxWidth = 500, maxHeight = 700) {
   });
 }
 
+// Target aspect ratios (width/height) of the card/booster art area - matches the CSS
+// (.tcg-card{aspect-ratio:5/7} and .pack-body{aspect-ratio:4/5.25} in components.css). Used to
+// auto-pick a sensible object-position anchor for uploaded images that don't naturally match the
+// frame's shape (see autoImagePosition below).
+export const CARD_ART_RATIO = 5 / 7;
+export const BOOSTER_ART_RATIO = 4 / 5.25;
+
+// Reads a data URL's natural pixel dimensions without touching the DOM beyond a throwaway
+// Image() - used right after a card/booster image upload to auto-detect the best crop anchor.
+export function getImageDimensions(dataUrl) {
+  return new Promise((resolve) => {
+    if (!dataUrl) { resolve(null); return; }
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+// Auto-picks an object-position anchor for a cropped (object-fit:cover) image. The art area
+// always crops to fill its frame - when the image is proportionally TALLER than the frame,
+// cropping trims the top and bottom, and centering that crop is what makes uploaded character/
+// portrait art look "oddly scaled": a face near the top of the image gets cut off. Anchoring to
+// the top instead keeps it in frame, which is the single most common failure case for this kind
+// of upload. When the image is proportionally WIDER than the frame (or close to it), cropping
+// trims the sides instead, and "center" (the existing default) already crops evenly - there's no
+// reliable left/right anchor to auto-detect without actual content analysis, so those cases are
+// deliberately left alone.
+export function autoImagePosition(dimensions, targetRatio) {
+  if (!dimensions || !dimensions.width || !dimensions.height) return "";
+  const imageRatio = dimensions.width / dimensions.height;
+  return imageRatio < targetRatio * 0.85 ? "top" : "";
+}
+
 export function createId(prefix = "card") {
   if (crypto.randomUUID) return crypto.randomUUID();
   return `${prefix}-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
@@ -1127,8 +1161,9 @@ export function cardMarkup(card, options = {}) {
   const compact = options.compact ? " is-compact-card" : "";
   // NOTE: do not add loading="lazy" here - it broke card reveal animations in OBS's Browser
   // Source (CEF), which doesn't fire the load in time for the overlay's viewport there.
+  const cardPositionAttr = card?.imagePosition === "top" ? ' data-position="top"' : "";
   const image = card?.image
-    ? `<img src="${escapeHtml(card.image)}" alt="">`
+    ? `<img src="${escapeHtml(card.image)}" alt=""${cardPositionAttr}>`
     : `<div class="fallback-art">${escapeHtml((card?.title || "?").slice(0, 1))}</div>`;
   const accent = card?.accent || "#ff78bb";
   const title = card?.title || "Mystery";
@@ -1162,8 +1197,9 @@ export function cardMarkup(card, options = {}) {
 }
 
 export function boosterMarkup(booster = {}) {
+  const boosterPositionAttr = booster.imagePosition === "top" ? ' data-position="top"' : "";
   const image = booster.image
-    ? `<img src="${escapeHtml(booster.image)}" alt="">`
+    ? `<img src="${escapeHtml(booster.image)}" alt=""${boosterPositionAttr}>`
     : `<div class="fallback-booster">${escapeHtml(booster.title || "Pack")}</div>`;
   return `
     <article class="booster-pack" data-image-fit="${activeBoosterImageFit}" style="--pack-accent:${booster.accent || "#ff78bb"}">

@@ -40,10 +40,13 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=20260719-txtimport1";
+} from "./api.js?v=20260719-autofit1";
 import {
   applyTheme,
+  autoImagePosition,
+  BOOSTER_ART_RATIO,
   boosterMarkup,
+  CARD_ART_RATIO,
   CARD_THEMES,
   cardMarkup,
   cardsForBooster,
@@ -53,6 +56,7 @@ import {
   DEFAULT_RARITY_COLORS,
   DEFAULT_RARITY_WEIGHTS,
   escapeHtml,
+  getImageDimensions,
   MAX_BOOSTER_CARDS,
   normalizeSettings,
   OVERLAY_LAYOUT_NATURAL_SIZES,
@@ -63,7 +67,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=20260719-txtimport1";
+} from "./render.js?v=20260719-autofit1";
 
 let settings;
 let selectedCardId;
@@ -4911,6 +4915,7 @@ async function handleCardListChange(event) {
   if (action === "image" && event.target.files?.[0]) {
     const card = settings.deck.cards.find((item) => item.id === cardId);
     card.image = await compressImageDataUrl(await readFileAsDataUrl(event.target.files[0]));
+    card.imagePosition = autoImagePosition(await getImageDimensions(card.image), CARD_ART_RATIO);
     event.target.value = "";
     const editorNode = $(`.card-editor[data-card-id="${cardId}"]`);
     if (editorNode) editorNode.querySelector(".select-card").innerHTML = cardMarkup(card, { compact: true });
@@ -5081,7 +5086,9 @@ function bindBooster() {
   });
   $("#booster-image").addEventListener("change", async (event) => {
     if (!event.target.files?.[0]) return;
-    selectedBooster().image = await compressImageDataUrl(await readFileAsDataUrl(event.target.files[0]));
+    const booster = selectedBooster();
+    booster.image = await compressImageDataUrl(await readFileAsDataUrl(event.target.files[0]));
+    booster.imagePosition = autoImagePosition(await getImageDimensions(booster.image), BOOSTER_ART_RATIO);
     // Re-selecting a file with the same name doesn't change the input's value, so
     // browsers won't fire "change" again next time unless we reset it now.
     event.target.value = "";
@@ -7456,6 +7463,13 @@ function renderAll() {
 // new uploads get, one time after load. Runs in the background so startup isn't blocked; only
 // triggers a re-render/save if something actually shrank (a fresh install with already-small
 // images is a no-op every time it runs).
+//
+// Also auto-detects a crop anchor (see autoImagePosition in render.js) for every existing image
+// that doesn't have one yet - new uploads already get this at upload time (see the "image"
+// action handlers below), but images that existed before this feature shipped never got a
+// chance to. `imagePosition === undefined` (never computed) is the trigger, not falsy in
+// general - an image that WAS analyzed and legitimately came out "" (no top-anchor needed, use
+// the default center crop) must never be re-analyzed and flip-flop on every startup.
 async function migrateImageSizes() {
   let changed = false;
   for (const card of settings.deck.cards) {
@@ -7465,12 +7479,20 @@ async function migrateImageSizes() {
       card.image = resized;
       changed = true;
     }
+    if (card.imagePosition === undefined) {
+      card.imagePosition = autoImagePosition(await getImageDimensions(card.image), CARD_ART_RATIO);
+      changed = true;
+    }
   }
   for (const booster of settings.boosters) {
     if (!booster.image) continue;
     const resized = await compressImageDataUrl(booster.image);
     if (resized !== booster.image) {
       booster.image = resized;
+      changed = true;
+    }
+    if (booster.imagePosition === undefined) {
+      booster.imagePosition = autoImagePosition(await getImageDimensions(booster.image), BOOSTER_ART_RATIO);
       changed = true;
     }
   }

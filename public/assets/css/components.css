@@ -163,6 +163,13 @@ select {
 .tcg-card[data-image-fit="left"] .card-art img { object-position: left; }
 .tcg-card[data-image-fit="right"] .card-art img { object-position: right; }
 
+/* Per-image auto-detected crop anchor (see autoImagePosition in render.js) - only takes effect
+   when the image-fit mode itself doesn't already set an explicit object-position (this rule's
+   specificity deliberately sits between the base ".card-art img" default and the more specific
+   "[data-image-fit=...] .card-art img" rules above, so an explicit global top/bottom/left/right
+   choice always still wins over the automatic one). */
+.card-art img[data-position="top"] { object-position: top; }
+
 .fallback-art {
   display: grid;
   width: 66%;
@@ -370,6 +377,9 @@ select {
 .booster-pack[data-image-fit="bottom"] .pack-body img { object-position: bottom; }
 .booster-pack[data-image-fit="left"] .pack-body img { object-position: left; }
 .booster-pack[data-image-fit="right"] .pack-body img { object-position: right; }
+
+/* Per-image auto-detected crop anchor, see the matching .card-art rule above for why. */
+.pack-body img[data-position="top"] { object-position: top; }
 
 .fallback-booster {
   display: grid;
