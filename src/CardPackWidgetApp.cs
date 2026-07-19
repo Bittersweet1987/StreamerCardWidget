@@ -3579,36 +3579,46 @@ namespace CardPackWidgetApp
             string user = GetString(ev, "user_name", GetString(ev, "user_login", "Viewer"));
             string login = GetString(ev, "user_login", user);
 
+            // Read settings ONCE for this whole redemption and hand it to every
+            // ReconcileTrackedReward check below, instead of each check calling
+            // ReadSettingsObject() itself - that re-parses the ENTIRE settings chain from disk on
+            // every call, including cards.json (tens of MB once a collection has many custom card
+            // images). A redemption that doesn't match the first checks (showcase/tournament/
+            // teamBattle) paid that full-file-reload cost up to four times in a row before the
+            // draw was even logged/enqueued - exactly why redemptions showed up in the log several
+            // seconds after actually being redeemed.
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+
             // Collection showcase reward: not a pack opening - tell the collection overlay to
             // slide through every active booster for this viewer. Routed through the action
             // queue (like every other redemption/chat command) so concurrent triggers are
             // always processed strictly one after another with a pause in between.
-            if (ReconcileTrackedReward("showcase", rewardId, rewardTitle))
+            if (ReconcileTrackedReward(settings, "showcase", rewardId, rewardTitle))
             {
                 // The animation can be switched off entirely (settings.showcase.animationEnabled)
                 // while still wanting the chat card list - in that case there's nothing to queue
                 // or animate, so send the chat text directly instead of going through the overlay
                 // queue at all.
-                if (GetBool(Obj(server.ReadSettingsObject(), "showcase"), "animationEnabled", true))
+                if (GetBool(Obj(settings, "showcase"), "animationEnabled", true))
                     Enqueue("showcollection", login, user, "channelpoints");
                 else
                     SendCollectionChatText(login, user);
                 return;
             }
 
-            if (ReconcileTrackedReward("tournament", rewardId, rewardTitle))
+            if (ReconcileTrackedReward(settings, "tournament", rewardId, rewardTitle))
             {
                 StartTournamentSignup(login, user, "channelpoints");
                 return;
             }
 
-            if (ReconcileTrackedReward("teamBattle", rewardId, rewardTitle))
+            if (ReconcileTrackedReward(settings, "teamBattle", rewardId, rewardTitle))
             {
                 StartTeamBattleSignup(login, user, "channelpoints");
                 return;
             }
 
-            if (!ReconcileTrackedReward("draw", rewardId, rewardTitle))
+            if (!ReconcileTrackedReward(settings, "draw", rewardId, rewardTitle))
             {
                 // Helps diagnose "nothing happened" reports: a redemption came in but matched
                 // neither the draw reward nor the showcase reward (stale/mismatched reward id).
@@ -7646,9 +7656,8 @@ namespace CardPackWidgetApp
         // and recreated on Twitch's side under the same name - the live id from this event is
         // adopted automatically so the stale id stops causing "nothing happened"/"not found"
         // failures on every future redemption and on the next manual save/delete.
-        private bool ReconcileTrackedReward(string holderKey, string rewardId, string rewardTitle)
+        private bool ReconcileTrackedReward(Dictionary<string, object> settings, string holderKey, string rewardId, string rewardTitle)
         {
-            Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> holder = Obj(settings, holderKey);
             if (holder.Count == 0) return false;
             if (StringArrayContains(holder, "rewardIds", rewardId)) return true;
