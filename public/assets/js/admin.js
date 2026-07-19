@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.7";
+} from "./api.js?v=2.12.8";
 import {
   applyTheme,
   autoImagePosition,
@@ -68,7 +68,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.7";
+} from "./render.js?v=2.12.8";
 
 let settings;
 let selectedCardId;
@@ -2595,6 +2595,11 @@ const I18N = {
     es: "cartas",
     th: "การ์ด"
   },
+  "unit-booster-odds": { de: "Ziehchance", en: "draw chance",
+    fr: "chance de tirage",
+    es: "probabilidad",
+    th: "โอกาสสุ่มได้"
+  },
   "btn-delete-user": { de: "Nutzer löschen", en: "Delete user",
     fr: "Supprimer l'utilisateur",
     es: "Eliminar usuario",
@@ -2634,6 +2639,13 @@ const I18N = {
     fr: "Accent",
     es: "Acento",
     th: "สีเน้น"
+  },
+  "hint-accent": {
+    de: "Wird als Standard-Schriftfarbe für den Kartennamen neuer Karten und Booster übernommen. Bei bereits vorhandenen Karten/Boostern lässt sich die Akzentfarbe weiterhin einzeln überschreiben.",
+    en: "Used as the default text color for the card name on new cards and boosters. Existing cards/boosters can still override the accent color individually.",
+    fr: "Utilisé comme couleur de texte par défaut pour le nom des nouvelles cartes et nouveaux boosters. Les cartes/boosters existants peuvent toujours redéfinir l'accent individuellement.",
+    es: "Se usa como color de texto predeterminado para el nombre de cartas y sobres nuevos. Las cartas/sobres existentes aún pueden sobrescribir el color de acento individualmente.",
+    th: "ใช้เป็นสีข้อความเริ่มต้นสำหรับชื่อการ์ดของการ์ดและบูสเตอร์ใหม่ การ์ด/บูสเตอร์ที่มีอยู่แล้วยังคงสามารถกำหนดสีเน้นเฉพาะตัวเองได้"
   },
   "label-volume": { de: "Lautstärke", en: "Volume",
     fr: "Volume",
@@ -3511,7 +3523,7 @@ function blankCard() {
     title: "Neue Karte",
     subtitle: "Stream Card",
     rarity: "common",
-    accent: "#ff78bb",
+    accent: settings.style?.accentColor || "#ff78bb",
     enabled: true,
     image: "",
     boosterIds: []
@@ -3525,7 +3537,7 @@ function blankBooster() {
     title: "Neuer Booster",
     subtitle: "Pack",
     image: "",
-    accent: "#ff78bb",
+    accent: settings.style?.accentColor || "#ff78bb",
     score: 100,
     rewardNames: [],
     rewardIds: [],
@@ -4943,14 +4955,38 @@ async function handleCardListChange(event) {
   }
 }
 
+// Mirrors the server's PickRandomBoosterId(subOnly:false) pool/weighting (see
+// CardPackWidgetApp.cs) so the shown percentage matches the actual draw odds: only enabled,
+// non-sub-exclusive boosters with at least one card are eligible; boosters with score <= 0 are
+// excluded from the weighted pool unless ALL eligible boosters have score <= 0 (then it falls
+// back to an even split, matching the server's "scored.Count > 0 ? scored : eligible" fallback).
+function boosterDrawOdds() {
+  const eligible = settings.boosters.filter((booster) =>
+    booster.enabled !== false && booster.subExclusive !== true && (booster.cardIds || []).length > 0
+  );
+  const scored = eligible.filter((booster) => Number(booster.score ?? 100) > 0);
+  const pool = scored.length > 0 ? scored : eligible;
+  const total = pool.reduce((sum, booster) => sum + Math.max(0, Number(booster.score ?? 100)), 0);
+  const odds = new Map();
+  for (const booster of pool) {
+    odds.set(booster.id, total > 0 ? (Math.max(0, Number(booster.score ?? 100)) / total) * 100 : 100 / pool.length);
+  }
+  return odds;
+}
+
 function renderBoosterList() {
-  $("#booster-list").innerHTML = settings.boosters.map((booster) => `
+  const odds = boosterDrawOdds();
+  $("#booster-list").innerHTML = settings.boosters.map((booster) => {
+    const odd = odds.get(booster.id);
+    const oddsText = odd !== undefined ? ` · ${odd < 1 ? "<1" : Math.round(odd)}% ${t("unit-booster-odds")}` : "";
+    return `
     <button class="booster-list-item ${booster.id === selectedBoosterId ? "is-selected" : ""} ${booster.enabled === false ? "is-disabled" : ""}" data-booster-id="${booster.id}" type="button">
       <span>${escapeHtml(booster.title)}</span>
       ${booster.subtitle ? `<span class="booster-list-subtitle">${escapeHtml(booster.subtitle)}</span>` : ""}
-      <small>${(booster.cardIds || []).length}/${MAX_BOOSTER_CARDS} ${t("unit-cards")}${booster.enabled === false ? ` · ${t("label-booster-disabled-tag")}` : ""}${booster.subExclusive === true ? ` · ${t("label-booster-sub-exclusive")}` : ""}</small>
+      <small>${(booster.cardIds || []).length}/${MAX_BOOSTER_CARDS} ${t("unit-cards")}${oddsText}${booster.enabled === false ? ` · ${t("label-booster-disabled-tag")}` : ""}${booster.subExclusive === true ? ` · ${t("label-booster-sub-exclusive")}` : ""}</small>
     </button>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function ownerBoosterByCardId() {
@@ -5098,6 +5134,7 @@ function bindBooster() {
   });
   $("#booster-score").addEventListener("input", (event) => {
     selectedBooster().score = Number(event.target.value || 1);
+    renderBoosterList();
   });
   $("#booster-accent").addEventListener("input", (event) => {
     selectedBooster().accent = event.target.value;

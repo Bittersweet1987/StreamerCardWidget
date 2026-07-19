@@ -156,6 +156,14 @@
   font-weight: 900;
 }
 
+/* Rendered inline right after the title (see collection.js) so title + subtitle read as one
+   continuous phrase instead of two separately-styled lines. */
+.compact-booster-subtitle {
+  font-size: .85rem;
+  font-weight: 600;
+  opacity: .75;
+}
+
 .compact-booster-head span {
   font-size: .95rem;
   font-weight: 700;

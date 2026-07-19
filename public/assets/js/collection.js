@@ -125,7 +125,7 @@ function compactGridMarkup(boosterPage) {
     return `
       <article class="compact-booster-card" style="--pack-accent:${booster.accent || "#ff78bb"}">
         <header class="compact-booster-head">
-          <strong>${escapeForOverlay(booster.title || "Booster")}</strong>
+          <strong>${escapeForOverlay(booster.title || "Booster")}${booster.subtitle ? ` <span class="compact-booster-subtitle">${escapeForOverlay(booster.subtitle)}</span>` : ""}</strong>
           <span>${ownedUnique} / ${total}</span>
         </header>
         <div class="compact-rarity-list">${rows}</div>
