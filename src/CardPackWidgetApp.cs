@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.9";
-        public const string ReleaseDate = "2026-07-19";
+        public const string Version = "2.12.10";
+        public const string ReleaseDate = "2026-07-20";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -417,6 +417,9 @@ namespace CardPackWidgetApp
                 // trip mid-upload and surface only as an opaque "Failed to fetch" in the browser.
                 client.ReceiveTimeout = 30000;
                 client.SendTimeout = 30000;
+                // Disable Nagle so small writes (SSE event pushes, API acks) always go out
+                // immediately instead of potentially waiting on the Nagle/delayed-ACK interaction.
+                client.NoDelay = true;
                 stream = client.GetStream();
                 HttpRequest request = ReadRequest(stream);
                 if (request == null)
@@ -2585,6 +2588,56 @@ namespace CardPackWidgetApp
             return new object[0];
         }
 
+        // Parse cache for the two big data files (cards.json can be tens of MB with base64 card
+        // images). ReadSettingsObject is called on EVERY chat message and channel-point redemption
+        // (often several times per event) - re-parsing cards.json each time made chat commands and
+        // redemptions visibly sluggish on real-sized collections. The cache is keyed on the file's
+        // last-write timestamp + size, so any write (from this process or an external edit)
+        // invalidates it automatically; WriteSettingsObject additionally clears it outright.
+        // NOTE: callers receive the SAME cached array instance - by convention nothing mutates
+        // card/booster entries obtained via ReadSettingsObject without immediately writing them
+        // back via WriteSettingsObject (which invalidates the cache).
+        private readonly object parseCacheLock = new object();
+        private readonly Dictionary<string, object[]> parsedArrayCache = new Dictionary<string, object[]>();
+        private readonly Dictionary<string, string> parsedArrayCacheStamp = new Dictionary<string, string>();
+
+        private object[] ReadArrayCached(string path)
+        {
+            string stamp;
+            try
+            {
+                FileInfo info = new FileInfo(path);
+                stamp = info.Exists ? info.LastWriteTimeUtc.Ticks.ToString() + ":" + info.Length.ToString() : "missing";
+            }
+            catch { stamp = "error"; }
+            lock (parseCacheLock)
+            {
+                string cachedStamp;
+                object[] cached;
+                if (parsedArrayCacheStamp.TryGetValue(path, out cachedStamp) && cachedStamp == stamp
+                    && parsedArrayCache.TryGetValue(path, out cached))
+                {
+                    return cached;
+                }
+            }
+            object[] parsed = ParseArray(ReadFile(path, "[]"));
+            lock (parseCacheLock)
+            {
+                parsedArrayCache[path] = parsed;
+                parsedArrayCacheStamp[path] = stamp;
+            }
+            return parsed;
+        }
+
+        private void InvalidateParsedArrayCache()
+        {
+            lock (parseCacheLock)
+            {
+                parsedArrayCache.Clear();
+                parsedArrayCacheStamp.Clear();
+            }
+        }
+
         internal Dictionary<string, object> ReadSettingsObject()
         {
             lock (settingsWriteLock)
@@ -2595,14 +2648,14 @@ namespace CardPackWidgetApp
                 settings["obs"] = ParseObject(ReadFile(ObsConfigPath(), "{}"));
                 if (File.Exists(BoostersPath()))
                 {
-                    settings["boosters"] = ParseArray(ReadFile(BoostersPath(), "[]"));
+                    settings["boosters"] = ReadArrayCached(BoostersPath());
                 }
                 if (File.Exists(CardsPath()))
                 {
                     Dictionary<string, object> deck = settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>
                         ? (Dictionary<string, object>)settings["deck"]
                         : new Dictionary<string, object>();
-                    deck["cards"] = ParseArray(ReadFile(CardsPath(), "[]"));
+                    deck["cards"] = ReadArrayCached(CardsPath());
                     settings["deck"] = deck;
                 }
                 return settings;
@@ -2671,6 +2724,7 @@ namespace CardPackWidgetApp
                 File.WriteAllText(SettingsPath(), json.Serialize(toStore), Encoding.UTF8);
             }
             InvalidateCardRarityCache();
+            InvalidateParsedArrayCache();
             Broadcast("settings", "{\"updatedAt\":\"" + EscapeJson(DateTime.UtcNow.ToString("o")) + "\"}");
         }
 
@@ -2867,9 +2921,13 @@ namespace CardPackWidgetApp
                 "Cache-Control: " + cacheControl + "\r\n" +
                 (String.IsNullOrEmpty(contentDisposition) ? "" : "Content-Disposition: " + contentDisposition + "\r\n") +
                 "Connection: close\r\n\r\n";
+            // Single combined write (headers + body in one buffer) so the response is one TCP
+            // segment where possible - avoids Nagle/delayed-ACK stalls between the two writes.
             byte[] headerBytes = Encoding.UTF8.GetBytes(headers);
-            stream.Write(headerBytes, 0, headerBytes.Length);
-            stream.Write(body, 0, body.Length);
+            byte[] combined = new byte[headerBytes.Length + body.Length];
+            Buffer.BlockCopy(headerBytes, 0, combined, 0, headerBytes.Length);
+            Buffer.BlockCopy(body, 0, combined, headerBytes.Length, body.Length);
+            stream.Write(combined, 0, combined.Length);
         }
 
         private static string StatusText(int status)
@@ -3641,7 +3699,9 @@ namespace CardPackWidgetApp
                 } while (!result.EndOfMessage);
 
                 string text = Encoding.UTF8.GetString(bytes.ToArray());
-                HandleEventSubMessage(text);
+                // Same ordered dispatch as the chat socket (see DispatchEventSubWork): keeps this
+                // receive loop free to read the next frame while a redemption is being processed.
+                DispatchEventSubWork(delegate { HandleEventSubMessage(text); });
             }
         }
 
@@ -3713,7 +3773,7 @@ namespace CardPackWidgetApp
                 if (GetBool(Obj(settings, "showcase"), "animationEnabled", true))
                     Enqueue("showcollection", login, user, "channelpoints");
                 else
-                    SendCollectionChatText(login, user);
+                    SendCollectionChatText(login, user, settings);
                 return;
             }
 
@@ -3944,9 +4004,9 @@ namespace CardPackWidgetApp
             return String.IsNullOrEmpty(subtitle) ? title : title + " " + subtitle;
         }
 
-        private void HandlePacksCommand(string login, string displayName, Dictionary<string, object> packsCfg)
+        private void HandlePacksCommand(string login, string displayName, Dictionary<string, object> packsCfg, Dictionary<string, object> settingsIn = null)
         {
-            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
             object boostersObj;
             var normalPool = new List<Dictionary<string, object>>();
             var subOnlyList = new List<Dictionary<string, object>>();
@@ -5137,20 +5197,48 @@ namespace CardPackWidgetApp
                 } while (!result.EndOfMessage);
 
                 string text = Encoding.UTF8.GetString(bytes.ToArray());
-                // Dispatched onto a background thread instead of awaited inline: this loop must
-                // get back to ReceiveAsync immediately so the NEXT frame is read right away.
-                // HandleChatEventSubMessage does synchronous work (full settings.json parse,
-                // Twitch API calls for chat replies/avatar lookups) that can easily take a few
-                // hundred ms; awaiting it here meant Twitch could queue up several more chat
-                // messages behind it before this loop ever looked at them again - the actual
-                // cause of chat commands (including !turnier/!teamkampf/!dust, which don't touch
-                // the draw queue at all) seeming to "miss" messages or react late.
-                string dispatchedText = text;
-                Task.Factory.StartNew(delegate
+                // Handed to the ordered dispatch worker instead of processed inline: this loop
+                // must get back to ReceiveAsync immediately so the NEXT frame is read right away
+                // (HandleChatEventSubMessage does synchronous work - settings parse, Twitch API
+                // calls for replies - that would otherwise stall the socket read). A single
+                // ordered worker (not one Task per message, which an earlier fix tried) so
+                // messages are still processed strictly in arrival order - !trade before
+                // !tradeyes - and a burst of messages can't fan out into a dozen concurrent
+                // handlers all contending for the settings lock at once.
+                DispatchEventSubWork(delegate { HandleChatEventSubMessage(text); });
+            }
+        }
+
+        // Single ordered background worker both EventSub sockets (chat + channel points) hand
+        // their notifications to. Keeps the receive loops permanently ready to read the next
+        // frame while guaranteeing first-in-first-out processing across all Twitch events.
+        private readonly object eventDispatchLock = new object();
+        private readonly Queue<Action> eventDispatchQueue = new Queue<Action>();
+        private bool eventDispatchWorkerRunning;
+
+        private void DispatchEventSubWork(Action work)
+        {
+            lock (eventDispatchLock)
+            {
+                eventDispatchQueue.Enqueue(work);
+                if (eventDispatchWorkerRunning) return;
+                eventDispatchWorkerRunning = true;
+            }
+            Task.Factory.StartNew(EventDispatchLoop);
+        }
+
+        private void EventDispatchLoop()
+        {
+            while (true)
+            {
+                Action work;
+                lock (eventDispatchLock)
                 {
-                    try { HandleChatEventSubMessage(dispatchedText); }
-                    catch (Exception ex) { server.Log("twitch", "error", "Chat-Nachricht-Verarbeitung fehlgeschlagen: " + ex.Message); }
-                });
+                    if (eventDispatchQueue.Count == 0) { eventDispatchWorkerRunning = false; return; }
+                    work = eventDispatchQueue.Dequeue();
+                }
+                try { work(); }
+                catch (Exception ex) { server.Log("twitch", "error", "EventSub-Verarbeitung fehlgeschlagen: " + ex.Message); }
             }
         }
 
@@ -5235,9 +5323,9 @@ namespace CardPackWidgetApp
         // ProcessQueueItem's "showcollection" handling (animation on: synced with its start) and
         // directly from the channel-points/chat-command handlers (animation off: no queue/overlay
         // involved, so this is the only thing that happens).
-        private void SendCollectionChatText(string login, string displayName)
+        private void SendCollectionChatText(string login, string displayName, Dictionary<string, object> settingsIn = null)
         {
-            Dictionary<string, object> collectionCfg = Obj(Obj(server.ReadSettingsObject(), "chatCommands"), "collection");
+            Dictionary<string, object> collectionCfg = Obj(Obj(settingsIn != null ? settingsIn : server.ReadSettingsObject(), "chatCommands"), "collection");
             if (!GetBool(collectionCfg, "chatOutputEnabled", true)) return;
             try { HandleCardsCommand(login, displayName, collectionCfg); }
             catch (Exception ex) { server.Log("draw", "error", "HandleCardsCommand fehlgeschlagen: " + ex.Message + " | " + ex.StackTrace); }
@@ -5333,10 +5421,51 @@ namespace CardPackWidgetApp
             else SendChatMessageSafe(message);
         }
 
+        // ---- Outbound queue: every chat send / whisper / avatar-enriched overlay broadcast is
+        // a synchronous Twitch API round-trip (~200-500ms each). Doing that inline on the event
+        // dispatch worker (see DispatchEventSubWork) meant a burst of commands - e.g. several
+        // viewers joining !teamkampf/!turnier back to back - serialized all those network calls
+        // BEFORE later viewers' commands were even parsed, so their chat replies arrived seconds
+        // late. This second ordered FIFO worker takes all outbound network I/O off the event
+        // worker: command processing itself is now pure local work (milliseconds), and replies
+        // still go out strictly in order because a single worker drains this queue too. ----
+        private readonly object outboundLock = new object();
+        private readonly Queue<Action> outboundQueue = new Queue<Action>();
+        private bool outboundWorkerRunning;
+
+        private void DispatchOutboundWork(Action work)
+        {
+            lock (outboundLock)
+            {
+                outboundQueue.Enqueue(work);
+                if (outboundWorkerRunning) return;
+                outboundWorkerRunning = true;
+            }
+            Task.Factory.StartNew(OutboundLoop);
+        }
+
+        private void OutboundLoop()
+        {
+            while (true)
+            {
+                Action work;
+                lock (outboundLock)
+                {
+                    if (outboundQueue.Count == 0) { outboundWorkerRunning = false; return; }
+                    work = outboundQueue.Dequeue();
+                }
+                try { work(); }
+                catch (Exception ex) { server.Log("twitch", "error", "Ausgehende Twitch-Anfrage fehlgeschlagen: " + ex.Message); }
+            }
+        }
+
         private void SendChatMessageSafe(string message)
         {
-            try { SendChatMessage(message); }
-            catch (Exception ex) { server.Log("twitch", "error", "Chat-Nachricht konnte nicht gesendet werden: " + ex.Message); }
+            DispatchOutboundWork(delegate
+            {
+                try { SendChatMessage(message); }
+                catch (Exception ex) { server.Log("twitch", "error", "Chat-Nachricht konnte nicht gesendet werden: " + ex.Message); }
+            });
         }
 
         private void SendChatMessage(string message)
@@ -5372,8 +5501,11 @@ namespace CardPackWidgetApp
 
         private void SendWhisperMessageSafe(string login, string message)
         {
-            try { SendWhisperMessage(login, message); }
-            catch (Exception ex) { server.Log("twitch", "error", "Fluester-Nachricht konnte nicht gesendet werden: " + ex.Message); }
+            DispatchOutboundWork(delegate
+            {
+                try { SendWhisperMessage(login, message); }
+                catch (Exception ex) { server.Log("twitch", "error", "Fluester-Nachricht konnte nicht gesendet werden: " + ex.Message); }
+            });
         }
 
         // Resolves the recipient's user id on demand (whispers address by id, chat commands only
@@ -5548,12 +5680,12 @@ namespace CardPackWidgetApp
             }
             if (MatchesCommand(text, packs))
             {
-                if (GetBool(packs, "enabled", true)) HandlePacksCommand(login, displayName, packs);
+                if (GetBool(packs, "enabled", true)) HandlePacksCommand(login, displayName, packs, settings);
                 return;
             }
             if (MatchesCommand(text, dust))
             {
-                if (GetBool(dust, "enabled", false)) HandleDustCommand(login, displayName, ArgsAfterCommand(text, dust), dust);
+                if (GetBool(dust, "enabled", false)) HandleDustCommand(login, displayName, ArgsAfterCommand(text, dust), dust, settings);
                 return;
             }
             // "!dustset"/"!dustall" are sub-commands of "!dust": no prefix field of their own,
@@ -5562,13 +5694,13 @@ namespace CardPackWidgetApp
             Dictionary<string, object> dustSetMatch = new Dictionary<string, object> { { "prefix", GetString(dust, "prefix", "!") }, { "command", GetString(dustSet, "command", "dustset") } };
             if (MatchesCommand(text, dustSetMatch))
             {
-                if (GetBool(dust, "enabled", false)) HandleDustSetCommand(login, displayName, ArgsAfterCommand(text, dustSetMatch), dust, dustSet);
+                if (GetBool(dust, "enabled", false)) HandleDustSetCommand(login, displayName, ArgsAfterCommand(text, dustSetMatch), dust, dustSet, settings);
                 return;
             }
             Dictionary<string, object> dustAllMatch = new Dictionary<string, object> { { "prefix", GetString(dust, "prefix", "!") }, { "command", GetString(dustAll, "command", "dustall") } };
             if (MatchesCommand(text, dustAllMatch))
             {
-                if (GetBool(dust, "enabled", false)) HandleDustAllCommand(login, displayName, dust, dustAll);
+                if (GetBool(dust, "enabled", false)) HandleDustAllCommand(login, displayName, dust, dustAll, settings);
                 return;
             }
             if (MatchesCommand(text, collection))
@@ -5584,7 +5716,7 @@ namespace CardPackWidgetApp
                     if (GetBool(Obj(settings, "showcase"), "animationEnabled", true))
                         Enqueue("showcollection", login, displayName, "chat");
                     else
-                        SendCollectionChatText(login, displayName);
+                        SendCollectionChatText(login, displayName, settings);
                 }
                 return;
             }
@@ -5641,7 +5773,7 @@ namespace CardPackWidgetApp
             }
             if (MatchesCommand(text, tournamentJoin))
             {
-                if (GetBool(tournamentJoin, "enabled", true)) JoinTournament(login, displayName);
+                if (GetBool(tournamentJoin, "enabled", true)) JoinTournament(login, displayName, settings);
                 return;
             }
             if (MatchesCommand(text, teamBattleStart))
@@ -5657,7 +5789,7 @@ namespace CardPackWidgetApp
             }
             if (MatchesCommand(text, teamBattleJoin))
             {
-                if (GetBool(teamBattleJoin, "enabled", true)) JoinTeamBattle(login, displayName);
+                if (GetBool(teamBattleJoin, "enabled", true)) JoinTeamBattle(login, displayName, settings);
                 return;
             }
         }
@@ -5759,7 +5891,7 @@ namespace CardPackWidgetApp
         // reduce a viewer's pity streak (see ProcessQueueItem's "draw" handling), with leftover
         // points banked as extra guaranteed draws. No cooldown/usage-limit tracking - the natural
         // cost (giving up owned duplicates) is the limiting factor. ----
-        private void HandleDustCommand(string login, string displayName, string args, Dictionary<string, object> dustCfg)
+        private void HandleDustCommand(string login, string displayName, string args, Dictionary<string, object> dustCfg, Dictionary<string, object> settingsIn = null)
         {
             string rest = args.Trim();
             int lastSpace = rest.LastIndexOf(' ');
@@ -5811,7 +5943,7 @@ namespace CardPackWidgetApp
                 return;
             }
 
-            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
             Dictionary<string, object> pityCfg = Obj(settings, "pity");
             int pityThreshold = Math.Max(1, GetInt(pityCfg, "threshold", 10));
             Dictionary<string, object> dustValues = Obj(pityCfg, "dustValues");
@@ -5877,7 +6009,7 @@ namespace CardPackWidgetApp
         // ---- "!dustset <Seltenheit>" - per-viewer preference for "!dustall" (see
         // GetDustAllRarity/SetDustAllRarity). Accepts the rarity name in any of the app's 5
         // supported languages (see ParseDustSetRarity/DustSetRarityAliases). ----
-        private void HandleDustSetCommand(string login, string displayName, string args, Dictionary<string, object> dustCfg, Dictionary<string, object> dustSetCfg)
+        private void HandleDustSetCommand(string login, string displayName, string args, Dictionary<string, object> dustCfg, Dictionary<string, object> dustSetCfg, Dictionary<string, object> settingsIn = null)
         {
             string arg = (args ?? "").Trim();
             if (arg.Length == 0)
@@ -5896,16 +6028,16 @@ namespace CardPackWidgetApp
             SetDustAllRarity(login, rarity);
             SendChatMessageSafe(GetString(dustSetCfg, "successMessage", DefaultDustSetSuccess)
                 .Replace("@userName", "@" + displayName)
-                .Replace("[Seltenheit]", RarityLabel(rarity, RarityOutputLanguage())));
+                .Replace("[Seltenheit]", RarityLabel(rarity, RarityOutputLanguage(settingsIn))));
         }
 
         // Which language the [Seltenheit] chat variable is written out in - one app-wide setting
         // (settings.chatCommands.rarityLanguage) rather than per-message, since it's the same
         // rarity vocabulary everywhere (draw messages, !dustset/!dustall). Falls back to German,
         // matching every other hardcoded default string in this file.
-        private string RarityOutputLanguage()
+        private string RarityOutputLanguage(Dictionary<string, object> settingsIn = null)
         {
-            Dictionary<string, object> cc = Obj(server.ReadSettingsObject(), "chatCommands");
+            Dictionary<string, object> cc = Obj(settingsIn != null ? settingsIn : server.ReadSettingsObject(), "chatCommands");
             string lang = GetString(cc, "rarityLanguage", "de");
             switch (lang) { case "en": case "fr": case "es": case "th": return lang; default: return "de"; }
         }
@@ -5934,11 +6066,12 @@ namespace CardPackWidgetApp
         // viewer's own "!dustset" threshold in one shot, converting them all into pity points at
         // once. No cooldown/usage tracking, same reasoning as "!dust" - the natural cost (giving
         // up every spare duplicate up to that rarity) is the limiting factor. ----
-        private void HandleDustAllCommand(string login, string displayName, Dictionary<string, object> dustCfg, Dictionary<string, object> dustAllCfg)
+        private void HandleDustAllCommand(string login, string displayName, Dictionary<string, object> dustCfg, Dictionary<string, object> dustAllCfg, Dictionary<string, object> settingsIn = null)
         {
+            Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
             string thresholdRarity = GetDustAllRarity(login);
             int maxRarityRank = CardPackServer.GetRarityRank(thresholdRarity);
-            string rarityLanguage = RarityOutputLanguage();
+            string rarityLanguage = RarityOutputLanguage(settings);
 
             List<Dictionary<string, string>> dusted = server.DustAllDuplicates(login, displayName, maxRarityRank);
             if (dusted.Count == 0)
@@ -5949,7 +6082,6 @@ namespace CardPackWidgetApp
                 return;
             }
 
-            Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> pityCfg = Obj(settings, "pity");
             int pityThreshold = Math.Max(1, GetInt(pityCfg, "threshold", 10));
             Dictionary<string, object> dustValues = Obj(pityCfg, "dustValues");
@@ -6773,7 +6905,9 @@ namespace CardPackWidgetApp
             return "started";
         }
 
-        private void JoinTournament(string login, string displayName)
+        // settings: pass the already-loaded settings when the caller has them (ProcessChatMessage
+        // does) to skip a redundant re-parse; null falls back to reading them here.
+        private void JoinTournament(string login, string displayName, Dictionary<string, object> settingsIn = null)
         {
             string notEligibleMessage = null;
             string joinAckMessage = null;
@@ -6792,7 +6926,7 @@ namespace CardPackWidgetApp
                     if (existing != null && GetString(existing, "login", "") == loginKey) return;
                 }
 
-                Dictionary<string, object> settings = server.ReadSettingsObject();
+                Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
                 Dictionary<string, object> tCfg = Obj(settings, "tournament");
                 int lineupSize = GetInt(activeTournament, "lineupSize", 3);
                 List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
@@ -6837,26 +6971,32 @@ namespace CardPackWidgetApp
         // tournament bracket has nothing to reveal before it starts).
         private void BroadcastTournamentSignupState(List<object> participants, string deadlineUtc, int minParticipants)
         {
-            var participantsForBroadcast = new object[participants.Count];
-            for (int i = 0; i < participants.Count; i++)
+            // Avatar lookups are one Twitch API call per not-yet-cached participant - routed
+            // through the outbound queue so a join's chat processing never waits on them. FIFO
+            // ordering in that queue guarantees roster updates still arrive oldest-to-newest.
+            DispatchOutboundWork(delegate
             {
-                Dictionary<string, object> p = participants[i] as Dictionary<string, object>;
-                if (p == null) continue;
-                participantsForBroadcast[i] = new Dictionary<string, object>
+                var participantsForBroadcast = new object[participants.Count];
+                for (int i = 0; i < participants.Count; i++)
                 {
-                    { "login", GetString(p, "login", "") },
-                    { "displayName", GetString(p, "displayName", "") },
-                    { "avatarUrl", GetUserAvatarUrl(GetString(p, "login", "")) }
-                };
-            }
+                    Dictionary<string, object> p = participants[i] as Dictionary<string, object>;
+                    if (p == null) continue;
+                    participantsForBroadcast[i] = new Dictionary<string, object>
+                    {
+                        { "login", GetString(p, "login", "") },
+                        { "displayName", GetString(p, "displayName", "") },
+                        { "avatarUrl", GetUserAvatarUrl(GetString(p, "login", "")) }
+                    };
+                }
 
-            server.Broadcast("tournamentsignup", server.Serializer.Serialize(new Dictionary<string, object>
-            {
-                { "active", true },
-                { "deadlineUtc", deadlineUtc },
-                { "minParticipants", minParticipants },
-                { "participants", participantsForBroadcast }
-            }));
+                server.Broadcast("tournamentsignup", server.Serializer.Serialize(new Dictionary<string, object>
+                {
+                    { "active", true },
+                    { "deadlineUtc", deadlineUtc },
+                    { "minParticipants", minParticipants },
+                    { "participants", participantsForBroadcast }
+                }));
+            });
         }
 
         public Dictionary<string, object> GetTournamentState()
@@ -7102,33 +7242,39 @@ namespace CardPackWidgetApp
         // participant joins mid-countdown.
         private void BroadcastTeamBattleSignupState(List<Dictionary<string, string>> streamerLineup, List<object> participants, string deadlineUtc)
         {
-            var participantsForBroadcast = new object[participants.Count];
-            for (int i = 0; i < participants.Count; i++)
+            // Avatar lookups off the event worker - same reasoning as BroadcastTournamentSignupState.
+            int streamerLineupCount = streamerLineup.Count;
+            DispatchOutboundWork(delegate
             {
-                Dictionary<string, object> p = participants[i] as Dictionary<string, object>;
-                if (p == null) continue;
-                participantsForBroadcast[i] = new Dictionary<string, object>
+                var participantsForBroadcast = new object[participants.Count];
+                for (int i = 0; i < participants.Count; i++)
                 {
-                    { "login", GetString(p, "login", "") },
-                    { "displayName", GetString(p, "displayName", "") },
-                    { "avatarUrl", GetUserAvatarUrl(GetString(p, "login", "")) }
-                };
-            }
+                    Dictionary<string, object> p = participants[i] as Dictionary<string, object>;
+                    if (p == null) continue;
+                    participantsForBroadcast[i] = new Dictionary<string, object>
+                    {
+                        { "login", GetString(p, "login", "") },
+                        { "displayName", GetString(p, "displayName", "") },
+                        { "avatarUrl", GetUserAvatarUrl(GetString(p, "login", "")) }
+                    };
+                }
 
-            // Viewers should only ever learn HOW MANY cards they need to beat, never which ones or
-            // how rare they are - sending only the count (not the card identities/rarities
-            // themselves) keeps that true even for someone inspecting the raw SSE payload, not
-            // just for what's rendered on screen (see cardMarkup(null, {hidden:true}) in battle.js).
-            server.Broadcast("teamkampfsignup", server.Serializer.Serialize(new Dictionary<string, object>
-            {
-                { "active", true },
-                { "deadlineUtc", deadlineUtc },
-                { "streamerLineupCount", streamerLineup.Count },
-                { "participants", participantsForBroadcast }
-            }));
+                // Viewers should only ever learn HOW MANY cards they need to beat, never which ones or
+                // how rare they are - sending only the count (not the card identities/rarities
+                // themselves) keeps that true even for someone inspecting the raw SSE payload, not
+                // just for what's rendered on screen (see cardMarkup(null, {hidden:true}) in battle.js).
+                server.Broadcast("teamkampfsignup", server.Serializer.Serialize(new Dictionary<string, object>
+                {
+                    { "active", true },
+                    { "deadlineUtc", deadlineUtc },
+                    { "streamerLineupCount", streamerLineupCount },
+                    { "participants", participantsForBroadcast }
+                }));
+            });
         }
 
-        private void JoinTeamBattle(string login, string displayName)
+        // settingsIn: same pattern as JoinTournament - reuse the caller's already-loaded settings.
+        private void JoinTeamBattle(string login, string displayName, Dictionary<string, object> settingsIn = null)
         {
             string noActiveMessage = null;
             string alreadyMessage = null;
@@ -7142,14 +7288,14 @@ namespace CardPackWidgetApp
             {
                 if (activeTeamBattle == null || GetString(activeTeamBattle, "state", "") != "signup")
                 {
-                    Dictionary<string, object> tbCfgIdle = Obj(server.ReadSettingsObject(), "teamBattle");
+                    Dictionary<string, object> tbCfgIdle = Obj(settingsIn != null ? settingsIn : server.ReadSettingsObject(), "teamBattle");
                     noActiveMessage = GetString(tbCfgIdle, "noActiveMessage", DefaultTeamBattleNoActive).Replace("@userName", "@" + displayName);
                 }
                 else
                 {
                     var participants = (List<object>)activeTeamBattle["participants"];
                     string loginKey = login.ToLowerInvariant();
-                    Dictionary<string, object> settings = server.ReadSettingsObject();
+                    Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
                     Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
                     bool alreadyIn = false;
                     foreach (object p in participants)
@@ -8794,6 +8940,14 @@ namespace CardPackWidgetApp
             }
         }
 
+        // Disk writes are debounced: Add() used to serialize and rewrite the WHOLE file (up to
+        // 1000 entries, ~100KB) synchronously on every single log line - and the hot paths (each
+        // draw, broadcast, queue step) log one to three lines apiece. Now Add() only marks the
+        // log dirty and a one-shot timer flushes at most every 2 seconds. The log is diagnostic
+        // data; losing the last <2s of lines on a hard crash is an acceptable trade.
+        private System.Threading.Timer persistTimer;
+        private bool persistScheduled;
+
         public void Add(string category, string level, string message)
         {
             var entry = new Dictionary<string, object>
@@ -8807,6 +8961,18 @@ namespace CardPackWidgetApp
             {
                 entries.Add(entry);
                 while (entries.Count > MaxEntries) entries.RemoveAt(0);
+                if (persistScheduled) return;
+                persistScheduled = true;
+                if (persistTimer == null) persistTimer = new System.Threading.Timer(delegate { FlushScheduled(); }, null, 2000, System.Threading.Timeout.Infinite);
+                else persistTimer.Change(2000, System.Threading.Timeout.Infinite);
+            }
+        }
+
+        private void FlushScheduled()
+        {
+            lock (entriesLock)
+            {
+                persistScheduled = false;
                 Persist();
             }
         }
