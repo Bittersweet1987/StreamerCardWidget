@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.10";
+        public const string Version = "2.12.11";
         public const string ReleaseDate = "2026-07-20";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -3015,9 +3015,10 @@ namespace CardPackWidgetApp
         // (which resets on its own schedule) - pity only resets by actually landing the
         // guaranteed rarity, naturally or forced.
         //   streak: consecutive draws (any trigger) that did NOT reach the guaranteed rarity.
-        //   bank: leftover "!dust" points beyond what was needed to fill streak up to the
-        //     threshold - each grants one additional forced-guarantee draw beyond the next one,
-        //     consumed one at a time, independent of the streak/threshold cycle continuing normally.
+        //   bank: leftover "!dust"/"!dustall" points beyond what was needed to fill streak up to
+        //     the threshold. Same currency as streak, so a full extra forced-guarantee draw costs
+        //     a full "threshold" worth of banked points (not 1 point) - consumed threshold-at-a-
+        //     time, independent of the streak/threshold cycle continuing normally.
         private readonly object pityLock = new object();
         private Dictionary<string, object> pityState;
 
@@ -3309,12 +3310,12 @@ namespace CardPackWidgetApp
         private const string DefaultDustUsage = "@userName, Nutzung: !dust <Kartenname> <Anzahl>";
         private const string DefaultDustCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
         private const string DefaultDustNotEnough = "@userName, du hast nicht genug Duplikate von [Kartenname] (du besitzt [Besitz], mindestens 1 muss dir erhalten bleiben).";
-        private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.";
+        private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). [GarantieAnzahl] garantierte Ziehung(en) bereit, noch [GarantieRest] Ziehungen bis zur naechsten.";
         private const string DefaultDustSetUsage = "@userName, Nutzung: !dustset <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit !dustall automatisch Duplikate opfert.";
         private const string DefaultDustSetInvalid = "@userName, \"[Eingabe]\" ist keine bekannte Seltenheit. Gültig: Gewöhnlich, Ungewöhnlich, Selten, Episch, Legendär, Holo.";
         private const string DefaultDustSetSuccess = "@userName, !dustall opfert ab jetzt automatisch alle Duplikate bis einschließlich [Seltenheit].";
         private const string DefaultDustAllNothing = "@userName, du hast aktuell keine Duplikate unterhalb von [Seltenheit] zum Opfern.";
-        private const string DefaultDustAllSuccess = "@userName hat [Gesamtanzahl] doppelte Karten geopfert ([Aufschluesselung]), +[Punkte] Garantie-Punkte. Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.";
+        private const string DefaultDustAllSuccess = "@userName hat [Gesamtanzahl] doppelte Karten geopfert ([Aufschluesselung]), +[Punkte] Garantie-Punkte. [GarantieAnzahl] garantierte Ziehung(en) bereit, noch [GarantieRest] Ziehungen bis zur naechsten.";
 
         private const string DefaultGiftUsage = "@userName, Nutzung: !gift @userNameB <Kartenname>";
         private const string DefaultGiftUserNotFound = "@userName, den Nutzer [Nutzer] kennt die Sammlung noch nicht.";
@@ -4937,17 +4938,34 @@ namespace CardPackWidgetApp
                 Dictionary<string, object> pityEntry = pityEnabled ? GetPityEntry(login) : null;
                 int pityStreak = pityEntry != null ? GetInt(pityEntry, "streak", 0) : 0;
                 int pityBank = pityEntry != null ? GetInt(pityEntry, "bank", 0) : 0;
-                bool viaThreshold = pityEnabled && pityStreak >= pityThreshold;
-                bool viaBank = pityEnabled && !viaThreshold && pityBank > 0;
-                bool forcePity = viaThreshold || viaBank;
+                // streak and bank are the SAME currency (both count "!dust"/"!dustall" points and
+                // natural non-hit draws in the same units - see HandleDustCommand/
+                // HandleDustAllCommand) so they're combined into one pool here rather than checked
+                // separately: a leftover bank remainder below one full threshold used to just sit
+                // there forever instead of counting toward the streak's own progress. A forced
+                // guarantee costs exactly one pityThreshold out of the combined total - if the bank
+                // alone already holds several multiples of the threshold, each subsequent eligible
+                // draw keeps forcing (and draining threshold worth of pool) until it drops below it.
+                int pityTotal = pityStreak + pityBank;
+                bool forcePity = pityEnabled && pityTotal >= pityThreshold;
 
                 Dictionary<string, object> card = PickCardFromBooster(settings, boosterId, forcePity ? pityMinRarity : null);
 
                 if (pityEnabled)
                 {
                     bool metPity = card != null && CardPackServer.GetRarityRank(GetString(card, "rarity", "common")) >= CardPackServer.GetRarityRank(pityMinRarity);
-                    if (viaBank) pityEntry["bank"] = pityBank - 1;
-                    pityEntry["streak"] = metPity ? 0 : pityStreak + 1;
+                    if (metPity)
+                    {
+                        pityEntry["streak"] = 0;
+                        // Only actually drain the pool if THIS draw was the one forcing it - a
+                        // naturally lucky hit (rarity RNG landed on pityMinRarity+ on its own,
+                        // without needing to be forced) must not eat into banked credit.
+                        if (forcePity) pityEntry["bank"] = pityTotal - pityThreshold;
+                    }
+                    else
+                    {
+                        pityEntry["streak"] = pityStreak + 1;
+                    }
                     SavePityEntry(login, pityEntry);
                 }
 
@@ -5951,19 +5969,15 @@ namespace CardPackWidgetApp
             double perCard = GetDouble(dustValues, rarity, 1);
             int points = Math.Max(0, (int)Math.Round(perCard * count));
 
-            int pityRest;
+            int pityReady, pityRest;
             lock (pityLock)
             {
                 Dictionary<string, object> entry = GetPityEntry(login);
                 int streak = GetInt(entry, "streak", 0);
-                int bank = GetInt(entry, "bank", 0);
-                int applied = Math.Min(points, pityThreshold - streak);
-                streak += applied;
-                bank += points - applied;
-                entry["streak"] = streak;
+                int bank = GetInt(entry, "bank", 0) + points;
                 entry["bank"] = bank;
                 SavePityEntry(login, entry);
-                pityRest = Math.Max(0, pityThreshold - streak);
+                ComputePityProgress(streak, bank, pityThreshold, out pityReady, out pityRest);
             }
 
             SendChatMessageSafe(GetString(dustCfg, "successMessage", DefaultDustSuccess)
@@ -5971,7 +5985,20 @@ namespace CardPackWidgetApp
                 .Replace("[Kartenname]", cardTitle)
                 .Replace("[Anzahl]", count.ToString())
                 .Replace("[Punkte]", points.ToString())
+                .Replace("[GarantieAnzahl]", pityReady.ToString())
                 .Replace("[GarantieRest]", pityRest.ToString()));
+        }
+
+        // Combined streak+bank pity pool (see ProcessQueueItem's pity handling for why they're the
+        // same currency): readyGuarantees is how many full guaranteed draws are already banked and
+        // will fire on the next eligible draws; drawsUntilNext is how many more non-hit draws are
+        // needed to complete the guarantee AFTER those (always in [1, threshold], even exactly on
+        // a multiple - "ready" credit is already counted separately in readyGuarantees).
+        private static void ComputePityProgress(int streak, int bank, int threshold, out int readyGuarantees, out int drawsUntilNext)
+        {
+            int total = streak + bank;
+            readyGuarantees = total / threshold;
+            drawsUntilNext = threshold - (total % threshold);
         }
 
         // Rarity name aliases accepted by "!dustset", one set per supported UI language (see
@@ -6108,19 +6135,15 @@ namespace CardPackWidgetApp
             }
             string breakdown = String.Join(", ", breakdownParts.ToArray());
 
-            int pityRest;
+            int pityReady, pityRest;
             lock (pityLock)
             {
                 Dictionary<string, object> entry = GetPityEntry(login);
                 int streak = GetInt(entry, "streak", 0);
-                int bank = GetInt(entry, "bank", 0);
-                int applied = Math.Min(totalPoints, pityThreshold - streak);
-                streak += applied;
-                bank += totalPoints - applied;
-                entry["streak"] = streak;
+                int bank = GetInt(entry, "bank", 0) + totalPoints;
                 entry["bank"] = bank;
                 SavePityEntry(login, entry);
-                pityRest = Math.Max(0, pityThreshold - streak);
+                ComputePityProgress(streak, bank, pityThreshold, out pityReady, out pityRest);
             }
 
             SendChatMessageSafe(GetString(dustAllCfg, "successMessage", DefaultDustAllSuccess)
@@ -6128,6 +6151,7 @@ namespace CardPackWidgetApp
                 .Replace("[Aufschluesselung]", breakdown)
                 .Replace("[Gesamtanzahl]", totalCards.ToString())
                 .Replace("[Punkte]", totalPoints.ToString())
+                .Replace("[GarantieAnzahl]", pityReady.ToString())
                 .Replace("[GarantieRest]", pityRest.ToString()));
         }
 

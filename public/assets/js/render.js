@@ -444,11 +444,11 @@ const DEFAULT_MESSAGES = {
     th: "@userName คุณมีการ์ดซ้ำของ [Kartenname] ไม่พอ (คุณมี [Besitz] ใบ ต้องเหลืออย่างน้อย 1 ใบ)"
   },
   dustSuccess: {
-    de: "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.",
-    en: "@userName sacrificed [Anzahl]x [Kartenname] (+[Punkte] pity points). [GarantieRest] more draws until the guaranteed rarity.",
-    fr: "@userName a sacrifié [Anzahl]x [Kartenname] (+[Punkte] points de pitié). Encore [GarantieRest] tirages avant la rareté garantie.",
-    es: "@userName sacrificó [Anzahl]x [Kartenname] (+[Punkte] puntos de compensación). Faltan [GarantieRest] tiradas para la rareza garantizada.",
-    th: "@userName สังเวย [Kartenname] จำนวน [Anzahl] ใบ (+[Punkte] แต้มการันตี) เหลืออีก [GarantieRest] ครั้งจนถึงการันตี"
+    de: "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). [GarantieAnzahl] garantierte Ziehung(en) bereit, noch [GarantieRest] Ziehungen bis zur nächsten.",
+    en: "@userName sacrificed [Anzahl]x [Kartenname] (+[Punkte] pity points). [GarantieAnzahl] guaranteed draw(s) ready, [GarantieRest] more draws until the next one.",
+    fr: "@userName a sacrifié [Anzahl]x [Kartenname] (+[Punkte] points de pitié). [GarantieAnzahl] tirage(s) garanti(s) prêt(s), encore [GarantieRest] tirages avant le prochain.",
+    es: "@userName sacrificó [Anzahl]x [Kartenname] (+[Punkte] puntos de compensación). [GarantieAnzahl] tirada(s) garantizada(s) lista(s), faltan [GarantieRest] tiradas para la siguiente.",
+    th: "@userName สังเวย [Kartenname] จำนวน [Anzahl] ใบ (+[Punkte] แต้มการันตี) มี [GarantieAnzahl] ครั้งการันตีพร้อมใช้ เหลืออีก [GarantieRest] ครั้งจนถึงครั้งถัดไป"
   },
   dustSetUsage: {
     de: "@userName, Nutzung: !dustset <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit !dustall automatisch Duplikate opfert.",
@@ -479,11 +479,11 @@ const DEFAULT_MESSAGES = {
     th: "@userName ตอนนี้คุณไม่มีการ์ดซ้ำต่ำกว่า [Seltenheit] ให้สังเวย"
   },
   dustAllSuccess: {
-    de: "@userName hat [Gesamtanzahl] doppelte Karten geopfert ([Aufschluesselung]), +[Punkte] Garantie-Punkte. Noch [GarantieRest] Ziehungen bis zur garantierten Seltenheit.",
-    en: "@userName sacrificed [Gesamtanzahl] duplicate cards ([Aufschluesselung]), +[Punkte] pity points. [GarantieRest] more draws until the guaranteed rarity.",
-    fr: "@userName a sacrifié [Gesamtanzahl] cartes en double ([Aufschluesselung]), +[Punkte] points de pitié. Encore [GarantieRest] tirages avant la rareté garantie.",
-    es: "@userName sacrificó [Gesamtanzahl] cartas duplicadas ([Aufschluesselung]), +[Punkte] puntos de compensación. Faltan [GarantieRest] tiradas para la rareza garantizada.",
-    th: "@userName สังเวยการ์ดซ้ำ [Gesamtanzahl] ใบ ([Aufschluesselung]) +[Punkte] แต้มการันตี เหลืออีก [GarantieRest] ครั้งจนถึงการันตี"
+    de: "@userName hat [Gesamtanzahl] doppelte Karten geopfert ([Aufschluesselung]), +[Punkte] Garantie-Punkte. [GarantieAnzahl] garantierte Ziehung(en) bereit, noch [GarantieRest] Ziehungen bis zur nächsten.",
+    en: "@userName sacrificed [Gesamtanzahl] duplicate cards ([Aufschluesselung]), +[Punkte] pity points. [GarantieAnzahl] guaranteed draw(s) ready, [GarantieRest] more draws until the next one.",
+    fr: "@userName a sacrifié [Gesamtanzahl] cartes en double ([Aufschluesselung]), +[Punkte] points de pitié. [GarantieAnzahl] tirage(s) garanti(s) prêt(s), encore [GarantieRest] tirages avant le prochain.",
+    es: "@userName sacrificó [Gesamtanzahl] cartas duplicadas ([Aufschluesselung]), +[Punkte] puntos de compensación. [GarantieAnzahl] tirada(s) garantizada(s) lista(s), faltan [GarantieRest] tiradas para la siguiente.",
+    th: "@userName สังเวยการ์ดซ้ำ [Gesamtanzahl] ใบ ([Aufschluesselung]) +[Punkte] แต้มการันตี มี [GarantieAnzahl] ครั้งการันตีพร้อมใช้ เหลืออีก [GarantieRest] ครั้งจนถึงครั้งถัดไป"
   },
   giftUsage: {
     de: "@userName, Nutzung: !gift @userNameB <Kartenname>",
