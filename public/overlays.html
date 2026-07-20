@@ -57,6 +57,9 @@
         </div>
       </div>
     </main>
+    <main id="commandshelp-overlay" aria-live="polite">
+      <div id="commandshelp-stage" class="commandshelp-stage"></div>
+    </main>
     <script>
       // Bootstrap loader: ask the server which asset version (BootId, changes every app start)
       // is current and load all CSS/JS with it. The version request itself carries a unique
@@ -69,13 +72,13 @@
           const info = await response.json();
           if (info.bootId) v = String(info.bootId);
         } catch {}
-        for (const href of ["/assets/css/overlay.css","/assets/css/collection.css","/assets/css/trade.css","/assets/css/battle.css","/assets/css/gift.css","/assets/css/ranking.css","/assets/css/communitygoal.css","/assets/css/liveticker.css"]) {
+        for (const href of ["/assets/css/overlay.css","/assets/css/collection.css","/assets/css/trade.css","/assets/css/battle.css","/assets/css/gift.css","/assets/css/ranking.css","/assets/css/communitygoal.css","/assets/css/liveticker.css","/assets/css/commandshelp.css"]) {
           const link = document.createElement("link");
           link.rel = "stylesheet";
           link.href = href + "?v=" + v;
           document.head.appendChild(link);
         }
-        for (const mod of ["overlay","collection","trade","battle","gift","ranking","communitygoal","liveticker"]) {
+        for (const mod of ["overlay","collection","trade","battle","gift","ranking","communitygoal","liveticker","commandshelp"]) {
           import("/assets/js/" + mod + ".js?v=" + v);
         }
       })();

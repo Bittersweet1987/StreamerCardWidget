@@ -1,0 +1,123 @@
+/* "Befehls-Übersicht" overlay: cycles through every currently active chat command and channel-
+   points reward, one at a time, each with a short description and a concrete usage example -
+   see commandshelp.js. Visual language matches ranking.css (dark translucent panel, same
+   fade/slide transition) so it looks like it belongs to the same overlay set. */
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+.commandshelp-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.commandshelp-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: commandshelp-in .45s ease both;
+}
+
+.commandshelp-scene.is-out {
+  animation: commandshelp-out .45s ease both;
+}
+
+@keyframes commandshelp-in {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes commandshelp-out {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-16px); }
+}
+
+.commandshelp-panel {
+  min-width: 420px;
+  max-width: 52vw;
+  padding: 26px 32px;
+  border-radius: 22px;
+  background: rgba(20, 16, 32, .86);
+  border: 1px solid rgba(255, 255, 255, .12);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .4);
+  font-family: var(--font);
+  color: #fff;
+}
+
+.commandshelp-eyebrow {
+  display: block;
+  font-size: .85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--accent, #ff78bb);
+  margin-bottom: 6px;
+}
+
+.commandshelp-title {
+  margin: 0 0 10px;
+  font-size: 1.7rem;
+  font-weight: 900;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.commandshelp-description {
+  margin: 0 0 16px;
+  font-size: 1.02rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, .82);
+}
+
+.commandshelp-example {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+
+.commandshelp-example-label {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: rgba(255, 255, 255, .55);
+}
+
+.commandshelp-example-text {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  word-break: break-word;
+}
+
+.commandshelp-progress {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+
+.commandshelp-progress span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .25);
+}
+
+.commandshelp-progress span.is-active {
+  background: var(--accent, #ff78bb);
+}

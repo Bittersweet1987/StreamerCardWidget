@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.11";
+        public const string Version = "2.12.12";
         public const string ReleaseDate = "2026-07-20";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -3810,6 +3810,28 @@ namespace CardPackWidgetApp
         // Sub/Resub/Gifted-Sub reward: draws "cardsPerSub" card(s) - multiplied by the number of
         // subs for a gift/bomb event - exclusively from boosters flagged "subExclusive", via the
         // normal action queue (same as any other draw, so it's serialized with everything else).
+        // Mirrors PickRandomBoosterId(subOnly:true)'s eligibility check (enabled, subExclusive,
+        // has at least one enabled card) without actually picking one - used up front by
+        // HandleSubscriptionEvent to decide whether to fall back to the normal pool instead of
+        // silently enqueueing draws that would find nothing.
+        private bool HasEligibleSubExclusiveBooster(Dictionary<string, object> settings)
+        {
+            object boostersObj;
+            if (!settings.TryGetValue("boosters", out boostersObj) || !(boostersObj is object[])) return false;
+            foreach (object item in (object[])boostersObj)
+            {
+                Dictionary<string, object> booster = item as Dictionary<string, object>;
+                if (booster == null) continue;
+                if (!GetBool(booster, "enabled", true)) continue;
+                if (!GetBool(booster, "subExclusive", false)) continue;
+                object[] cardIds = booster.ContainsKey("cardIds") && booster["cardIds"] is object[] ? (object[])booster["cardIds"] : new object[0];
+                if (cardIds.Length == 0) continue;
+                if (!BoosterHasEnabledCard(settings, cardIds)) continue;
+                return true;
+            }
+            return false;
+        }
+
         private void HandleSubscriptionEvent(string subType, Dictionary<string, object> ev)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
@@ -3856,9 +3878,25 @@ namespace CardPackWidgetApp
 
             if (String.IsNullOrWhiteSpace(login)) return;
 
-            int totalCards = cardsPerSub * count;
-            server.Log("draw", "info", displayName + " hat " + totalCards + " Sub-Belohnungskarte(n) ausgeloest (" + source + ").");
-            var extra = new Dictionary<string, object> { { "boosterPool", "subExclusive" } };
+            // Fallback: if no booster is actually marked "Sub-exklusiv" (or none has cards), the
+            // sub-exclusive pool is empty and the queued draws would previously just silently do
+            // nothing (see ProcessQueueItem's PickRandomBoosterId warning). With the fallback
+            // enabled, draw from the NORMAL pool instead, using its own separately configurable
+            // card count - so a sub always grants something even before a sub-exclusive booster
+            // has been set up.
+            bool useSubExclusive = HasEligibleSubExclusiveBooster(settings);
+            int cardsPerEvent = useSubExclusive ? cardsPerSub : Math.Max(1, GetInt(subCfg, "fallbackCardsPerSub", 1));
+            if (!useSubExclusive && !GetBool(subCfg, "fallbackEnabled", false))
+            {
+                server.Log("draw", "warn", displayName + " hat eine Sub-Belohnung ausgeloest (" + source +
+                    "), aber es ist kein Sub-exklusiver Booster verfuegbar und der Fallback ist deaktiviert.");
+                return;
+            }
+
+            int totalCards = cardsPerEvent * count;
+            server.Log("draw", "info", displayName + " hat " + totalCards + " Sub-Belohnungskarte(n) ausgeloest (" + source +
+                (useSubExclusive ? "" : ", Fallback auf normalen Pool") + ").");
+            var extra = useSubExclusive ? new Dictionary<string, object> { { "boosterPool", "subExclusive" } } : null;
             for (int i = 0; i < totalCards; i++) Enqueue("draw", login, displayName, source, extra);
         }
 
@@ -3923,7 +3961,10 @@ namespace CardPackWidgetApp
         }
 
         // Exposes every viewer's currently banked (not-yet-a-draw) bits, for display in the
-        // admin User tab.
+        // admin User tab. Includes displayName (not just the raw banked number) so the admin UI
+        // can list a viewer who has banked bits but hasn't drawn a card yet (e.g. their cheer was
+        // below the bits-per-draw threshold) - previously such viewers were invisible in the User
+        // tab entirely, since it was built solely from card ownership in collections.json.
         public Dictionary<string, object> GetBitsState()
         {
             lock (usageLock)
@@ -3936,7 +3977,14 @@ namespace CardPackWidgetApp
                     foreach (KeyValuePair<string, object> kv in users)
                     {
                         Dictionary<string, object> entry = kv.Value as Dictionary<string, object>;
-                        if (entry != null) result[kv.Key] = GetInt(entry, "banked", 0);
+                        if (entry != null)
+                        {
+                            result[kv.Key] = new Dictionary<string, object>
+                            {
+                                { "banked", GetInt(entry, "banked", 0) },
+                                { "displayName", GetString(entry, "displayName", kv.Key) }
+                            };
+                        }
                     }
                 }
                 return result;
@@ -4362,10 +4410,17 @@ namespace CardPackWidgetApp
                 SendDrawPostMessage(item, cardTitle, boosterTitle);
                 string userLogin = GetString(item, "userLogin", "");
                 string user = GetString(item, "user", "Viewer");
+                // Same "Titel Untertitel" convention as SendDrawPostMessage - the server-picked
+                // title (on the item) is authoritative, the parameter is only a fallback for
+                // older cached overlays that haven't reported cardTitle back via the item yet.
+                string tickerCardTitle = GetString(item, "cardTitle", "");
+                if (String.IsNullOrEmpty(tickerCardTitle)) tickerCardTitle = cardTitle;
+                string tickerCardSubtitle = GetString(item, "cardSubtitle", "");
+                if (!String.IsNullOrEmpty(tickerCardSubtitle)) tickerCardTitle = tickerCardTitle + " " + tickerCardSubtitle;
                 Dictionary<string, object> ltCfg = Obj(server.ReadSettingsObject(), "liveTicker");
                 string text = GetString(ltCfg, "drawMessage", DefaultLiveTickerDrawMessage)
                     .Replace("@userName", user)
-                    .Replace("[Kartenname]", cardTitle)
+                    .Replace("[Kartenname]", tickerCardTitle)
                     .Replace("[Boostername]", boosterTitle ?? "");
                 PushLiveTickerEntry("draw", text, GetUserAvatarUrl(userLogin));
             }
@@ -4383,8 +4438,12 @@ namespace CardPackWidgetApp
                 // The !pack "Nachricht bei Einloesung" - always sent (no separate toggle).
                 template = GetString(Obj(Obj(settings, "chatCommands"), "pack"), "successMessage", "");
             }
-            else if (source == "channelpoints")
+            else
             {
+                // Every other trigger (channel points, bits, community goal, tournament,
+                // Team-Kampf, sub/resub/giftsub) shares the same "Nachricht nach der Animation"
+                // toggle/template - [Quelle] (see below) is what lets the streamer distinguish
+                // which one actually fired in a given message.
                 Dictionary<string, object> draw = Obj(settings, "draw");
                 if (GetBool(draw, "postMessageEnabled", false)) template = GetString(draw, "postMessage", "");
             }
@@ -4413,12 +4472,14 @@ namespace CardPackWidgetApp
             }
             string rarityLang = GetString(Obj(settings, "chatCommands"), "rarityLanguage", "de");
             string rarityLabel = String.IsNullOrEmpty(cardId) ? "" : RarityLabel(server.CardRarity(cardId), rarityLang);
+            string sourceLabel = SourceLabel(source, rarityLang);
             string msg = template
                 .Replace("@userName", "@" + user)
                 .Replace("[Kartenname]", cardT)
                 .Replace("[Boostername]", boosterT)
                 .Replace("[Besitz]", count)
-                .Replace("[Seltenheit]", rarityLabel);
+                .Replace("[Seltenheit]", rarityLabel)
+                .Replace("[Quelle]", sourceLabel);
             SendChatMessageSafe(msg);
         }
 
@@ -6086,6 +6147,87 @@ namespace CardPackWidgetApp
                     switch (rarity) { case "uncommon": return "ไม่ธรรมดา"; case "rare": return "หายาก"; case "epic": return "เอพิก"; case "legendary": return "ตำนาน"; case "holo": return "โฮโล"; default: return "ธรรมดา"; }
                 default:
                     switch (rarity) { case "uncommon": return "Ungewöhnlich"; case "rare": return "Selten"; case "epic": return "Episch"; case "legendary": return "Legendär"; case "holo": return "Holo"; default: return "Gewöhnlich"; }
+            }
+        }
+
+        // Localized label for the [Quelle] chat variable - describes WHAT triggered a card draw
+        // (channel points, a chat command, bits, the community goal, a sub, a Team-Kampf reward,
+        // etc.), reusing the same language setting as [Seltenheit] (chatCommands.rarityLanguage).
+        // "source" is the same string tagged on every Enqueue("draw", ...) call across the file.
+        private static string SourceLabel(string source, string language)
+        {
+            switch (language)
+            {
+                case "en":
+                    switch (source)
+                    {
+                        case "channelpoints": return "Channel Points";
+                        case "chat": return "chat command";
+                        case "bits": return "Bits";
+                        case "communitygoal": return "Community Goal";
+                        case "tournament": return "Tournament";
+                        case "teamkampf": return "Team Battle";
+                        case "sub": return "Sub";
+                        case "resub": return "Resub";
+                        case "giftsub": return "Gifted Sub";
+                        default: return source;
+                    }
+                case "fr":
+                    switch (source)
+                    {
+                        case "channelpoints": return "Points de chaîne";
+                        case "chat": return "commande de chat";
+                        case "bits": return "Bits";
+                        case "communitygoal": return "Objectif communautaire";
+                        case "tournament": return "Tournoi";
+                        case "teamkampf": return "Combat d'équipe";
+                        case "sub": return "Abonnement";
+                        case "resub": return "Réabonnement";
+                        case "giftsub": return "Abonnement offert";
+                        default: return source;
+                    }
+                case "es":
+                    switch (source)
+                    {
+                        case "channelpoints": return "Puntos de canal";
+                        case "chat": return "comando de chat";
+                        case "bits": return "Bits";
+                        case "communitygoal": return "Meta comunitaria";
+                        case "tournament": return "Torneo";
+                        case "teamkampf": return "Combate de equipo";
+                        case "sub": return "Suscripción";
+                        case "resub": return "Resuscripción";
+                        case "giftsub": return "Suscripción regalada";
+                        default: return source;
+                    }
+                case "th":
+                    switch (source)
+                    {
+                        case "channelpoints": return "แชนแนลพอยท์";
+                        case "chat": return "คำสั่งแชท";
+                        case "bits": return "บิต";
+                        case "communitygoal": return "เป้าหมายชุมชน";
+                        case "tournament": return "ทัวร์นาเมนต์";
+                        case "teamkampf": return "การต่อสู้ทีม";
+                        case "sub": return "การสมัครสมาชิก";
+                        case "resub": return "การสมัครสมาชิกต่อ";
+                        case "giftsub": return "การสมัครสมาชิกที่ได้รับของขวัญ";
+                        default: return source;
+                    }
+                default:
+                    switch (source)
+                    {
+                        case "channelpoints": return "Kanalpunkte";
+                        case "chat": return "Chat-Befehl";
+                        case "bits": return "Bits";
+                        case "communitygoal": return "Community-Ziel";
+                        case "tournament": return "Turnier";
+                        case "teamkampf": return "Team-Kampf";
+                        case "sub": return "Sub";
+                        case "resub": return "Resub";
+                        case "giftsub": return "Geschenkter Sub";
+                        default: return source;
+                    }
             }
         }
 

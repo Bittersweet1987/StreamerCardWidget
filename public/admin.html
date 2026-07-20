@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.11">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.15">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -374,6 +374,7 @@
                 <input id="reward-post-enabled" type="checkbox">
                 <span data-i18n="label-reward-post-enabled">Chat-Nachricht nach dem Ziehen senden</span>
               </label>
+              <p class="hint" data-i18n="hint-reward-post-all-sources">Gilt für JEDE Ziehung, die nicht über den Chat-Befehl !pack ausgelöst wurde - Kanalpunkte, Bits, Community-Ziel, Turnier, Team-Kampf, Sub/Resub/Geschenkter Sub. Mit [Quelle] lässt sich im Text erkennen, wodurch eine bestimmte Ziehung ausgelöst wurde.</p>
               <div class="message-field">
                 <div class="message-field-head">
                   <span class="message-field-label" data-i18n="label-reward-post-message">Nachricht nach der Animation</span>
@@ -383,6 +384,7 @@
                     <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
                     <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
                     <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
+                    <button class="var-chip" type="button" data-insert="[Quelle]">[Quelle]</button>
                   </div>
                 </div>
                 <textarea id="reward-post-message" rows="2"></textarea>
@@ -1862,6 +1864,14 @@
             <div class="form-grid">
               <label data-i18n="label-subrewards-cards-per-sub">Karten je Sub<input id="subrewards-cards-per-sub" type="number" min="1" step="1"></label>
             </div>
+            <label class="switch-row compact-switch">
+              <input id="subrewards-fallback-enabled" type="checkbox">
+              <span data-i18n="label-subrewards-fallback-enabled">Fallback auf normalen Booster-Pool</span>
+            </label>
+            <p class="hint" data-i18n="hint-subrewards-fallback">Solange kein Booster als "Sub-exklusiv" markiert ist (oder dieser keine Karten enthält), gibt es sonst gar keine Sub-Belohnung. Mit dieser Option wird stattdessen aus dem normalen Booster-Pool gezogen - mit einer eigenen, hier festlegbaren Kartenanzahl je Sub.</p>
+            <div class="form-grid">
+              <label data-i18n="label-subrewards-fallback-cards">Karten je Sub (Fallback)<input id="subrewards-fallback-cards" type="number" min="1" step="1"></label>
+            </div>
           </section>
 
           <section class="tool-panel" id="jn-bits-belohnung-design">
@@ -1916,6 +1926,7 @@
               <a href="#jn-turnier-modus-design" data-i18n="tournament-title">Turnier-Modus</a>
               <a href="#jn-team-kampf-design" data-i18n="teamkampf-title">Team-Kampf</a>
               <a href="#jn-live-ticker-design" data-i18n="liveticker-title">Live-Ticker</a>
+              <a href="#jn-commandshelp-design" data-i18n="commandshelp-title">Befehls-Übersicht</a>
             </nav>
             <section class="tool-panel timing-panel" id="jn-pack-animation-design">
             <div class="section-heading">
@@ -2270,6 +2281,24 @@
               </div>
             </div>
           </section>
+
+          <section class="tool-panel" id="jn-commandshelp-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="commandshelp-eyebrow">Community</p>
+                <h2 data-i18n="commandshelp-title">Befehls-Übersicht</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="commandshelp-hint">Ein Overlay, das automatisch durch jeden aktuell aktiven Chat-Befehl und jede aktive Kanalpunkte-Belohnung durchblättert - immer ein Eintrag auf einmal, mit kurzer Erklärung und einem konkreten Beispiel zum direkten Nachtippen (z.B. "!gift @Zuschauer Pikachu" statt nur "!gift"). Wechselt automatisch weiter wie beim Ranking-Overlay. Deaktivierte Befehle/Belohnungen werden übersprungen.</p>
+            <label class="switch-row compact-switch">
+              <input id="commandshelp-enabled" type="checkbox">
+              <span data-i18n="label-commandshelp-enabled">Befehls-Übersicht aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-commandshelp-seconds">Sekunden pro Eintrag<input id="commandshelp-seconds" type="number" min="2" max="60" step="1"></label>
+            </div>
+            <div id="overlay-layout-commandsHelp"></div>
+          </section>
         </section>
 
         <section class="tab-panel" data-panel="themes">
@@ -2488,6 +2517,7 @@
               <h2 data-i18n="users-title">Nutzer verwalten</h2>
             </div>
             <input id="user-search" type="search" placeholder="Nutzer suchen..." data-i18n-placeholder="placeholder-user-search">
+            <button class="secondary-button" id="user-refresh" type="button" data-i18n="btn-user-refresh">Aktualisieren</button>
           </div>
           <p class="hint" id="user-empty-hint" hidden data-i18n="hint-users-empty">Noch keine Sammlungen vorhanden. Sobald Nutzer Karten ziehen, erscheinen sie hier.</p>
           <div class="user-list" id="user-list"></div>
@@ -2577,7 +2607,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.11"></script>
-    <script type="module" src="/assets/js/admin.js?v=2.12.11"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.15"></script>
+    <script type="module" src="/assets/js/admin.js?v=2.12.15"></script>
   </body>
 </html>

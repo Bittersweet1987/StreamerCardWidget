@@ -3,7 +3,7 @@ export function clamp(value, min, max) {
 }
 
 // Safety cap against runaway/corrupt data, not a design limit — raise here if ever needed.
-export const MAX_BOOSTER_CARDS = 200;
+export const MAX_BOOSTER_CARDS = 400;
 
 export function linesToArray(value) {
   return String(value || "")
@@ -802,6 +802,10 @@ export function normalizeSettings(settings) {
   settings.subRewards ||= {};
   settings.subRewards.enabled = settings.subRewards.enabled !== false;
   settings.subRewards.cardsPerSub = Number(settings.subRewards.cardsPerSub) > 0 ? Math.round(Number(settings.subRewards.cardsPerSub)) : 1;
+  // Fallback when no booster is marked "Sub-exklusiv" (or it has no cards): draw from the
+  // normal pool instead of granting nothing, with its own separately configurable card count.
+  settings.subRewards.fallbackEnabled = settings.subRewards.fallbackEnabled === true;
+  settings.subRewards.fallbackCardsPerSub = Number(settings.subRewards.fallbackCardsPerSub) > 0 ? Math.round(Number(settings.subRewards.fallbackCardsPerSub)) : 1;
   // Bits/Cheers: every "bitsPerDraw" bits earns one card draw, leftover bits bank server-side
   // (data/command-usage.json "bits" section) and carry over to the next cheer from that viewer.
   settings.bits ||= {};
@@ -1156,7 +1160,7 @@ export function normalizeSettings(settings) {
   // applyOverlayLayout below. Default = centered at 100%, i.e. pixel-identical to before this
   // setting existed.
   settings.overlayLayout ||= {};
-  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker"]) {
+  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp"]) {
     const layout = settings.overlayLayout[key] || {};
     const scale = Number(layout.scale) > 0 ? Math.min(100, Math.max(10, Number(layout.scale))) : 100;
     const { w: boxW, h: boxH } = overlayLayoutBoxSize(key, scale);
@@ -1188,6 +1192,13 @@ export function normalizeSettings(settings) {
   settings.liveTicker.enabled = settings.liveTicker.enabled !== false;
   settings.liveTicker.maxEntries = Number(settings.liveTicker.maxEntries) > 0 ? Math.min(15, Math.max(2, Math.round(Number(settings.liveTicker.maxEntries)))) : 8;
   settings.liveTicker.speed = Number(settings.liveTicker.speed) > 0 ? Math.min(400, Math.max(20, Number(settings.liveTicker.speed))) : 120;
+
+  // "Befehls-Übersicht" overlay (commandshelp.js): cycles through every currently active chat
+  // command and channel-points reward with a short description + usage example. Off by default -
+  // it's a helper widget the streamer opts into, not something that should suddenly appear.
+  settings.commandsHelp ||= {};
+  settings.commandsHelp.enabled = settings.commandsHelp.enabled === true;
+  settings.commandsHelp.secondsPerItem = Number(settings.commandsHelp.secondsPerItem) > 0 ? Math.min(60, Math.max(2, Math.round(Number(settings.commandsHelp.secondsPerItem)))) : 6;
 
   settings.chatCommands.tournamentJoin ||= {};
   settings.chatCommands.tournamentJoin.enabled = settings.chatCommands.tournamentJoin.enabled !== false;
@@ -1438,7 +1449,8 @@ export const OVERLAY_LAYOUT_NATURAL_SIZES = {
   // A news-ticker banner spanning the full canvas width at all times - lockWidth means "scale"
   // never touches its width, only its height (and, in liveticker.js, font size). See
   // applyOverlayLayout and admin.js's overlayLayoutBoxSize, which both honor this flag.
-  liveTicker: { w: 1920, h: 90, lockWidth: true }
+  liveTicker: { w: 1920, h: 90, lockWidth: true },
+  commandsHelp: { w: 500, h: 260 }
 };
 
 const OVERLAY_LAYOUT_CANVAS_W = 1920;

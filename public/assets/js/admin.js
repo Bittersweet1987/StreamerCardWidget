@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.11";
+} from "./api.js?v=2.12.15";
 import {
   applyTheme,
   autoImagePosition,
@@ -68,7 +68,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.11";
+} from "./render.js?v=2.12.15";
 
 let settings;
 let selectedCardId;
@@ -1753,6 +1753,23 @@ const I18N = {
     es: "Cartas por suscripción",
     th: "การ์ดต่อการสมัครสมาชิก"
   },
+  "label-subrewards-fallback-enabled": { de: "Fallback auf normalen Booster-Pool", en: "Fall back to the normal booster pool",
+    fr: "Repli sur le pool de boosters normal",
+    es: "Recurrir al conjunto de sobres normal",
+    th: "สำรองไปใช้กลุ่มบูสเตอร์ปกติ"
+  },
+  "hint-subrewards-fallback": {
+    de: "Solange kein Booster als \"Sub-exklusiv\" markiert ist (oder dieser keine Karten enthält), gibt es sonst gar keine Sub-Belohnung. Mit dieser Option wird stattdessen aus dem normalen Booster-Pool gezogen - mit einer eigenen, hier festlegbaren Kartenanzahl je Sub.",
+    en: "As long as no booster is marked \"Sub-exclusive\" (or it has no cards), there's otherwise no sub reward at all. With this option, draws come from the normal booster pool instead - with its own card count per sub, set here.",
+    fr: "Tant qu'aucun booster n'est marqué « Sub-exclusif » (ou qu'il ne contient aucune carte), il n'y a sinon aucune récompense d'abonnement. Avec cette option, les tirages proviennent du pool de boosters normal - avec son propre nombre de cartes par abonnement, défini ici.",
+    es: "Mientras ningún sobre esté marcado como \"Exclusivo de subs\" (o no tenga cartas), de lo contrario no hay ninguna recompensa de suscripción. Con esta opción, las tiradas provienen del conjunto de sobres normal - con su propia cantidad de cartas por suscripción, definida aquí.",
+    th: "ตราบใดที่ไม่มีบูสเตอร์ที่ทำเครื่องหมายว่า \"เฉพาะซับ\" (หรือไม่มีการ์ดอยู่) จะไม่มีรางวัลจากการสมัครสมาชิกเลย ด้วยตัวเลือกนี้ การสุ่มจะมาจากกลุ่มบูสเตอร์ปกติแทน - พร้อมจำนวนการ์ดต่อการสมัครสมาชิกของตัวเองที่ตั้งค่าได้ที่นี่"
+  },
+  "label-subrewards-fallback-cards": { de: "Karten je Sub (Fallback)", en: "Cards per sub (fallback)",
+    fr: "Cartes par abonnement (repli)",
+    es: "Cartas por suscripción (alternativa)",
+    th: "การ์ดต่อการสมัครสมาชิก (สำรอง)"
+  },
   "bits-eyebrow": { de: "Karten", en: "Cards", fr: "Cartes", es: "Cartas", th: "การ์ด" },
   "bits-title": { de: "Bits-Belohnung", en: "Bits reward", fr: "Récompense en bits", es: "Recompensa por bits", th: "รางวัลบิต" },
   "bits-hint": {
@@ -1960,6 +1977,17 @@ const I18N = {
     th: "แบนเนอร์ข่าววิ่งที่วนลูปการจับสลากล่าสุดของผู้ชมทุกคนจากขวาไปซ้าย - ไม่ขึ้นกับแอนิเมชันแพ็ก จึงไม่ถูกจำกัดด้วยคิวของมัน"
   },
   "label-liveticker-enabled": { de: "Live-Ticker aktiviert", en: "Live ticker enabled", fr: "Fil d'actualité en direct activé", es: "Ticker en vivo activado", th: "เปิดใช้งานตัวแสดงผลสด" },
+  "commandshelp-eyebrow": { de: "Community", en: "Community", fr: "Communauté", es: "Comunidad", th: "คอมมูนิตี้" },
+  "commandshelp-title": { de: "Befehls-Übersicht", en: "Command overview", fr: "Aperçu des commandes", es: "Resumen de comandos", th: "ภาพรวมคำสั่ง" },
+  "commandshelp-hint": {
+    de: "Ein Overlay, das automatisch durch jeden aktuell aktiven Chat-Befehl und jede aktive Kanalpunkte-Belohnung durchblättert - immer ein Eintrag auf einmal, mit kurzer Erklärung und einem konkreten Beispiel zum direkten Nachtippen (z.B. \"!gift @Zuschauer Pikachu\" statt nur \"!gift\"). Wechselt automatisch weiter wie beim Ranking-Overlay. Deaktivierte Befehle/Belohnungen werden übersprungen.",
+    en: "An overlay that automatically cycles through every currently active chat command and channel-points reward - one entry at a time, with a short explanation and a concrete, ready-to-type example (e.g. \"!gift @viewer Pikachu\" instead of just \"!gift\"). Advances automatically, just like the ranking overlay. Disabled commands/rewards are skipped.",
+    fr: "Un overlay qui parcourt automatiquement chaque commande de chat et récompense de points de chaîne actuellement active - un élément à la fois, avec une courte explication et un exemple concret prêt à taper (par ex. « !gift @spectateur Pikachu » au lieu de simplement « !gift »). Avance automatiquement, comme l'overlay de classement. Les commandes/récompenses désactivées sont ignorées.",
+    es: "Un overlay que recorre automáticamente cada comando de chat y recompensa de puntos de canal actualmente activos - un elemento a la vez, con una breve explicación y un ejemplo concreto listo para escribir (p. ej. \"!gift @espectador Pikachu\" en vez de solo \"!gift\"). Avanza automáticamente, igual que el overlay de clasificación. Los comandos/recompensas desactivados se omiten.",
+    th: "โอเวอร์เลย์ที่เลื่อนผ่านคำสั่งแชทและรางวัลแชนแนลพอยท์ที่ใช้งานอยู่ทั้งหมดโดยอัตโนมัติ - ทีละรายการ พร้อมคำอธิบายสั้นๆ และตัวอย่างที่พร้อมพิมพ์ตามได้จริง (เช่น \"!gift @ผู้ชม Pikachu\" แทนที่จะเป็นแค่ \"!gift\") เลื่อนต่อไปอัตโนมัติเหมือนโอเวอร์เลย์อันดับ คำสั่ง/รางวัลที่ปิดใช้งานจะถูกข้าม"
+  },
+  "label-commandshelp-enabled": { de: "Befehls-Übersicht aktiviert", en: "Command overview enabled", fr: "Aperçu des commandes activé", es: "Resumen de comandos activado", th: "เปิดใช้งานภาพรวมคำสั่ง" },
+  "label-commandshelp-seconds": { de: "Sekunden pro Eintrag", en: "Seconds per entry", fr: "Secondes par élément", es: "Segundos por elemento", th: "วินาทีต่อรายการ" },
   "label-liveticker-max-entries": { de: "Einträge im Umlauf", en: "Entries in rotation", fr: "Entrées en rotation", es: "Entradas en rotación", th: "รายการที่หมุนเวียน" },
   "label-liveticker-speed": { de: "Geschwindigkeit (Px/Sek.)", en: "Speed (px/sec.)", fr: "Vitesse (px/sec.)", es: "Velocidad (px/seg.)", th: "ความเร็ว (พิกเซล/วิ)" },
   "liveticker-group-messages": { de: "Texte", en: "Texts", fr: "Textes", es: "Textos", th: "ข้อความ" },
@@ -2417,6 +2445,13 @@ const I18N = {
     es: "Mensaje después de la animación",
     th: "ข้อความหลังแอนิเมชัน"
   },
+  "hint-reward-post-all-sources": {
+    de: "Gilt für JEDE Ziehung, die nicht über den Chat-Befehl !pack ausgelöst wurde - Kanalpunkte, Bits, Community-Ziel, Turnier, Team-Kampf, Sub/Resub/Geschenkter Sub. Mit [Quelle] lässt sich im Text erkennen, wodurch eine bestimmte Ziehung ausgelöst wurde.",
+    en: "Applies to EVERY draw not triggered via the !pack chat command - channel points, Bits, community goal, tournament, Team Battle, sub/resub/gifted sub. [Quelle] lets the text show what actually triggered a given draw.",
+    fr: "S'applique à CHAQUE tirage qui n'a pas été déclenché via la commande de chat !pack - points de chaîne, Bits, objectif communautaire, tournoi, combat d'équipe, abonnement/réabonnement/abonnement offert. [Quelle] permet d'indiquer dans le texte ce qui a déclenché un tirage donné.",
+    es: "Se aplica a CADA tirada que no se haya activado mediante el comando de chat !pack - puntos de canal, Bits, meta comunitaria, torneo, combate de equipo, suscripción/resuscripción/suscripción regalada. [Quelle] permite mostrar en el texto qué activó realmente una tirada concreta.",
+    th: "ใช้กับการสุ่มทุกครั้งที่ไม่ได้เกิดจากคำสั่งแชท !pack - แชนแนลพอยท์ บิต เป้าหมายชุมชน ทัวร์นาเมนต์ การต่อสู้ทีม การสมัครสมาชิก/สมัครต่อ/สมัครที่ได้รับของขวัญ [Quelle] จะแสดงในข้อความว่าอะไรเป็นตัวกระตุ้นการสุ่มครั้งนั้นๆ"
+  },
   "label-reward-bg-color": { de: "Hintergrundfarbe", en: "Background color",
     fr: "Couleur de fond",
     es: "Color de fondo",
@@ -2707,6 +2742,11 @@ const I18N = {
     fr: "Rechercher des utilisateurs...",
     es: "Buscar usuarios...",
     th: "ค้นหาผู้ใช้..."
+  },
+  "btn-user-refresh": { de: "Aktualisieren", en: "Refresh",
+    fr: "Actualiser",
+    es: "Actualizar",
+    th: "รีเฟรช"
   },
   "hint-users-empty": {
     de: "Noch keine Sammlungen vorhanden. Sobald Nutzer Karten ziehen, erscheinen sie hier.",
@@ -5325,6 +5365,17 @@ function buildUserIndex() {
       }
     }
   }
+  // Also list viewers who have banked bits, pity progress, or battle/tournament/teamkampf stats
+  // but own zero cards yet (e.g. a cheer below the bits-per-draw threshold, or a sub reward that
+  // never actually drew a card because no sub-exclusive booster is configured) - otherwise they
+  // were completely invisible here even though their data was correctly tracked server-side.
+  const addIfMissing = (userKey, displayName) => {
+    if (!userKey || index.has(userKey)) return;
+    index.set(userKey, { key: userKey, displayName: displayName || userKey, entries: [] });
+  };
+  for (const [userKey, entry] of Object.entries(bitsByLogin || {})) addIfMissing(userKey, entry?.displayName);
+  for (const [userKey, entry] of Object.entries(userStatsByLogin || {})) addIfMissing(userKey, entry?.displayName);
+  for (const userKey of Object.keys(pityByLogin || {})) addIfMissing(userKey, null);
   return [...index.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
@@ -5410,7 +5461,8 @@ function renderUsers() {
     const dustAllRarityLabel = t("rarity-" + dustAllRarityId);
     const dustAllHtml = `<span class="user-pity-info" title="${t("hint-dustall-rarity")}">${t("label-dustall-rarity")} ${dustAllRarityLabel}</span>`;
     const lowerKey = user.key?.toLowerCase();
-    const bankedBits = bitsByLogin[user.key] ?? bitsByLogin[lowerKey];
+    const bankedBitsEntry = bitsByLogin[user.key] ?? bitsByLogin[lowerKey];
+    const bankedBits = bankedBitsEntry?.banked;
     const bitsHtml = settings.bits?.enabled && bankedBits != null
       ? `<span class="user-stat-info" title="${t("hint-bits-banked")}">${t("label-bits-banked")} ${bankedBits}</span>`
       : "";
@@ -5536,6 +5588,16 @@ function bindUsers() {
   $("#user-search").addEventListener("input", renderUsers);
   $("#user-list").addEventListener("click", handleUserListClick);
   $("#user-list").addEventListener("change", handleUserListChange);
+  $("#user-refresh").addEventListener("click", async () => {
+    const btn = $("#user-refresh");
+    btn.disabled = true;
+    try {
+      await loadUsers();
+      renderUsers();
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 
 let commandUsage = { users: [], pack: {}, trade: {}, battle: {} };
@@ -6291,6 +6353,8 @@ function hydrateDesign() {
   }
   $("#subrewards-enabled").checked = settings.subRewards?.enabled !== false;
   $("#subrewards-cards-per-sub").value = settings.subRewards?.cardsPerSub ?? 1;
+  $("#subrewards-fallback-enabled").checked = settings.subRewards?.fallbackEnabled === true;
+  $("#subrewards-fallback-cards").value = settings.subRewards?.fallbackCardsPerSub ?? 1;
   $("#bits-enabled").checked = settings.bits?.enabled === true;
   $("#bits-per-draw").value = settings.bits?.bitsPerDraw ?? 100;
   $("#communitygoal-enabled").checked = settings.communityGoal?.enabled === true;
@@ -6326,6 +6390,8 @@ function hydrateDesign() {
   $("#liveticker-battle-message").value = settings.liveTicker?.battleMessage ?? "@userNameA hat gegen @userNameB gewonnen.";
   $("#liveticker-tournament-message").value = settings.liveTicker?.tournamentMessage ?? "Turnier: @userName hat gewonnen.";
   $("#liveticker-teambattle-message").value = settings.liveTicker?.teamBattleMessage ?? "Team-Kampf: [Sieger] hat gewonnen.";
+  $("#commandshelp-enabled").checked = settings.commandsHelp?.enabled === true;
+  $("#commandshelp-seconds").value = settings.commandsHelp?.secondsPerItem ?? 6;
   $("#reveal-seconds").value = settings.behavior.revealSeconds ?? 3.2;
   $("#cooldown-seconds").value = settings.behavior.cooldownSeconds ?? 0.8;
   $("#backs-before-reveal").value = settings.behavior.cardBacksBeforeReveal ?? 2;
@@ -6747,7 +6813,7 @@ function initOverlayLayoutEditors() {
   // a previous build so the registry doesn't accumulate references to DOM nodes that innerHTML
   // just replaced.
   for (const key of Object.keys(overlayLayoutStatesByKey)) delete overlayLayoutStatesByKey[key];
-  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker"]) {
+  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp"]) {
     buildOverlayLayoutEditor($(`#overlay-layout-${key}`), key);
   }
   // The tournament bracket renders inside the same OBS source as Kampf-Animation, so it shares
@@ -6868,6 +6934,16 @@ function bindDesign() {
   $("#subrewards-cards-per-sub").addEventListener("input", (event) => {
     settings.subRewards ||= {};
     settings.subRewards.cardsPerSub = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#subrewards-fallback-enabled").addEventListener("change", (event) => {
+    settings.subRewards ||= {};
+    settings.subRewards.fallbackEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#subrewards-fallback-cards").addEventListener("input", (event) => {
+    settings.subRewards ||= {};
+    settings.subRewards.fallbackCardsPerSub = Math.max(1, Math.round(Number(event.target.value) || 1));
     scheduleAutoSave();
   });
   $("#bits-enabled").addEventListener("change", (event) => {
@@ -7092,6 +7168,16 @@ function bindDesign() {
   $("#liveticker-teambattle-message").addEventListener("input", (event) => {
     settings.liveTicker ||= {};
     settings.liveTicker.teamBattleMessage = event.target.value;
+    scheduleAutoSave();
+  });
+  $("#commandshelp-enabled").addEventListener("change", (event) => {
+    settings.commandsHelp ||= {};
+    settings.commandsHelp.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#commandshelp-seconds").addEventListener("input", (event) => {
+    settings.commandsHelp ||= {};
+    settings.commandsHelp.secondsPerItem = Math.min(60, Math.max(2, Math.round(Number(event.target.value) || 6)));
     scheduleAutoSave();
   });
   $("#language-select").addEventListener("change", (event) => {
