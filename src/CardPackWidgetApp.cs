@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.12";
+        public const string Version = "2.12.13";
         public const string ReleaseDate = "2026-07-20";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -2399,7 +2399,7 @@ namespace CardPackWidgetApp
                         string rarity = "common";
                         Dictionary<string, string> info;
                         if (cardInfoById.TryGetValue(cardId, out info)) { cardTitle = info["title"]; rarity = info["rarity"]; }
-                        if (GetRarityRank(rarity) >= maxRarityRank) continue;
+                        if (GetRarityRank(rarity) > maxRarityRank) continue;
                         int removed = count - 1;
                         SetCount(cards, cardId, 1);
                         changed = true;

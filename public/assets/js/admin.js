@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.15";
+} from "./api.js?v=2.12.16";
 import {
   applyTheme,
   autoImagePosition,
@@ -68,7 +68,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.15";
+} from "./render.js?v=2.12.16";
 
 let settings;
 let selectedCardId;
@@ -148,16 +148,20 @@ async function syncCommunityCounts(force) {
     // `settings` - see getStatsInstallId in api.js for why it must not live in settings.json.
     if (!cachedStatsInstallId) cachedStatsInstallId = await getStatsInstallId();
     if (!cachedStatsInstallId) return;
+    // Cards/boosters only count toward the community total while the main (broadcaster) Twitch
+    // account is connected - an install that disconnects should drop back out of the aggregate
+    // instead of leaving a stale contribution behind, so this sends 0/0 rather than skipping.
+    const mainConnected = !!settings.twitch?.broadcasterId;
     await fetch(`${STATS_ENDPOINT}/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         installId: cachedStatsInstallId,
-        cards: settings.deck?.cards?.length || 0,
-        boosters: settings.boosters?.length || 0
+        cards: mainConnected ? (settings.deck?.cards?.length || 0) : 0,
+        boosters: mainConnected ? (settings.boosters?.length || 0) : 0
       })
     });
-    if (settings.twitch?.broadcasterId) reportTwitchConnected(settings.twitch.broadcasterId);
+    if (mainConnected) reportTwitchConnected(settings.twitch.broadcasterId);
     statsLoaded = false;
     loadCommunityStats();
   } catch {
