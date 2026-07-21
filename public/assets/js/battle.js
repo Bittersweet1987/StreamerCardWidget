@@ -610,6 +610,13 @@ async function playBracketTree(bracket) {
   // on the paint loop for a plain layout measurement anyway.
   const stageRect = stage.getBoundingClientRect();
   const treeRect = tree.getBoundingClientRect();
+  // The current match box's rect is captured HERE, in the same untransformed pass as treeRect -
+  // NOT after focusOn() has applied the fit transform. Measuring it later (against a treeRect from
+  // before the transform) mixed two coordinate systems and made the zoom land off-center; keeping
+  // both measurements in the same screen-space pass keeps the box-relative math self-consistent
+  // regardless of any outer #battle-stage overlay-layout transform.
+  const currentBox = !isChampionReveal ? boxEls[currentRoundIndex]?.[currentMatchIndex] : null;
+  const currentBoxRect = currentBox ? currentBox.getBoundingClientRect() : null;
   const margin = 120;
   const fitScale = Math.min(1, (stageRect.width - margin) / treeRect.width, (stageRect.height - margin) / treeRect.height);
   const stageCenterX = stageRect.width / 2;
@@ -635,15 +642,12 @@ async function playBracketTree(bracket) {
     }
   }
 
-  if (!isChampionReveal) {
-    const boxRect = boxEls[currentRoundIndex]?.[currentMatchIndex]?.getBoundingClientRect();
-    if (boxRect) {
-      const localX = boxRect.left - treeRect.left + boxRect.width / 2;
-      const localY = boxRect.top - treeRect.top + boxRect.height / 2;
-      const zoomScale = Math.min(2.4, Math.max(1, fitScale * 2.6));
-      focusOn(zoomScale, localX, localY, 900);
-      await delay(900 + 1300);
-    }
+  if (!isChampionReveal && currentBoxRect) {
+    const localX = currentBoxRect.left - treeRect.left + currentBoxRect.width / 2;
+    const localY = currentBoxRect.top - treeRect.top + currentBoxRect.height / 2;
+    const zoomScale = Math.min(2.4, Math.max(1, fitScale * 2.6));
+    focusOn(zoomScale, localX, localY, 900);
+    await delay(900 + 1300);
   } else {
     await delay(600);
   }
