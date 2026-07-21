@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.16";
+        public const string Version = "2.12.17";
         public const string ReleaseDate = "2026-07-21";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -4861,6 +4861,16 @@ namespace CardPackWidgetApp
                 }
 
                 for (int i = 0; i < winnerDraws; i++) Enqueue("draw", login, user, "tournament");
+
+                // Broadcast the fully-resolved bracket so the overlay can play the same "zoom out
+                // to the tree, final branch turns gold, champion's name locked in" reveal every
+                // earlier round gets (see playBracketReveal in battle.js) - there's no further
+                // match afterwards to trigger that reveal naturally, so it's fired here instead.
+                object championBracketObj;
+                if (item.TryGetValue("bracket", out championBracketObj) && championBracketObj is Dictionary<string, object>)
+                {
+                    server.Broadcast("tournamentwon", server.Serializer.Serialize(new Dictionary<string, object> { { "bracket", championBracketObj } }));
+                }
                 return;
             }
 
@@ -7771,7 +7781,11 @@ namespace CardPackWidgetApp
                     {
                         { "rounds", CloneBracketRounds(bracketRounds) },
                         { "currentRoundIndex", currentRoundIndex },
-                        { "currentMatchIndex", currentMatchIndex }
+                        { "currentMatchIndex", currentMatchIndex },
+                        // Lets the overlay compute the FULL bracket skeleton (every future round's
+                        // match-box count) up front, even though bracketRounds itself only ever
+                        // contains rounds resolved so far - see playBracketTree in battle.js.
+                        { "totalParticipants", totalParticipants }
                     };
                     priorityItems.Add(BuildQueueItem("battle", loginA, userA, "tournament", duelEvent));
 
@@ -7808,7 +7822,8 @@ namespace CardPackWidgetApp
                                 {
                                     { "rounds", CloneBracketRounds(bracketRounds) },
                                     { "currentRoundIndex", currentRoundIndex },
-                                    { "currentMatchIndex", roundMatches.Count - 1 }
+                                    { "currentMatchIndex", roundMatches.Count - 1 },
+                                    { "totalParticipants", totalParticipants }
                                 }
                             }
                         }));
@@ -7829,7 +7844,21 @@ namespace CardPackWidgetApp
             {
                 { "totalParticipants", totalParticipants },
                 { "winnerDraws", championDrawsEnabled ? winnerDraws : 0 },
-                { "perRoundDraws", perRoundWinners.ToArray() }
+                { "perRoundDraws", perRoundWinners.ToArray() },
+                // Lets the overlay do one final "zoom out to the completed tree, final branch
+                // turns gold" reveal for the champion - there's no further match afterwards to
+                // trigger that reveal the way every earlier round's does (see playBracketTree/
+                // playBracketReveal in battle.js), so this item carries the FULLY resolved bracket
+                // itself, pointing at the final as the "just decided" match.
+                { "bracket", new Dictionary<string, object>
+                    {
+                        { "rounds", CloneBracketRounds(bracketRounds) },
+                        { "currentRoundIndex", bracketRounds.Count - 1 },
+                        { "currentMatchIndex", 0 },
+                        { "totalParticipants", totalParticipants },
+                        { "isChampion", true }
+                    }
+                }
             }));
 
             // Every match/bye/champion item is flushed into the live queue in one atomic batch,

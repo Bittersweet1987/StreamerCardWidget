@@ -105,14 +105,26 @@ function enqueueBattle(event = {}) {
   if (!running) runQueue();
 }
 
+// The champion's own bracket reveal (see playTournamentWon) has no duel of its own and the server
+// never waits for an ack on it (EstimatedProcessingMs=200ms for "tournamentwon" - see the C#
+// comment on that queue item), so it's pushed through this SAME client-side queue/runQueue as a
+// normal battle event, just tagged, purely to stop it from visually overlapping the final match's
+// still-playing duel animation - never to gate the server's own queue.
+function enqueueTournamentWon(event = {}) {
+  if (settings?.battleAnimation?.enabled !== true) return;
+  queue.push({ ...event, __tournamentWon: true });
+  if (!running) runQueue();
+}
+
 async function runQueue() {
   running = true;
   while (queue.length) {
     const event = queue.shift();
     try {
-      await playBattle(event);
+      if (event.__tournamentWon) await playTournamentWon(event);
+      else await playBattle(event);
     } finally {
-      completeQueueItem(event.eventId);
+      if (event.eventId) completeQueueItem(event.eventId);
     }
     await delay(400);
   }
@@ -299,49 +311,293 @@ async function playHpMatchup(arena, matchup, hitDuration, userA, userB, hpState)
   await delay(500);
 }
 
-// Shows the tournament bracket-so-far before a tournament match plays: the whole tree so far,
-// scaled down to fit the stage, then a zoom onto the match that's about to happen. Only present
-// on tournament matches (event.bracket) - a normal 1v1 !battle challenge has no bracket and skips
-// this entirely. The bracket data itself only ever reveals rounds up to and including the current
-// one (see ResolveTournamentSignup server-side) - nothing here shows a future round's outcome.
-async function playBracketTree(bracket) {
-  const rounds = Array.isArray(bracket?.rounds) ? bracket.rounds : [];
-  if (!rounds.length) return;
-  const currentRoundIndex = bracket.currentRoundIndex ?? 0;
-  const currentMatchIndex = bracket.currentMatchIndex ?? 0;
+// ---- Tournament bracket tree ----
+// A single-elimination bracket's shape (how many rounds, how many match-boxes per round, and
+// which box in an odd-sized round is a solo "bye") is fully determined by the participant count
+// alone - nobody needs to have played yet to know the SKELETON, only to know who's actually IN
+// each box. This lets the whole tree (including every future round, boxes shown as "?") render
+// from the very first match onward, rather than only ever revealing "up to the current round"
+// the way earlier versions of this overlay did.
+const BRACKET_BOX_W = 220;
+const BRACKET_BOX_H = 62;
+const BRACKET_ROW_GAP = 26;
+const BRACKET_COL_GAP = 96;
+const BRACKET_LABEL_SPACE = 40;
 
+// Mirrors ResolveTournamentSignup's own `while (round.Count > 1)` loop exactly (same halving,
+// same odd-count bye, same round-label thresholds) so the labels/box-counts this produces for
+// not-yet-reached rounds are byte-for-byte what the server will eventually send real data for.
+function computeBracketSkeleton(totalParticipants) {
+  const rounds = [];
+  let count = Math.max(2, Math.floor(totalParticipants) || 2);
+  let roundNumber = 1;
+  while (count > 1) {
+    const label = count <= 2 ? "Finale" : count <= 4 ? "Halbfinale" : `Runde ${roundNumber}`;
+    const matchCount = Math.floor(count / 2);
+    const hasBye = count % 2 === 1;
+    const boxCount = matchCount + (hasBye ? 1 : 0);
+    rounds.push({ label, boxCount, byeBoxIndex: hasBye ? boxCount - 1 : -1 });
+    count = boxCount;
+    roundNumber++;
+  }
+  return rounds;
+}
+
+// Y-center of round r+1 box k is the MIDPOINT of the two round-r boxes that feed it (2k and
+// 2k+1) - the standard "elbow" bracket layout - or, if it has only one feeder (a bye advancing
+// alone), simply that one feeder's own Y. Round 0 itself is just evenly spaced from the top.
+function layoutBracketRounds(skeleton) {
+  const yCenters = [];
+  yCenters[0] = Array.from({ length: skeleton[0].boxCount }, (_, i) => i * (BRACKET_BOX_H + BRACKET_ROW_GAP) + BRACKET_BOX_H / 2);
+  for (let r = 1; r < skeleton.length; r++) {
+    const prev = yCenters[r - 1];
+    const arr = [];
+    for (let k = 0; k < skeleton[r].boxCount; k++) {
+      const i0 = k * 2, i1 = k * 2 + 1;
+      arr.push(i1 < prev.length ? (prev[i0] + prev[i1]) / 2 : prev[i0]);
+    }
+    yCenters[r] = arr;
+  }
+  return yCenters;
+}
+
+// A match/bye box counts as "already decided" for rendering purposes if the data says so, UNLESS
+// it's the one single match this call is about to animate revealing (see findPreviousRealMatch) -
+// that one renders as still-pending at first, then flips via revealMatch() a moment later.
+function isFeederDecided(rounds, skeleton, revealTarget, r, idx) {
+  if (revealTarget && revealTarget.r === r && revealTarget.m === idx) return false;
+  if (skeleton[r]?.byeBoxIndex === idx) return true;
+  return !!rounds[r]?.matches?.[idx]?.winner;
+}
+
+// Which single real match is "the one that just got decided" relative to the match/reveal about
+// to play - i.e. the previous entry in strict queue order. Byes never get an animated reveal of
+// their own (they're rendered as already-settled from the start, see buildBracketTreeDom), so
+// this walks back over them to find the last REAL match.
+function findPreviousRealMatch(skeleton, r, m) {
+  if (m > 0) return { r, m: m - 1 };
+  for (let rr = r - 1; rr >= 0; rr--) {
+    const realCount = skeleton[rr].boxCount - (skeleton[rr].byeBoxIndex >= 0 ? 1 : 0);
+    if (realCount > 0) return { r: rr, m: realCount - 1 };
+  }
+  return null;
+}
+
+function makeConnectorPiece(tree, x, y, hLen, decided, vLen) {
+  const el = document.createElement("div");
+  el.className = "bracket-connector" + (decided ? " is-decided" : "");
+  if (vLen !== undefined) {
+    el.style.left = `${x - 1.5}px`;
+    el.style.top = `${y}px`;
+    el.style.width = "3px";
+    el.style.height = `${vLen}px`;
+  } else {
+    el.style.left = `${x}px`;
+    el.style.top = `${y - 1.5}px`;
+    el.style.width = `${hLen}px`;
+    el.style.height = "3px";
+  }
+  tree.append(el);
+  return el;
+}
+
+// Builds the full tree DOM (every round including ones the server hasn't resolved yet, shown as
+// "?" boxes) plus the connector lines between every adjacent pair of rounds. Returns element
+// references the caller needs afterward: to measure/zoom (boxEls), and to animate the reveal of
+// one specific match a moment later (entrantEls/connectorPieces/nextEntrantEl).
+function buildBracketTreeDom(skeleton, rounds, currentRoundIndex, currentMatchIndex, isChampionReveal, revealTarget, isFirstMatch) {
+  const yCenters = layoutBracketRounds(skeleton);
   const wrap = document.createElement("div");
   wrap.className = "bracket-tree-overlay";
   const tree = document.createElement("div");
   tree.className = "bracket-tree";
   wrap.append(tree);
 
-  let currentBox = null;
-  rounds.forEach((round, roundIdx) => {
-    const col = document.createElement("div");
-    col.className = "bracket-round";
-    const heading = document.createElement("div");
-    heading.className = "bracket-round-label";
-    heading.textContent = round.label || "";
-    col.append(heading);
-    (round.matches || []).forEach((match, matchIdx) => {
+  const totalWidth = skeleton.length * BRACKET_BOX_W + (skeleton.length - 1) * BRACKET_COL_GAP;
+  const totalHeight = BRACKET_LABEL_SPACE + Math.max(...yCenters[0]) + BRACKET_BOX_H / 2 + 20;
+  tree.style.width = `${totalWidth}px`;
+  tree.style.height = `${totalHeight}px`;
+
+  const boxEls = [];
+  const entrantEls = [];
+  skeleton.forEach((roundMeta, r) => {
+    const colX = r * (BRACKET_BOX_W + BRACKET_COL_GAP);
+    const label = document.createElement("div");
+    label.className = "bracket-round-label";
+    label.style.left = `${colX}px`;
+    label.style.width = `${BRACKET_BOX_W}px`;
+    label.textContent = roundMeta.label;
+    tree.append(label);
+
+    boxEls[r] = [];
+    entrantEls[r] = [];
+    for (let k = 0; k < roundMeta.boxCount; k++) {
+      const isByeBox = roundMeta.byeBoxIndex === k;
+      const known = rounds[r]?.matches?.[k];
+      const suppressNames = isFirstMatch && r === 0;
+      const aName = suppressNames ? "?" : (known ? (known.a || "?") : "?");
+      const bNameRaw = suppressNames ? null : (known ? known.b : null);
+
       const box = document.createElement("div");
-      const isCurrent = roundIdx === currentRoundIndex && matchIdx === currentMatchIndex;
-      box.className = `bracket-match${isCurrent ? " is-current" : ""}`;
-      const aWon = match.winner === "a";
-      const bWon = match.winner === "b";
-      const bSlot = match.bye
-        ? `<div class="bracket-entrant is-bye">${settings?.language === "en" ? "Bye" : "Freilos"}</div>`
-        : `<div class="bracket-entrant ${bWon ? "is-winner" : match.winner ? "is-loser" : ""}">${escapeForOverlay(match.b || "?")}</div>`;
-      box.innerHTML = `
-        <div class="bracket-entrant ${aWon ? "is-winner" : match.winner ? "is-loser" : ""}">${escapeForOverlay(match.a || "?")}</div>
-        ${bSlot}
-      `;
-      col.append(box);
-      if (isCurrent) currentBox = box;
-    });
-    tree.append(col);
+      const isCurrent = !isChampionReveal && r === currentRoundIndex && k === currentMatchIndex;
+      box.className = "bracket-match" + (isCurrent ? " is-current" : "");
+      box.style.left = `${colX}px`;
+      box.style.top = `${BRACKET_LABEL_SPACE + yCenters[r][k] - BRACKET_BOX_H / 2}px`;
+
+      const aEl = document.createElement("div");
+      aEl.className = "bracket-entrant" + (aName === "?" ? " is-unknown" : "");
+      aEl.textContent = aName;
+      box.append(aEl);
+
+      const bEl = document.createElement("div");
+      if (isByeBox) {
+        bEl.className = "bracket-entrant is-bye";
+        bEl.textContent = settings?.language === "en" ? "Bye" : "Freilos";
+      } else {
+        const bName = bNameRaw || "?";
+        bEl.className = "bracket-entrant" + (bName === "?" ? " is-unknown" : "");
+        bEl.textContent = bName;
+      }
+      box.append(bEl);
+
+      const deferThis = revealTarget && revealTarget.r === r && revealTarget.m === k;
+      if (known?.winner && !deferThis) {
+        aEl.classList.toggle("is-winner", known.winner === "a");
+        aEl.classList.toggle("is-loser", known.winner === "b");
+        if (!isByeBox) {
+          bEl.classList.toggle("is-winner", known.winner === "b");
+          bEl.classList.toggle("is-loser", known.winner === "a");
+        }
+      } else if (isByeBox && !deferThis) {
+        aEl.classList.add("is-winner");
+      }
+
+      tree.append(box);
+      boxEls[r][k] = box;
+      entrantEls[r][k] = { aEl, bEl };
+    }
   });
+
+  const connectorPieces = [];
+  const nextEntrantEl = [];
+  for (let r = 0; r < skeleton.length - 1; r++) {
+    connectorPieces[r] = [];
+    nextEntrantEl[r] = [];
+    const prevCount = skeleton[r].boxCount;
+    const colRight = r * (BRACKET_BOX_W + BRACKET_COL_GAP) + BRACKET_BOX_W;
+    const trunkX = colRight + BRACKET_COL_GAP / 2;
+    for (let k = 0; k < skeleton[r + 1].boxCount; k++) {
+      const i0 = k * 2, i1 = k * 2 + 1;
+      const nextIsBye = skeleton[r + 1].byeBoxIndex === k;
+      if (i1 < prevCount) {
+        const y0 = BRACKET_LABEL_SPACE + yCenters[r][i0];
+        const y1 = BRACKET_LABEL_SPACE + yCenters[r][i1];
+        const yOut = BRACKET_LABEL_SPACE + yCenters[r + 1][k];
+        const decided0 = isFeederDecided(rounds, skeleton, revealTarget, r, i0);
+        const decided1 = isFeederDecided(rounds, skeleton, revealTarget, r, i1);
+
+        const hTop = makeConnectorPiece(tree, colRight, y0, BRACKET_COL_GAP / 2, decided0);
+        const hBottom = makeConnectorPiece(tree, colRight, y1, BRACKET_COL_GAP / 2, decided1);
+        const vTrunk = makeConnectorPiece(tree, trunkX, Math.min(y0, y1), undefined, decided0 && decided1, Math.abs(y1 - y0));
+        const hOut = makeConnectorPiece(tree, trunkX, yOut, BRACKET_COL_GAP / 2, decided0 && decided1);
+
+        connectorPieces[r][i0] = { hSelf: hTop, vTrunk, hOut, siblingAlreadyDecided: decided1 };
+        connectorPieces[r][i1] = { hSelf: hBottom, vTrunk, hOut, siblingAlreadyDecided: decided0 };
+        if (!nextIsBye) {
+          nextEntrantEl[r][i0] = entrantEls[r + 1][k].aEl;
+          nextEntrantEl[r][i1] = entrantEls[r + 1][k].bEl;
+        }
+      } else {
+        // Solo pass-through (a bye advancing alone): one straight line, same Y on both sides.
+        const y0 = BRACKET_LABEL_SPACE + yCenters[r][i0];
+        const decided0 = isFeederDecided(rounds, skeleton, revealTarget, r, i0);
+        const hFull = makeConnectorPiece(tree, colRight, y0, BRACKET_COL_GAP, decided0);
+        connectorPieces[r][i0] = { hSelf: hFull, vTrunk: null, hOut: null, siblingAlreadyDecided: true };
+        if (!nextIsBye) nextEntrantEl[r][i0] = entrantEls[r + 1][k].aEl;
+      }
+    }
+  }
+
+  return { wrap, tree, boxEls, entrantEls, connectorPieces, nextEntrantEl };
+}
+
+// Flips one already-decided match from "pending" to "revealed": colors the winner/loser, lights
+// up its outgoing connector gold (the shared merge trunk only once BOTH its feeders are done),
+// and writes the winner's name into whichever slot of the next round it feeds - the "branch turns
+// gold and the name gets written into the next box" moment.
+function revealMatch(r, m, rounds, skeleton, entrantEls, connectorPieces, nextEntrantEl) {
+  const known = rounds[r]?.matches?.[m];
+  if (!known?.winner) return;
+  const isByeHere = skeleton[r].byeBoxIndex === m;
+  const { aEl, bEl } = entrantEls[r][m];
+  aEl.classList.toggle("is-winner", known.winner === "a");
+  aEl.classList.toggle("is-loser", known.winner === "b");
+  if (!isByeHere) {
+    bEl.classList.toggle("is-winner", known.winner === "b");
+    bEl.classList.toggle("is-loser", known.winner === "a");
+  }
+  const pieces = connectorPieces[r]?.[m];
+  if (pieces) {
+    pieces.hSelf?.classList.add("is-decided");
+    if (pieces.siblingAlreadyDecided) {
+      pieces.vTrunk?.classList.add("is-decided");
+      pieces.hOut?.classList.add("is-decided");
+    }
+  }
+  const target = nextEntrantEl[r]?.[m];
+  if (target) {
+    target.textContent = (known.winner === "a" ? known.a : known.b) || "?";
+    target.classList.remove("is-unknown");
+    target.classList.add("is-just-revealed");
+  }
+}
+
+// The very first match of a tournament: round 1's names were deliberately rendered as "?" (see
+// buildBracketTreeDom's suppressNames) so the tree first appears with everyone unknown, THEN
+// fills in - rather than the real names just being there from the first frame.
+function revealRoundZeroNames(entrantEls, rounds) {
+  (entrantEls[0] || []).forEach(({ aEl, bEl }, idx) => {
+    const known = rounds[0]?.matches?.[idx];
+    if (!known) return;
+    aEl.textContent = known.a || "?";
+    aEl.classList.remove("is-unknown");
+    aEl.classList.add("is-just-revealed");
+    if (bEl.classList.contains("is-bye")) return;
+    bEl.textContent = known.b || "?";
+    bEl.classList.remove("is-unknown");
+    bEl.classList.add("is-just-revealed");
+  });
+}
+
+// Shows the tournament bracket before a tournament match plays: the WHOLE tree, every round
+// (including ones not reached yet, as "?" placeholder boxes - see computeBracketSkeleton), fit to
+// the stage. On the very first match, everyone starts unknown and round 1 fills in with names a
+// moment later; on every later match, the previous match's branch is revealed (winner highlighted,
+// connector turns gold, name written into the next box) before zooming into the upcoming match.
+// Also handles the champion's own capstone reveal (bracket.isChampion) - the final branch lights
+// up the same way, just with no further match to zoom into afterward.
+async function playBracketTree(bracket) {
+  const rounds = Array.isArray(bracket?.rounds) ? bracket.rounds : [];
+  if (!rounds.length) return;
+  const currentRoundIndex = bracket.currentRoundIndex ?? 0;
+  const currentMatchIndex = bracket.currentMatchIndex ?? 0;
+  const isChampionReveal = bracket.isChampion === true;
+  const totalParticipants = Math.max(2, Number(bracket.totalParticipants) || (rounds[0]?.matches?.length || 1) * 2);
+  const isFirstMatch = !isChampionReveal && currentRoundIndex === 0 && currentMatchIndex === 0;
+
+  const skeleton = computeBracketSkeleton(totalParticipants);
+  // Defensive only - a totalParticipants mismatch must never crash the overlay outright.
+  while (skeleton.length < rounds.length) {
+    const idx = skeleton.length;
+    skeleton.push({ label: rounds[idx]?.label || "", boxCount: rounds[idx]?.matches?.length || 1, byeBoxIndex: -1 });
+  }
+
+  const revealTarget = isChampionReveal
+    ? { r: currentRoundIndex, m: currentMatchIndex }
+    : (isFirstMatch ? null : findPreviousRealMatch(skeleton, currentRoundIndex, currentMatchIndex));
+
+  const { wrap, tree, boxEls, entrantEls, connectorPieces, nextEntrantEl } =
+    buildBracketTreeDom(skeleton, rounds, currentRoundIndex, currentMatchIndex, isChampionReveal, revealTarget, isFirstMatch);
   stage.append(wrap);
 
   // Measure everything in ONE untransformed layout pass - the zoom step below computes a fresh
@@ -354,7 +610,6 @@ async function playBracketTree(bracket) {
   // on the paint loop for a plain layout measurement anyway.
   const stageRect = stage.getBoundingClientRect();
   const treeRect = tree.getBoundingClientRect();
-  const boxRect = currentBox ? currentBox.getBoundingClientRect() : null;
   const margin = 120;
   const fitScale = Math.min(1, (stageRect.width - margin) / treeRect.width, (stageRect.height - margin) / treeRect.height);
   const stageCenterX = stageRect.width / 2;
@@ -367,43 +622,42 @@ async function playBracketTree(bracket) {
 
   tree.style.transformOrigin = "0 0";
   focusOn(fitScale, treeRect.width / 2, treeRect.height / 2, 0);
-  await delay(rounds.length > 1 ? 2400 : 1700);
 
-  // The "new branch forms" animation only makes sense once a whole round's fights are OVER and
-  // two winners have actually merged into a new round - never before round 1 (nothing feeds into
-  // it) and never mid-round (a round's matches don't depend on each other). Since this module's
-  // queue plays every match of a round before any match of the next round starts, the right
-  // moment is exactly "the first match of a new round" - at that point every match box in the
-  // PREVIOUS round is a settled result, and each one's two entrants have just combined into one
-  // box in the round now being shown. Animate that merge for every match of the previous round
-  // at once, then continue to the zoom-to-current-match step below.
-  if (currentMatchIndex === 0 && currentRoundIndex > 0) {
-    const prevRoundCol = tree.children[currentRoundIndex - 1];
-    const feederBoxes = prevRoundCol ? [...prevRoundCol.querySelectorAll(".bracket-match")] : [];
-    feederBoxes.forEach((feederBox) => {
-      const line = document.createElement("div");
-      line.className = "bracket-advance-line";
-      line.style.transitionDuration = "900ms";
-      feederBox.append(line);
-      // Force a layout flush so the width transition animates from 0 instead of jumping straight
-      // to its end state (same synchronous-measurement reasoning as above - no rAF).
-      void line.offsetWidth;
-      line.classList.add("is-filling");
-    });
-    await delay(1100);
+  if (isFirstMatch) {
+    await delay(1600);
+    revealRoundZeroNames(entrantEls, rounds);
+    await delay(1200);
+  } else {
+    await delay(1300);
+    if (revealTarget) {
+      revealMatch(revealTarget.r, revealTarget.m, rounds, skeleton, entrantEls, connectorPieces, nextEntrantEl);
+      await delay(1300);
+    }
   }
 
-  if (boxRect) {
-    const localX = boxRect.left - treeRect.left + boxRect.width / 2;
-    const localY = boxRect.top - treeRect.top + boxRect.height / 2;
-    const zoomScale = Math.min(2.4, Math.max(1, fitScale * 2.6));
-    focusOn(zoomScale, localX, localY, 900);
-    await delay(900 + 1300);
+  if (!isChampionReveal) {
+    const boxRect = boxEls[currentRoundIndex]?.[currentMatchIndex]?.getBoundingClientRect();
+    if (boxRect) {
+      const localX = boxRect.left - treeRect.left + boxRect.width / 2;
+      const localY = boxRect.top - treeRect.top + boxRect.height / 2;
+      const zoomScale = Math.min(2.4, Math.max(1, fitScale * 2.6));
+      focusOn(zoomScale, localX, localY, 900);
+      await delay(900 + 1300);
+    }
+  } else {
+    await delay(600);
   }
 
   wrap.classList.add("is-out");
   await delay(400);
   wrap.remove();
+}
+
+// Champion capstone: the "tournamentwon" event has no duel of its own (see the C# comment on
+// that queue item), so it broadcasts its own standalone bracket reveal instead of piggybacking on
+// playBattle. Reuses the exact same renderer/reveal logic as every other round.
+async function playTournamentWon(event = {}) {
+  if (event.bracket) await playBracketTree(event.bracket);
 }
 
 async function playBattle(event = {}) {
@@ -653,6 +907,7 @@ function bindServerEvents() {
   connectEventStream({
     battle: (event) => enqueueBattle(event),
     settings: () => loadSettings(),
+    tournamentwon: (event) => enqueueTournamentWon(event),
     tournamentsignup: (event) => handleTournamentSignupEvent(event),
     teamkampfsignup: (event) => handleTeamBattleSignupEvent(event),
     collections: () => {},

@@ -395,7 +395,7 @@ function handleReadyEvent(data) {
 // Every event name the server broadcasts. The leader listens to all of them on behalf of every
 // page, because it cannot know which events the other pages' handlers care about.
 const SSE_EVENT_NAMES = ["settings", "collections", "draw", "trade", "battle", "gift", "showcollection",
-  "ranking", "queue", "communitygoalprogress", "communitygoalreached", "tournamentsignup", "teamkampfsignup", "liveticker", "ping", "ready"];
+  "ranking", "queue", "communitygoalprogress", "communitygoalreached", "tournamentsignup", "tournamentwon", "teamkampfsignup", "liveticker", "ping", "ready"];
 
 // Animation-triggering events get a receipt log so a silent OBS browser source can be diagnosed
 // from the Log tab: "written by server but never received" vs. "received but animation failed".

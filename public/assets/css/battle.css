@@ -52,74 +52,71 @@ html, body {
   opacity: 0;
 }
 
+/* Every round column, match box and connector line is positioned with explicit inline left/top
+   (computed in battle.js from computeBracketSkeleton/layoutBracketRounds) rather than flexbox -
+   a real bracket needs round-N boxes vertically centered on the MIDPOINT of the two round-(N-1)
+   boxes feeding them, which even-spacing flex items can't express. .bracket-tree itself stays the
+   positioning root (0,0) that all of those coordinates are relative to. */
 .bracket-tree {
   position: absolute;
   top: 0;
   left: 0;
-  display: flex;
-  align-items: center;
-  gap: 64px;
-  padding: 40px;
   white-space: nowrap;
 }
 
-.bracket-round {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 22px;
-}
-
 .bracket-round-label {
+  position: absolute;
+  top: 0;
   text-align: center;
   color: rgba(255, 255, 255, .65);
   font-weight: 800;
   font-size: 15px;
   letter-spacing: .06em;
   text-transform: uppercase;
-  margin-bottom: 4px;
 }
 
 .bracket-match {
-  position: relative;
+  position: absolute;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 2px;
-  padding: 10px 18px;
+  width: 220px;
+  height: 62px;
+  padding: 8px 18px;
   border-radius: 12px;
   background: rgba(20, 14, 34, .82);
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .1);
-  min-width: 220px;
-}
-
-/* Grows from 0 to full width once the zoom lands on the current match - see playBracketTree in
-   battle.js. Purely decorative "advancing to the next round" flourish. */
-.bracket-advance-line {
-  position: absolute;
-  top: 50%;
-  left: 100%;
-  width: 0;
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #ffd166, rgba(255, 209, 102, 0));
-  transform: translateY(-50%);
-  transition: width 1.5s ease;
-}
-
-.bracket-advance-line.is-filling {
-  width: 76px;
 }
 
 .bracket-match.is-current {
   box-shadow: inset 0 0 0 3px #ffd166, 0 0 26px rgba(255, 209, 102, .55);
 }
 
+/* Connector lines between adjacent rounds - grey (undecided) by default, fading gold once the
+   match/bye feeding them is decided (see revealMatch in battle.js). One "elbow" (two horizontal
+   stubs + a vertical trunk + one horizontal stub out) per merging pair of boxes, or a single
+   straight line for a bye advancing alone with no sibling to merge with. */
+.bracket-connector {
+  position: absolute;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .18);
+  transition: background .7s ease;
+}
+
+.bracket-connector.is-decided {
+  background: linear-gradient(90deg, #ffd166, rgba(255, 209, 102, .7));
+}
+
 .bracket-entrant {
-  padding: 6px 4px;
+  padding: 2px 4px;
   color: rgba(255, 255, 255, .82);
   font-weight: 700;
   font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bracket-entrant.is-winner {
@@ -135,6 +132,24 @@ html, body {
   color: rgba(255, 255, 255, .4);
   font-style: italic;
   font-weight: 600;
+}
+
+.bracket-entrant.is-unknown {
+  color: rgba(255, 255, 255, .3);
+  font-style: italic;
+}
+
+/* Brief pop when a name gets written in (round 1's intro reveal, or a winner advancing into the
+   next round's box) - the class is added once and never removed, so the animation only ever
+   plays once per element. */
+.bracket-entrant.is-just-revealed {
+  animation: bracket-entrant-pop .5s ease;
+}
+
+@keyframes bracket-entrant-pop {
+  0% { opacity: 0; transform: scale(.8); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 /* Shared by BOTH the tournament and the Team-Kampf signup box (see handleTournamentSignupEvent/
