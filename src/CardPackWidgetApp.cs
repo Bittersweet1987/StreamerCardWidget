@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.15";
+        public const string Version = "2.12.16";
         public const string ReleaseDate = "2026-07-21";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -4873,11 +4873,11 @@ namespace CardPackWidgetApp
                 bool communityWon = GetBool(item, "communityWon", false);
                 string streamerName = GetString(item, "streamerName", "Streamer");
 
-                // Once per fight (not once per participant, unlike RecordTeamKampfResult below) -
-                // see RecordTeamKampfDifficultyResult for how this feeds back into the next fight's
-                // streamer lineup size.
-                int difficultyStep = Math.Max(1, GetInt(tbCfg, "difficultyStepDown", 1));
-                server.RecordTeamKampfDifficultyResult(communityWon, difficultyStep);
+                // NOTE: the difficulty rubber-band adjustment is recorded synchronously in
+                // ResolveTeamBattleSignup instead of here, the instant the outcome is known -
+                // not here, since this queue item can sit unprocessed for a while (up to the
+                // "battle" item ahead of it timing out, ~180s for a big fight) if the overlay is
+                // slow to ack or a streamer starts the next signup right away.
                 object participantsObj;
                 var participants = new List<Dictionary<string, object>>();
                 if (item.TryGetValue("participants", out participantsObj) && participantsObj is List<Dictionary<string, object>>)
@@ -7587,6 +7587,17 @@ namespace CardPackWidgetApp
             Dictionary<string, object> hpResult = ResolveHpElimination(streamerLineup, communityLineup, strengthCfg, variance);
             object[] matchups = (object[])hpResult["matchups"];
             bool communityWon = !GetBool(hpResult, "winnerIsA", true);
+
+            // Recorded HERE, synchronously, the instant the outcome is known - not later when the
+            // "teamkampfresult" queue item is dequeued (see ProcessQueueItem). That item only runs
+            // once the "battle" item ahead of it has been acked by the overlay (or timed out after
+            // up to ~180s for a big fight - see EstimatedProcessingMs), so if a streamer starts the
+            // next Team-Kampf again quickly, the adjustment from the PREVIOUS fight might still be
+            // sitting unrecorded in the queue - the report that "a win/loss doesn't seem to change
+            // the next fight's size" if you retry fast was exactly this delay, not the ±1 math
+            // itself being wrong (see StartTeamBattleSignup).
+            int difficultyStep = Math.Max(1, GetInt(tbCfg, "difficultyStepDown", 1));
+            server.RecordTeamKampfDifficultyResult(communityWon, difficultyStep);
 
             // Walks the matchups in order, tracking which community-lineup slot ("B" side) is
             // fighting at each point, so the overlay can show that specific viewer's name instead
