@@ -39,9 +39,20 @@ html, body {
   100% { opacity: 0; transform: translateY(-16px); }
 }
 
+/* Fixed width AND height, regardless of item - a channel-points reward's helpText or a chat
+   command's example can be any length the streamer typed, so every text block below is clamped
+   to a fixed number of lines (with an ellipsis if it overflows) instead of letting the panel grow.
+   This keeps the box the exact same size (matches OVERLAY_LAYOUT_NATURAL_SIZES.commandsHelp in
+   render.js, so the admin positioning editor's preview box stays accurate) as it cycles through
+   items, instead of visibly resizing/jumping every few seconds like a variable-height panel would. */
 .commandshelp-panel {
-  min-width: 420px;
-  max-width: 52vw;
+  width: 500px;
+  height: 260px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
   padding: 26px 32px;
   border-radius: 22px;
   background: rgba(20, 16, 32, .86);
@@ -67,6 +78,10 @@ html, body {
   font-weight: 900;
   line-height: 1.2;
   word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .commandshelp-description {
@@ -74,6 +89,11 @@ html, body {
   font-size: 1.02rem;
   line-height: 1.45;
   color: rgba(255, 255, 255, .82);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .commandshelp-example {
@@ -100,6 +120,10 @@ html, body {
   font-weight: 700;
   color: #fff;
   word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .commandshelp-progress {

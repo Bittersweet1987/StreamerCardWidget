@@ -536,12 +536,15 @@ function handleTournamentSignupEvent(event = {}) {
   const participants = Array.isArray(event.participants) ? event.participants : [];
   const participantsHtml = participants.map((p) => signupAvatarHtml(p?.displayName, p?.avatarUrl)).join("");
   const participantsLabel = settings?.language === "en" ? "Joined" : "Angemeldet";
+  const joinLabel = settings?.language === "en" ? "Join with" : "Beitreten mit";
+  const joinCommand = escapeForOverlay(event.joinCommand || "");
   // Rebuilding the whole innerHTML on every join (not just at signup start) is deliberate and
   // cheap here - this box has no ongoing CSS animation to interrupt, unlike the queued battle
   // scenes, so there's no continuity to preserve across rebuilds the way liveticker.js's
   // append-only conveyor has to.
   el.innerHTML = `
     <div class="signup-roster-title"></div>
+    ${joinCommand ? `<div class="signup-roster-join-hint">${joinLabel}: <strong>${joinCommand}</strong></div>` : ""}
     ${participants.length ? `
       <div class="signup-roster-participants-label">${participantsLabel} (${participants.length})</div>
       <div class="signup-roster-participants">${participantsHtml}</div>
@@ -609,12 +612,15 @@ function handleTeamBattleSignupEvent(event = {}) {
   const participants = Array.isArray(event.participants) ? event.participants : [];
   const participantsHtml = participants.map((p) => signupAvatarHtml(p?.displayName, p?.avatarUrl)).join("");
   const participantsLabel = settings?.language === "en" ? "Joined" : "Angemeldet";
+  const joinLabel = settings?.language === "en" ? "Join with" : "Beitreten mit";
+  const joinCommand = escapeForOverlay(event.joinCommand || "");
   // Rebuilding the whole innerHTML on every join (not just at signup start) is deliberate and
   // cheap here - this box has no ongoing CSS animation to interrupt, unlike the queued battle
   // scenes, so there's no continuity to preserve across rebuilds the way liveticker.js's
   // append-only conveyor has to.
   el.innerHTML = `
     <div class="signup-roster-title"></div>
+    ${joinCommand ? `<div class="signup-roster-join-hint">${joinLabel}: <strong>${joinCommand}</strong></div>` : ""}
     <div class="signup-roster-lineup">${lineupHtml}</div>
     ${participants.length ? `
       <div class="signup-roster-participants-label">${participantsLabel} (${participants.length})</div>

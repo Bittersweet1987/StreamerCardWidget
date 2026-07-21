@@ -892,6 +892,16 @@ body[data-theme="dark"] input[type="range"]::-moz-range-track {
   color: #746f82;
 }
 
+.stats-tile-own {
+  font-size: .72rem;
+  font-weight: 700;
+  color: #8b84a0;
+}
+
+body[data-theme="dark"] .stats-tile-own {
+  color: #9a91b3;
+}
+
 body[data-theme="dark"] .stats-tile {
   background: #211b2d;
   border-color: #3a314d;

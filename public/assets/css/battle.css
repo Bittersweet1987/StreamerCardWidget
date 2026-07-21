@@ -179,6 +179,18 @@ html, body {
   white-space: nowrap;
 }
 
+.signup-roster-join-hint {
+  color: rgba(255, 255, 255, .9);
+  font-size: .85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.signup-roster-join-hint strong {
+  color: #ffd873;
+  font-weight: 800;
+}
+
 .signup-roster-lineup {
   display: flex;
   flex-wrap: wrap;

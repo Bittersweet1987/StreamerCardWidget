@@ -451,11 +451,11 @@ const DEFAULT_MESSAGES = {
     th: "@userName สังเวย [Kartenname] จำนวน [Anzahl] ใบ (+[Punkte] แต้มการันตี) มี [GarantieAnzahl] ครั้งการันตีพร้อมใช้ เหลืออีก [GarantieRest] ครั้งจนถึงครั้งถัดไป"
   },
   dustSetUsage: {
-    de: "@userName, Nutzung: !dustset <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit !dustall automatisch Duplikate opfert.",
-    en: "@userName, usage: !dustset <rarity> (e.g. legendary) - sets up to which rarity !dustall automatically sacrifices duplicates.",
-    fr: "@userName, utilisation : !dustset <rareté> (ex. légendaire) - définit jusqu'à quelle rareté !dustall sacrifie automatiquement les doublons.",
-    es: "@userName, uso: !dustset <rareza> (p. ej. legendaria) - define hasta qué rareza !dustall sacrifica duplicados automáticamente.",
-    th: "@userName วิธีใช้: !dustset <ระดับความหายาก> (เช่น ตำนาน) - กำหนดว่า !dustall จะสังเวยการ์ดซ้ำอัตโนมัติสูงสุดถึงระดับใด"
+    de: "@userName, Nutzung: [BefehlSet] <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit [BefehlAll] automatisch Duplikate opfert.",
+    en: "@userName, usage: [BefehlSet] <rarity> (e.g. legendary) - sets up to which rarity [BefehlAll] automatically sacrifices duplicates.",
+    fr: "@userName, utilisation : [BefehlSet] <rareté> (ex. légendaire) - définit jusqu'à quelle rareté [BefehlAll] sacrifie automatiquement les doublons.",
+    es: "@userName, uso: [BefehlSet] <rareza> (p. ej. legendaria) - define hasta qué rareza [BefehlAll] sacrifica duplicados automáticamente.",
+    th: "@userName วิธีใช้: [BefehlSet] <ระดับความหายาก> (เช่น ตำนาน) - กำหนดว่า [BefehlAll] จะสังเวยการ์ดซ้ำอัตโนมัติสูงสุดถึงระดับใด"
   },
   dustSetInvalid: {
     de: "@userName, \"[Eingabe]\" ist keine bekannte Seltenheit. Gültig: Gewöhnlich, Ungewöhnlich, Selten, Episch, Legendär, Holo.",
@@ -465,11 +465,11 @@ const DEFAULT_MESSAGES = {
     th: "@userName \"[Eingabe]\" ไม่ใช่ระดับความหายากที่รู้จัก ใช้ได้: ธรรมดา, ไม่ธรรมดา, หายาก, เอพิก, ตำนาน, โฮโล"
   },
   dustSetSuccess: {
-    de: "@userName, !dustall opfert ab jetzt automatisch alle Duplikate bis einschließlich [Seltenheit].",
-    en: "@userName, !dustall will now automatically sacrifice all duplicates up to and including [Seltenheit].",
-    fr: "@userName, !dustall sacrifiera désormais automatiquement tous les doublons jusqu'à [Seltenheit] inclus.",
-    es: "@userName, !dustall ahora sacrificará automáticamente todos los duplicados hasta [Seltenheit] inclusive.",
-    th: "@userName ตอนนี้ !dustall จะสังเวยการ์ดซ้ำทั้งหมดโดยอัตโนมัติจนถึง [Seltenheit]"
+    de: "@userName, [BefehlAll] opfert ab jetzt automatisch alle Duplikate bis einschließlich [Seltenheit].",
+    en: "@userName, [BefehlAll] will now automatically sacrifice all duplicates up to and including [Seltenheit].",
+    fr: "@userName, [BefehlAll] sacrifiera désormais automatiquement tous les doublons jusqu'à [Seltenheit] inclus.",
+    es: "@userName, [BefehlAll] ahora sacrificará automáticamente todos los duplicados hasta [Seltenheit] inclusive.",
+    th: "@userName ตอนนี้ [BefehlAll] จะสังเวยการ์ดซ้ำทั้งหมดโดยอัตโนมัติจนถึง [Seltenheit]"
   },
   dustAllNothing: {
     de: "@userName, du hast aktuell keine Duplikate unterhalb von [Seltenheit] zum Opfern.",
@@ -927,9 +927,33 @@ export function normalizeSettings(settings) {
   settings.chatCommands.dustSet ||= {};
   settings.chatCommands.dustSet.command ||= "dustset";
   settings.chatCommands.dustSet.helpText ||= pickDefault(settings.language, "helpDustSet");
-  settings.chatCommands.dustSet.usageMessage ||= pickDefault(settings.language, "dustSetUsage");
+  // Migrate the pre-[BefehlSet]/[BefehlAll] defaults (which hardcoded "!dustset"/"!dustall"
+  // literally, so a renamed command still showed the wrong name in chat) to the new placeholder
+  // text - any exact match in any of the 5 languages, since the field could've been auto-filled
+  // in a different admin language than the one active now.
+  const OLD_DUST_SET_DEFAULTS = {
+    usageMessage: [
+      "@userName, Nutzung: !dustset <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit !dustall automatisch Duplikate opfert.",
+      "@userName, usage: !dustset <rarity> (e.g. legendary) - sets up to which rarity !dustall automatically sacrifices duplicates.",
+      "@userName, utilisation : !dustset <rareté> (ex. légendaire) - définit jusqu'à quelle rareté !dustall sacrifie automatiquement les doublons.",
+      "@userName, uso: !dustset <rareza> (p. ej. legendaria) - define hasta qué rareza !dustall sacrifica duplicados automáticamente.",
+      "@userName วิธีใช้: !dustset <ระดับความหายาก> (เช่น ตำนาน) - กำหนดว่า !dustall จะสังเวยการ์ดซ้ำอัตโนมัติสูงสุดถึงระดับใด"
+    ],
+    successMessage: [
+      "@userName, !dustall opfert ab jetzt automatisch alle Duplikate bis einschließlich [Seltenheit].",
+      "@userName, !dustall will now automatically sacrifice all duplicates up to and including [Seltenheit].",
+      "@userName, !dustall sacrifiera désormais automatiquement tous les doublons jusqu'à [Seltenheit] inclus.",
+      "@userName, !dustall ahora sacrificará automáticamente todos los duplicados hasta [Seltenheit] inclusive.",
+      "@userName ตอนนี้ !dustall จะสังเวยการ์ดซ้ำทั้งหมดโดยอัตโนมัติจนถึง [Seltenheit]"
+    ]
+  };
+  if (!settings.chatCommands.dustSet.usageMessage || OLD_DUST_SET_DEFAULTS.usageMessage.includes(settings.chatCommands.dustSet.usageMessage)) {
+    settings.chatCommands.dustSet.usageMessage = pickDefault(settings.language, "dustSetUsage");
+  }
   settings.chatCommands.dustSet.invalidMessage ||= pickDefault(settings.language, "dustSetInvalid");
-  settings.chatCommands.dustSet.successMessage ||= pickDefault(settings.language, "dustSetSuccess");
+  if (!settings.chatCommands.dustSet.successMessage || OLD_DUST_SET_DEFAULTS.successMessage.includes(settings.chatCommands.dustSet.successMessage)) {
+    settings.chatCommands.dustSet.successMessage = pickDefault(settings.language, "dustSetSuccess");
+  }
 
   settings.chatCommands.dustAll ||= {};
   settings.chatCommands.dustAll.command ||= "dustall";
@@ -1136,8 +1160,8 @@ export function normalizeSettings(settings) {
   // Count), resetting the moment the community wins again - see RecordTeamKampfDifficultyResult/
   // GetTeamKampfCommunityLossStreak server-side.
   settings.teamBattle.difficultyRubberbandEnabled = settings.teamBattle.difficultyRubberbandEnabled !== false;
-  settings.teamBattle.difficultyStepDown = Number(settings.teamBattle.difficultyStepDown) >= 0 ? Math.round(Number(settings.teamBattle.difficultyStepDown)) : 1;
-  settings.teamBattle.difficultyMinCardCount = Number(settings.teamBattle.difficultyMinCardCount) > 0 ? Math.round(Number(settings.teamBattle.difficultyMinCardCount)) : 2;
+  settings.teamBattle.difficultyStepDown = Number(settings.teamBattle.difficultyStepDown) >= 1 ? Math.round(Number(settings.teamBattle.difficultyStepDown)) : 1;
+  settings.teamBattle.difficultyMinCardCount = Number(settings.teamBattle.difficultyMinCardCount) > 0 ? Math.round(Number(settings.teamBattle.difficultyMinCardCount)) : 1;
   settings.teamBattle.rewardsEnabled = settings.teamBattle.rewardsEnabled !== false;
   settings.teamBattle.drawsPerParticipant = Number(settings.teamBattle.drawsPerParticipant) >= 0 ? Math.round(Number(settings.teamBattle.drawsPerParticipant)) : 1;
   settings.teamBattle.finisherBonusEnabled = settings.teamBattle.finisherBonusEnabled !== false;

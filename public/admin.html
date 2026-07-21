@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.16">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.23">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -148,10 +148,12 @@
               <div class="stats-tile">
                 <strong id="stats-boosters">–</strong>
                 <span data-i18n="stats-boosters-label">Bisher erstellte Booster</span>
+                <small id="stats-boosters-own" class="stats-tile-own" hidden></small>
               </div>
               <div class="stats-tile">
                 <strong id="stats-cards">–</strong>
                 <span data-i18n="stats-cards-label">Bisher erstellte Karten</span>
+                <small id="stats-cards-own" class="stats-tile-own" hidden></small>
               </div>
             </div>
           </section>
@@ -867,6 +869,8 @@
                     <span class="message-field-label" data-i18n="label-cc-dustset-usage">Nachricht bei fehlender Angabe</span>
                     <div class="var-chips" data-target="cc-dustset-usage-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[BefehlSet]">[BefehlSet]</button>
+                      <button class="var-chip" type="button" data-insert="[BefehlAll]">[BefehlAll]</button>
                     </div>
                   </div>
                   <textarea id="cc-dustset-usage-message" rows="2"></textarea>
@@ -888,6 +892,7 @@
                     <span class="message-field-label" data-i18n="label-cc-dustset-success">Nachricht bei Erfolg</span>
                     <div class="var-chips" data-target="cc-dustset-success-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[BefehlAll]">[BefehlAll]</button>
                       <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
                     </div>
                   </div>
@@ -2167,12 +2172,12 @@
             </div>
             <label class="switch-row compact-switch">
               <input id="teamkampf-difficulty-enabled" type="checkbox">
-              <span data-i18n="label-teamkampf-difficulty-enabled">Bei Niederlage der Community wird das nächste Streamer-Team kleiner</span>
+              <span data-i18n="label-teamkampf-difficulty-enabled">Streamer-Team wird bei Sieg größer und bei Niederlage kleiner</span>
             </label>
-            <p class="hint" data-i18n="teamkampf-difficulty-hint">Für jede verlorene Team-Kampf-Serie in Folge sinkt die Mindest-Kartenanzahl des Streamer-Teams um den angegebenen Wert (nach unten begrenzt). Gewinnt die Community, springt die Anzahl beim nächsten Team-Kampf wieder auf den normalen Wert zurück.</p>
+            <p class="hint" data-i18n="teamkampf-difficulty-hint">Gewinnt die Community einen Team-Kampf, wächst die Mindest-Kartenanzahl des Streamer-Teams für den nächsten Kampf um den angegebenen Wert - verliert sie, sinkt sie um denselben Wert. Die Änderung bleibt dauerhaft bestehen (kein Zurücksetzen nach einem Sieg), sinkt aber nie unter die eingestellte Mindestanzahl - ein Streamer-Team mit 0 Karten ist nie möglich.</p>
             <div class="form-grid">
-              <label data-i18n="label-teamkampf-difficulty-step">Kartenreduktion pro Niederlage in Folge<input id="teamkampf-difficulty-step" type="number" min="0" step="1"></label>
-              <label data-i18n="label-teamkampf-difficulty-floor">Mindestanzahl trotz Niederlagen<input id="teamkampf-difficulty-floor" type="number" min="1" step="1"></label>
+              <label data-i18n="label-teamkampf-difficulty-step">Kartenänderung pro Sieg/Niederlage<input id="teamkampf-difficulty-step" type="number" min="1" step="1"></label>
+              <label data-i18n="label-teamkampf-difficulty-floor">Mindestanzahl (mindestens 1)<input id="teamkampf-difficulty-floor" type="number" min="1" step="1"></label>
             </div>
             <label class="switch-row compact-switch">
               <input id="teamkampf-rewards-enabled" type="checkbox">
@@ -2607,7 +2612,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.16"></script>
-    <script type="module" src="/assets/js/admin.js?v=2.12.16"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.23"></script>
+    <script type="module" src="/assets/js/admin.js?v=2.12.23"></script>
   </body>
 </html>

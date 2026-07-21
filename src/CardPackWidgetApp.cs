@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.13";
-        public const string ReleaseDate = "2026-07-20";
+        public const string Version = "2.12.14";
+        public const string ReleaseDate = "2026-07-21";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -2053,27 +2053,29 @@ namespace CardPackWidgetApp
             }
         }
 
-        // Runtime difficulty rubber-banding: tracks how many Team-Kaempfe in a row the community
-        // has just lost, stored as a top-level "communityLossStreak" field in teamkampf-stats.json
-        // (a sibling of "users", not a per-user stat - this is about the fight itself, not any one
-        // viewer). StartTeamBattleSignup reads this to shrink the streamer's next lineup a little
-        // for every loss in a row, so a losing streak doesn't just look bad on the scoreboard but
-        // actually makes the next attempt easier. Resets to 0 the moment the community wins again.
-        internal void RecordTeamKampfDifficultyResult(bool communityWon)
+        // Runtime difficulty rubber-banding: a persistent, never-reset adjustment to the
+        // streamer team's lineup size, stored as a top-level "difficultyAdjustment" field in
+        // teamkampf-stats.json (a sibling of "users", not a per-user stat - this is about the
+        // fight itself, not any one viewer). Every community win grows it by "step", every loss
+        // shrinks it by "step" - unlike the old loss-streak version, a win no longer resets it
+        // back to zero, so a long win streak keeps making the next fight harder and a long losing
+        // streak keeps making it easier. StartTeamBattleSignup clamps the resulting lineup size to
+        // at least 1 card - the fight must always have an opponent.
+        internal void RecordTeamKampfDifficultyResult(bool communityWon, int step)
         {
             lock (battleStatsLock)
             {
                 Dictionary<string, object> stats = ParseObject(ReadFile(TeamKampfStatsPath(), "{}"));
-                stats["communityLossStreak"] = communityWon ? 0 : GetIntStat(stats, "communityLossStreak") + 1;
+                stats["difficultyAdjustment"] = GetIntStat(stats, "difficultyAdjustment") + (communityWon ? step : -step);
                 File.WriteAllText(TeamKampfStatsPath(), json.Serialize(stats), Encoding.UTF8);
             }
         }
 
-        internal int GetTeamKampfCommunityLossStreak()
+        internal int GetTeamKampfDifficultyAdjustment()
         {
             lock (battleStatsLock)
             {
-                return GetIntStat(ParseObject(ReadFile(TeamKampfStatsPath(), "{}")), "communityLossStreak");
+                return GetIntStat(ParseObject(ReadFile(TeamKampfStatsPath(), "{}")), "difficultyAdjustment");
             }
         }
 
@@ -3311,9 +3313,9 @@ namespace CardPackWidgetApp
         private const string DefaultDustCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
         private const string DefaultDustNotEnough = "@userName, du hast nicht genug Duplikate von [Kartenname] (du besitzt [Besitz], mindestens 1 muss dir erhalten bleiben).";
         private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). [GarantieAnzahl] garantierte Ziehung(en) bereit, noch [GarantieRest] Ziehungen bis zur naechsten.";
-        private const string DefaultDustSetUsage = "@userName, Nutzung: !dustset <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit !dustall automatisch Duplikate opfert.";
+        private const string DefaultDustSetUsage = "@userName, Nutzung: [BefehlSet] <Seltenheit> (z.B. legendär) - legt fest, bis zu welcher Seltenheit [BefehlAll] automatisch Duplikate opfert.";
         private const string DefaultDustSetInvalid = "@userName, \"[Eingabe]\" ist keine bekannte Seltenheit. Gültig: Gewöhnlich, Ungewöhnlich, Selten, Episch, Legendär, Holo.";
-        private const string DefaultDustSetSuccess = "@userName, !dustall opfert ab jetzt automatisch alle Duplikate bis einschließlich [Seltenheit].";
+        private const string DefaultDustSetSuccess = "@userName, [BefehlAll] opfert ab jetzt automatisch alle Duplikate bis einschließlich [Seltenheit].";
         private const string DefaultDustAllNothing = "@userName, du hast aktuell keine Duplikate unterhalb von [Seltenheit] zum Opfern.";
         private const string DefaultDustAllSuccess = "@userName hat [Gesamtanzahl] doppelte Karten geopfert ([Aufschluesselung]), +[Punkte] Garantie-Punkte. [GarantieAnzahl] garantierte Ziehung(en) bereit, noch [GarantieRest] Ziehungen bis zur naechsten.";
 
@@ -4874,7 +4876,8 @@ namespace CardPackWidgetApp
                 // Once per fight (not once per participant, unlike RecordTeamKampfResult below) -
                 // see RecordTeamKampfDifficultyResult for how this feeds back into the next fight's
                 // streamer lineup size.
-                server.RecordTeamKampfDifficultyResult(communityWon);
+                int difficultyStep = Math.Max(1, GetInt(tbCfg, "difficultyStepDown", 1));
+                server.RecordTeamKampfDifficultyResult(communityWon, difficultyStep);
                 object participantsObj;
                 var participants = new List<Dictionary<string, object>>();
                 if (item.TryGetValue("participants", out participantsObj) && participantsObj is List<Dictionary<string, object>>)
@@ -6099,10 +6102,23 @@ namespace CardPackWidgetApp
         // supported languages (see ParseDustSetRarity/DustSetRarityAliases). ----
         private void HandleDustSetCommand(string login, string displayName, string args, Dictionary<string, object> dustCfg, Dictionary<string, object> dustSetCfg, Dictionary<string, object> settingsIn = null)
         {
+            Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
+            // The messages below reference both this command's own name AND its sibling "!dustall"
+            // command by name - both are independently renameable (see the "!dustset"/"!dustall"
+            // command-matching comment in ProcessChatMessage), so the actual configured command
+            // text (prefix + word) must always be substituted in, never hardcoded.
+            Dictionary<string, object> dustAllCfg = Obj(Obj(settings, "chatCommands"), "dustAll");
+            string prefix = GetString(dustCfg, "prefix", "!");
+            string setCommandText = prefix + GetString(dustSetCfg, "command", "dustset");
+            string allCommandText = prefix + GetString(dustAllCfg, "command", "dustall");
+
             string arg = (args ?? "").Trim();
             if (arg.Length == 0)
             {
-                SendChatMessageSafe(GetString(dustSetCfg, "usageMessage", DefaultDustSetUsage).Replace("@userName", "@" + displayName));
+                SendChatMessageSafe(GetString(dustSetCfg, "usageMessage", DefaultDustSetUsage)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[BefehlSet]", setCommandText)
+                    .Replace("[BefehlAll]", allCommandText));
                 return;
             }
             string rarity = ParseDustSetRarity(arg);
@@ -6116,7 +6132,8 @@ namespace CardPackWidgetApp
             SetDustAllRarity(login, rarity);
             SendChatMessageSafe(GetString(dustSetCfg, "successMessage", DefaultDustSetSuccess)
                 .Replace("@userName", "@" + displayName)
-                .Replace("[Seltenheit]", RarityLabel(rarity, RarityOutputLanguage(settingsIn))));
+                .Replace("[BefehlAll]", allCommandText)
+                .Replace("[Seltenheit]", RarityLabel(rarity, RarityOutputLanguage(settings))));
         }
 
         // Which language the [Seltenheit] chat variable is written out in - one app-wide setting
@@ -7012,6 +7029,7 @@ namespace CardPackWidgetApp
             string startMessage = null;
             string deadlineUtc = null;
             int minParticipantsForBroadcast = 0;
+            string joinCommandText = null;
 
             lock (tournamentLock)
             {
@@ -7024,7 +7042,7 @@ namespace CardPackWidgetApp
                     int minParticipants = Math.Max(2, GetInt(tCfg, "minParticipants", 3));
                     int signupSeconds = Math.Max(10, GetInt(tCfg, "signupSeconds", 90));
                     Dictionary<string, object> joinCfg = Obj(Obj(settings, "chatCommands"), "tournamentJoin");
-                    string joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "turnier");
+                    joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "turnier");
                     deadlineUtc = DateTime.UtcNow.AddSeconds(signupSeconds).ToString("o");
 
                     activeTournament = new Dictionary<string, object>
@@ -7035,7 +7053,8 @@ namespace CardPackWidgetApp
                         { "lineupSize", Math.Max(1, GetInt(tCfg, "lineupSize", 3)) },
                         { "winnerDraws", Math.Max(1, GetInt(tCfg, "winnerDraws", 1)) },
                         { "deadlineUtc", deadlineUtc },
-                        { "startedAt", DateTime.UtcNow.ToString("o") }
+                        { "startedAt", DateTime.UtcNow.ToString("o") },
+                        { "joinCommand", joinCommandText }
                     };
 
                     startMessage = GetString(tCfg, "signupStartMessage", DefaultTournamentSignupStart)
@@ -7057,7 +7076,7 @@ namespace CardPackWidgetApp
             }
 
             SendChatMessageSafe(startMessage);
-            BroadcastTournamentSignupState(new List<object>(), deadlineUtc, minParticipantsForBroadcast);
+            BroadcastTournamentSignupState(new List<object>(), deadlineUtc, minParticipantsForBroadcast, joinCommandText);
 
             // Whoever spent the channel points to start the tournament obviously wants to play in
             // it - join them automatically instead of making them also type the join command.
@@ -7080,6 +7099,7 @@ namespace CardPackWidgetApp
             List<object> participantsSnapshot = null;
             string deadlineUtc = null;
             int minParticipantsForBroadcast = 0;
+            string joinCommandText = null;
 
             lock (tournamentLock)
             {
@@ -7117,12 +7137,13 @@ namespace CardPackWidgetApp
                     participantsSnapshot = new List<object>(participants);
                     deadlineUtc = GetString(activeTournament, "deadlineUtc", "");
                     minParticipantsForBroadcast = GetInt(activeTournament, "minParticipants", 3);
+                    joinCommandText = GetString(activeTournament, "joinCommand", "");
                 }
             }
 
             if (notEligibleMessage != null) { SendChatMessageSafe(notEligibleMessage); return; }
             if (joinAckMessage != null) SendChatMessageSafe(joinAckMessage);
-            if (participantsSnapshot != null) BroadcastTournamentSignupState(participantsSnapshot, deadlineUtc, minParticipantsForBroadcast);
+            if (participantsSnapshot != null) BroadcastTournamentSignupState(participantsSnapshot, deadlineUtc, minParticipantsForBroadcast, joinCommandText);
         }
 
         // Broadcasts a SNAPSHOT of the signup state (live participant list with avatars, deadline)
@@ -7135,7 +7156,7 @@ namespace CardPackWidgetApp
         // mid-countdown. Mirrors BroadcastTeamBattleSignupState - same roster box, same overlay
         // markup (see signup-roster in battle.css/js), just without a revealed lineup row (a
         // tournament bracket has nothing to reveal before it starts).
-        private void BroadcastTournamentSignupState(List<object> participants, string deadlineUtc, int minParticipants)
+        private void BroadcastTournamentSignupState(List<object> participants, string deadlineUtc, int minParticipants, string joinCommand)
         {
             // Avatar lookups are one Twitch API call per not-yet-cached participant - routed
             // through the outbound queue so a join's chat processing never waits on them. FIFO
@@ -7160,7 +7181,8 @@ namespace CardPackWidgetApp
                     { "active", true },
                     { "deadlineUtc", deadlineUtc },
                     { "minParticipants", minParticipants },
-                    { "participants", participantsForBroadcast }
+                    { "participants", participantsForBroadcast },
+                    { "joinCommand", joinCommand ?? "" }
                 }));
             });
         }
@@ -7311,6 +7333,7 @@ namespace CardPackWidgetApp
             string startMessage = null;
             List<Dictionary<string, string>> streamerLineupForBroadcast = null;
             string deadlineUtc = null;
+            string joinCommandText = null;
 
             lock (teamBattleLock)
             {
@@ -7326,17 +7349,17 @@ namespace CardPackWidgetApp
                     // streamer/community lineup lengths just fine (HP elimination, not paired rounds).
                     int streamerCardCountMin = Math.Max(1, GetInt(tbCfg, "streamerCardCount", 5));
 
-                    // Difficulty rubber-banding: every Team-Kampf the community lost in a row (see
-                    // RecordTeamKampfDifficultyResult) shaves cards off the streamer's MINIMUM for
-                    // this next attempt - configurable step size, floored so the fight never becomes
-                    // trivially small. Resets back to the full configured minimum the moment the
-                    // community wins again.
+                    // Difficulty rubber-banding: a persistent adjustment (see
+                    // RecordTeamKampfDifficultyResult) grows the streamer's MINIMUM lineup size by
+                    // one card per community win and shrinks it by one per loss, carried over
+                    // indefinitely (no reset on a win) - floored so the fight can never drop below
+                    // the configured minimum, and hard-floored at 1 either way (an opponent lineup
+                    // of 0 cards is never possible).
                     if (GetBool(tbCfg, "difficultyRubberbandEnabled", true))
                     {
-                        int lossStreak = server.GetTeamKampfCommunityLossStreak();
-                        int stepDown = Math.Max(0, GetInt(tbCfg, "difficultyStepDown", 1));
-                        int floorCount = Math.Max(1, GetInt(tbCfg, "difficultyMinCardCount", 2));
-                        streamerCardCountMin = Math.Max(floorCount, streamerCardCountMin - lossStreak * stepDown);
+                        int adjustment = server.GetTeamKampfDifficultyAdjustment();
+                        int floorCount = Math.Max(1, GetInt(tbCfg, "difficultyMinCardCount", 1));
+                        streamerCardCountMin = Math.Max(floorCount, streamerCardCountMin + adjustment);
                     }
 
                     int streamerCardCount;
@@ -7350,7 +7373,7 @@ namespace CardPackWidgetApp
                     else
                     {
                         Dictionary<string, object> joinCfg = Obj(Obj(settings, "chatCommands"), "teamBattleJoin");
-                        string joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "teamkampf");
+                        joinCommandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "teamkampf");
                         deadlineUtc = DateTime.UtcNow.AddSeconds(signupSeconds).ToString("o");
 
                         activeTeamBattle = new Dictionary<string, object>
@@ -7359,7 +7382,8 @@ namespace CardPackWidgetApp
                             { "participants", new List<object>() },
                             { "streamerLineup", streamerLineup },
                             { "deadlineUtc", deadlineUtc },
-                            { "startedAt", DateTime.UtcNow.ToString("o") }
+                            { "startedAt", DateTime.UtcNow.ToString("o") },
+                            { "joinCommand", joinCommandText }
                         };
 
                         startMessage = GetString(tbCfg, "signupStartMessage", DefaultTeamBattleSignupStart)
@@ -7387,7 +7411,7 @@ namespace CardPackWidgetApp
             }
 
             SendChatMessageSafe(startMessage);
-            BroadcastTeamBattleSignupState(streamerLineupForBroadcast, new List<object>(), deadlineUtc);
+            BroadcastTeamBattleSignupState(streamerLineupForBroadcast, new List<object>(), deadlineUtc, joinCommandText);
 
             // Whoever spent the channel points obviously wants their own card in the fight too.
             if (source == "channelpoints" && !String.IsNullOrEmpty(login))
@@ -7406,7 +7430,7 @@ namespace CardPackWidgetApp
         // it must never touch the live mutable state. Always resends the same deadlineUtc (never
         // recomputed), so the client's local countdown never jumps or restarts when a new
         // participant joins mid-countdown.
-        private void BroadcastTeamBattleSignupState(List<Dictionary<string, string>> streamerLineup, List<object> participants, string deadlineUtc)
+        private void BroadcastTeamBattleSignupState(List<Dictionary<string, string>> streamerLineup, List<object> participants, string deadlineUtc, string joinCommand)
         {
             // Avatar lookups off the event worker - same reasoning as BroadcastTournamentSignupState.
             int streamerLineupCount = streamerLineup.Count;
@@ -7434,7 +7458,8 @@ namespace CardPackWidgetApp
                     { "active", true },
                     { "deadlineUtc", deadlineUtc },
                     { "streamerLineupCount", streamerLineupCount },
-                    { "participants", participantsForBroadcast }
+                    { "participants", participantsForBroadcast },
+                    { "joinCommand", joinCommand ?? "" }
                 }));
             });
         }
@@ -7449,6 +7474,7 @@ namespace CardPackWidgetApp
             List<Dictionary<string, string>> streamerLineupForBroadcast = null;
             List<object> participantsSnapshot = null;
             string deadlineUtc = null;
+            string joinCommandText = null;
 
             lock (teamBattleLock)
             {
@@ -7499,6 +7525,7 @@ namespace CardPackWidgetApp
                             // mutable list another thread could be adding to concurrently.
                             participantsSnapshot = new List<object>(participants);
                             deadlineUtc = GetString(activeTeamBattle, "deadlineUtc", "");
+                            joinCommandText = GetString(activeTeamBattle, "joinCommand", "");
                         }
                     }
                 }
@@ -7508,7 +7535,7 @@ namespace CardPackWidgetApp
             if (alreadyMessage != null) { SendChatMessageSafe(alreadyMessage); return; }
             if (notOwnedMessage != null) { SendChatMessageSafe(notOwnedMessage); return; }
             SendChatMessageSafe(successMessage);
-            BroadcastTeamBattleSignupState(streamerLineupForBroadcast, participantsSnapshot, deadlineUtc);
+            BroadcastTeamBattleSignupState(streamerLineupForBroadcast, participantsSnapshot, deadlineUtc, joinCommandText);
         }
 
         // Timer callback once the signup window closes - runs off the chat/HTTP threads, so it is
