@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.14";
+        public const string Version = "2.12.15";
         public const string ReleaseDate = "2026-07-21";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -7350,20 +7350,29 @@ namespace CardPackWidgetApp
                     int streamerCardCountMin = Math.Max(1, GetInt(tbCfg, "streamerCardCount", 5));
 
                     // Difficulty rubber-banding: a persistent adjustment (see
-                    // RecordTeamKampfDifficultyResult) grows the streamer's MINIMUM lineup size by
-                    // one card per community win and shrinks it by one per loss, carried over
-                    // indefinitely (no reset on a win) - floored so the fight can never drop below
-                    // the configured minimum, and hard-floored at 1 either way (an opponent lineup
-                    // of 0 cards is never possible).
-                    if (GetBool(tbCfg, "difficultyRubberbandEnabled", true))
+                    // RecordTeamKampfDifficultyResult) grows the streamer's lineup size by one card
+                    // per community win and shrinks it by one per loss, carried over indefinitely
+                    // (no reset on a win) - floored so the fight can never drop below the
+                    // configured minimum, and hard-floored at 1 either way (an opponent lineup of 0
+                    // cards is never possible).
+                    bool difficultyEnabled = GetBool(tbCfg, "difficultyRubberbandEnabled", true);
+                    int streamerCardCount;
+                    if (difficultyEnabled)
                     {
+                        // Deterministic when the difficulty rubber-band is on: the whole point is
+                        // that the community can SEE the lineup grow/shrink by exactly one card per
+                        // result, which the min..min+4 random jitter below would otherwise mask
+                        // (e.g. a loss shrinking the minimum from 3 to 2 could still roll a bigger
+                        // actual lineup than the previous, undefeated-looking, win) - see the report
+                        // that "the count still went up after a loss" this was fixed for.
                         int adjustment = server.GetTeamKampfDifficultyAdjustment();
                         int floorCount = Math.Max(1, GetInt(tbCfg, "difficultyMinCardCount", 1));
-                        streamerCardCountMin = Math.Max(floorCount, streamerCardCountMin + adjustment);
+                        streamerCardCount = Math.Max(floorCount, streamerCardCountMin + adjustment);
                     }
-
-                    int streamerCardCount;
-                    lock (BattleRandom) { streamerCardCount = streamerCardCountMin + BattleRandom.Next(0, 5); }
+                    else
+                    {
+                        lock (BattleRandom) { streamerCardCount = streamerCardCountMin + BattleRandom.Next(0, 5); }
+                    }
                     int signupSeconds = Math.Max(10, GetInt(tbCfg, "signupSeconds", 60));
                     List<Dictionary<string, string>> streamerLineup = DrawTeamBattleStreamerLineup(streamerCardCount);
                     if (streamerLineup.Count == 0)

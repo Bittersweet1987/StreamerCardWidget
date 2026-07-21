@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.23";
+} from "./api.js?v=2.12.24";
 import {
   applyTheme,
   autoImagePosition,
@@ -68,7 +68,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.23";
+} from "./render.js?v=2.12.24";
 
 let settings;
 let selectedCardId;
@@ -2080,7 +2080,7 @@ const I18N = {
     th: "ทุกคนปะทะสตรีมเมอร์: การแลกรางวัลแชนแนลพอยท์ (ใต้แชนแนลพอยท์) จะสุ่มรวบรวมทีมการ์ดของสตรีมเมอร์ (จากบูสเตอร์ทั้งหมด รวมถึงแบบเฉพาะผู้สมัครสมาชิก) และแสดงในโอเวอร์เลย์ ผู้ชมเข้าร่วมระหว่างช่วงสมัครด้วยคำสั่งแชท (ตั้งค่าได้ใต้คำสั่งแชท) - ผู้แลกรางวัลจะเข้าร่วมโดยอัตโนมัติ ผู้เข้าร่วมแต่ละคนได้รับการ์ดสุ่มจากคอลเลกชันของตนเอง เมื่อหมดเวลา การ์ดจะต่อสู้กันแบบดวลแถบเลือด ตามลำดับการสมัคร"
   },
   "label-teamkampf-enabled": { de: "Team-Kampf aktiviert", en: "Team battle enabled", fr: "Combat d'équipe activé", es: "Combate de equipo activado", th: "เปิดใช้งานการต่อสู้ทีม" },
-  "label-teamkampf-card-count": { de: "Mindest-Kartenanzahl Streamer-Team (tatsächliche Anzahl ist zufällig)", en: "Minimum streamer team card count (actual count is randomized)", fr: "Nombre minimum de cartes de l'équipe du streamer (le nombre réel est aléatoire)", es: "Número mínimo de cartas del equipo del streamer (el número real es aleatorio)", th: "จำนวนการ์ดขั้นต่ำของทีมสตรีมเมอร์ (จำนวนจริงเป็นแบบสุ่ม)" },
+  "label-teamkampf-card-count": { de: "Kartenanzahl Streamer-Team (zufällig ±4, außer bei aktivierter Schwierigkeit unten - dann exakt)", en: "Streamer team card count (randomized ±4, unless difficulty below is enabled - then exact)", fr: "Nombre de cartes de l'équipe du streamer (aléatoire ±4, sauf si la difficulté ci-dessous est activée - alors exact)", es: "Número de cartas del equipo del streamer (aleatorio ±4, salvo que la dificultad de abajo esté activada - entonces exacto)", th: "จำนวนการ์ดของทีมสตรีมเมอร์ (สุ่ม ±4 เว้นแต่เปิดใช้งานความยากด้านล่าง - แล้วจะเป๊ะ)" },
   "label-teamkampf-signup-seconds": { de: "Anmeldezeit (Sek.)", en: "Signup time (sec.)", fr: "Temps d'inscription (sec.)", es: "Tiempo de inscripción (seg.)", th: "เวลาสมัคร (วินาที)" },
   "label-teamkampf-difficulty-enabled": {
     de: "Streamer-Team wird bei Sieg größer und bei Niederlage kleiner",

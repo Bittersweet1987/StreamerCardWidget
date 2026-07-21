@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.23">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.24">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -2167,7 +2167,7 @@
               <span data-i18n="label-teamkampf-enabled">Team-Kampf aktiviert</span>
             </label>
             <div class="form-grid">
-              <label data-i18n="label-teamkampf-card-count">Mindest-Kartenanzahl Streamer-Team (tatsächliche Anzahl ist zufällig)<input id="teamkampf-card-count" type="number" min="1" step="1"></label>
+              <label data-i18n="label-teamkampf-card-count">Kartenanzahl Streamer-Team (zufällig ±4, außer bei aktivierter Schwierigkeit unten - dann exakt)<input id="teamkampf-card-count" type="number" min="1" step="1"></label>
               <label data-i18n="label-teamkampf-signup-seconds">Anmeldezeit (Sek.)<input id="teamkampf-signup-seconds" type="number" min="10" step="5"></label>
             </div>
             <label class="switch-row compact-switch">
@@ -2612,7 +2612,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.23"></script>
-    <script type="module" src="/assets/js/admin.js?v=2.12.23"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.24"></script>
+    <script type="module" src="/assets/js/admin.js?v=2.12.24"></script>
   </body>
 </html>
