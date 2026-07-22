@@ -41,7 +41,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1784736956";
+} from "./api.js?v=1784741426";
 import {
   applyTheme,
   autoImagePosition,
@@ -69,7 +69,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1784736956";
+} from "./render.js?v=1784741426";
 
 let settings;
 let selectedCardId;

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1784736956">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1784741426">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -977,6 +977,8 @@
                     <div class="var-chips" data-target="cc-showpack-header-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                       <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                      <button class="var-chip" type="button" data-insert="[AnzahlBesessen]">[AnzahlBesessen]</button>
+                      <button class="var-chip" type="button" data-insert="[AnzahlGesamt]">[AnzahlGesamt]</button>
                     </div>
                   </div>
                   <textarea id="cc-showpack-header-message" rows="2"></textarea>
@@ -988,6 +990,7 @@
                     <div class="var-chips" data-target="cc-showpack-empty-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                       <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                      <button class="var-chip" type="button" data-insert="[AnzahlGesamt]">[AnzahlGesamt]</button>
                     </div>
                   </div>
                   <textarea id="cc-showpack-empty-message" rows="2"></textarea>
@@ -2878,7 +2881,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784736956"></script>
-    <script type="module" src="/assets/js/admin.js?v=1784736956"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784741426"></script>
+    <script type="module" src="/assets/js/admin.js?v=1784741426"></script>
   </body>
 </html>

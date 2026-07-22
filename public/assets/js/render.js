@@ -276,18 +276,18 @@ const DEFAULT_MESSAGES = {
     th: "@userName ไม่พบแพ็กชื่อ \"[Eingabe]\" กรุณาระบุชื่อแพ็กให้ถูกต้อง"
   },
   showPackHeader: {
-    de: "@userName, deine Karten aus [Boostername]:",
-    en: "@userName, your cards from [Boostername]:",
-    fr: "@userName, tes cartes de [Boostername] :",
-    es: "@userName, tus cartas de [Boostername]:",
-    th: "@userName การ์ดของคุณจาก [Boostername]:"
+    de: "@userName, deine Karten aus [Boostername] ([AnzahlBesessen]/[AnzahlGesamt]):",
+    en: "@userName, your cards from [Boostername] ([AnzahlBesessen]/[AnzahlGesamt]):",
+    fr: "@userName, tes cartes de [Boostername] ([AnzahlBesessen]/[AnzahlGesamt]) :",
+    es: "@userName, tus cartas de [Boostername] ([AnzahlBesessen]/[AnzahlGesamt]):",
+    th: "@userName การ์ดของคุณจาก [Boostername] ([AnzahlBesessen]/[AnzahlGesamt]):"
   },
   showPackEmpty: {
-    de: "@userName, du besitzt noch keine Karten aus [Boostername].",
-    en: "@userName, you don't own any cards from [Boostername] yet.",
-    fr: "@userName, tu ne possèdes encore aucune carte de [Boostername].",
-    es: "@userName, todavía no tienes cartas de [Boostername].",
-    th: "@userName คุณยังไม่มีการ์ดจาก [Boostername] เลย"
+    de: "@userName, du besitzt noch keine Karten aus [Boostername] (0/[AnzahlGesamt]).",
+    en: "@userName, you don't own any cards from [Boostername] yet (0/[AnzahlGesamt]).",
+    fr: "@userName, tu ne possèdes encore aucune carte de [Boostername] (0/[AnzahlGesamt]).",
+    es: "@userName, todavía no tienes cartas de [Boostername] (0/[AnzahlGesamt]).",
+    th: "@userName คุณยังไม่มีการ์ดจาก [Boostername] เลย (0/[AnzahlGesamt])"
   },
   communityGoalReached: {
     de: "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch [Karten] Bonus-Booster.",

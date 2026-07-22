@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.13.1";
+        public const string Version = "2.13.2";
         public const string ReleaseDate = "2026-07-22";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -3397,8 +3397,8 @@ namespace CardPackWidgetApp
         private const string DefaultSpecificPackRedemptionNotFound = "@userName, ein Pack namens \"[Eingabe]\" wurde nicht gefunden - deine Kanalpunkte wurden erstattet. Bitte den genauen Packnamen angeben.";
         private const string DefaultShowPackUsage = "@userName, Nutzung: [Befehl] <Packname> - zeigt den Inhalt des angegebenen Packs.";
         private const string DefaultShowPackNotFound = "@userName, ein Pack namens \"[Eingabe]\" wurde nicht gefunden. Bitte den genauen Packnamen angeben.";
-        private const string DefaultShowPackHeader = "@userName, deine Karten aus [Boostername]:";
-        private const string DefaultShowPackEmpty = "@userName, du besitzt noch keine Karten aus [Boostername].";
+        private const string DefaultShowPackHeader = "@userName, deine Karten aus [Boostername] ([AnzahlBesessen]/[AnzahlGesamt]):";
+        private const string DefaultShowPackEmpty = "@userName, du besitzt noch keine Karten aus [Boostername] (0/[AnzahlGesamt]).";
 
         private const string DefaultBattleUsage = "@userName, Nutzung: !battle @userNameB";
         private const string DefaultBattleUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
@@ -6507,18 +6507,31 @@ namespace CardPackWidgetApp
         // owned card across all boosters). Own toggle/outputMode, independent of !collection's.
         private void SendShowPackChatText(string login, string displayName, string boosterId, string boosterTitle, Dictionary<string, object> settingsIn = null)
         {
-            Dictionary<string, object> cmdCfg = Obj(Obj(settingsIn != null ? settingsIn : server.ReadSettingsObject(), "chatCommands"), "showPack");
+            Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
+            Dictionary<string, object> cmdCfg = Obj(Obj(settings, "chatCommands"), "showPack");
             if (!GetBool(cmdCfg, "chatOutputEnabled", true)) return;
             try
             {
                 string mode = GetString(cmdCfg, "outputMode", "chat");
+                // Total card count of the pack (same "owned/total" idea as the overlay's own
+                // header - see showpack.js's headerMarkup), so the chat text can show e.g. "7/20"
+                // instead of just listing card names with no sense of overall pack progress.
+                Dictionary<string, object> booster = FindBooster(settings, boosterId);
+                int totalCount = 0;
+                if (booster != null)
+                {
+                    object cardIdsObj;
+                    if (booster.TryGetValue("cardIds", out cardIdsObj) && cardIdsObj is object[]) totalCount = ((object[])cardIdsObj).Length;
+                }
                 List<Dictionary<string, string>> owned = server.GetUserOwnedCardsWithInfo(login);
                 var inPack = owned.FindAll(delegate (Dictionary<string, string> entry) { return entry["boosterId"] == boosterId; });
                 if (inPack.Count == 0)
                 {
                     SendCollectionOutput(login, mode, GetString(cmdCfg, "emptyMessage", DefaultShowPackEmpty)
                         .Replace("@userName", "@" + displayName)
-                        .Replace("[Boostername]", boosterTitle));
+                        .Replace("[Boostername]", boosterTitle)
+                        .Replace("[AnzahlBesessen]", "0")
+                        .Replace("[AnzahlGesamt]", totalCount.ToString()));
                     return;
                 }
                 inPack.Sort(delegate (Dictionary<string, string> a, Dictionary<string, string> b)
@@ -6534,7 +6547,9 @@ namespace CardPackWidgetApp
                 }
                 string header = GetString(cmdCfg, "headerMessage", DefaultShowPackHeader)
                     .Replace("@userName", "@" + displayName)
-                    .Replace("[Boostername]", boosterTitle);
+                    .Replace("[Boostername]", boosterTitle)
+                    .Replace("[AnzahlBesessen]", inPack.Count.ToString())
+                    .Replace("[AnzahlGesamt]", totalCount.ToString());
                 SendCardListChunked(login, mode, header, names);
             }
             catch (Exception ex)
