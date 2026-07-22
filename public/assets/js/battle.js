@@ -110,13 +110,17 @@ function enqueueBattle(event = {}) {
   if (!running) runQueue();
 }
 
-// The champion's own bracket reveal (see playTournamentWon) has no duel of its own and the server
-// never waits for an ack on it (EstimatedProcessingMs=200ms for "tournamentwon" - see the C#
-// comment on that queue item), so it's pushed through this SAME client-side queue/runQueue as a
-// normal battle event, just tagged, purely to stop it from visually overlapping the final match's
-// still-playing duel animation - never to gate the server's own queue.
+// The champion's own bracket reveal (see playTournamentWon) IS acked like a normal battle event
+// now (see runQueue's finally below) - the server waits for it (up to a safety-timeout fallback,
+// see ComputeQueueTimeoutMs for "tournamentwon") specifically so the winner's own pack-draw
+// animations can't start playing in the background while this reveal is still on screen. Same
+// "ack immediately if the animation is off" pattern as enqueueBattle, for the same reason: skip
+// sitting out that whole fallback timeout for nothing when there's no animation to wait for.
 function enqueueTournamentWon(event = {}) {
-  if (settings?.battleAnimation?.enabled !== true) return;
+  if (settings?.battleAnimation?.enabled !== true) {
+    completeQueueItem(event.eventId);
+    return;
+  }
   queue.push({ ...event, __tournamentWon: true });
   if (!running) runQueue();
 }

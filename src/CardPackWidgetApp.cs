@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.20";
+        public const string Version = "2.12.21";
         public const string ReleaseDate = "2026-07-22";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -4676,12 +4676,22 @@ namespace CardPackWidgetApp
                 // a safety margin.
                 return 12000;
             }
-            if (kind == "tournamentbye" || kind == "tournamentwon")
+            if (kind == "tournamentbye")
             {
-                // No overlay animation is involved (just a chat message, and for "tournamentwon"
-                // enqueuing the winner's bonus draws as separate future items) - nothing will ever
-                // send a completion ack for these, so don't make the queue sit out a real timeout.
+                // No overlay animation is involved (just a chat message) - nothing will ever send a
+                // completion ack for this, so don't make the queue sit out a real timeout.
                 return 200;
+            }
+            if (kind == "tournamentwon")
+            {
+                // Unlike tournamentbye, THIS one does have a real overlay animation - the champion's
+                // "zoom out to the completed tree, final branch turns gold" reveal (see
+                // playBracketReveal in battle.js) - and it now acks completion via the SAME eventId
+                // the item carries (see the "tournamentwon" broadcast above). This is only the
+                // fallback for if the overlay never acks (not connected, animation off): long enough
+                // to cover the reveal's own ~4-5s runtime plus margin, so the queue doesn't move on to
+                // the winner's pack-draw animations while the reveal might still be playing.
+                return 8000;
             }
             if (kind == "battle")
             {
@@ -4766,10 +4776,12 @@ namespace CardPackWidgetApp
                 // per-kind safety timeout prevents a permanent stall if no overlay is connected.
                 bool acked = completionSignal.WaitOne(ComputeQueueTimeoutMs(item));
                 string itemKind = GetString(item, "kind", "");
-                // tournamentbye/tournamentwon are chat-only bookkeeping items with no overlay
-                // animation at all - nothing will EVER ack them, so warning as if an OBS source
-                // might be missing would be actively misleading every single time.
-                if (!acked && itemKind != "tournamentbye" && itemKind != "tournamentwon")
+                // tournamentbye is a chat-only bookkeeping item with no overlay animation at all -
+                // nothing will EVER ack it, so warning as if an OBS source might be missing would be
+                // actively misleading every single time. tournamentwon DOES have a real animation
+                // now (the champion's bracket reveal) and acks like any other - so it's deliberately
+                // NOT suppressed here anymore; a missing ack for it is a genuine "is OBS open?" case.
+                if (!acked && itemKind != "tournamentbye")
                 {
                     server.Log("queue", "warn", "Keine Abschluss-Rueckmeldung vom Overlay fuer \"" + itemKind + "\" - nach Timeout fortgefahren. Ist die passende OBS-Quelle geoeffnet und aktuell?");
                 }
@@ -4983,10 +4995,20 @@ namespace CardPackWidgetApp
                 // to the tree, final branch turns gold, champion's name locked in" reveal every
                 // earlier round gets (see playBracketReveal in battle.js) - there's no further
                 // match afterwards to trigger that reveal naturally, so it's fired here instead.
+                // Carries the SAME eventId as this queue item so the overlay's completion ack (see
+                // enqueueTournamentWon/runQueue in battle.js) actually releases the queue once the
+                // multi-second reveal animation finishes - without it, the queue moved on after the
+                // generic 200ms "no overlay animation" timeout (see ComputeQueueTimeoutMs) while the
+                // reveal was still playing, so the winner's first pack-draw animation started
+                // visibly overlapping it in the background.
                 object championBracketObj;
                 if (item.TryGetValue("bracket", out championBracketObj) && championBracketObj is Dictionary<string, object>)
                 {
-                    server.Broadcast("tournamentwon", server.Serializer.Serialize(new Dictionary<string, object> { { "bracket", championBracketObj } }));
+                    server.Broadcast("tournamentwon", server.Serializer.Serialize(new Dictionary<string, object>
+                    {
+                        { "bracket", championBracketObj },
+                        { "eventId", GetString(item, "id", "") }
+                    }));
                 }
                 return;
             }
