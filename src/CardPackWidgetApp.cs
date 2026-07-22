@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.13.3";
+        public const string Version = "2.13.4";
         public const string ReleaseDate = "2026-07-22";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -5319,38 +5319,51 @@ namespace CardPackWidgetApp
                 string pityMinRarity = GetString(pityCfg, "minRarity", "rare");
                 int pityThreshold = Math.Max(1, GetInt(pityCfg, "threshold", 10));
 
-                Dictionary<string, object> pityEntry = pityEnabled ? GetPityEntry(login) : null;
-                int pityStreak = pityEntry != null ? GetInt(pityEntry, "streak", 0) : 0;
-                int pityBank = pityEntry != null ? GetInt(pityEntry, "bank", 0) : 0;
-                // streak and bank are the SAME currency (both count "!dust"/"!dustall" points and
-                // natural non-hit draws in the same units - see HandleDustCommand/
-                // HandleDustAllCommand) so they're combined into one pool here rather than checked
-                // separately: a leftover bank remainder below one full threshold used to just sit
-                // there forever instead of counting toward the streak's own progress. A forced
-                // guarantee costs exactly one pityThreshold out of the combined total - if the bank
-                // alone already holds several multiples of the threshold, each subsequent eligible
-                // draw keeps forcing (and draining threshold worth of pool) until it drops below it.
-                int pityTotal = pityStreak + pityBank;
-                bool forcePity = pityEnabled && pityTotal >= pityThreshold;
-
-                Dictionary<string, object> card = PickCardFromBooster(settings, boosterId, forcePity ? pityMinRarity : null);
-
-                if (pityEnabled)
+                // The whole read-modify-write below must hold pityLock for its entire duration
+                // (not just inside GetPityEntry/SavePityEntry individually) - a draw is processed
+                // on the queue-loop thread while "!dust"/"!dustall" run immediately on the chat
+                // dispatch thread, so without a single lock spanning the snapshot-to-save window a
+                // concurrent dust command's just-credited points could get silently overwritten by
+                // this draw saving back its own (by-then stale) snapshot of the entry - exactly the
+                // "wrong amount deducted/credited" symptom reported by users.
+                int pityStreak = 0, pityBank = 0, pityTotal = 0;
+                bool forcePity = false;
+                Dictionary<string, object> card = null;
+                lock (pityLock)
                 {
-                    bool metPity = card != null && CardPackServer.GetRarityRank(GetString(card, "rarity", "common")) >= CardPackServer.GetRarityRank(pityMinRarity);
-                    if (metPity)
+                    Dictionary<string, object> pityEntry = pityEnabled ? GetPityEntry(login) : null;
+                    pityStreak = pityEntry != null ? GetInt(pityEntry, "streak", 0) : 0;
+                    pityBank = pityEntry != null ? GetInt(pityEntry, "bank", 0) : 0;
+                    // streak and bank are the SAME currency (both count "!dust"/"!dustall" points and
+                    // natural non-hit draws in the same units - see HandleDustCommand/
+                    // HandleDustAllCommand) so they're combined into one pool here rather than checked
+                    // separately: a leftover bank remainder below one full threshold used to just sit
+                    // there forever instead of counting toward the streak's own progress. A forced
+                    // guarantee costs exactly one pityThreshold out of the combined total - if the bank
+                    // alone already holds several multiples of the threshold, each subsequent eligible
+                    // draw keeps forcing (and draining threshold worth of pool) until it drops below it.
+                    pityTotal = pityStreak + pityBank;
+                    forcePity = pityEnabled && pityTotal >= pityThreshold;
+
+                    card = PickCardFromBooster(settings, boosterId, forcePity ? pityMinRarity : null);
+
+                    if (pityEnabled)
                     {
-                        pityEntry["streak"] = 0;
-                        // Only actually drain the pool if THIS draw was the one forcing it - a
-                        // naturally lucky hit (rarity RNG landed on pityMinRarity+ on its own,
-                        // without needing to be forced) must not eat into banked credit.
-                        if (forcePity) pityEntry["bank"] = pityTotal - pityThreshold;
+                        bool metPity = card != null && CardPackServer.GetRarityRank(GetString(card, "rarity", "common")) >= CardPackServer.GetRarityRank(pityMinRarity);
+                        if (metPity)
+                        {
+                            pityEntry["streak"] = 0;
+                            // Only actually drain the pool if THIS draw was the one forcing it - a
+                            // naturally lucky hit (rarity RNG landed on pityMinRarity+ on its own,
+                            // without needing to be forced) must not eat into banked credit.
+                            if (forcePity) pityEntry["bank"] = pityTotal - pityThreshold;
+                        }
+                        else
+                        {
+                            pityEntry["streak"] = pityStreak + 1;
+                        }
+                        SavePityEntry(login, pityEntry);
                     }
-                    else
-                    {
-                        pityEntry["streak"] = pityStreak + 1;
-                    }
-                    SavePityEntry(login, pityEntry);
                 }
 
                 // Community goal: every draw (any trigger, including this method's own bonus

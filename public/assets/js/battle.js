@@ -379,6 +379,29 @@ function isFeederDecided(rounds, skeleton, revealTarget, r, idx) {
   return !!rounds[r]?.matches?.[idx]?.winner;
 }
 
+// A future round's box (round r, box k) has no server-provided "a"/"b" yet - the bracket payload
+// for whichever match is CURRENTLY playing only ever contains rounds up to and including the
+// current one (the server builds bracketRounds round-by-round; round r+1's data plain doesn't
+// exist server-side until round r finishes). The ONLY thing that used to fill these boxes in was
+// revealMatch() writing a name directly into that DOM element - but since every bracket event
+// rebuilds the WHOLE tree from scratch, that write is gone the moment the SUBSEQUENT event's tree
+// replaces it, and any next-round box fed by an EARLIER (already-revealed) match in the same round
+// reverts to "?" until the whole tree happens to include real round r+1 data. Fix: derive such a
+// box's entrant name directly from its feeder match in round r-1, as long as that feeder is
+// already decided and isn't the one specific match this exact event is about to animate-reveal
+// (that one must still render as "?" until its own reveal fires - see isDeferred below).
+function deriveEntrantName(rounds, skeleton, revealTarget, r, k, slot) {
+  if (r <= 0) return null;
+  const feederIdx = slot === "a" ? k * 2 : k * 2 + 1;
+  const feeder = rounds[r - 1]?.matches?.[feederIdx];
+  if (!feeder || !feeder.winner) return null;
+  const isDeferred = revealTarget && revealTarget.r === r - 1 && revealTarget.m === feederIdx;
+  if (isDeferred) return null;
+  const isByeFeeder = skeleton[r - 1]?.byeBoxIndex === feederIdx;
+  if (isByeFeeder) return feeder.a || null;
+  return (feeder.winner === "a" ? feeder.a : feeder.b) || null;
+}
+
 // Which single real match is "the one that just got decided" relative to the match/reveal about
 // to play - i.e. the previous entry in strict queue order. Byes never get an animated reveal of
 // their own (they're rendered as already-settled from the start, see buildBracketTreeDom), so
@@ -444,8 +467,8 @@ function buildBracketTreeDom(skeleton, rounds, currentRoundIndex, currentMatchIn
       const isByeBox = roundMeta.byeBoxIndex === k;
       const known = rounds[r]?.matches?.[k];
       const suppressNames = isFirstMatch && r === 0;
-      const aName = suppressNames ? "?" : (known ? (known.a || "?") : "?");
-      const bNameRaw = suppressNames ? null : (known ? known.b : null);
+      const aName = suppressNames ? "?" : (known ? (known.a || "?") : (deriveEntrantName(rounds, skeleton, revealTarget, r, k, "a") || "?"));
+      const bNameRaw = suppressNames ? null : (known ? known.b : deriveEntrantName(rounds, skeleton, revealTarget, r, k, "b"));
 
       const box = document.createElement("div");
       const isCurrent = !isChampionReveal && r === currentRoundIndex && k === currentMatchIndex;
