@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.19";
+        public const string Version = "2.12.20";
         public const string ReleaseDate = "2026-07-22";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -3001,6 +3001,11 @@ namespace CardPackWidgetApp
 
         private readonly object queueLock = new object();
         private readonly List<Dictionary<string, object>> actionQueue = new List<Dictionary<string, object>>();
+        // Items (draws, trades, gifts, showcases, rankings...) that were triggered WHILE a bracket
+        // event (tournament / Team-Kampf) was in progress - held here instead of the live queue so
+        // they can't play over the signup countdown or interrupt the bracket, then flushed into the
+        // real queue the moment the whole bracket event is finished (see Enqueue/FlushDeferredQueue).
+        private readonly List<Dictionary<string, object>> deferredQueue = new List<Dictionary<string, object>>();
         private Dictionary<string, object> currentQueueItem;
         private readonly AutoResetEvent queueSignal = new AutoResetEvent(false);
         private readonly AutoResetEvent completionSignal = new AutoResetEvent(false);
@@ -3308,6 +3313,17 @@ namespace CardPackWidgetApp
         {
             lock (tournamentLock) { if (activeTournament != null) return true; }
             lock (teamBattleLock) { if (activeTeamBattle != null) return true; }
+            return IsBracketPlaybackBusy();
+        }
+
+        // Narrower than IsBracketEventBusy: true ONLY while a bracket's matches are actually being
+        // played back in the queue (front-loaded there the instant signup closes - see
+        // ResolveTournamentSignup/EnqueueBatchAtFront) - NOT during the signup window itself. Other
+        // animations (draws, gifts, trades...) are only held back (see Enqueue/
+        // FlushDeferredQueueIfIdle) once playback is actually under way; during signup they're
+        // still allowed to play normally over the countdown.
+        private bool IsBracketPlaybackBusy()
+        {
             lock (queueLock)
             {
                 if (currentQueueItem != null && IsBracketSource(GetString(currentQueueItem, "source", ""))) return true;
@@ -4292,7 +4308,41 @@ namespace CardPackWidgetApp
         public void Enqueue(string kind, string login, string displayName, string source, Dictionary<string, object> extra)
         {
             var item = BuildQueueItem(kind, login, displayName, source, extra);
-            lock (queueLock) { actionQueue.Add(item); }
+            // Anything triggered WHILE a bracket's matches are actually playing back (NOT during
+            // its signup window - other animations are still allowed to play over that countdown)
+            // is held back instead of joining the live queue, so it can't get interleaved between
+            // bracket matches. The bracket's OWN items (per-round/champion draws, all enqueued with
+            // source "tournament"/"teamkampf") are the one exception - those must never be
+            // deferred, or the bracket would end up waiting on itself. Flushed back into the real
+            // queue once playback is over - see FlushDeferredQueueIfIdle.
+            if (!IsBracketSource(source) && IsBracketPlaybackBusy())
+            {
+                lock (queueLock) { deferredQueue.Add(item); }
+            }
+            else
+            {
+                lock (queueLock) { actionQueue.Add(item); }
+            }
+            BroadcastQueue();
+            queueSignal.Set();
+        }
+
+        // Moves every held-back item (see Enqueue) back into the live queue, in the same order
+        // they originally arrived, the moment no bracket event is active anymore. Called from
+        // QueueLoop on every wake-up, so the flush happens within ~1s of the bracket actually
+        // finishing (or immediately, since every Enqueue/queue-completion also signals the loop).
+        private void FlushDeferredQueueIfIdle()
+        {
+            if (IsBracketPlaybackBusy()) return;
+            List<Dictionary<string, object>> toFlush = null;
+            lock (queueLock)
+            {
+                if (deferredQueue.Count == 0) return;
+                toFlush = new List<Dictionary<string, object>>(deferredQueue);
+                deferredQueue.Clear();
+                actionQueue.AddRange(toFlush);
+            }
+            server.Log("queue", "info", toFlush.Count + " zurueckgehaltene Aktion(en) nach Turnier/Team-Kampf-Ende in die Warteschlange eingereiht.");
             BroadcastQueue();
             queueSignal.Set();
         }
@@ -4354,6 +4404,15 @@ namespace CardPackWidgetApp
                     list.Add(copy);
                 }
                 list.AddRange(actionQueue);
+                // Shown last, tagged "deferred" so the admin Queue tab can visibly distinguish
+                // "waiting its turn" from "waiting for the current tournament/Team-Kampf to end
+                // entirely" - see Enqueue/FlushDeferredQueueIfIdle.
+                foreach (Dictionary<string, object> deferred in deferredQueue)
+                {
+                    var dcopy = new Dictionary<string, object>(deferred);
+                    dcopy["deferred"] = true;
+                    list.Add(dcopy);
+                }
                 return list.ToArray();
             }
         }
@@ -4534,13 +4593,14 @@ namespace CardPackWidgetApp
             lock (queueLock)
             {
                 actionQueue.RemoveAll(delegate(Dictionary<string, object> item) { return GetString(item, "id", "") == id; });
+                deferredQueue.RemoveAll(delegate(Dictionary<string, object> item) { return GetString(item, "id", "") == id; });
             }
             BroadcastQueue();
         }
 
         public void ClearQueue()
         {
-            lock (queueLock) actionQueue.Clear();
+            lock (queueLock) { actionQueue.Clear(); deferredQueue.Clear(); }
             BroadcastQueue();
         }
 
@@ -4673,6 +4733,10 @@ namespace CardPackWidgetApp
             while (queueRunning)
             {
                 queueSignal.WaitOne(1000);
+                // Runs on every wake-up (a new Enqueue, a completed item, or just the 1s timeout) -
+                // catches the moment a bracket event finishes regardless of which code path cleared
+                // it, without needing an explicit call at every one of those paths.
+                FlushDeferredQueueIfIdle();
                 // While paused, keep collecting incoming events but don't process any.
                 if (queuePaused) continue;
                 Dictionary<string, object> item = null;

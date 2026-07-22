@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.19";
+} from "./api.js?v=2.12.20";
 import {
   applyTheme,
   autoImagePosition,
@@ -68,7 +68,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.19";
+} from "./render.js?v=2.12.20";
 
 let settings;
 let selectedCardId;
@@ -1130,6 +1130,11 @@ const I18N = {
     fr: "en traitement",
     es: "procesando",
     th: "กำลังประมวลผล"
+  },
+  "queue-deferred": { de: "wartet auf Turnier/Team-Kampf-Ende", en: "waiting for tournament/Team Battle to end",
+    fr: "en attente de la fin du tournoi/combat d'équipe",
+    es: "esperando a que termine el torneo/combate de equipo",
+    th: "รอทัวร์นาเมนต์/ทีมคัมภ์จบก่อน"
   },
   "log-eyebrow": { de: "Verlauf", en: "History",
     fr: "Historique",
@@ -5715,7 +5720,9 @@ function renderQueueItems(items) {
   list.innerHTML = items.map((item) => {
     const kindLabel = item.kind === "draw" ? t("queue-kind-draw") : item.kind === "showcollection" ? t("queue-kind-showcollection") : item.kind === "trade" ? t("queue-kind-trade") : (item.kind || "");
     const sourceLabel = item.source === "chat" ? t("queue-source-chat") : item.source === "channelpoints" ? t("queue-source-channelpoints") : (item.source || "");
-    const badge = item.processing ? `<span class="queue-processing">${t("queue-processing")}</span>` : "";
+    const badge = item.processing
+      ? `<span class="queue-processing">${t("queue-processing")}</span>`
+      : item.deferred ? `<span class="queue-processing queue-deferred">${t("queue-deferred")}</span>` : "";
     // The in-flight item can't be removed (it's already playing); only waiting items get a delete button.
     const remove = item.processing
       ? ""

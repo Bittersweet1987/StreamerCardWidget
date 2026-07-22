@@ -1535,6 +1535,12 @@ body[data-theme="dark"] .showcase-entry {
   letter-spacing: .04em;
 }
 
+/* Held-back items (see FlushDeferredQueueIfIdle) get a muted grey badge instead of the purple
+   "processing" one - they're not in-flight, just parked until the current bracket event ends. */
+.queue-processing.queue-deferred {
+  background: #746f82;
+}
+
 .user-card-header {
   display: flex;
   align-items: center;
