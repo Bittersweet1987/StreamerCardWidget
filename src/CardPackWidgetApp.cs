@@ -21,7 +21,7 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.13.2";
+        public const string Version = "2.13.3";
         public const string ReleaseDate = "2026-07-22";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
@@ -4256,6 +4256,12 @@ namespace CardPackWidgetApp
                 Dictionary<string, object> b = bo as Dictionary<string, object>;
                 if (b == null) continue;
                 if (!GetBool(b, "enabled", true)) continue;
+                // Sub-exclusive boosters must never be reachable by typing their name - that would
+                // let any viewer bypass the sub-only restriction just by guessing/knowing the
+                // title. Used by both "!show"/"pick your own pack" lookups (HandleShowPackCommand,
+                // HandleSpecificPackDrawCommand/HandleSpecificPackRedemption) - none of them may
+                // ever resolve to a sub-exclusive pack.
+                if (GetBool(b, "subExclusive", false)) continue;
                 if (String.Equals(GetString(b, "title", ""), needle, StringComparison.OrdinalIgnoreCase)) return b;
             }
             return null;
