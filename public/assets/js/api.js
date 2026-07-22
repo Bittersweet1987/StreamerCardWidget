@@ -190,6 +190,17 @@ export async function startTeamBattle() {
   return data;
 }
 
+export async function syncSpecificPackReward(payload) {
+  const response = await fetch("/api/twitch/specificPack-reward", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Pack-Auswahl-Belohnung konnte nicht gespeichert werden.");
+  return data;
+}
+
 export async function deleteTwitchReward(payload) {
   const response = await fetch("/api/twitch/reward", {
     method: "DELETE",

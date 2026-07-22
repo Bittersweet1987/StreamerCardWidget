@@ -34,13 +34,14 @@ import {
   getTournamentState,
   startTournament,
   syncTeamBattleReward,
+  syncSpecificPackReward,
   startTeamBattle,
   syncTwitchReward,
   testTradeAnimation,
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.20";
+} from "./api.js?v=1784724732";
 import {
   applyTheme,
   autoImagePosition,
@@ -68,7 +69,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.20";
+} from "./render.js?v=1784724732";
 
 let settings;
 let selectedCardId;
@@ -892,6 +893,19 @@ const I18N = {
     es: "Los susurros requieren el permiso \"user:manage:whispers\" – si la app se actualizó desde una versión anterior, reconecta una vez la cuenta principal o de bot en Conexión. Twitch además solo permite susurros a cuentas que los aceptan (no completos desconocidos, según los ajustes de Twitch del destinatario).",
     th: "ข้อความกระซิบต้องมีสิทธิ์ \"user:manage:whispers\" – หากแอปอัปเดตจากเวอร์ชันเก่า ให้เชื่อมต่อบัญชีหลักหรือบอทใหม่อีกครั้งที่การเชื่อมต่อ นอกจากนี้ Twitch อนุญาตข้อความกระซิบเฉพาะไปยังบัญชีที่ยอมรับเท่านั้น (ไม่ใช่คนแปลกหน้าทั้งหมด ขึ้นอยู่กับการตั้งค่า Twitch ของผู้รับ)"
   },
+  "hint-cc-collection-sort": {
+    de: "Reihenfolge der Kartenliste im Chat, 3-stufig: erst nach Stufe 1 sortieren, bei Gleichstand nach Stufe 2, dann nach Stufe 3.",
+    en: "Order of the chat card list, 3 levels: sort by level 1 first, then level 2 for ties, then level 3.",
+    fr: "Ordre de la liste de cartes dans le chat, 3 niveaux : trier d'abord par niveau 1, puis par niveau 2 en cas d'égalité, puis par niveau 3.",
+    es: "Orden de la lista de cartas en el chat, 3 niveles: ordenar primero por el nivel 1, luego por el nivel 2 en caso de empate, luego por el nivel 3.",
+    th: "ลำดับรายการการ์ดในแชท 3 ระดับ: เรียงตามระดับ 1 ก่อน แล้วตามระดับ 2 หากเท่ากัน แล้วตามระดับ 3"
+  },
+  "label-cc-collection-sort1": { de: "Sortierung Stufe 1", en: "Sort level 1", fr: "Tri niveau 1", es: "Orden nivel 1", th: "การเรียงลำดับที่ 1" },
+  "label-cc-collection-sort2": { de: "Sortierung Stufe 2", en: "Sort level 2", fr: "Tri niveau 2", es: "Orden nivel 2", th: "การเรียงลำดับที่ 2" },
+  "label-cc-collection-sort3": { de: "Sortierung Stufe 3", en: "Sort level 3", fr: "Tri niveau 3", es: "Orden nivel 3", th: "การเรียงลำดับที่ 3" },
+  "option-cc-sort-booster": { de: "Nach Pack", en: "By pack", fr: "Par booster", es: "Por sobre", th: "ตามแพ็ก" },
+  "option-cc-sort-rarity": { de: "Nach Seltenheit", en: "By rarity", fr: "Par rareté", es: "Por rareza", th: "ตามความหายาก" },
+  "option-cc-sort-alphabetical": { de: "Alphabetisch", en: "Alphabetical", fr: "Alphabétique", es: "Alfabético", th: "ตามตัวอักษร" },
   "label-cc-cards-header": { de: "Einleitung vor der Kartenliste", en: "Intro before the card list",
     fr: "Intro avant la liste de cartes",
     es: "Intro antes de la lista de cartas",
@@ -901,6 +915,75 @@ const I18N = {
     fr: "Message quand l'utilisateur ne possède aucune carte",
     es: "Mensaje cuando el usuario no posee cartas",
     th: "ข้อความเมื่อผู้ใช้ไม่มีการ์ดเลย"
+  },
+  "cc-showpack-eyebrow": { de: "Pack anzeigen", en: "Show pack",
+    fr: "Afficher un booster",
+    es: "Mostrar sobre",
+    th: "แสดงแพ็ก"
+  },
+  "cc-showpack-title": { de: "Pack-Anzeige-Befehl", en: "Show-pack command",
+    fr: "Commande d'affichage de booster",
+    es: "Comando para mostrar sobre",
+    th: "คำสั่งแสดงแพ็ก"
+  },
+  "cc-showpack-hint": {
+    de: "\"[Befehl] <Packtitel>\" zeigt den Inhalt des genannten Packs als Overlay in OBS (5x5-Kartenraster) – nur besessene Karten sind sichtbar, alle anderen bleiben als \"?\" verdeckt.",
+    en: "\"[Befehl] <pack title>\" shows the named pack's contents as an OBS overlay (5x5 card grid) – only owned cards are visible, everything else stays hidden as \"?\".",
+    fr: "« [Befehl] <titre du booster> » affiche le contenu du booster nommé en overlay OBS (grille 5x5) – seules les cartes possédées sont visibles, les autres restent masquées par « ? ».",
+    es: "\"[Befehl] <título del sobre>\" muestra el contenido del sobre indicado como overlay de OBS (cuadrícula 5x5) – solo son visibles las cartas que posees, el resto queda oculto como \"?\".",
+    th: "\"[Befehl] <ชื่อแพ็ก>\" แสดงเนื้อหาของแพ็กที่ระบุเป็นโอเวอร์เลย์ OBS (ตาราง 5x5) – มองเห็นเฉพาะการ์ดที่คุณมี ส่วนที่เหลือจะซ่อนเป็น \"?\""
+  },
+  "label-cc-showpack-chatoutput": { de: "Kartennamen des Packs zusätzlich im Chat auflisten", en: "Also list the pack's card names in chat",
+    fr: "Lister aussi les noms de cartes du booster dans le chat",
+    es: "Listar también los nombres de cartas del sobre en el chat",
+    th: "แสดงรายชื่อการ์ดของแพ็กในแชทด้วย"
+  },
+  "label-cc-showpack-outputmode": { de: "Versandart", en: "Delivery",
+    fr: "Mode d'envoi",
+    es: "Modo de envío",
+    th: "วิธีการส่ง"
+  },
+  "label-cc-showpack-usage": { de: "Nutzungshinweis (kein Packname angegeben)", en: "Usage hint (no pack name given)",
+    fr: "Message d'utilisation (aucun nom de booster indiqué)",
+    es: "Aviso de uso (sin nombre de sobre indicado)",
+    th: "ข้อความวิธีใช้ (ไม่ได้ระบุชื่อแพ็ก)"
+  },
+  "label-cc-showpack-notfound": { de: "Nachricht bei unbekanntem Pack", en: "Message for an unknown pack",
+    fr: "Message pour un booster inconnu",
+    es: "Mensaje para un sobre desconocido",
+    th: "ข้อความเมื่อไม่พบแพ็ก"
+  },
+  "label-cc-showpack-cooldown": { de: "Nachricht während Cooldown", en: "Message during cooldown",
+    fr: "Message pendant le temps de recharge",
+    es: "Mensaje durante el enfriamiento",
+    th: "ข้อความระหว่างช่วงคูลดาวน์"
+  },
+  "label-cc-showpack-header": { de: "Einleitung vor der Kartenliste", en: "Intro before the card list",
+    fr: "Intro avant la liste de cartes",
+    es: "Intro antes de la lista de cartas",
+    th: "ข้อความนำก่อนรายการการ์ด"
+  },
+  "label-cc-showpack-empty": { de: "Nachricht ohne eigene Karten aus dem Pack", en: "Message when the user owns no cards from this pack",
+    fr: "Message quand l'utilisateur ne possède aucune carte de ce booster",
+    es: "Mensaje cuando el usuario no posee cartas de este sobre",
+    th: "ข้อความเมื่อผู้ใช้ไม่มีการ์ดจากแพ็กนี้"
+  },
+  "showpack-anim-eyebrow": { de: "Pack anzeigen", en: "Show pack",
+    fr: "Afficher un booster",
+    es: "Mostrar sobre",
+    th: "แสดงแพ็ก"
+  },
+  "showpack-anim-title": { de: "!show-Animation", en: "!show animation",
+    fr: "Animation !show",
+    es: "Animación !show",
+    th: "แอนิเมชัน !show"
+  },
+  "showpack-anim-hint": {
+    de: "Position/Größe der \"!show <Packtitel>\"-Anzeige in OBS (5x5-Kartenraster, nur besessene Karten sichtbar).",
+    en: "Position/size of the \"!show <pack title>\" display in OBS (5x5 card grid, only owned cards visible).",
+    fr: "Position/taille de l'affichage « !show <titre du booster> » dans OBS (grille 5x5, seules les cartes possédées sont visibles).",
+    es: "Posición/tamaño de la visualización \"!show <título del sobre>\" en OBS (cuadrícula 5x5, solo cartas que posees visibles).",
+    th: "ตำแหน่ง/ขนาดของการแสดง \"!show <ชื่อแพ็ก>\" ใน OBS (ตาราง 5x5 มองเห็นเฉพาะการ์ดที่คุณมี)"
   },
   "cc-packs-title": { de: "Booster-Übersicht-Befehl", en: "Booster overview command",
     fr: "Commande de liste des boosters",
@@ -2131,6 +2214,23 @@ const I18N = {
   "label-teamkampf-draws-per-participant": { de: "Ziehungen je Teilnehmer", en: "Draws per participant", fr: "Tirages par participant", es: "Tiradas por participante", th: "จำนวนการจับสลากต่อผู้เข้าร่วม" },
   "label-teamkampf-finisher-bonus-enabled": { de: "Wer die letzte Streamer-Karte besiegt, bekommt zusätzliche Ziehungen", en: "Whoever defeats the streamer's last card gets extra draws", fr: "Celui qui bat la dernière carte du streamer reçoit des tirages supplémentaires", es: "Quien derrote la última carta del streamer recibe tiradas adicionales", th: "ผู้ที่เอาชนะการ์ดใบสุดท้ายของสตรีมเมอร์จะได้รับการจับสลากเพิ่มเติม" },
   "label-teamkampf-finisher-bonus-draws": { de: "Bonus-Ziehungen für den Finisher", en: "Bonus draws for the finisher", fr: "Tirages bonus pour le finisseur", es: "Tiradas de bonificación para quien remata", th: "การจับสลากโบนัสสำหรับผู้พิชิต" },
+  "label-teamkampf-per-defeat-enabled": {
+    de: "Teilnehmer erhalten zusätzlich Karten pro persönlich besiegter Streamer-Karte",
+    en: "Participants additionally get cards per streamer card they personally defeated",
+    fr: "Les participants reçoivent en plus des cartes par carte du streamer qu'ils ont personnellement vaincue",
+    es: "Los participantes reciben además cartas por cada carta del streamer que hayan derrotado personalmente",
+    th: "ผู้เข้าร่วมจะได้รับการ์ดเพิ่มเติมต่อการ์ดสตรีมเมอร์ที่พวกเขาเอาชนะด้วยตนเอง"
+  },
+  "teamkampf-per-defeat-hint": {
+    de: "Zusätzlich zur Sieg-Belohnung oben: jeder Teilnehmer bekommt Ziehungen für JEDE Streamer-Karte, die er im Verlauf des Kampfes selbst besiegt hat - unabhängig davon, ob die Community am Ende insgesamt gewinnt oder verliert. Die Karten werden erst nach dem gesamten Kampf vergeben.",
+    en: "In addition to the win reward above: every participant gets draws for EVERY streamer card they personally defeated during the fight - regardless of whether the community wins or loses overall. Cards are only granted once the whole fight is over.",
+    fr: "En plus de la récompense de victoire ci-dessus : chaque participant reçoit des tirages pour CHAQUE carte du streamer qu'il a personnellement vaincue pendant le combat - que la communauté gagne ou perde au final. Les cartes ne sont attribuées qu'une fois tout le combat terminé.",
+    es: "Además de la recompensa por victoria de arriba: cada participante recibe tiradas por CADA carta del streamer que haya derrotado personalmente durante el combate, independientemente de si la comunidad gana o pierde en general. Las cartas solo se otorgan una vez terminado todo el combate.",
+    th: "นอกเหนือจากรางวัลชนะด้านบน: ผู้เข้าร่วมแต่ละคนจะได้รับการจับสลากสำหรับการ์ดสตรีมเมอร์ทุกใบที่พวกเขาเอาชนะด้วยตนเองระหว่างการต่อสู้ - ไม่ว่าชุมชนจะชนะหรือแพ้โดยรวมก็ตาม การ์ดจะมอบให้ก็ต่อเมื่อการต่อสู้ทั้งหมดจบลงแล้ว"
+  },
+  "label-teamkampf-per-defeat-draws": { de: "Ziehungen pro besiegter Karte", en: "Draws per defeated card", fr: "Tirages par carte vaincue", es: "Tiradas por carta derrotada", th: "จำนวนการจับสลากต่อการ์ดที่เอาชนะ" },
+  "label-teamkampf-per-defeat-announce-enabled": { de: "Chat-Nachricht bei besiegten Karten", en: "Chat message for defeated cards", fr: "Message dans le chat pour les cartes vaincues", es: "Mensaje en el chat por cartas derrotadas", th: "ข้อความแชทสำหรับการ์ดที่เอาชนะ" },
+  "label-teamkampf-per-defeat-message": { de: "Nachricht bei besiegten Karten", en: "Message for defeated cards", fr: "Message pour les cartes vaincues", es: "Mensaje por cartas derrotadas", th: "ข้อความสำหรับการ์ดที่เอาชนะ" },
   "label-teamkampf-lose-card-enabled": { de: "Bei Niederlage verliert jeder Teilnehmer die eingesetzte Karte", en: "On defeat, every participant loses their staked card", fr: "En cas de défaite, chaque participant perd sa carte engagée", es: "En caso de derrota, cada participante pierde la carta apostada", th: "เมื่อพ่ายแพ้ ผู้เข้าร่วมทุกคนจะเสียการ์ดที่วางเดิมพัน" },
   "label-teamkampf-lost-card-announce-enabled": { de: "Chat-Nachricht bei Kartenverlust", en: "Chat message on card loss", fr: "Message dans le chat en cas de perte de carte", es: "Mensaje en el chat al perder una carta", th: "ข้อความแชทเมื่อเสียการ์ด" },
   "label-teamkampf-lost-card-message": { de: "Nachricht bei Kartenverlust", en: "Message on card loss", fr: "Message en cas de perte de carte", es: "Mensaje al perder una carta", th: "ข้อความเมื่อเสียการ์ด" },
@@ -2156,6 +2256,27 @@ const I18N = {
   "notice-teamkampf-already-running": { de: "Es läuft bereits ein Team-Kampf.", en: "A team battle is already running.", fr: "Un combat d'équipe est déjà en cours.", es: "Ya hay un combate de equipo en curso.", th: "มีการต่อสู้ทีมที่กำลังดำเนินอยู่แล้ว" },
   "notice-teamkampf-disabled": { de: "Team-Kampf ist nicht aktiviert.", en: "Team battle is not enabled.", fr: "Le combat d'équipe n'est pas activé.", es: "El combate de equipo no está activado.", th: "การต่อสู้ทีมไม่ได้เปิดใช้งาน" },
   "notice-teamkampf-no-cards": { de: "Team-Kampf konnte nicht gestartet werden: keine Karten verfügbar.", en: "Team battle couldn't start: no cards available.", fr: "Le combat d'équipe n'a pas pu démarrer : aucune carte disponible.", es: "No se pudo iniciar el combate de equipo: no hay cartas disponibles.", th: "ไม่สามารถเริ่มการต่อสู้ทีมได้: ไม่มีการ์ดที่ใช้งานได้" },
+  "specificpack-reward-eyebrow": { de: "Kartenpacks", en: "Card packs", fr: "Boosters de cartes", es: "Sobres de cartas", th: "แพ็กการ์ด" },
+  "specificpack-reward-title": { de: "Pack-Auswahl-Belohnung", en: "Pick-your-pack reward", fr: "Récompense de choix de booster", es: "Recompensa de elección de sobre", th: "รางวัลเลือกแพ็ก" },
+  "specificpack-reward-info-text": {
+    de: "Löst ein Zuschauer diese Belohnung ein, muss er den genauen Namen eines Packs eingeben (Twitch fragt den Text automatisch bei Einlösung ab) - wird das Pack gefunden, zieht der Zuschauer genau eine Karte daraus; wird es nicht gefunden, werden die Kanalpunkte automatisch erstattet und eine Hinweismeldung erscheint im Chat. Eine eventuell aktive Garantie-Seltenheit des Zuschauers wird dabei berücksichtigt und verbraucht.",
+    en: "When a viewer redeems this reward, they must type the exact name of a pack (Twitch automatically asks for that text on redemption) - if the pack is found, the viewer draws exactly one card from it; if not, the channel points are automatically refunded and a chat message explains why. Any active guaranteed rarity the viewer has is taken into account and consumed.",
+    fr: "Lorsqu'un spectateur échange cette récompense, il doit saisir le nom exact d'un booster (Twitch demande automatiquement ce texte lors de l'échange) - si le booster est trouvé, le spectateur tire exactement une carte de celui-ci ; sinon, les points de chaîne sont automatiquement remboursés et un message de chat l'explique. Toute rareté garantie active du spectateur est prise en compte et consommée.",
+    es: "Cuando un espectador canjea esta recompensa, debe escribir el nombre exacto de un sobre (Twitch solicita automáticamente ese texto al canjear) - si se encuentra el sobre, el espectador saca exactamente una carta de él; si no, los puntos de canal se reembolsan automáticamente y un mensaje de chat lo explica. Cualquier rareza garantizada activa del espectador se tiene en cuenta y se consume.",
+    th: "เมื่อผู้ชมแลกรางวัลนี้ พวกเขาต้องพิมพ์ชื่อแพ็กที่ถูกต้อง (Twitch จะถามข้อความนั้นโดยอัตโนมัติเมื่อแลก) - หากพบแพ็ก ผู้ชมจะจับการ์ดหนึ่งใบจากแพ็กนั้น หากไม่พบ แชนแนลพอยท์จะถูกคืนโดยอัตโนมัติและมีข้อความแชทอธิบาย ความหายากที่รับประกันซึ่งใช้งานอยู่ของผู้ชมจะถูกนำมาพิจารณาและใช้ไป"
+  },
+  "label-specificpack-notfound-message": { de: "Nachricht, wenn das Pack nicht gefunden wird (Erstattung)", en: "Message when the pack isn't found (refund)", fr: "Message si le booster n'est pas trouvé (remboursement)", es: "Mensaje si no se encuentra el sobre (reembolso)", th: "ข้อความเมื่อไม่พบแพ็ก (คืนเงิน)" },
+  "notice-specificpack-reward-saved": { de: "Pack-Auswahl-Belohnung gespeichert.", en: "Pick-your-pack reward saved.", fr: "Récompense de choix de booster enregistrée.", es: "Recompensa de elección de sobre guardada.", th: "บันทึกรางวัลเลือกแพ็กแล้ว" },
+  "cc-specificpack-title": { de: "Pack-Auswahl-Befehl", en: "Pick-your-pack command", fr: "Commande de choix de booster", es: "Comando de elección de sobre", th: "คำสั่งเลือกแพ็ก" },
+  "cc-specificpack-hint": {
+    de: "Nutzung: [Befehl] <Packname> - zieht eine Karte aus dem genannten Pack (genauer Packname erforderlich). Eine eventuell aktive Garantie-Seltenheit wird berücksichtigt und verbraucht.",
+    en: "Usage: [Befehl] <pack name> - draws a card from the named pack (exact pack name required). Any active guaranteed rarity is taken into account and consumed.",
+    fr: "Utilisation : [Befehl] <nom du booster> - tire une carte du booster nommé (nom exact requis). Toute rareté garantie active est prise en compte et consommée.",
+    es: "Uso: [Befehl] <nombre del sobre> - saca una carta del sobre indicado (se requiere el nombre exacto). Cualquier rareza garantizada activa se tiene en cuenta y se consume.",
+    th: "วิธีใช้: [Befehl] <ชื่อแพ็ก> - จับการ์ดจากแพ็กที่ระบุ (ต้องระบุชื่อแพ็กให้ถูกต้อง) ความหายากที่รับประกันซึ่งใช้งานอยู่จะถูกนำมาพิจารณาและใช้ไป"
+  },
+  "label-cc-specificpack-usage": { de: "Nachricht bei fehlender Angabe", en: "Message when no pack given", fr: "Message en l'absence d'indication", es: "Mensaje cuando falta la indicación", th: "ข้อความเมื่อไม่ได้ระบุ" },
+  "label-cc-specificpack-notfound": { de: "Nachricht, wenn das Pack nicht gefunden wird", en: "Message when the pack isn't found", fr: "Message si le booster n'est pas trouvé", es: "Mensaje si no se encuentra el sobre", th: "ข้อความเมื่อไม่พบแพ็ก" },
   "cc-tournamentstart-eyebrow": { de: "Turnier", en: "Tournament", fr: "Tournoi", es: "Torneo", th: "ทัวร์นาเมนต์" },
   "cc-tournamentstart-title": { de: "Turnier-Start (Chat)", en: "Tournament start (chat)", fr: "Démarrage du tournoi (chat)", es: "Inicio de torneo (chat)", th: "เริ่มทัวร์นาเมนต์ (แชท)" },
   "cc-tournamentstart-hint": {
@@ -4947,6 +5068,56 @@ function bindTeamBattleReward() {
   $("#teamkampf-reward-delete").addEventListener("click", handleTeamBattleRewardDelete);
 }
 
+async function handleSpecificPackRewardSync() {
+  const statusEl = $("#specificpack-reward-status");
+  if (statusEl) statusEl.hidden = false;
+  setStatus("#specificpack-reward-status", t("status-showcase-saving"), "neutral");
+  try {
+    settings.specificPackDraw ||= {};
+    settings.specificPackDraw.notFoundMessage = $("#specificpack-notfound-message").value;
+    await saveSettings(settings);
+    const specificPack = settings.specificPackDraw;
+    const result = await syncSpecificPackReward({
+      rewardId: specificPack.rewardIds?.[0] || "",
+      title: $("#specificpack-reward-title").value || "Wähle dein Pack",
+      cost: Number($("#specificpack-reward-cost").value || 500),
+      prompt: $("#specificpack-reward-prompt").value || "",
+      backgroundColor: $("#specificpack-reward-bg-color").value || "#9147ff",
+      isEnabled: $("#specificpack-reward-enabled").checked,
+      isPaused: $("#specificpack-reward-paused").checked,
+      globalCooldown: Math.max(0, Number($("#specificpack-reward-cooldown").value || 0))
+    });
+    settings = normalizeSettings(result.settings || await getSettings());
+    hydrateTrigger();
+    setStatus("#specificpack-reward-status", t("notice-specificpack-reward-saved"), "ok");
+    showNotice(t("notice-specificpack-reward-saved"));
+  } catch (error) {
+    setStatus("#specificpack-reward-status", error.message, "error");
+  }
+}
+
+async function handleSpecificPackRewardDelete() {
+  const rewardId = settings.specificPackDraw?.rewardIds?.[0];
+  if (!rewardId) return;
+  if (!window.confirm(t("confirm-delete-reward"))) return;
+  $("#specificpack-reward-status").hidden = false;
+  setStatus("#specificpack-reward-status", t("status-deleting-reward"), "neutral");
+  try {
+    const result = await deleteTwitchReward({ rewardId });
+    settings = normalizeSettings(result.settings || await getSettings());
+    hydrateTrigger();
+    setStatus("#specificpack-reward-status", t("notice-reward-deleted"), "ok");
+    showNotice(t("notice-reward-deleted"));
+  } catch (error) {
+    setStatus("#specificpack-reward-status", error.message, "error");
+  }
+}
+
+function bindSpecificPackReward() {
+  $("#specificpack-reward-sync").addEventListener("click", handleSpecificPackRewardSync);
+  $("#specificpack-reward-delete").addEventListener("click", handleSpecificPackRewardDelete);
+}
+
 function renderOverview() {
   const booster = selectedBooster();
   const cards = booster ? cardsForBooster(settings, booster) : [];
@@ -5817,6 +5988,15 @@ function hydrateChatCommands() {
   $("#cc-pack-limit-message").value = cc.pack.limitMessage || "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
   $("#cc-pack-cooldown-message").value = cc.pack.cooldownMessage || "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
   $("#cc-pack-helptext").value = cc.pack.helpText || "";
+  cc.specificPackDraw ||= {};
+  $("#cc-specificpack-enabled").checked = cc.specificPackDraw.enabled === true;
+  $("#cc-specificpack-prefix").value = cc.specificPackDraw.prefix || "!";
+  $("#cc-specificpack-command").value = cc.specificPackDraw.command || "packziehen";
+  $("#cc-specificpack-helptext").value = cc.specificPackDraw.helpText || "";
+  $("#cc-specificpack-cooldown").value = cc.specificPackDraw.cooldownSeconds ?? 60;
+  $("#cc-specificpack-usage-message").value = cc.specificPackDraw.usageMessage || "";
+  $("#cc-specificpack-notfound-message").value = cc.specificPackDraw.notFoundMessage || "";
+  $("#cc-specificpack-cooldown-message").value = cc.specificPackDraw.cooldownMessage || "";
   cc.packs ||= {};
   $("#cc-packs-enabled").checked = cc.packs.enabled !== false;
   $("#cc-packs-prefix").value = cc.packs.prefix || "!";
@@ -5829,8 +6009,24 @@ function hydrateChatCommands() {
   $("#cc-collection-command").value = cc.collection.command || "collection";
   $("#cc-collection-chatoutput-enabled").checked = cc.collection.chatOutputEnabled !== false;
   $("#cc-collection-outputmode").value = cc.collection.outputMode === "whisper" ? "whisper" : "chat";
+  $("#cc-collection-sort1").value = cc.collection.sortLevel1 || "booster";
+  $("#cc-collection-sort2").value = cc.collection.sortLevel2 || "rarity";
+  $("#cc-collection-sort3").value = cc.collection.sortLevel3 || "alphabetical";
   $("#cc-collection-header-message").value = cc.collection.headerMessage || "";
   $("#cc-collection-empty-message").value = cc.collection.emptyMessage || "";
+  cc.showPack ||= {};
+  $("#cc-showpack-enabled").checked = cc.showPack.enabled === true;
+  $("#cc-showpack-prefix").value = cc.showPack.prefix || "!";
+  $("#cc-showpack-command").value = cc.showPack.command || "show";
+  $("#cc-showpack-helptext").value = cc.showPack.helpText || "";
+  $("#cc-showpack-cooldown").value = cc.showPack.cooldownSeconds ?? 30;
+  $("#cc-showpack-usage-message").value = cc.showPack.usageMessage || "";
+  $("#cc-showpack-notfound-message").value = cc.showPack.notFoundMessage || "";
+  $("#cc-showpack-cooldown-message").value = cc.showPack.cooldownMessage || "";
+  $("#cc-showpack-chatoutput-enabled").checked = cc.showPack.chatOutputEnabled !== false;
+  $("#cc-showpack-outputmode").value = cc.showPack.outputMode === "whisper" ? "whisper" : "chat";
+  $("#cc-showpack-header-message").value = cc.showPack.headerMessage || "";
+  $("#cc-showpack-empty-message").value = cc.showPack.emptyMessage || "";
   cc.dust ||= {};
   $("#cc-dust-enabled").checked = cc.dust.enabled === true;
   $("#cc-dust-prefix").value = cc.dust.prefix || "!";
@@ -5997,6 +6193,15 @@ function readChatCommandsFromForm() {
   cc.pack.limitMessage = $("#cc-pack-limit-message").value;
   cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
   cc.pack.helpText = $("#cc-pack-helptext").value;
+  cc.specificPackDraw ||= {};
+  cc.specificPackDraw.enabled = $("#cc-specificpack-enabled").checked;
+  cc.specificPackDraw.prefix = $("#cc-specificpack-prefix").value || "!";
+  cc.specificPackDraw.command = $("#cc-specificpack-command").value.trim() || "packziehen";
+  cc.specificPackDraw.helpText = $("#cc-specificpack-helptext").value;
+  cc.specificPackDraw.cooldownSeconds = Math.max(0, Math.round(Number($("#cc-specificpack-cooldown").value) || 0));
+  cc.specificPackDraw.usageMessage = $("#cc-specificpack-usage-message").value;
+  cc.specificPackDraw.notFoundMessage = $("#cc-specificpack-notfound-message").value;
+  cc.specificPackDraw.cooldownMessage = $("#cc-specificpack-cooldown-message").value;
   cc.packs ||= {};
   cc.packs.enabled = $("#cc-packs-enabled").checked;
   cc.packs.prefix = $("#cc-packs-prefix").value || "!";
@@ -6009,9 +6214,26 @@ function readChatCommandsFromForm() {
   cc.collection.command = $("#cc-collection-command").value.trim() || "collection";
   cc.collection.chatOutputEnabled = $("#cc-collection-chatoutput-enabled").checked;
   cc.collection.outputMode = $("#cc-collection-outputmode").value === "whisper" ? "whisper" : "chat";
+  cc.collection.sortLevel1 = $("#cc-collection-sort1").value || "booster";
+  cc.collection.sortLevel2 = $("#cc-collection-sort2").value || "rarity";
+  cc.collection.sortLevel3 = $("#cc-collection-sort3").value || "alphabetical";
   cc.collection.headerMessage = $("#cc-collection-header-message").value;
   cc.collection.emptyMessage = $("#cc-collection-empty-message").value;
   cc.collection.helpText = $("#cc-collection-helptext").value;
+
+  cc.showPack ||= {};
+  cc.showPack.enabled = $("#cc-showpack-enabled").checked;
+  cc.showPack.prefix = $("#cc-showpack-prefix").value || "!";
+  cc.showPack.command = $("#cc-showpack-command").value.trim() || "show";
+  cc.showPack.helpText = $("#cc-showpack-helptext").value;
+  cc.showPack.cooldownSeconds = Math.max(0, Math.round(Number($("#cc-showpack-cooldown").value) || 0));
+  cc.showPack.usageMessage = $("#cc-showpack-usage-message").value;
+  cc.showPack.notFoundMessage = $("#cc-showpack-notfound-message").value;
+  cc.showPack.cooldownMessage = $("#cc-showpack-cooldown-message").value;
+  cc.showPack.chatOutputEnabled = $("#cc-showpack-chatoutput-enabled").checked;
+  cc.showPack.outputMode = $("#cc-showpack-outputmode").value === "whisper" ? "whisper" : "chat";
+  cc.showPack.headerMessage = $("#cc-showpack-header-message").value;
+  cc.showPack.emptyMessage = $("#cc-showpack-empty-message").value;
 
   cc.dust ||= {};
   cc.dust.enabled = $("#cc-dust-enabled").checked;
@@ -6340,6 +6562,15 @@ function hydrateTrigger() {
   $("#teamkampf-reward-prompt").value = teamBattle.rewardPrompt || "";
   $("#teamkampf-reward-cooldown").value = teamBattle.rewardGlobalCooldown || 0;
   $("#teamkampf-reward-bg-color").value = teamBattle.rewardBackgroundColor || "#9147ff";
+  const specificPack = settings.specificPackDraw || {};
+  $("#specificpack-reward-enabled").checked = specificPack.rewardEnabled !== false;
+  $("#specificpack-reward-paused").checked = specificPack.rewardPaused === true;
+  $("#specificpack-reward-title").value = specificPack.rewardName || "Wähle dein Pack";
+  $("#specificpack-reward-cost").value = specificPack.rewardCost || 500;
+  $("#specificpack-reward-prompt").value = specificPack.rewardPrompt || "Gib den genauen Namen des Packs ein, aus dem du eine Karte ziehen möchtest.";
+  $("#specificpack-reward-cooldown").value = specificPack.rewardGlobalCooldown || 0;
+  $("#specificpack-reward-bg-color").value = specificPack.rewardBackgroundColor || "#9147ff";
+  $("#specificpack-notfound-message").value = specificPack.notFoundMessage || "";
 }
 
 function bindTrigger() {
@@ -6355,6 +6586,7 @@ function bindTrigger() {
   bindShowcase();
   bindTournamentReward();
   bindTeamBattleReward();
+  bindSpecificPackReward();
 }
 
 function hydrateDesign() {
@@ -6421,6 +6653,10 @@ function hydrateDesign() {
   $("#teamkampf-draws-per-participant").value = settings.teamBattle?.drawsPerParticipant ?? 1;
   $("#teamkampf-finisher-bonus-enabled").checked = settings.teamBattle?.finisherBonusEnabled !== false;
   $("#teamkampf-finisher-bonus-draws").value = settings.teamBattle?.finisherBonusDraws ?? 1;
+  $("#teamkampf-per-defeat-enabled").checked = settings.teamBattle?.perDefeatEnabled === true;
+  $("#teamkampf-per-defeat-draws").value = settings.teamBattle?.perDefeatDraws ?? 1;
+  $("#teamkampf-per-defeat-announce-enabled").checked = settings.teamBattle?.perDefeatAnnounceEnabled !== false;
+  $("#teamkampf-per-defeat-message").value = settings.teamBattle?.perDefeatMessage ?? "@userName hat [AnzahlBesiegt] gegnerische Karte(n) besiegt und erhält dafür [Anzahl] Kartenpack-Ziehung(en)!";
   $("#teamkampf-lose-card-enabled").checked = settings.teamBattle?.loseCardOnDefeat === true;
   $("#teamkampf-lost-card-announce-enabled").checked = settings.teamBattle?.lostCardAnnounceEnabled !== false;
   $("#teamkampf-lost-card-message").value = settings.teamBattle?.lostCardMessage ?? "@userName hat [Kartenname] verloren.";
@@ -6854,7 +7090,7 @@ function initOverlayLayoutEditors() {
   // a previous build so the registry doesn't accumulate references to DOM nodes that innerHTML
   // just replaced.
   for (const key of Object.keys(overlayLayoutStatesByKey)) delete overlayLayoutStatesByKey[key];
-  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
+  for (const key of ["draw", "collection", "showPack", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
     buildOverlayLayoutEditor($(`#overlay-layout-${key}`), key);
   }
   // The tournament bracket renders inside the same OBS source as Kampf-Animation, so it shares
@@ -7148,6 +7384,26 @@ function bindDesign() {
   $("#teamkampf-finisher-bonus-draws").addEventListener("input", (event) => {
     settings.teamBattle ||= {};
     settings.teamBattle.finisherBonusDraws = Math.max(0, Math.round(Number(event.target.value) || 0));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-per-defeat-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.perDefeatEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-per-defeat-draws").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.perDefeatDraws = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-per-defeat-announce-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.perDefeatAnnounceEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-per-defeat-message").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.perDefeatMessage = event.target.value;
     scheduleAutoSave();
   });
   $("#teamkampf-lose-card-enabled").addEventListener("change", (event) => {

@@ -1,0 +1,106 @@
+#showpack-stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.showpack-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(1200px, 90vw);
+  display: grid;
+  gap: 22px;
+  padding: 30px 36px;
+  border-radius: 30px;
+  color: #fff;
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--pack-accent, #ff78bb) 38%, #1c1430), rgba(20, 14, 34, .94));
+  box-shadow: 0 34px 90px rgba(15, 8, 35, .55), inset 0 0 0 2px rgba(255, 255, 255, .08);
+  transform: translate(140%, -50%) scale(calc(var(--widget-scale, 1) * .96));
+  opacity: 0;
+  transition: transform .6s cubic-bezier(.2, .8, .22, 1), opacity .5s ease;
+}
+
+.showpack-panel.is-in {
+  transform: translate(-50%, -50%) scale(var(--widget-scale, 1));
+  opacity: 1;
+}
+
+.showpack-panel.is-out {
+  transform: translate(-240%, -50%) scale(calc(var(--widget-scale, 1) * .96));
+  opacity: 0;
+}
+
+.showpack-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.showpack-user {
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--pack-accent, #ff78bb), #6a55ff);
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+
+.showpack-booster-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: .01em;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, .4);
+}
+
+.showpack-progress {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, .82);
+}
+
+.showpack-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 12px 14px;
+  justify-items: center;
+  transition: opacity .26s ease, transform .26s ease;
+}
+
+.showpack-grid.is-flipping {
+  opacity: 0;
+  transform: perspective(900px) rotateY(-8deg) scale(.97);
+}
+
+.showpack-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.showpack-slot .tcg-card {
+  width: 92px;
+}
+
+.showpack-slot.is-missing {
+  opacity: .92;
+}
+
+.showpack-slot-empty {
+  width: 92px;
+  aspect-ratio: 5 / 7;
+}
+
+@media (max-width: 900px) {
+  .showpack-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .showpack-slot .tcg-card {
+    width: 68px;
+  }
+}

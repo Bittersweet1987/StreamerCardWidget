@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.20">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1784724732">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -339,6 +339,7 @@
             <a href="#jn-cp-showcase" data-i18n="showcase-title">Sammlungs-Showcase</a>
             <a href="#jn-cp-tournament" data-i18n="tournament-reward-title">Turnier-Belohnung</a>
             <a href="#jn-cp-teamkampf" data-i18n="teamkampf-reward-title">Team-Kampf-Belohnung</a>
+            <a href="#jn-cp-specificpack" data-i18n="specificpack-reward-title">Pack-Auswahl-Belohnung</a>
           </nav>
           <section class="tool-panel channel-points-panel">
             <div class="section-heading">
@@ -495,6 +496,48 @@
               </div>
               <div class="status-line" id="teamkampf-reward-status" hidden></div>
             </article>
+
+            <article class="reward-entry specificpack-entry" id="jn-cp-specificpack">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="specificpack-reward-eyebrow">Kartenpacks</p>
+                  <h3 data-i18n="specificpack-reward-title">Pack-Auswahl-Belohnung</h3>
+                </div>
+              </div>
+              <div class="info-box">
+                <p data-i18n="specificpack-reward-info-text">Löst ein Zuschauer diese Belohnung ein, muss er den genauen Namen eines Packs eingeben (Twitch fragt den Text automatisch bei Einlösung ab) - wird das Pack gefunden, zieht der Zuschauer genau eine Karte daraus; wird es nicht gefunden, werden die Kanalpunkte automatisch erstattet und eine Hinweismeldung erscheint im Chat. Eine eventuell aktive Garantie-Seltenheit des Zuschauers wird dabei berücksichtigt und verbraucht.</p>
+              </div>
+              <label class="switch-row">
+                <input id="specificpack-reward-enabled" type="checkbox">
+                <span data-i18n="label-reward-enabled">Aktiviert</span>
+              </label>
+              <label class="switch-row compact-switch">
+                <input id="specificpack-reward-paused" type="checkbox">
+                <span data-i18n="label-reward-paused">Pausiert</span>
+              </label>
+              <div class="form-grid">
+                <label data-i18n="label-showcase-reward-title">Reward-Titel<input id="specificpack-reward-title" type="text"></label>
+                <label data-i18n="label-showcase-reward-cost">Kosten<input id="specificpack-reward-cost" type="number" min="1" step="1"></label>
+                <label data-i18n="label-showcase-cooldown">Globaler Cooldown (Sek.)<input id="specificpack-reward-cooldown" type="number" min="0" step="1"></label>
+                <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="specificpack-reward-bg-color" type="color"></label>
+                <label class="full-row" data-i18n="label-reward-prompt">Beschreibung (wird als Eingabe-Aufforderung angezeigt)<input id="specificpack-reward-prompt" type="text"></label>
+              </div>
+              <div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-specificpack-notfound-message">Nachricht, wenn das Pack nicht gefunden wird (Erstattung)</span>
+                  <div class="var-chips" data-target="specificpack-notfound-message">
+                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    <button class="var-chip" type="button" data-insert="[Eingabe]">[Eingabe]</button>
+                  </div>
+                </div>
+                <textarea id="specificpack-notfound-message" rows="2"></textarea>
+              </div>
+              <div class="button-row">
+                <button class="primary-button" id="specificpack-reward-sync" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
+                <button class="danger-button" id="specificpack-reward-delete" type="button" data-i18n="btn-delete-reward">Löschen</button>
+              </div>
+              <div class="status-line" id="specificpack-reward-status" hidden></div>
+            </article>
           </section>
         </section>
 
@@ -526,8 +569,10 @@
             <nav class="cc-jump-nav">
               <a href="#cc-section-autohelp" data-i18n="cc-autohelp-title">Automatische Hilfe-Nachricht</a>
               <a href="#cc-section-pack" data-i18n="cc-pack-title">Pack-Befehl</a>
+              <a href="#jn-cc-specificpack" data-i18n="cc-specificpack-title">Pack-Auswahl-Befehl</a>
               <a href="#jn-cc-packs" data-i18n="cc-packs-title">Booster-Übersicht-Befehl</a>
               <a href="#cc-section-collection" data-i18n="cc-collection-title">Sammlung-Befehl</a>
+              <a href="#cc-section-showpack" data-i18n="cc-showpack-title">Pack-Anzeige-Befehl</a>
               <a href="#cc-section-dust" data-i18n="cc-dust-title">Dust-Befehl</a>
               <a href="#jn-cc-dustset" data-i18n="cc-dustset-title">Dust-Auswahl-Befehl</a>
               <a href="#jn-cc-dustall" data-i18n="cc-dustall-title">Dust-Alle-Befehl</a>
@@ -651,6 +696,73 @@
               </div>
             </article>
 
+            <article class="reward-entry command-card" id="jn-cc-specificpack">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-pack-eyebrow">Kartenpack</p>
+                  <h3 data-i18n="cc-specificpack-title">Pack-Auswahl-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-specificpack-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-specificpack-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-specificpack-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-specificpack-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-specificpack-hint">Nutzung: [Befehl] &lt;Packname&gt; - zieht eine Karte aus dem genannten Pack (genauer Packname erforderlich). Eine eventuell aktive Garantie-Seltenheit wird berücksichtigt und verbraucht.</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit &amp; Cooldown</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-specificpack-cooldown" type="number" min="0" step="1"></label>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-specificpack-usage">Nachricht bei fehlender Angabe</span>
+                    <div class="var-chips" data-target="cc-specificpack-usage-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Befehl]">[Befehl]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-specificpack-usage-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-specificpack-notfound">Nachricht, wenn das Pack nicht gefunden wird</span>
+                    <div class="var-chips" data-target="cc-specificpack-notfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Eingabe]">[Eingabe]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-specificpack-notfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-specificpack-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-specificpack-cooldown-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
             <article class="reward-entry command-card" id="jn-cc-packs">
               <header class="command-card-head">
                 <div>
@@ -741,6 +853,24 @@
                   <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
                 </select></label>
                 <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
+                <p class="hint" data-i18n="hint-cc-collection-sort">Reihenfolge der Kartenliste im Chat, 3-stufig: erst nach Stufe 1 sortieren, bei Gleichstand nach Stufe 2, dann nach Stufe 3.</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-collection-sort1">Sortierung Stufe 1<select id="cc-collection-sort1">
+                    <option value="booster" data-i18n="option-cc-sort-booster">Nach Pack</option>
+                    <option value="rarity" data-i18n="option-cc-sort-rarity">Nach Seltenheit</option>
+                    <option value="alphabetical" data-i18n="option-cc-sort-alphabetical">Alphabetisch</option>
+                  </select></label>
+                  <label data-i18n="label-cc-collection-sort2">Sortierung Stufe 2<select id="cc-collection-sort2">
+                    <option value="booster" data-i18n="option-cc-sort-booster">Nach Pack</option>
+                    <option value="rarity" data-i18n="option-cc-sort-rarity">Nach Seltenheit</option>
+                    <option value="alphabetical" data-i18n="option-cc-sort-alphabetical">Alphabetisch</option>
+                  </select></label>
+                  <label data-i18n="label-cc-collection-sort3">Sortierung Stufe 3<select id="cc-collection-sort3">
+                    <option value="booster" data-i18n="option-cc-sort-booster">Nach Pack</option>
+                    <option value="rarity" data-i18n="option-cc-sort-rarity">Nach Seltenheit</option>
+                    <option value="alphabetical" data-i18n="option-cc-sort-alphabetical">Alphabetisch</option>
+                  </select></label>
+                </div>
               </div>
 
               <div class="field-group">
@@ -764,6 +894,103 @@
                     </div>
                   </div>
                   <textarea id="cc-collection-empty-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-showpack">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-showpack-eyebrow">Pack anzeigen</p>
+                  <h3 data-i18n="cc-showpack-title">Pack-Anzeige-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-showpack-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-showpack-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-showpack-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-showpack-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-showpack-hint">"[Befehl] &lt;Packtitel&gt;" zeigt den Inhalt des genannten Packs als Overlay in OBS (5x5-Kartenraster) – nur besessene Karten sind sichtbar, alle anderen bleiben als "?" verdeckt.</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-cooldown">Cooldown (Sekunden)<input id="cc-showpack-cooldown" type="number" min="0" step="1"></label>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="switch-row compact-switch">
+                  <input id="cc-showpack-chatoutput-enabled" type="checkbox">
+                  <span data-i18n="label-cc-showpack-chatoutput">Kartennamen des Packs zusätzlich im Chat auflisten</span>
+                </label>
+                <label data-i18n="label-cc-showpack-outputmode">Versandart<select id="cc-showpack-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-showpack-usage">Nutzungshinweis (kein Packname angegeben)</span>
+                    <div class="var-chips" data-target="cc-showpack-usage-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Befehl]">[Befehl]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-showpack-usage-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-showpack-notfound">Nachricht bei unbekanntem Pack</span>
+                    <div class="var-chips" data-target="cc-showpack-notfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Eingabe]">[Eingabe]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-showpack-notfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-showpack-cooldown">Nachricht während Cooldown</span>
+                    <div class="var-chips" data-target="cc-showpack-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-showpack-cooldown-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-showpack-header">Einleitung vor der Kartenliste</span>
+                    <div class="var-chips" data-target="cc-showpack-header-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-showpack-header-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-showpack-empty">Nachricht ohne eigene Karten aus dem Pack</span>
+                    <div class="var-chips" data-target="cc-showpack-empty-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-showpack-empty-message" rows="2"></textarea>
                 </div>
               </div>
             </article>
@@ -1923,6 +2150,7 @@
           <nav class="cc-jump-nav">
               <a href="#jn-pack-animation-design" data-i18n="pack-anim-title">Pack-Animation</a>
               <a href="#jn-sammlung-animation-design">Sammlung-Animation</a>
+              <a href="#jn-showpack-animation-design" data-i18n="showpack-anim-title">!show-Animation</a>
               <a href="#jn-tausch-animation-design">Tausch-Animation</a>
               <a href="#jn-geschenk-animation-design" data-i18n="gift-anim-title">Geschenk-Animation</a>
               <a href="#jn-community-ziel-design" data-i18n="communitygoal-title">Community-Ziel</a>
@@ -1970,6 +2198,17 @@
               </label>
             </div>
             <div id="overlay-layout-collection"></div>
+          </section>
+
+          <section class="tool-panel" id="jn-showpack-animation-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="showpack-anim-eyebrow">Pack anzeigen</p>
+                <h2 data-i18n="showpack-anim-title">!show-Animation</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="showpack-anim-hint">Position/Größe der "!show &lt;Packtitel&gt;"-Anzeige in OBS (5x5-Kartenraster, nur besessene Karten sichtbar).</p>
+            <div id="overlay-layout-showPack"></div>
           </section>
 
           <section class="tool-panel trade-anim-panel" id="jn-tausch-animation-design">
@@ -2194,6 +2433,29 @@
             </label>
             <div class="form-grid">
               <label data-i18n="label-teamkampf-finisher-bonus-draws">Bonus-Ziehungen für den Finisher<input id="teamkampf-finisher-bonus-draws" type="number" min="0" step="1"></label>
+            </div>
+            <label class="switch-row compact-switch">
+              <input id="teamkampf-per-defeat-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-per-defeat-enabled">Teilnehmer erhalten zusätzlich Karten pro persönlich besiegter Streamer-Karte</span>
+            </label>
+            <p class="hint" data-i18n="teamkampf-per-defeat-hint">Zusätzlich zur Sieg-Belohnung oben: jeder Teilnehmer bekommt Ziehungen für JEDE Streamer-Karte, die er im Verlauf des Kampfes selbst besiegt hat - unabhängig davon, ob die Community am Ende insgesamt gewinnt oder verliert. Die Karten werden erst nach dem gesamten Kampf vergeben.</p>
+            <div class="form-grid">
+              <label data-i18n="label-teamkampf-per-defeat-draws">Ziehungen pro besiegter Karte<input id="teamkampf-per-defeat-draws" type="number" min="1" step="1"></label>
+            </div>
+            <label class="switch-row compact-switch">
+              <input id="teamkampf-per-defeat-announce-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-per-defeat-announce-enabled">Chat-Nachricht bei besiegten Karten</span>
+            </label>
+            <div class="message-field">
+              <div class="message-field-head">
+                <span class="message-field-label" data-i18n="label-teamkampf-per-defeat-message">Nachricht bei besiegten Karten</span>
+                <div class="var-chips" data-target="teamkampf-per-defeat-message">
+                  <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                  <button class="var-chip" type="button" data-insert="[AnzahlBesiegt]">[AnzahlBesiegt]</button>
+                  <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
+                </div>
+              </div>
+              <textarea id="teamkampf-per-defeat-message" rows="2"></textarea>
             </div>
             <label class="switch-row compact-switch">
               <input id="teamkampf-lose-card-enabled" type="checkbox">
@@ -2616,7 +2878,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.20"></script>
-    <script type="module" src="/assets/js/admin.js?v=2.12.20"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784724732"></script>
+    <script type="module" src="/assets/js/admin.js?v=1784724732"></script>
   </body>
 </html>

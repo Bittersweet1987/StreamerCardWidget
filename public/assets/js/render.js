@@ -212,6 +212,34 @@ const DEFAULT_MESSAGES = {
     es: "@userName, todavía debes esperar [Restzeit] segundos antes de poder usar este comando de nuevo.",
     th: "@userName คุณต้องรออีก [Restzeit] วินาที ก่อนจะใช้คำสั่งนี้ได้อีกครั้ง"
   },
+  helpSpecificPackDraw: {
+    de: "zieht eine Karte aus einem selbst gewählten Pack",
+    en: "draws a card from a pack you choose",
+    fr: "tire une carte d'un booster que tu choisis",
+    es: "saca una carta de un sobre que elijas",
+    th: "จับการ์ดจากแพ็กที่คุณเลือก"
+  },
+  specificPackUsage: {
+    de: "@userName, Nutzung: [Befehl] <Packname> - zieht eine Karte aus dem angegebenen Pack.",
+    en: "@userName, usage: [Befehl] <pack name> - draws a card from the named pack.",
+    fr: "@userName, utilisation : [Befehl] <nom du booster> - tire une carte du booster nommé.",
+    es: "@userName, uso: [Befehl] <nombre del sobre> - saca una carta del sobre indicado.",
+    th: "@userName วิธีใช้: [Befehl] <ชื่อแพ็ก> - จับการ์ดจากแพ็กที่ระบุ"
+  },
+  specificPackNotFound: {
+    de: "@userName, ein Pack namens \"[Eingabe]\" wurde nicht gefunden. Bitte den genauen Packnamen angeben.",
+    en: "@userName, a pack named \"[Eingabe]\" wasn't found. Please give the exact pack name.",
+    fr: "@userName, aucun booster nommé « [Eingabe] » n'a été trouvé. Merci d'indiquer le nom exact du booster.",
+    es: "@userName, no se encontró ningún sobre llamado \"[Eingabe]\". Indica el nombre exacto del sobre.",
+    th: "@userName ไม่พบแพ็กชื่อ \"[Eingabe]\" กรุณาระบุชื่อแพ็กให้ถูกต้อง"
+  },
+  specificPackRedemptionNotFound: {
+    de: "@userName, ein Pack namens \"[Eingabe]\" wurde nicht gefunden - deine Kanalpunkte wurden erstattet. Bitte den genauen Packnamen angeben.",
+    en: "@userName, a pack named \"[Eingabe]\" wasn't found - your channel points were refunded. Please give the exact pack name.",
+    fr: "@userName, aucun booster nommé « [Eingabe] » n'a été trouvé - tes points de chaîne ont été remboursés. Merci d'indiquer le nom exact du booster.",
+    es: "@userName, no se encontró ningún sobre llamado \"[Eingabe]\" - se te reembolsaron tus puntos de canal. Indica el nombre exacto del sobre.",
+    th: "@userName ไม่พบแพ็กชื่อ \"[Eingabe]\" - แชนแนลพอยท์ของคุณถูกคืนแล้ว กรุณาระบุชื่อแพ็กให้ถูกต้อง"
+  },
   collectionHeader: {
     de: "@userName, deine Karten:",
     en: "@userName, your cards:",
@@ -225,6 +253,41 @@ const DEFAULT_MESSAGES = {
     fr: "@userName, tu ne possèdes encore aucune carte.",
     es: "@userName, todavía no tienes cartas.",
     th: "@userName คุณยังไม่มีการ์ดเลย"
+  },
+  helpShowPack: {
+    de: "zeigt den Inhalt eines bestimmten Packs (nur besessene Karten)",
+    en: "shows a specific pack's contents (owned cards only)",
+    fr: "affiche le contenu d'un booster précis (cartes possédées seulement)",
+    es: "muestra el contenido de un sobre específico (solo cartas que posees)",
+    th: "แสดงเนื้อหาของแพ็กที่ระบุ (เฉพาะการ์ดที่คุณมี)"
+  },
+  showPackUsage: {
+    de: "@userName, Nutzung: [Befehl] <Packname> - zeigt den Inhalt des angegebenen Packs.",
+    en: "@userName, usage: [Befehl] <pack name> - shows the named pack's contents.",
+    fr: "@userName, utilisation : [Befehl] <nom du booster> - affiche le contenu du booster nommé.",
+    es: "@userName, uso: [Befehl] <nombre del sobre> - muestra el contenido del sobre indicado.",
+    th: "@userName วิธีใช้: [Befehl] <ชื่อแพ็ก> - แสดงเนื้อหาของแพ็กที่ระบุ"
+  },
+  showPackNotFound: {
+    de: "@userName, ein Pack namens \"[Eingabe]\" wurde nicht gefunden. Bitte den genauen Packnamen angeben.",
+    en: "@userName, a pack named \"[Eingabe]\" wasn't found. Please give the exact pack name.",
+    fr: "@userName, aucun booster nommé « [Eingabe] » n'a été trouvé. Merci d'indiquer le nom exact du booster.",
+    es: "@userName, no se encontró ningún sobre llamado \"[Eingabe]\". Indica el nombre exacto del sobre.",
+    th: "@userName ไม่พบแพ็กชื่อ \"[Eingabe]\" กรุณาระบุชื่อแพ็กให้ถูกต้อง"
+  },
+  showPackHeader: {
+    de: "@userName, deine Karten aus [Boostername]:",
+    en: "@userName, your cards from [Boostername]:",
+    fr: "@userName, tes cartes de [Boostername] :",
+    es: "@userName, tus cartas de [Boostername]:",
+    th: "@userName การ์ดของคุณจาก [Boostername]:"
+  },
+  showPackEmpty: {
+    de: "@userName, du besitzt noch keine Karten aus [Boostername].",
+    en: "@userName, you don't own any cards from [Boostername] yet.",
+    fr: "@userName, tu ne possèdes encore aucune carte de [Boostername].",
+    es: "@userName, todavía no tienes cartas de [Boostername].",
+    th: "@userName คุณยังไม่มีการ์ดจาก [Boostername] เลย"
   },
   communityGoalReached: {
     de: "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch [Karten] Bonus-Booster.",
@@ -912,6 +975,19 @@ export function normalizeSettings(settings) {
   settings.chatCommands.packs.emptyMessage ||= pickDefault(settings.language, "packsEmpty");
   settings.chatCommands.packs.subOnlyLabel ||= "Sub Only";
 
+  // "!<command> <Packname>" - draws a card from a booster the viewer names themselves (see
+  // HandleSpecificPackDrawCommand server-side). Off by default - it's an opt-in extra, not
+  // something that should suddenly change what a bare command word does.
+  settings.chatCommands.specificPackDraw ||= {};
+  settings.chatCommands.specificPackDraw.enabled = settings.chatCommands.specificPackDraw.enabled === true;
+  settings.chatCommands.specificPackDraw.prefix ||= "!";
+  settings.chatCommands.specificPackDraw.command ||= "packziehen";
+  settings.chatCommands.specificPackDraw.helpText ||= pickDefault(settings.language, "helpSpecificPackDraw");
+  settings.chatCommands.specificPackDraw.cooldownSeconds = Number(settings.chatCommands.specificPackDraw.cooldownSeconds) >= 0 ? Number(settings.chatCommands.specificPackDraw.cooldownSeconds) : 60;
+  settings.chatCommands.specificPackDraw.usageMessage ||= pickDefault(settings.language, "specificPackUsage");
+  settings.chatCommands.specificPackDraw.cooldownMessage ||= pickDefault(settings.language, "packCooldown");
+  settings.chatCommands.specificPackDraw.notFoundMessage ||= pickDefault(settings.language, "specificPackNotFound");
+
   settings.chatCommands.dust ||= {};
   settings.chatCommands.dust.enabled = settings.chatCommands.dust.enabled === true;
   settings.chatCommands.dust.prefix ||= "!";
@@ -989,6 +1065,30 @@ export function normalizeSettings(settings) {
   settings.chatCommands.collection.outputMode = settings.chatCommands.collection.outputMode === "whisper" ? "whisper" : "chat";
   settings.chatCommands.collection.headerMessage ||= pickDefault(settings.language, "collectionHeader");
   settings.chatCommands.collection.emptyMessage ||= pickDefault(settings.language, "collectionEmpty");
+  // 3-level sort for the chat text listing (see HandleCardsCommand server-side) - each level is
+  // independently "booster"/"rarity"/"alphabetical", so a streamer can pick any order (e.g. pack,
+  // then rarity, then A-Z) instead of the old fixed alphabetical-only sort.
+  const validSortKeys = ["booster", "rarity", "alphabetical"];
+  settings.chatCommands.collection.sortLevel1 = validSortKeys.includes(settings.chatCommands.collection.sortLevel1) ? settings.chatCommands.collection.sortLevel1 : "booster";
+  settings.chatCommands.collection.sortLevel2 = validSortKeys.includes(settings.chatCommands.collection.sortLevel2) ? settings.chatCommands.collection.sortLevel2 : "rarity";
+  settings.chatCommands.collection.sortLevel3 = validSortKeys.includes(settings.chatCommands.collection.sortLevel3) ? settings.chatCommands.collection.sortLevel3 : "alphabetical";
+
+  // "!show <Packtitel>" - shows one pack's contents (owned cards revealed, rest hidden as "?"),
+  // like !collection's detailed view but scoped to a single booster. Own chat-output toggle and
+  // outputMode, independent of !collection's.
+  settings.chatCommands.showPack ||= {};
+  settings.chatCommands.showPack.enabled = settings.chatCommands.showPack.enabled === true;
+  settings.chatCommands.showPack.prefix ||= "!";
+  settings.chatCommands.showPack.command ||= "show";
+  settings.chatCommands.showPack.helpText ||= pickDefault(settings.language, "helpShowPack");
+  settings.chatCommands.showPack.cooldownSeconds = Number(settings.chatCommands.showPack.cooldownSeconds) >= 0 ? Number(settings.chatCommands.showPack.cooldownSeconds) : 30;
+  settings.chatCommands.showPack.usageMessage ||= pickDefault(settings.language, "showPackUsage");
+  settings.chatCommands.showPack.cooldownMessage ||= pickDefault(settings.language, "packCooldown");
+  settings.chatCommands.showPack.notFoundMessage ||= pickDefault(settings.language, "showPackNotFound");
+  settings.chatCommands.showPack.chatOutputEnabled = settings.chatCommands.showPack.chatOutputEnabled !== false;
+  settings.chatCommands.showPack.outputMode = settings.chatCommands.showPack.outputMode === "whisper" ? "whisper" : "chat";
+  settings.chatCommands.showPack.headerMessage ||= pickDefault(settings.language, "showPackHeader");
+  settings.chatCommands.showPack.emptyMessage ||= pickDefault(settings.language, "showPackEmpty");
 
   // Trade system: !trade (offer), !tradeyes (accept), !tradeno (decline).
   settings.chatCommands.trade ||= {};
@@ -1146,6 +1246,21 @@ export function normalizeSettings(settings) {
   settings.tournament.rewardGlobalCooldown = Number(settings.tournament.rewardGlobalCooldown) >= 0 ? Number(settings.tournament.rewardGlobalCooldown) : 0;
   settings.tournament.rewardIds ||= [];
 
+  // "Pick your own pack" channel-points reward: the viewer types the exact pack name into the
+  // reward's (required) text input; a name that doesn't match any enabled booster refunds the
+  // points and explains via chat instead of silently doing nothing - see
+  // HandleSpecificPackRedemption server-side.
+  settings.specificPackDraw ||= {};
+  settings.specificPackDraw.notFoundMessage ||= pickDefault(settings.language, "specificPackRedemptionNotFound");
+  settings.specificPackDraw.rewardName ||= "Wähle dein Pack";
+  settings.specificPackDraw.rewardCost = Number(settings.specificPackDraw.rewardCost) > 0 ? Number(settings.specificPackDraw.rewardCost) : 500;
+  settings.specificPackDraw.rewardPrompt ||= "Gib den genauen Namen des Packs ein, aus dem du eine Karte ziehen möchtest.";
+  settings.specificPackDraw.rewardBackgroundColor ||= "#9147ff";
+  settings.specificPackDraw.rewardEnabled = settings.specificPackDraw.rewardEnabled !== false;
+  settings.specificPackDraw.rewardPaused = settings.specificPackDraw.rewardPaused === true;
+  settings.specificPackDraw.rewardGlobalCooldown = Number(settings.specificPackDraw.rewardGlobalCooldown) >= 0 ? Number(settings.specificPackDraw.rewardGlobalCooldown) : 0;
+  settings.specificPackDraw.rewardIds ||= [];
+
   // Team-Kampf ("Alle gegen den Streamer"): channel-points-triggered signup window, chat-command
   // join, then a single HP-Leisten-Duell-style fight between the streamer's random lineup and the
   // community's queue (signup order) once the window closes - see ResolveTeamBattleSignup
@@ -1166,6 +1281,16 @@ export function normalizeSettings(settings) {
   settings.teamBattle.drawsPerParticipant = Number(settings.teamBattle.drawsPerParticipant) >= 0 ? Math.round(Number(settings.teamBattle.drawsPerParticipant)) : 1;
   settings.teamBattle.finisherBonusEnabled = settings.teamBattle.finisherBonusEnabled !== false;
   settings.teamBattle.finisherBonusDraws = Number(settings.teamBattle.finisherBonusDraws) >= 0 ? Math.round(Number(settings.teamBattle.finisherBonusDraws)) : 1;
+  // "Pro besiegter Karte eine Karte" - additional to the win/finisher rewards above, based on how
+  // many streamer cards each participant personally defeated (see defeatsByLogin, tallied in
+  // ResolveTeamBattleSignup) - independent of whether the community wins the whole fight overall.
+  settings.teamBattle.perDefeatEnabled = settings.teamBattle.perDefeatEnabled === true;
+  settings.teamBattle.perDefeatDraws = Number(settings.teamBattle.perDefeatDraws) >= 1 ? Math.round(Number(settings.teamBattle.perDefeatDraws)) : 1;
+  settings.teamBattle.perDefeatAnnounceEnabled = settings.teamBattle.perDefeatAnnounceEnabled !== false;
+  // Not normalized to a default here, same as teamBattle.lostCardMessage - the admin UI shows the
+  // hardcoded German default text directly (see admin.js hydrateTeamKampf) rather than going
+  // through pickDefault/settings.language, and the C# side falls back to its own default constant
+  // if this is ever empty.
   settings.teamBattle.loseCardOnDefeat = settings.teamBattle.loseCardOnDefeat === true;
   settings.teamBattle.rewardName ||= "Team-Kampf starten";
   settings.teamBattle.rewardCost = Number(settings.teamBattle.rewardCost) > 0 ? Number(settings.teamBattle.rewardCost) : 2000;
@@ -1184,7 +1309,7 @@ export function normalizeSettings(settings) {
   // applyOverlayLayout below. Default = centered at 100%, i.e. pixel-identical to before this
   // setting existed.
   settings.overlayLayout ||= {};
-  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
+  for (const key of ["draw", "collection", "showPack", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
     const layout = settings.overlayLayout[key] || {};
     const scale = Number(layout.scale) > 0 ? Math.min(100, Math.max(10, Number(layout.scale))) : 100;
     const { w: boxW, h: boxH } = overlayLayoutBoxSize(key, scale);
@@ -1471,6 +1596,9 @@ export const OVERLAY_LAYOUT_NATURAL_SIZES = {
   battle: { w: 760, h: 520 },
   gift: { w: 620, h: 440 },
   collection: { w: 1100, h: 780 },
+  // !show <Packtitel>'s 5x5-per-page grid - taller than !collection's 3x3 showcase panel since
+  // it shows more cards per page at once.
+  showPack: { w: 1100, h: 980 },
   ranking: { w: 1000, h: 600 },
   communityGoal: { w: 560, h: 100 },
   // A news-ticker banner spanning the full canvas width at all times - lockWidth means "scale"
