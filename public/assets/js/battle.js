@@ -7,6 +7,11 @@ const { applyOverlayLayout, applyTheme, cardMarkup, normalizeSettings, rarityCol
 
 const stage = document.querySelector("#battle-stage");
 const status = document.querySelector("#status");
+// Dedicated stages for the signup rosters (present in overlays.html) so they can be positioned/
+// scaled independently of the Kampf-Animation. On the standalone battle.html test page these
+// don't exist, so the signup boxes fall back into #battle-stage (no independent layout there).
+const tournamentSignupStage = document.querySelector("#tournamentsignup-stage") || stage;
+const teamKampfSignupStage = document.querySelector("#teamkampfsignup-stage") || stage;
 
 let settings;
 let queue = [];
@@ -748,6 +753,11 @@ async function loadSettings() {
   // directly, so transforming an intermediate wrapper would throw that math off. This does mean
   // the tournament signup countdown moves along with the battle position/scale setting too.
   applyOverlayLayout(stage, settings.overlayLayout?.battle, "battle");
+  // Signup rosters are positioned/scaled on their OWN stages (see overlays.html) - only when those
+  // dedicated stages actually exist. On battle.html they fall back to #battle-stage, which already
+  // carries the battle layout above, so applying a second transform there would double up.
+  if (tournamentSignupStage !== stage) applyOverlayLayout(tournamentSignupStage, settings.overlayLayout?.tournamentSignup, "tournamentSignup");
+  if (teamKampfSignupStage !== stage) applyOverlayLayout(teamKampfSignupStage, settings.overlayLayout?.teamBattleSignup, "teamBattleSignup");
 }
 
 // Shared avatar-chip markup for both the tournament and the Team-Kampf signup roster.
@@ -772,7 +782,7 @@ function ensureSignupCountdownEl() {
   signupCountdownEl = document.createElement("div");
   signupCountdownEl.className = "signup-roster";
   signupCountdownEl.hidden = true;
-  stage.append(signupCountdownEl);
+  tournamentSignupStage.append(signupCountdownEl);
   return signupCountdownEl;
 }
 
@@ -841,7 +851,7 @@ function ensureTeamKampfEl() {
   teamKampfEl = document.createElement("div");
   teamKampfEl.className = "signup-roster";
   teamKampfEl.hidden = true;
-  stage.append(teamKampfEl);
+  teamKampfSignupStage.append(teamKampfEl);
   return teamKampfEl;
 }
 

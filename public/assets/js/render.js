@@ -1184,7 +1184,7 @@ export function normalizeSettings(settings) {
   // applyOverlayLayout below. Default = centered at 100%, i.e. pixel-identical to before this
   // setting existed.
   settings.overlayLayout ||= {};
-  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp"]) {
+  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
     const layout = settings.overlayLayout[key] || {};
     const scale = Number(layout.scale) > 0 ? Math.min(100, Math.max(10, Number(layout.scale))) : 100;
     const { w: boxW, h: boxH } = overlayLayoutBoxSize(key, scale);
@@ -1192,8 +1192,11 @@ export function normalizeSettings(settings) {
     // rendered before this setting existed - not the top-left corner marginLeft:0 would imply.
     // The live ticker is the one exception: a full-width banner centered on screen would sit on
     // top of the card animation, so it defaults to horizontally centered along the bottom edge.
-    const defaultLeft = Math.max(0, (OVERLAY_LAYOUT_CANVAS_W - boxW) / 2);
-    const defaultTop = key === "liveTicker" ? Math.max(0, OVERLAY_LAYOUT_CANVAS_H - boxH - 40) : Math.max(0, (OVERLAY_LAYOUT_CANVAS_H - boxH) / 2);
+    // The signup rosters default to the top-right corner (where they used to be hard-anchored),
+    // so they don't sit on top of the centered Kampf-Animation during signup.
+    const isSignup = key === "tournamentSignup" || key === "teamBattleSignup";
+    const defaultLeft = isSignup ? Math.max(0, OVERLAY_LAYOUT_CANVAS_W - boxW - 40) : Math.max(0, (OVERLAY_LAYOUT_CANVAS_W - boxW) / 2);
+    const defaultTop = key === "liveTicker" ? Math.max(0, OVERLAY_LAYOUT_CANVAS_H - boxH - 40) : (isSignup ? 40 : Math.max(0, (OVERLAY_LAYOUT_CANVAS_H - boxH) / 2));
     // Deliberately NOT clamped to >= 0 here: a negative margin (or one pushing the box past the
     // opposite edge) is a valid, intentional position - it's how a card/animation ends up flush
     // against, or partially past, the canvas edge instead of always keeping at least a sliver of
@@ -1474,7 +1477,13 @@ export const OVERLAY_LAYOUT_NATURAL_SIZES = {
   // never touches its width, only its height (and, in liveticker.js, font size). See
   // applyOverlayLayout and admin.js's overlayLayoutBoxSize, which both honor this flag.
   liveTicker: { w: 1920, h: 90, lockWidth: true },
-  commandsHelp: { w: 500, h: 260 }
+  commandsHelp: { w: 500, h: 260 },
+  // The signup roster boxes shown during a tournament / Team-Kampf signup window (countdown +
+  // joined-participant list, plus the streamer's face-down lineup for Team-Kampf) - positioned
+  // and scaled independently of the Kampf-Animation itself. Team-Kampf is a touch taller for the
+  // lineup row.
+  tournamentSignup: { w: 400, h: 320 },
+  teamBattleSignup: { w: 400, h: 380 }
 };
 
 const OVERLAY_LAYOUT_CANVAS_W = 1920;

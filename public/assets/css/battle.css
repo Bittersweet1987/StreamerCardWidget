@@ -161,10 +161,22 @@ html, body {
    here to the top instead, with a capped max-height (own scrollbar once there are enough joined
    participants to need one - see .signup-roster-participants below), guarantees this box can never
    grow downward far enough to reach the ticker even with a large participant list. */
+/* Dedicated signup stages (overlays.html) - full-canvas, so applyOverlayLayout's centered-box
+   transform (see render.js) has a stable reference: the roster is centered inside the stage, and
+   the stage's transform moves that centered box to wherever the admin positioning editor placed
+   it. Default position is the top-right corner (see the signup keys' defaults in render.js). */
+.signup-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: center center;
+}
+
 .signup-roster {
   position: absolute;
-  top: 24px;
-  right: 24px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -174,7 +186,7 @@ html, body {
   background: rgba(20, 14, 34, .6);
   pointer-events: none;
   max-width: min(90vw, 420px);
-  max-height: 60vh;
+  max-height: 70vh;
 }
 
 /* The unconditional "display: flex" above is an author rule, which always beats the browser's

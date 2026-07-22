@@ -40,7 +40,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=2.12.24";
+} from "./api.js?v=2.12.19";
 import {
   applyTheme,
   autoImagePosition,
@@ -68,7 +68,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=2.12.24";
+} from "./render.js?v=2.12.19";
 
 let settings;
 let selectedCardId;
@@ -1986,6 +1986,20 @@ const I18N = {
     fr: "L'arbre du tournoi s'affiche dans la même source OBS que l'animation de combat - cette position/échelle s'applique aux deux.",
     es: "El cuadro del torneo se muestra en la misma fuente de OBS que la animación de combate; esta posición/escala se aplica a ambas.",
     th: "สายการแข่งขันจะแสดงในแหล่ง OBS เดียวกับแอนิเมชันการดวล - ตำแหน่ง/ขนาดนี้ใช้ร่วมกันทั้งสองอย่าง"
+  },
+  "tournament-signup-layout-hint": {
+    de: "Die Anmelde-Anzeige (Countdown + angemeldete Teilnehmer während der Anmeldephase) lässt sich hier unabhängig positionieren und skalieren.",
+    en: "The signup display (countdown + joined participants during the signup window) can be positioned and scaled independently here.",
+    fr: "L'affichage des inscriptions (compte à rebours + participants inscrits pendant la fenêtre d'inscription) peut être positionné et redimensionné indépendamment ici.",
+    es: "La visualización de inscripción (cuenta atrás + participantes inscritos durante la ventana de inscripción) se puede posicionar y escalar de forma independiente aquí.",
+    th: "การแสดงการสมัคร (นับถอยหลัง + ผู้เข้าร่วมที่สมัครระหว่างช่วงสมัคร) สามารถปรับตำแหน่งและขนาดได้อย่างอิสระที่นี่"
+  },
+  "teamkampf-signup-layout-hint": {
+    de: "Die Anmelde-Anzeige (Countdown + angemeldete Teilnehmer + Streamer-Team während der Anmeldephase) lässt sich hier unabhängig positionieren und skalieren.",
+    en: "The signup display (countdown + joined participants + streamer team during the signup window) can be positioned and scaled independently here.",
+    fr: "L'affichage des inscriptions (compte à rebours + participants inscrits + équipe du streamer pendant la fenêtre d'inscription) peut être positionné et redimensionné indépendamment ici.",
+    es: "La visualización de inscripción (cuenta atrás + participantes inscritos + equipo del streamer durante la ventana de inscripción) se puede posicionar y escalar de forma independiente aquí.",
+    th: "การแสดงการสมัคร (นับถอยหลัง + ผู้เข้าร่วมที่สมัคร + ทีมสตรีมเมอร์ระหว่างช่วงสมัคร) สามารถปรับตำแหน่งและขนาดได้อย่างอิสระที่นี่"
   },
   "liveticker-eyebrow": { de: "Community", en: "Community", fr: "Communauté", es: "Comunidad", th: "คอมมูนิตี้" },
   "liveticker-title": { de: "Live-Ticker", en: "Live ticker", fr: "Fil d'actualité en direct", es: "Ticker en vivo", th: "ตัวแสดงผลสด" },
@@ -6833,7 +6847,7 @@ function initOverlayLayoutEditors() {
   // a previous build so the registry doesn't accumulate references to DOM nodes that innerHTML
   // just replaced.
   for (const key of Object.keys(overlayLayoutStatesByKey)) delete overlayLayoutStatesByKey[key];
-  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp"]) {
+  for (const key of ["draw", "collection", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
     buildOverlayLayoutEditor($(`#overlay-layout-${key}`), key);
   }
   // The tournament bracket renders inside the same OBS source as Kampf-Animation, so it shares

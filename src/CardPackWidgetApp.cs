@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.12.18";
-        public const string ReleaseDate = "2026-07-21";
+        public const string Version = "2.12.19";
+        public const string ReleaseDate = "2026-07-22";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -3295,6 +3295,35 @@ namespace CardPackWidgetApp
         private Dictionary<string, object> activeTeamBattle;
         private System.Threading.Timer teamBattleSignupTimer;
 
+        // True while a tournament OR Team-Kampf is either taking signups OR still playing out its
+        // (front-loaded) matches in the action queue. A tournament resolves its WHOLE bracket
+        // synchronously the instant signup closes and dumps every match at the FRONT of the queue
+        // (see ResolveTournamentSignup/EnqueueBatchAtFront), so `activeTournament` goes null long
+        // before those matches have finished animating - which is why checking the active-object
+        // alone isn't enough: a Team-Kampf started during that playback would inject its own fight
+        // right into the middle of the still-running bracket. Both start paths consult this so only
+        // one big bracket event can be in flight (signup + playback) at a time. Cheap linear scan -
+        // the queue is at most a few dozen items even for a large tournament.
+        private bool IsBracketEventBusy()
+        {
+            lock (tournamentLock) { if (activeTournament != null) return true; }
+            lock (teamBattleLock) { if (activeTeamBattle != null) return true; }
+            lock (queueLock)
+            {
+                if (currentQueueItem != null && IsBracketSource(GetString(currentQueueItem, "source", ""))) return true;
+                foreach (Dictionary<string, object> queued in actionQueue)
+                {
+                    if (IsBracketSource(GetString(queued, "source", ""))) return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool IsBracketSource(string source)
+        {
+            return source == "tournament" || source == "teamkampf";
+        }
+
         private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
         private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
 
@@ -4409,7 +4438,11 @@ namespace CardPackWidgetApp
                 Dictionary<string, object> item;
                 lock (queueLock) item = currentQueueItem;
                 if (item == null || GetString(item, "kind", "") != "draw") return;
-                SendDrawPostMessage(item, cardTitle, boosterTitle);
+                // NOTE: the post-draw CHAT message is deliberately NOT sent here at reveal anymore -
+                // it goes out only once the whole draw animation has finished (see QueueLoop's
+                // post-completion block), so chat timing lines up with the animation ending instead
+                // of firing a few seconds early while the card is still on screen. The live-ticker
+                // entry below stays at reveal, since it's a passive feed, not a chat announcement.
                 string userLogin = GetString(item, "userLogin", "");
                 string user = GetString(item, "user", "Viewer");
                 // Same "Titel Untertitel" convention as SendDrawPostMessage - the server-picked
@@ -4678,6 +4711,23 @@ namespace CardPackWidgetApp
                 }
                 awaitingEventId = null;
 
+                // Post-animation chat: any message that must NOT be shown before the animation has
+                // finished playing (a card-draw's "you got X" or a duel's winner reveal) is sent
+                // HERE, once the overlay has acked completion (or the safety timeout elapsed) - never
+                // when the item was enqueued or mid-animation, so chat can't spoil the outcome. The
+                // draw's message is rebuilt from the item's server-picked card titles; other kinds
+                // carry a ready-made string in "completionChat".
+                try
+                {
+                    if (itemKind == "draw")
+                    {
+                        SendDrawPostMessage(item, GetString(item, "cardTitle", ""), GetString(item, "boosterTitle", ""));
+                    }
+                    string completionChat = GetString(item, "completionChat", "");
+                    if (!String.IsNullOrEmpty(completionChat)) SendChatMessageSafe(completionChat);
+                }
+                catch (Exception ex) { server.Log("queue", "error", "Abschluss-Chatnachricht fehlgeschlagen: " + ex.Message); }
+
                 // Only after completion: the mandatory 500ms gap before the next action.
                 Thread.Sleep(500);
                 lock (queueLock) { currentQueueItem = null; }
@@ -4806,6 +4856,9 @@ namespace CardPackWidgetApp
                 animEvent.Remove("userLogin");
                 animEvent.Remove("source");
                 animEvent.Remove("triggeredAt");
+                // Never broadcast the post-animation chat text to the overlay - it's server-only
+                // (sent by QueueLoop once the animation finishes), and it names the winner.
+                animEvent.Remove("completionChat");
                 server.Broadcast(kind, server.Serializer.Serialize(animEvent));
                 return;
             }
@@ -6967,40 +7020,30 @@ namespace CardPackWidgetApp
                     { "prizeCardTitle", prizeInfo["cardTitle"] }, { "prizeBoosterTitle", prizeInfo["boosterTitle"] },
                     { "winnerUser", winnerUser }, { "loserUser", loserUser }, { "winnerLogin", winnerLogin }
                 };
-                // Routed through the same queue as draw/showcollection/ranking so the battle
-                // animation never overlaps another - it used to broadcast directly, which let it
-                // play at the same time as an in-progress pack-opening or collection showcase.
-                Enqueue("battle", fromLogin, fromUser, "chat", battleEvent);
-                server.Log("commands", "info", winnerUser + " gewann das Kartenduell gegen " + loserUser + " (" + Math.Max(winsA, winsB) + ":" + Math.Min(winsA, winsB) + ") und erhielt " + prizeInfo["cardTitle"] + ".");
-
-                // The result message is sent AFTER the animation has had time to play out, not
-                // immediately - otherwise chat spoils the winner before the OBS animation reveals
-                // it. This is a time-based estimate (not an ack from the overlay) so it never
-                // blocks this thread from handling the next chat command while a duel animation
-                // (up to ~28s for a long HP-Leisten-Duell) is still playing.
+                // The result message must NOT be shown before the OBS animation reveals the winner -
+                // it's attached to the queue item as "completionChat" and sent by QueueLoop only
+                // once this duel's animation has actually finished playing (or its safety timeout
+                // elapsed), NOT on a time estimate from enqueue time. The old estimate started
+                // counting the moment the duel was enqueued, so anything already in the queue ahead
+                // of it (another duel, a pack draw) pushed the real animation later while the chat
+                // still fired on the original schedule - spoiling the winner mid-animation.
                 bool animEnabled = GetBool(battleAnimForStyle, "enabled", false);
                 bool sendChat = animEnabled ? GetBool(battleAnimForStyle, "sendChat", true) : true;
                 if (sendChat)
                 {
-                    string msg = GetString(yesCfg, "resultMessage", DefaultBattleResult)
+                    battleEvent["completionChat"] = GetString(yesCfg, "resultMessage", DefaultBattleResult)
                         .Replace("@userNameA", "@" + winnerUser)
                         .Replace("@userNameB", "@" + loserUser)
                         .Replace("[SiegeA]", winnerIsA ? winsA.ToString() : winsB.ToString())
                         .Replace("[SiegeB]", winnerIsA ? winsB.ToString() : winsA.ToString())
                         .Replace("[GewonneneKarte]", prizeInfo["cardTitle"])
                         .Replace("[BoosterGewonnen]", prizeInfo["boosterTitle"]);
-                    int delayMs = animEnabled ? EstimateBattleAnimationMs(useHpElimination, battleAnimForStyle, hpResult) : 0;
-                    if (delayMs > 0)
-                    {
-                        string msgToSend = msg;
-                        int waitMs = delayMs;
-                        Task.Factory.StartNew(delegate { Thread.Sleep(waitMs); SendChatMessageSafe(msgToSend); });
-                    }
-                    else
-                    {
-                        SendChatMessageSafe(msg);
-                    }
                 }
+                // Routed through the same queue as draw/showcollection/ranking so the battle
+                // animation never overlaps another - it used to broadcast directly, which let it
+                // play at the same time as an in-progress pack-opening or collection showcase.
+                Enqueue("battle", fromLogin, fromUser, "chat", battleEvent);
+                server.Log("commands", "info", winnerUser + " gewann das Kartenduell gegen " + loserUser + " (" + Math.Max(winsA, winsB) + ":" + Math.Min(winsA, winsB) + ") und erhielt " + prizeInfo["cardTitle"] + ".");
 
                 ClearActiveBattle();
             }
@@ -7034,6 +7077,16 @@ namespace CardPackWidgetApp
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> tCfg = Obj(settings, "tournament");
             if (!GetBool(tCfg, "enabled", false)) return "disabled";
+
+            // Only one bracket event (tournament OR Team-Kampf) may run at a time - a Team-Kampf
+            // still playing out its matches would otherwise inject a fight into the middle of this
+            // tournament's animations (and vice versa). See IsBracketEventBusy.
+            if (IsBracketEventBusy())
+            {
+                SendChatMessageSafe(GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
+                    .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
+                return "already_running";
+            }
 
             bool alreadyRunning = false;
             string startMessage = null;
@@ -7337,6 +7390,16 @@ namespace CardPackWidgetApp
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
             if (!GetBool(tbCfg, "enabled", false)) return "disabled";
+
+            // Only one bracket event (tournament OR Team-Kampf) may run at a time - a tournament
+            // still playing out its bracket would otherwise get this Team-Kampf injected into the
+            // middle of its animations (and vice versa). See IsBracketEventBusy.
+            if (IsBracketEventBusy())
+            {
+                SendChatMessageSafe(GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
+                    .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
+                return "already_running";
+            }
 
             bool alreadyRunning = false;
             bool noCards = false;

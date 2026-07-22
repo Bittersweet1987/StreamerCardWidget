@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.24">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2.12.19">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -2152,6 +2152,8 @@
             </div>
             <p class="hint" data-i18n="tournament-layout-hint">Der Turnierbaum wird in derselben OBS-Quelle wie die Kampf-Animation angezeigt – diese Position/Skalierung gilt für beide gemeinsam.</p>
             <div id="overlay-layout-tournament"></div>
+            <p class="hint" data-i18n="tournament-signup-layout-hint">Die Anmelde-Anzeige (Countdown + angemeldete Teilnehmer während der Anmeldephase) lässt sich hier unabhängig positionieren und skalieren.</p>
+            <div id="overlay-layout-tournamentSignup"></div>
           </section>
 
           <section class="tool-panel" id="jn-team-kampf-design">
@@ -2217,6 +2219,8 @@
               <button class="primary-button" id="teamkampf-start-now" type="button" data-i18n="btn-teamkampf-start-now">Team-Kampf jetzt starten</button>
             </div>
             <p class="hint" data-i18n="teamkampf-layout-hint">Der Team-Kampf läuft in derselben OBS-Quelle wie die Kampf-Animation an – diese Position/Skalierung gilt für beide gemeinsam.</p>
+            <p class="hint" data-i18n="teamkampf-signup-layout-hint">Die Anmelde-Anzeige (Countdown + angemeldete Teilnehmer + Streamer-Team während der Anmeldephase) lässt sich hier unabhängig positionieren und skalieren.</p>
+            <div id="overlay-layout-teamBattleSignup"></div>
           </section>
 
           <section class="tool-panel" id="jn-live-ticker-design">
@@ -2612,7 +2616,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.24"></script>
-    <script type="module" src="/assets/js/admin.js?v=2.12.24"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=2.12.19"></script>
+    <script type="module" src="/assets/js/admin.js?v=2.12.19"></script>
   </body>
 </html>

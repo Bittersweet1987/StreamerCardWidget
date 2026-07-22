@@ -60,6 +60,16 @@
     <main id="commandshelp-overlay" aria-live="polite">
       <div id="commandshelp-stage" class="commandshelp-stage"></div>
     </main>
+    <!-- Signup rosters (tournament / Team-Kampf countdown + joined list) live in their OWN stages,
+         not inside #battle-stage, so they can be positioned and scaled independently of the
+         Kampf-Animation - see battle.js (ensureSignupCountdownEl/ensureTeamKampfEl) which appends
+         into these when present, and applyOverlayLayout in loadSettings. -->
+    <main id="tournamentsignup-overlay" aria-live="polite">
+      <div id="tournamentsignup-stage" class="signup-stage"></div>
+    </main>
+    <main id="teamkampfsignup-overlay" aria-live="polite">
+      <div id="teamkampfsignup-stage" class="signup-stage"></div>
+    </main>
     <script>
       // Bootstrap loader: ask the server which asset version (BootId, changes every app start)
       // is current and load all CSS/JS with it. The version request itself carries a unique
