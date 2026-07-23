@@ -294,9 +294,6 @@ function prepareHoloAlarm(cardEl) {
   const innerCover = document.createElement("div");
   innerCover.className = "holo-inner-cover";
   cardEl.appendChild(innerCover);
-  const shimmer = document.createElement("div");
-  shimmer.className = "holo-shimmer-ring";
-  cardEl.appendChild(shimmer);
   const canvas = document.createElement("canvas");
   canvas.className = "holo-art-cover";
   artBox?.appendChild(canvas);
@@ -307,7 +304,7 @@ function prepareHoloAlarm(cardEl) {
   // inline custom property (--rarity-border); read the literal value back out so it can be
   // animated FROM black TO it via a real (transitionable) border-color, not the custom property.
   const targetBorderColor = cardEl.style.getPropertyValue("--rarity-border") || "#c9aef9";
-  return { cardEl, realImg, innerCover, shimmer, canvas, footerEl, cornerEls, holoGlitter, targetBorderColor };
+  return { cardEl, realImg, innerCover, canvas, footerEl, cornerEls, holoGlitter, targetBorderColor };
 }
 
 function buildHoloDissolveState(ctl) {
@@ -384,12 +381,10 @@ async function playHoloAlarmSequence(ctl) {
   // Phase 1: whole card is a solid black silhouette (border, body, art, text - all hidden).
   await delay(1500);
 
-  // Phase 2: the frame itself becomes visible, with a holographic shimmer ring around it -
-  // body/art/text stay black/hidden.
+  // Phase 2: the frame itself becomes visible (real rarity border color) - body/art/text stay
+  // black/hidden.
   ctl.cardEl.style.transition = "border-color 1200ms ease";
   ctl.cardEl.style.borderColor = ctl.targetBorderColor;
-  ctl.shimmer.style.transition = "opacity 900ms ease";
-  ctl.shimmer.style.opacity = "1";
   await delay(1500);
 
   // Phase 3: the card body dissolves from black to its real look, but the art itself stays a
@@ -416,8 +411,6 @@ async function playHoloAlarmSequence(ctl) {
     ctl.footerEl.style.opacity = "1";
   }
   ctl.cornerEls.forEach((c) => { c.style.transition = "opacity 500ms ease"; c.style.opacity = "1"; });
-  ctl.shimmer.style.transition = "opacity 700ms ease";
-  ctl.shimmer.style.opacity = ".4";
   await delay(700);
 }
 

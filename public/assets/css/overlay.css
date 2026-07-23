@@ -397,13 +397,17 @@ body {
 
 /* ---- Holo-Alarm: dramatic staged reveal for cards drawn at Holo rarity (see overlay.js's
    prepareHoloAlarm/playHoloAlarmSequence) - replaces the instant reveal with silhouette ->
-   holo-shimmer frame -> outline -> pixel-dissolve -> name/stars, all layered directly on top of
+   real-color frame -> outline -> pixel-dissolve -> name/stars, all layered directly on top of
    the real card markup rather than a separate copy, so it's pixel-identical to the card that's
    about to be shown. ---- */
-/* Deliberately no !important - once phase 2 sets cardEl.style.borderColor inline (see
-   playHoloAlarmSequence), that inline style must be able to win over this class rule so the
-   border can actually transition to the card's real rarity color. */
-.holo-alarm-armed { border-color: #000; }
+/* The card's own ".tcg-card[data-rarity="holo"]" rule (components.css) sets border-color too,
+   with higher specificity (attribute selector) than a plain ".holo-alarm-armed" class alone -
+   without also repeating [data-rarity="holo"] here, that rule would win the cascade and the
+   border would show its real color immediately instead of staying black through phase 1.
+   Deliberately no !important on the color itself - once phase 2 sets cardEl.style.borderColor
+   inline (see playHoloAlarmSequence), that inline style must be able to win over this class rule
+   so the border can actually transition to the card's real rarity color. */
+.tcg-card[data-rarity="holo"].holo-alarm-armed { border-color: #000; }
 .holo-alarm-armed .holo-glitter,
 .holo-alarm-armed .card-footer,
 .holo-alarm-armed .corner {
@@ -440,24 +444,6 @@ body {
   pointer-events: none;
 }
 
-.holo-shimmer-ring {
-  position: absolute;
-  inset: -6px;
-  z-index: 2;
-  border-radius: 30px;
-  padding: 3px;
-  opacity: 0;
-  background: conic-gradient(from 0deg, transparent, #ff9bd6, #9bb8ff, #7cf0d0, #ffe08a, #d29bff, transparent 70%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: holo-shimmer-spin 2.6s linear infinite;
-  transition: opacity 1s ease;
-  pointer-events: none;
-}
-@keyframes holo-shimmer-spin { to { transform: rotate(360deg); } }
-
 @media (prefers-reduced-motion: reduce) {
-  .holo-alarm-armed.holo-alarm-breathe,
-  .holo-shimmer-ring { animation: none !important; }
+  .holo-alarm-armed.holo-alarm-breathe { animation: none !important; }
 }
