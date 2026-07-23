@@ -45,6 +45,7 @@ Team-Kämpfen** antreten.
 - [Eigenes Pack wählen](#eigenes-pack-wählen)
 - [Pack anzeigen (!show)](#pack-anzeigen-show)
 - [Verschenken (Gift)](#verschenken-gift)
+- [Sammlungsvergleich](#sammlungsvergleich)
 - [Tauschsystem](#tauschsystem)
 - [Tausch-Animation](#tausch-animation)
 - [Kartenduell (Kampf)](#kartenduell-kampf)
@@ -53,6 +54,7 @@ Team-Kämpfen** antreten.
 - [Ranking](#ranking)
 - [Live-Ticker](#live-ticker)
 - [Community-Ziel](#community-ziel)
+- [Booster-Treue-Bonus](#booster-treue-bonus)
 - [Nutzung Befehle](#nutzung-befehle)
 - [Queue](#queue)
 - [Karten-Themes](#karten-themes)
@@ -229,6 +231,12 @@ Es gibt **6 Stufen** mit fester Sternzahl:
 | Legendär     | 5      | goldener Glow (folgt der Rahmenfarbe) |
 | **Holo**     | 1 ✨   | Regenbogen-Glitzer über der ganzen Karte, schillernder Perlmutt-Stern |
 
+Bei einer **Holo-Ziehung** ersetzt der **Holo-Alarm** (an-/abschaltbar unter Einstellungen →
+Pack-Animation) die normale sofortige Aufdeckung durch eine deutlich dramatischere, mehrstufige
+Enthüllung: die Karte startet komplett schwarz, der Rahmen färbt sich zuerst in die echte
+Rarity-Farbe, dann löst sich der Umriss der Karte sichtbar auf, und erst zuletzt werden Bild, Name,
+Sterne und Zahl vollständig sichtbar.
+
 Unter **Einstellungen** lassen sich pro Seltenheit anpassen:
 
 - **Rahmenfarbe je Seltenheit** (der Legendär-Glow passt sich automatisch an).
@@ -378,6 +386,15 @@ löst sich aus einem Pixelraster).
   <img src="docs/media/gift-pixelate.gif" alt="Geschenk-Animation: Pixel-Auflösung" width="260">
 </p>
 <p align="center"><sub>Übergabe · Dreh-Reveal · Pixel-Auflösung</sub></p>
+
+---
+
+## Sammlungsvergleich
+
+Mit **`!vergleich @Name`** (Präfix/Befehlswort einstellbar) vergleicht ein Zuschauer seine eigene
+Sammlung mit der eines anderen – der Bot postet im Chat, wie viele Kartenarten beide gemeinsam
+besitzen und welche jeweils nur bei einem von beiden vorkommen. Alle Chat-Nachrichten (Ergebnis,
+unbekannter Nutzer, Selbst-Vergleich, falsche Nutzung) sind frei anpassbar.
 
 ---
 
@@ -579,6 +596,17 @@ Community-Ziel**, inklusive manuellem Zurücksetzen des Fortschritts.
 
 ---
 
+## Booster-Treue-Bonus
+
+Belohnt Zuschauer, die an **mehreren Tagen in Folge** Kartenpacks öffnen. Sobald ein Zuschauer an
+einem Tag eine einstellbare **Mindestanzahl Ziehungen** erreicht, zählt das als **Serientag**. Frei
+konfigurierbare **Stufen** (z. B. jeden Tag, jeden 5. Tag, jeden 10. Tag) vergeben dann zusätzliche
+**Bonus-Ziehungen** mit garantierter **Mindest-Seltenheit** – mehrere passende Stufen greifen am
+selben Tag gleichzeitig. Einstellbar unter **Einstellungen → Treue-Bonus**, inklusive einer
+anpassbaren Ankündigungs-Nachricht im Chat.
+
+---
+
 ## Nutzung Befehle
 
 Der Tab **Nutzung Befehle** listet pro Zuschauer, wie oft er **`!pack`**, **`!trade`** und
@@ -738,6 +766,7 @@ cards to each other, and even face off in **card duels, tournaments and team bat
 - [Pick your own pack](#en-pick-your-own-pack)
 - [Show a pack (!show)](#en-show-a-pack-show)
 - [Gifting](#en-gifting)
+- [Collection comparison](#en-collection-comparison)
 - [Trading system](#en-trading-system)
 - [Trade animation](#en-trade-animation)
 - [Card duel (battle)](#en-card-duel-battle)
@@ -746,6 +775,7 @@ cards to each other, and even face off in **card duels, tournaments and team bat
 - [Ranking](#en-ranking)
 - [Live ticker](#en-live-ticker)
 - [Community goal](#en-community-goal)
+- [Booster loyalty bonus](#en-booster-loyalty-bonus)
 - [Command usage](#en-command-usage)
 - [Queue](#en-queue)
 - [Card themes](#en-card-themes)
@@ -908,6 +938,12 @@ There are **6 tiers** with a fixed star count:
 | Legendary   | 5     | golden glow (follows the border color) |
 | **Holo**    | 1 ✨  | rainbow shimmer across the whole card, iridescent pearl star |
 
+When a **Holo card** is drawn, **Holo Alarm** (toggle under Settings → Pack animation) replaces the
+normal instant flip with a much more dramatic, multi-stage reveal: the card starts completely
+black, the border colors in with the card's real rarity color first, then the card's outline
+visibly dissolves into view, and only at the very end do the artwork, name, stars and number fully
+appear.
+
 Under **Settings**, per rarity you can adjust:
 
 - **Border color per rarity** (the legendary glow adapts automatically).
@@ -1049,6 +1085,14 @@ spins in fast and slows down) and **Pixel dissolve** (card resolves out of a pix
   <img src="docs/media/gift-pixelate.gif" alt="Gift animation: pixel dissolve" width="260">
 </p>
 <p align="center"><sub>Handover · Spin reveal · Pixel dissolve</sub></p>
+
+<a id="en-collection-comparison"></a>
+### Collection comparison
+
+With **`!vergleich @name`** (prefix/command word configurable), a viewer compares their own
+collection with another viewer's - the bot posts in chat how many card types both own in common,
+and which ones only one of them owns. All chat messages (result, unknown user, self-comparison,
+wrong usage) are freely customizable.
 
 <a id="en-trading-system"></a>
 ### Trading system
@@ -1229,6 +1273,16 @@ resetting progress.
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="Community goal celebration animation preview" width="480"></p>
 
+<a id="en-booster-loyalty-bonus"></a>
+### Booster loyalty bonus
+
+Rewards viewers who open card packs on **multiple consecutive days**. Once a viewer hits a
+configurable **minimum number of draws** on a given day, that day counts as a **streak day**.
+Freely configurable **tiers** (e.g. every day, every 5th day, every 10th day) then grant extra
+**bonus draws** with a guaranteed **minimum rarity** - several matching tiers can fire on the same
+day at once. Configurable under **Settings → Loyalty bonus**, including a customizable
+announcement message in chat.
+
 <a id="en-command-usage"></a>
 ### Command usage
 
@@ -1371,6 +1425,7 @@ Application Windows locale pour cartes à collectionner Twitch – avec un **ove
 - [Choisir son propre pack](#fr-choisir-son-propre-pack)
 - [Afficher un pack (!show)](#fr-afficher-un-pack-show)
 - [Cadeaux](#fr-cadeaux)
+- [Comparaison de collection](#fr-comparaison-de-collection)
 - [Système d'échange](#fr-système-déchange)
 - [Animation d'échange](#fr-animation-déchange)
 - [Duel de cartes (combat)](#fr-duel-de-cartes-combat)
@@ -1379,6 +1434,7 @@ Application Windows locale pour cartes à collectionner Twitch – avec un **ove
 - [Classement](#fr-classement)
 - [Bandeau défilant](#fr-bandeau-défilant)
 - [Objectif communautaire](#fr-objectif-communautaire)
+- [Bonus de fidélité des boosters](#fr-bonus-de-fidélité-des-boosters)
 - [Utilisation des commandes](#fr-utilisation-des-commandes)
 - [File d'attente](#fr-file-dattente)
 - [Thèmes de cartes](#fr-thèmes-de-cartes)
@@ -1556,6 +1612,13 @@ Il existe **6 niveaux** avec un nombre d'étoiles fixe :
 | Légendaire  | 5       | lueur dorée (suit la couleur de bordure) |
 | **Holo**    | 1 ✨    | scintillement arc-en-ciel sur toute la carte, étoile nacrée irisée |
 
+Lors du tirage d'une **carte Holo**, l'**Alerte Holo** (activable/désactivable sous Paramètres →
+Animation de pack) remplace le retournement instantané habituel par une révélation bien plus
+spectaculaire en plusieurs étapes : la carte démarre entièrement noire, le cadre se colore d'abord
+dans la vraie couleur de rareté de la carte, puis le contour de la carte se dévoile
+progressivement, et enfin seulement l'illustration, le nom, les étoiles et le numéro apparaissent
+pleinement.
+
 Dans **Paramètres**, réglables par rareté :
 
 - **Couleur de bordure par rareté** (la lueur légendaire s'adapte automatiquement).
@@ -1708,6 +1771,15 @@ ralentit) et **Dissolution en pixels** (la carte se recompose à partir d'une gr
   <img src="docs/media/gift-pixelate.gif" alt="Animation de cadeau : dissolution en pixels" width="260">
 </p>
 <p align="center"><sub>Remise · Révélation tournante · Dissolution en pixels</sub></p>
+
+<a id="fr-comparaison-de-collection"></a>
+### Comparaison de collection
+
+Avec **`!vergleich @nom`** (préfixe/mot de commande configurables), un spectateur compare sa propre
+collection avec celle d'un autre – le bot indique dans le chat combien de types de cartes les deux
+possèdent en commun, et lesquels ne sont possédés que par l'un des deux. Tous les messages de chat
+(résultat, utilisateur inconnu, comparaison avec soi-même, mauvaise utilisation) sont librement
+personnalisables.
 
 <a id="fr-système-déchange"></a>
 ### Système d'échange
@@ -1908,6 +1980,17 @@ communautaire**, y compris la réinitialisation manuelle de la progression.
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="Aperçu de l'animation de fête de l'objectif communautaire" width="480"></p>
 
+<a id="fr-bonus-de-fidélité-des-boosters"></a>
+### Bonus de fidélité des boosters
+
+Récompense les spectateurs qui ouvrent des paquets de cartes sur **plusieurs jours consécutifs**.
+Dès qu'un spectateur atteint un **nombre minimum de tirages** configurable en une journée, ce jour
+compte comme un **jour de série**. Des **paliers** librement configurables (par ex. chaque jour,
+tous les 5 jours, tous les 10 jours) accordent alors des **tirages bonus** supplémentaires avec une
+**rareté minimale** garantie – plusieurs paliers correspondants peuvent se déclencher le même jour.
+Réglable sous **Paramètres → Bonus de fidélité**, y compris un message d'annonce personnalisable
+dans le chat.
+
 <a id="fr-utilisation-des-commandes"></a>
 ### Utilisation des commandes
 
@@ -2060,6 +2143,7 @@ OBS** o **Meld Studio**. Tus espectadores sacan cartas de sobres mediante **punt
 - [Elige tu propio sobre](#es-elige-tu-propio-sobre)
 - [Mostrar un sobre (!show)](#es-mostrar-un-sobre-show)
 - [Regalar](#es-regalar)
+- [Comparación de colección](#es-comparación-de-colección)
 - [Sistema de intercambio](#es-sistema-de-intercambio)
 - [Animación de intercambio](#es-animación-de-intercambio)
 - [Duelo de cartas (combate)](#es-duelo-de-cartas-combate)
@@ -2068,6 +2152,7 @@ OBS** o **Meld Studio**. Tus espectadores sacan cartas de sobres mediante **punt
 - [Clasificación](#es-clasificación)
 - [Ticker en vivo](#es-ticker-en-vivo)
 - [Meta comunitaria](#es-meta-comunitaria)
+- [Bono de fidelidad de sobres](#es-bono-de-fidelidad-de-sobres)
 - [Uso de comandos](#es-uso-de-comandos)
 - [Cola](#es-cola)
 - [Temas de cartas](#es-temas-de-cartas)
@@ -2244,6 +2329,12 @@ Hay **6 niveles** con un número fijo de estrellas:
 | Legendaria | 5         | brillo dorado (sigue el color del borde) |
 | **Holo**   | 1 ✨      | destello arcoíris en toda la carta, estrella nacarada iridiscente |
 
+Al sacar una **carta Holo**, la **Alerta Holo** (activable/desactivable en Ajustes → Animación de
+sobre) reemplaza el volteo instantáneo habitual por una revelación mucho más dramática en varias
+etapas: la carta empieza completamente negra, el borde se colorea primero con el verdadero color
+de rareza, luego el contorno de la carta se va desvelando progresivamente, y solo al final aparecen
+por completo la ilustración, el nombre, las estrellas y el número.
+
 En **Ajustes**, ajustables por rareza:
 
 - **Color de borde por rareza** (el brillo legendario se adapta automáticamente).
@@ -2395,6 +2486,14 @@ píxeles).
   <img src="docs/media/gift-pixelate.gif" alt="Animación de regalo: disolución en píxeles" width="260">
 </p>
 <p align="center"><sub>Entrega · Revelación giratoria · Disolución en píxeles</sub></p>
+
+<a id="es-comparación-de-colección"></a>
+### Comparación de colección
+
+Con **`!vergleich @nombre`** (prefijo/palabra de comando configurables), un espectador compara su
+propia colección con la de otro – el bot publica en el chat cuántos tipos de cartas tienen ambos en
+común, y cuáles solo posee uno de los dos. Todos los mensajes de chat (resultado, usuario
+desconocido, comparación consigo mismo, uso incorrecto) son totalmente personalizables.
 
 <a id="es-sistema-de-intercambio"></a>
 ### Sistema de intercambio
@@ -2593,6 +2692,16 @@ comunitaria**, incluido el reinicio manual del progreso.
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="Vista previa de la animación de celebración de la meta comunitaria" width="480"></p>
 
+<a id="es-bono-de-fidelidad-de-sobres"></a>
+### Bono de fidelidad de sobres
+
+Recompensa a los espectadores que abren sobres de cartas en **varios días consecutivos**. En
+cuanto un espectador alcanza un **número mínimo de tiradas** configurable en un día, ese día cuenta
+como un **día de racha**. **Niveles** libremente configurables (por ejemplo, cada día, cada 5 días,
+cada 10 días) otorgan entonces **tiradas bonus** adicionales con una **rareza mínima** garantizada
+– varios niveles coincidentes pueden activarse el mismo día. Configurable en **Ajustes → Bono de
+fidelidad**, incluido un mensaje de anuncio personalizable en el chat.
+
 <a id="es-uso-de-comandos"></a>
 ### Uso de comandos
 
@@ -2738,6 +2847,7 @@ Este proyecto está bajo la **Licencia Pública General de GNU v3.0** – ver [L
 - [เลือกแพ็กเอง](#th-เลือกแพ็กเอง)
 - [แสดงแพ็ก (!show)](#th-แสดงแพ็ก-show)
 - [การมอบของขวัญ](#th-การมอบของขวัญ)
+- [เปรียบเทียบคอลเลกชัน](#th-เปรียบเทียบคอลเลกชัน)
 - [ระบบแลกเปลี่ยน](#th-ระบบแลกเปลี่ยน)
 - [แอนิเมชันแลกเปลี่ยน](#th-แอนิเมชันแลกเปลี่ยน)
 - [ดวลการ์ด (การต่อสู้)](#th-ดวลการ์ด-การต่อสู้)
@@ -2746,6 +2856,7 @@ Este proyecto está bajo la **Licencia Pública General de GNU v3.0** – ver [L
 - [อันดับ](#th-อันดับ)
 - [ตัววิ่งสด](#th-ตัววิ่งสด)
 - [เป้าหมายชุมชน](#th-เป้าหมายชุมชน)
+- [โบนัสความภักดีของบูสเตอร์](#th-โบนัสความภักดีของบูสเตอร์)
 - [การใช้งานคำสั่ง](#th-การใช้งานคำสั่ง)
 - [คิว](#th-คิว)
 - [ธีมการ์ด](#th-ธีมการ์ด)
@@ -2904,6 +3015,10 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 | ตำนาน          | 5     | เรืองแสงสีทอง (ตามสีขอบ) |
 | **โฮโล**       | 1 ✨  | ประกายรุ้งทั่วการ์ด ดาวมุกเหลือบสี |
 
+เมื่อสุ่มได้ **การ์ดโฮโล** **Holo-Alarm** (เปิด/ปิดได้ที่การตั้งค่า → แอนิเมชันแพ็ก) จะแทนที่การพลิกเปิดทันทีตามปกติด้วยการเปิดเผยที่ดราม่ากว่ามากในหลายขั้นตอน:
+การ์ดเริ่มต้นเป็นสีดำทั้งใบ ขอบจะเปลี่ยนเป็นสีความหายากจริงก่อน จากนั้นเส้นขอบของการ์ดจะค่อยๆ เผยออกมาให้เห็น
+และสุดท้ายภาพ ชื่อ ดาว และหมายเลขจะปรากฏขึ้นอย่างสมบูรณ์
+
 ใน **การตั้งค่า** ปรับได้ต่อความหายาก:
 
 - **สีขอบต่อความหายาก** (เรืองแสงระดับตำนานจะปรับตามโดยอัตโนมัติ)
@@ -3036,6 +3151,13 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
   <img src="docs/media/gift-pixelate.gif" alt="แอนิเมชันของขวัญ: ละลายเป็นพิกเซล" width="260">
 </p>
 <p align="center"><sub>การส่งมอบ · หมุนเปิดเผย · ละลายเป็นพิกเซล</sub></p>
+
+<a id="th-เปรียบเทียบคอลเลกชัน"></a>
+### เปรียบเทียบคอลเลกชัน
+
+ด้วย **`!vergleich @ชื่อ`** (ตั้งค่าคำนำหน้า/คำสั่งได้) ผู้ชมสามารถเปรียบเทียบคอลเลกชันของตัวเองกับผู้ชมคนอื่น
+บอทจะโพสต์ในแชทว่าทั้งสองมีการ์ดประเภทใดร่วมกันบ้าง และมีการ์ดใดที่มีเฉพาะฝ่ายใดฝ่ายหนึ่งเท่านั้น
+ข้อความแชททั้งหมด (ผลลัพธ์ ผู้ใช้ไม่รู้จัก เปรียบเทียบกับตัวเอง ใช้งานผิด) ปรับแต่งได้อย่างอิสระ
 
 <a id="th-ระบบแลกเปลี่ยน"></a>
 ### ระบบแลกเปลี่ยน
@@ -3208,6 +3330,14 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 รวมถึงการรีเซ็ตความคืบหน้าด้วยตนเอง
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="ตัวอย่างแอนิเมชันฉลองเป้าหมายชุมชน" width="480"></p>
+
+<a id="th-โบนัสความภักดีของบูสเตอร์"></a>
+### โบนัสความภักดีของบูสเตอร์
+
+ให้รางวัลผู้ชมที่เปิดแพ็กการ์ด**หลายวันติดต่อกัน** เมื่อผู้ชมถึง**จำนวนการจับขั้นต่ำ**ที่ตั้งไว้ในหนึ่งวัน
+วันนั้นจะนับเป็น**วันต่อเนื่อง** **ระดับ**ที่ตั้งค่าได้อย่างอิสระ (เช่น ทุกวัน ทุก 5 วัน ทุก 10 วัน)
+จะมอบ**การจับโบนัส**เพิ่มเติมพร้อม**ความหายากขั้นต่ำ**ที่รับประกัน – หลายระดับที่ตรงเงื่อนไขสามารถทำงานพร้อมกันในวันเดียวกันได้
+ปรับได้ที่ **การตั้งค่า → โบนัสความภักดี** รวมถึงข้อความประกาศในแชทที่ปรับแต่งได้
 
 <a id="th-การใช้งานคำสั่ง"></a>
 ### การใช้งานคำสั่ง
