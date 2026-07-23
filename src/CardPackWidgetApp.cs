@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.13.4";
-        public const string ReleaseDate = "2026-07-22";
+        public const string Version = "2.13.5";
+        public const string ReleaseDate = "2026-07-23";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -3247,6 +3247,136 @@ namespace CardPackWidgetApp
 
         private const string DefaultCommunityGoalMessage = "🎉 Community-Ziel erreicht ([Ziel] Ziehungen)! Alle Teilnehmer bekommen automatisch [Karten] Bonus-Booster.";
 
+        // ---- Booster-Treue-Bonus: streak of consecutive days meeting a daily draw minimum ----
+
+        private readonly object loyaltyLock = new object();
+        private const string DefaultLoyaltyBonusMessage = "@userName, Treue-Bonus! 🔥 [SerienTage] Tage in Folge - [BonusAnzahl] Bonus-Ziehung(en) unterwegs!";
+
+        // Reads settings.loyaltyBonus.tiers (each with its own "days"/"bonusCards"/"minRarity"),
+        // sorted ascending by "days" - a streak of N days fires every tier whose "days" evenly
+        // divides N (see RegisterLoyaltyDraw), so e.g. a days=5 and a days=10 tier both fire on
+        // day 10, stacking their bonus draws.
+        private List<Dictionary<string, object>> GetLoyaltyTiers(Dictionary<string, object> loyaltyCfg)
+        {
+            var result = new List<Dictionary<string, object>>();
+            object tiersObj;
+            if (loyaltyCfg.TryGetValue("tiers", out tiersObj) && tiersObj is object[])
+            {
+                foreach (object to in (object[])tiersObj)
+                {
+                    Dictionary<string, object> tier = to as Dictionary<string, object>;
+                    if (tier == null) continue;
+                    int days = GetInt(tier, "days", 0);
+                    if (days <= 0) continue;
+                    int bonusCards = Math.Max(1, GetInt(tier, "bonusCards", 1));
+                    string minRarity = GetString(tier, "minRarity", "rare");
+                    result.Add(new Dictionary<string, object> { { "days", days }, { "bonusCards", bonusCards }, { "minRarity", minRarity } });
+                }
+            }
+            result.Sort(delegate(Dictionary<string, object> a, Dictionary<string, object> b) { return GetInt(a, "days", 0).CompareTo(GetInt(b, "days", 0)); });
+            return result;
+        }
+
+        // Called from the same central "draw" handling as the pity/community-goal systems (see
+        // ProcessQueueItem) so every trigger counts equally - except the loyalty bonus draws
+        // THEMSELVES (tagged "loyaltyBonus" on the queue item), which are excluded by the caller
+        // to avoid a completed day's reward inflating that same day's already-completed progress.
+        // Tracks, per viewer, how many boosters they've opened on the current LOCAL calendar day
+        // and how many such days in a row they've hit the configured daily minimum; persisted in
+        // the same command-usage.json file as the other usage-tracking sections (see
+        // BattleSection/TradeSection for the analogous pattern).
+        private void RegisterLoyaltyDraw(string login, string displayName, string boosterId, Dictionary<string, object> settings)
+        {
+            Dictionary<string, object> loyaltyCfg = Obj(settings, "loyaltyBonus");
+            if (!GetBool(loyaltyCfg, "enabled", false)) return;
+            int cardsPerDay = Math.Max(1, GetInt(loyaltyCfg, "cardsPerDay", 10));
+            List<Dictionary<string, object>> tiers = GetLoyaltyTiers(loyaltyCfg);
+            if (tiers.Count == 0) return;
+
+            DateTime localToday = DateTime.UtcNow.ToLocalTime().Date;
+            string today = localToday.ToString("yyyy-MM-dd");
+            string yesterday = localToday.AddDays(-1).ToString("yyyy-MM-dd");
+
+            int streakDays = 0;
+            List<Dictionary<string, object>> grantedTiers = null;
+
+            lock (loyaltyLock)
+            {
+                EnsureUsageLoaded();
+                Dictionary<string, object> section;
+                object sectionObj;
+                if (usageData.TryGetValue("loyalty", out sectionObj) && sectionObj is Dictionary<string, object>)
+                {
+                    section = (Dictionary<string, object>)sectionObj;
+                }
+                else
+                {
+                    section = new Dictionary<string, object> { { "users", new Dictionary<string, object>() } };
+                    usageData["loyalty"] = section;
+                }
+                Dictionary<string, object> users = section["users"] as Dictionary<string, object>;
+                if (users == null) { users = new Dictionary<string, object>(); section["users"] = users; }
+                string key = login.Trim().ToLowerInvariant();
+                Dictionary<string, object> entry;
+                if (users.ContainsKey(key) && users[key] is Dictionary<string, object>)
+                {
+                    entry = (Dictionary<string, object>)users[key];
+                }
+                else
+                {
+                    entry = new Dictionary<string, object> { { "date", "" }, { "countToday", 0 }, { "streakDays", 0 }, { "lastCompletedDate", "" } };
+                    users[key] = entry;
+                }
+                entry["displayName"] = displayName;
+
+                if (GetString(entry, "date", "") != today)
+                {
+                    entry["date"] = today;
+                    entry["countToday"] = 0;
+                }
+                int countToday = GetInt(entry, "countToday", 0) + 1;
+                entry["countToday"] = countToday;
+
+                string lastCompletedDate = GetString(entry, "lastCompletedDate", "");
+                if (countToday >= cardsPerDay && lastCompletedDate != today)
+                {
+                    streakDays = lastCompletedDate == yesterday ? GetInt(entry, "streakDays", 0) + 1 : 1;
+                    entry["streakDays"] = streakDays;
+                    entry["lastCompletedDate"] = today;
+
+                    grantedTiers = new List<Dictionary<string, object>>();
+                    foreach (Dictionary<string, object> tier in tiers)
+                    {
+                        if (streakDays % GetInt(tier, "days", 0) == 0) grantedTiers.Add(tier);
+                    }
+                    if (grantedTiers.Count == 0) grantedTiers = null;
+                }
+
+                SaveUsage();
+            }
+
+            if (grantedTiers == null) return;
+
+            int totalBonusCards = 0;
+            var tierPayload = new List<object>();
+            foreach (Dictionary<string, object> tier in grantedTiers)
+            {
+                int bonusCards = GetInt(tier, "bonusCards", 1);
+                totalBonusCards += bonusCards;
+                tierPayload.Add(new Dictionary<string, object> { { "bonusCards", bonusCards }, { "minRarity", GetString(tier, "minRarity", "rare") } });
+            }
+
+            server.Log("draw", "info", displayName + " hat den Treue-Bonus fuer " + streakDays + " Tage in Folge erreicht (" + totalBonusCards + " Bonus-Ziehung(en)).");
+
+            Enqueue("loyaltybonusreached", login, displayName, "system", new Dictionary<string, object>
+            {
+                { "boosterId", boosterId },
+                { "streakDays", streakDays },
+                { "bonusCards", totalBonusCards },
+                { "tiers", tierPayload.ToArray() }
+            });
+        }
+
         // Exposes current progress (plus every stage's target/reached state) for the admin panel
         // and the OBS overlay's initial load.
         public Dictionary<string, object> GetCommunityGoalState()
@@ -3322,6 +3452,15 @@ namespace CardPackWidgetApp
         private Dictionary<string, object> activeTeamBattle;
         private System.Threading.Timer teamBattleSignupTimer;
 
+        // A Team-Kampf trigger (channel points or chat) that arrived while a TOURNAMENT was busy
+        // (signup or still playing back its bracket) - rather than rejecting it outright, it's
+        // remembered here and auto-started for real the moment the tournament is completely done
+        // (see ResolvePendingTeamBattleIfIdle, polled from QueueLoop). Only ever holds the single
+        // most recent such request - a second one arriving while the first is still queued simply
+        // replaces it, same "one bracket event at a time" rule as everything else here.
+        private readonly object pendingTeamBattleLock = new object();
+        private Dictionary<string, object> pendingTeamBattleRequest;
+
         // True while a tournament OR Team-Kampf is either taking signups OR still playing out its
         // (front-loaded) matches in the action queue. A tournament resolves its WHOLE bracket
         // synchronously the instant signup closes and dumps every match at the FRONT of the queue
@@ -3386,6 +3525,11 @@ namespace CardPackWidgetApp
         private const string DefaultDustAllNothing = "@userName, du hast aktuell keine Duplikate unterhalb von [Seltenheit] zum Opfern.";
         private const string DefaultDustAllSuccess = "@userName hat [Gesamtanzahl] doppelte Karten geopfert ([Aufschluesselung]), +[Punkte] Garantie-Punkte. [GarantieAnzahl] garantierte Ziehung(en) bereit, noch [GarantieRest] Ziehungen bis zur naechsten.";
 
+        private const string DefaultCompareUsage = "@userName, Nutzung: !vergleich @userNameB";
+        private const string DefaultCompareUserNotFound = "@userName, der Nutzer [Nutzer] wurde nicht gefunden.";
+        private const string DefaultCompareSelf = "@userName, du kannst dich nicht mit dir selbst vergleichen.";
+        private const string DefaultCompareResult = "@userNameA hat [AnzahlA] verschiedene Karten, @userNameB hat [AnzahlB]. Gemeinsam: [Gemeinsam]. Nur bei @userNameA: [ExklusivA]. Nur bei @userNameB: [ExklusivB].";
+
         private const string DefaultGiftUsage = "@userName, Nutzung: !gift @userNameB <Kartenname>";
         private const string DefaultGiftUserNotFound = "@userName, den Nutzer [Nutzer] kennt die Sammlung noch nicht.";
         private const string DefaultGiftCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
@@ -3418,6 +3562,7 @@ namespace CardPackWidgetApp
         private const string DefaultTournamentAlreadyRunning = "@userName, es läuft bereits ein Turnier oder eine Anmeldephase.";
 
         private const string DefaultTeamBattleBusy = "@userName, es läuft bereits ein Team-Kampf.";
+        private const string DefaultTeamBattleQueued = "@userName, es läuft gerade ein Turnier - der Team-Kampf startet automatisch direkt danach.";
         private const string DefaultTeamBattleSignupStart = "Team-Kampf gestartet! Der Streamer stellt [Anzahl] Karten - tritt mit [Befehl] bei, [Sekunden] Sekunden Zeit!";
         private const string DefaultTeamBattleNoActive = "@userName, gerade läuft keine Team-Kampf-Anmeldung.";
         private const string DefaultTeamBattleJoinAlready = "@userName, du bist bereits angemeldet.";
@@ -4415,6 +4560,31 @@ namespace CardPackWidgetApp
             queueSignal.Set();
         }
 
+        // Auto-starts a Team-Kampf that got queued (see StartTeamBattleSignup) because a tournament
+        // was still busy at the time. Deliberately checked independently of
+        // FlushDeferredQueueIfIdle's own early return - that one bails out while bracket PLAYBACK
+        // is busy, which is exactly the state a tournament sits in for most of its lifetime, so
+        // nesting this inside it would mean the pending request never gets a chance to fire until
+        // some unrelated later event happened to find playback idle. IsBracketEventBusy() is the
+        // single source of truth for "is it actually safe to start now" - only once neither a
+        // tournament's signup NOR its bracket playback is active does this fire, at which point the
+        // Team-Kampf hasn't been "lost" at all - it starts for real, same as if it had been
+        // triggered fresh right now.
+        private void ResolvePendingTeamBattleIfIdle()
+        {
+            Dictionary<string, object> pending = null;
+            lock (pendingTeamBattleLock)
+            {
+                if (pendingTeamBattleRequest != null && !IsBracketEventBusy())
+                {
+                    pending = pendingTeamBattleRequest;
+                    pendingTeamBattleRequest = null;
+                }
+            }
+            if (pending == null) return;
+            StartTeamBattleSignup(GetString(pending, "login", ""), GetString(pending, "displayName", ""), GetString(pending, "source", ""));
+        }
+
         private static Dictionary<string, object> BuildQueueItem(string kind, string login, string displayName, string source, Dictionary<string, object> extra)
         {
             var item = new Dictionary<string, object>
@@ -4778,7 +4948,7 @@ namespace CardPackWidgetApp
                 // a safety margin.
                 return 12000;
             }
-            if (kind == "tournamentbye" || kind == "teamkampfresult")
+            if (kind == "tournamentbye" || kind == "teamkampfresult" || kind == "loyaltybonusreached")
             {
                 // No overlay animation is involved (just chat + enqueuing reward draws as separate
                 // future items) - nothing will ever send a completion ack for these, so don't make
@@ -4854,6 +5024,7 @@ namespace CardPackWidgetApp
                 // catches the moment a bracket event finishes regardless of which code path cleared
                 // it, without needing an explicit call at every one of those paths.
                 FlushDeferredQueueIfIdle();
+                ResolvePendingTeamBattleIfIdle();
                 // While paused, keep collecting incoming events but don't process any.
                 if (queuePaused) continue;
                 Dictionary<string, object> item = null;
@@ -4889,7 +5060,7 @@ namespace CardPackWidgetApp
                 // DOES have a real animation now (the champion's bracket reveal) and acks like any
                 // other - so it's deliberately NOT suppressed here anymore; a missing ack for it is
                 // a genuine "is OBS open?" case.
-                if (!acked && itemKind != "tournamentbye" && itemKind != "teamkampfresult")
+                if (!acked && itemKind != "tournamentbye" && itemKind != "teamkampfresult" && itemKind != "loyaltybonusreached")
                 {
                     server.Log("queue", "warn", "Keine Abschluss-Rueckmeldung vom Overlay fuer \"" + itemKind + "\" - nach Timeout fortgefahren. Ist die passende OBS-Quelle geoeffnet und aktuell?");
                 }
@@ -4973,6 +5144,45 @@ namespace CardPackWidgetApp
                         string pName = GetString(participant, "displayName", pLogin);
                         if (String.IsNullOrEmpty(pLogin)) continue;
                         for (int i = 0; i < bonusCards; i++) Enqueue("draw", pLogin, pName, "communitygoal");
+                    }
+                }
+                return;
+            }
+
+            if (kind == "loyaltybonusreached")
+            {
+                // Same "play as its own serialized queue item" reasoning as communitygoalreached
+                // above - the streak/tier calculation already happened synchronously inside
+                // RegisterLoyaltyDraw (during the draw that completed the day), but the
+                // announcement and the bonus draws themselves are deferred to here so they never
+                // overlap that draw's own animation.
+                string boosterId = GetString(item, "boosterId", "");
+                int streakDays = GetInt(item, "streakDays", 0);
+                int bonusCards = GetInt(item, "bonusCards", 0);
+                Dictionary<string, object> loyaltyCfg = Obj(server.ReadSettingsObject(), "loyaltyBonus");
+                SendChatMessageSafe(GetString(loyaltyCfg, "bonusMessage", DefaultLoyaltyBonusMessage)
+                    .Replace("@userName", "@" + user)
+                    .Replace("[SerienTage]", streakDays.ToString())
+                    .Replace("[BonusAnzahl]", bonusCards.ToString()));
+
+                object tiersObj;
+                if (item.TryGetValue("tiers", out tiersObj) && tiersObj is object[])
+                {
+                    foreach (object to in (object[])tiersObj)
+                    {
+                        Dictionary<string, object> tier = to as Dictionary<string, object>;
+                        if (tier == null) continue;
+                        int tierBonusCards = Math.Max(1, GetInt(tier, "bonusCards", 1));
+                        string minRarity = GetString(tier, "minRarity", "rare");
+                        for (int i = 0; i < tierBonusCards; i++)
+                        {
+                            Enqueue("draw", login, user, "loyalty", new Dictionary<string, object>
+                            {
+                                { "forcedBoosterId", boosterId },
+                                { "forceMinRarity", minRarity },
+                                { "loyaltyBonus", true }
+                            });
+                        }
                     }
                 }
                 return;
@@ -5345,7 +5555,18 @@ namespace CardPackWidgetApp
                     pityTotal = pityStreak + pityBank;
                     forcePity = pityEnabled && pityTotal >= pityThreshold;
 
-                    card = PickCardFromBooster(settings, boosterId, forcePity ? pityMinRarity : null);
+                    // A loyalty-bonus draw (see RegisterLoyaltyDraw/"loyaltybonusreached") carries
+                    // its own guaranteed floor rarity independent of the pity system - if both are
+                    // in play at once (unlikely, but not impossible), the higher of the two wins.
+                    string loyaltyFloorRarity = GetString(item, "forceMinRarity", "");
+                    string floorRarity = forcePity ? pityMinRarity : null;
+                    if (!String.IsNullOrEmpty(loyaltyFloorRarity) &&
+                        (floorRarity == null || CardPackServer.GetRarityRank(loyaltyFloorRarity) > CardPackServer.GetRarityRank(floorRarity)))
+                    {
+                        floorRarity = loyaltyFloorRarity;
+                    }
+
+                    card = PickCardFromBooster(settings, boosterId, floorRarity);
 
                     if (pityEnabled)
                     {
@@ -5370,6 +5591,7 @@ namespace CardPackWidgetApp
                 // draws once the goal is reached - RegisterCommunityGoalDraw no-ops while frozen)
                 // counts toward the shared progress bar.
                 RegisterCommunityGoalDraw(login, user);
+                if (!GetBool(item, "loyaltyBonus", false)) RegisterLoyaltyDraw(login, user, boosterId, settings);
 
                 string cardId = card != null ? GetString(card, "id", "") : "";
                 string cardTitle = card != null ? GetString(card, "title", "") : "";
@@ -6092,6 +6314,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> dustSet = Obj(cc, "dustSet");
             Dictionary<string, object> dustAll = Obj(cc, "dustAll");
             Dictionary<string, object> gift = Obj(cc, "gift");
+            Dictionary<string, object> compare = Obj(cc, "compare");
             Dictionary<string, object> collection = Obj(cc, "collection");
             Dictionary<string, object> trade = Obj(cc, "trade");
             Dictionary<string, object> tradeYes = Obj(cc, "tradeyes");
@@ -6167,6 +6390,11 @@ namespace CardPackWidgetApp
             if (MatchesCommand(text, gift))
             {
                 if (GetBool(gift, "enabled", false)) HandleGiftCommand(login, displayName, ArgsAfterCommand(text, gift), gift);
+                return;
+            }
+            if (MatchesCommand(text, compare))
+            {
+                if (GetBool(compare, "enabled", false)) HandleCompareCommand(login, displayName, ArgsAfterCommand(text, compare), compare);
                 return;
             }
             if (MatchesCommand(text, tradeYes))
@@ -7031,6 +7259,55 @@ namespace CardPackWidgetApp
                 // at the same time as an in-progress pack-opening/trade/battle/etc.
                 Enqueue("gift", login, displayName, "chat", giftEvent);
             }
+        }
+
+        // ---- Sammlungs-Vergleich: !vergleich @userB ----
+
+        private void HandleCompareCommand(string login, string displayName, string args, Dictionary<string, object> compareCfg)
+        {
+            string partnerRaw = args.Trim().TrimStart('@');
+            if (partnerRaw.Length == 0)
+            {
+                SendChatMessageSafe(GetString(compareCfg, "usageMessage", DefaultCompareUsage).Replace("@userName", "@" + displayName));
+                return;
+            }
+            string partnerLogin = partnerRaw.ToLowerInvariant();
+            if (partnerLogin == login.ToLowerInvariant())
+            {
+                SendChatMessageSafe(GetString(compareCfg, "selfMessage", DefaultCompareSelf).Replace("@userName", "@" + displayName));
+                return;
+            }
+            if (!server.UserExistsInCollections(partnerLogin))
+            {
+                SendChatMessageSafe(GetString(compareCfg, "userNotFoundMessage", DefaultCompareUserNotFound)
+                    .Replace("@userName", "@" + displayName)
+                    .Replace("[Nutzer]", partnerRaw));
+                return;
+            }
+
+            List<Dictionary<string, string>> ownedA = server.GetUserOwnedCardTypes(login);
+            List<Dictionary<string, string>> ownedB = server.GetUserOwnedCardTypes(partnerLogin);
+            HashSet<string> setA = new HashSet<string>();
+            foreach (Dictionary<string, string> entry in ownedA) setA.Add(entry["boosterId"] + "|" + entry["cardId"]);
+            HashSet<string> setB = new HashSet<string>();
+            foreach (Dictionary<string, string> entry in ownedB) setB.Add(entry["boosterId"] + "|" + entry["cardId"]);
+
+            int shared = 0;
+            foreach (string key in setA) if (setB.Contains(key)) shared++;
+            int exclusiveA = setA.Count - shared;
+            int exclusiveB = setB.Count - shared;
+
+            SendChatMessageSafe(GetString(compareCfg, "resultMessage", DefaultCompareResult)
+                .Replace("@userNameB", "@" + partnerRaw)
+                .Replace("@userNameA", "@" + displayName)
+                .Replace("@userName", "@" + displayName)
+                .Replace("[AnzahlA]", setA.Count.ToString())
+                .Replace("[AnzahlB]", setB.Count.ToString())
+                .Replace("[Gemeinsam]", shared.ToString())
+                .Replace("[ExklusivA]", exclusiveA.ToString())
+                .Replace("[ExklusivB]", exclusiveB.ToString()));
+
+            server.Log("commands", "info", displayName + " hat seine Sammlung mit " + partnerRaw + " verglichen.");
         }
 
         // ---- Trade system: !trade / !tradeyes / !tradeno ----
@@ -7946,9 +8223,29 @@ namespace CardPackWidgetApp
             // middle of its animations (and vice versa). See IsBracketEventBusy.
             if (IsBracketEventBusy())
             {
-                SendChatMessageSafe(GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
+                bool teamBattleAlreadyActive;
+                lock (teamBattleLock) { teamBattleAlreadyActive = activeTeamBattle != null; }
+                if (teamBattleAlreadyActive)
+                {
+                    SendChatMessageSafe(GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
+                        .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
+                    return "already_running";
+                }
+                // Blocked only by a TOURNAMENT (signup or still playing back its bracket), not by
+                // another Team-Kampf - rather than rejecting the redemption/command outright, queue
+                // it to auto-start for real the instant the tournament is completely done (see
+                // ResolvePendingTeamBattleIfIdle, polled from QueueLoop) instead of silently
+                // swallowing it.
+                lock (pendingTeamBattleLock)
+                {
+                    pendingTeamBattleRequest = new Dictionary<string, object>
+                    {
+                        { "login", login }, { "displayName", displayName }, { "source", source }
+                    };
+                }
+                SendChatMessageSafe(GetString(tbCfg, "queuedMessage", DefaultTeamBattleQueued)
                     .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
-                return "already_running";
+                return "queued";
             }
 
             bool alreadyRunning = false;

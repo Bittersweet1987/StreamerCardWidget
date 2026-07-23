@@ -222,6 +222,16 @@ async function runOpening(request = {}) {
     ${createRaritySummary(booster, collection, user, login)}
   `;
 
+  // Holo-Alarm: arm the card as a solid black silhouette BEFORE it's ever appended to the stage
+  // (i.e. before the first paint), so there's no flash of the fully-colored card during the
+  // pack-tear/slide mechanics that follow - it stays hidden until playHoloAlarmSequence runs.
+  const isHoloAlarm = (card.rarity || "common") === "holo" && settings.holoAlarm?.enabled !== false;
+  let holoCtl = null;
+  if (isHoloAlarm) {
+    const cardEl = scene.querySelector(".tcg-card");
+    if (cardEl) holoCtl = prepareHoloAlarm(cardEl);
+  }
+
   stage.append(scene);
   requestAnimationFrame(() => scene.classList.add("phase-enter"));
   playSound("open");
@@ -241,6 +251,12 @@ async function runOpening(request = {}) {
   scene.classList.add("phase-slide");
   playSound("reveal");
   await delay(2450);
+  if (holoCtl) {
+    // The card is now physically in position (slide finished) but still a black silhouette -
+    // the dramatic staged unveiling plays here, entirely before phase-reveal/the chat
+    // announcement, so nothing ever spoils the card ahead of what's actually on screen.
+    await playHoloAlarmSequence(holoCtl);
+  }
   scene.classList.add("phase-reveal");
   // The card (and its collection panel to the right) is now fully visible - this is the moment
   // the post-draw chat message and live-ticker entry should go out, not several seconds later
@@ -260,6 +276,149 @@ async function runOpening(request = {}) {
   scene.classList.add("phase-exit");
   await delay(700);
   scene.remove();
+}
+
+// ---- Holo-Alarm: dramatic staged reveal for cards drawn at Holo rarity ----
+// Instead of the normal instant reveal, the card starts completely black and unveils itself in
+// five stages (whole card black -> frame + holo shimmer -> body dissolves but art stays a black
+// silhouette -> the art itself dissolves in block by block -> name/stars/corner numbers fade in
+// last). Operates directly on the real card DOM already inserted by runOpening (not a clone), so
+// it's pixel-identical to the card the viewer is about to see.
+const HOLO_DISSOLVE_BLOCK = 5; // px, at the canvas's own (DPR-scaled) resolution
+const HOLO_DISSOLVE_BAND = 0.10; // each block's own local fade width, in progress units
+
+function prepareHoloAlarm(cardEl) {
+  cardEl.classList.add("holo-alarm-armed", "holo-alarm-breathe");
+  const artBox = cardEl.querySelector(".card-art");
+  const realImg = artBox?.querySelector("img");
+  const innerCover = document.createElement("div");
+  innerCover.className = "holo-inner-cover";
+  cardEl.appendChild(innerCover);
+  const shimmer = document.createElement("div");
+  shimmer.className = "holo-shimmer-ring";
+  cardEl.appendChild(shimmer);
+  const canvas = document.createElement("canvas");
+  canvas.className = "holo-art-cover";
+  artBox?.appendChild(canvas);
+  const footerEl = cardEl.querySelector(".card-footer");
+  const cornerEls = cardEl.querySelectorAll(".corner");
+  const holoGlitter = cardEl.querySelector(".holo-glitter");
+  // The real border color the card is meant to end up at - cardMarkup already set it as an
+  // inline custom property (--rarity-border); read the literal value back out so it can be
+  // animated FROM black TO it via a real (transitionable) border-color, not the custom property.
+  const targetBorderColor = cardEl.style.getPropertyValue("--rarity-border") || "#c9aef9";
+  return { cardEl, realImg, innerCover, shimmer, canvas, footerEl, cornerEls, holoGlitter, targetBorderColor };
+}
+
+function buildHoloDissolveState(ctl) {
+  const rect = ctl.canvas.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(1, Math.round(rect.width * dpr));
+  const h = Math.max(1, Math.round(rect.height * dpr));
+  ctl.canvas.width = w;
+  ctl.canvas.height = h;
+  const ctx = ctl.canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+  const iw = ctl.realImg.naturalWidth || 1, ih = ctl.realImg.naturalHeight || 1;
+  const scale = Math.max(w / iw, h / ih);
+  const dw = iw * scale, dh = ih * scale;
+  ctx.drawImage(ctl.realImg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  const shot = ctx.getImageData(0, 0, w, h);
+  const px = shot.data;
+  for (let i = 0; i < px.length; i += 4) { px[i] = 0; px[i + 1] = 0; px[i + 2] = 0; }
+  const blocksX = Math.ceil(w / HOLO_DISSOLVE_BLOCK), blocksY = Math.ceil(h / HOLO_DISSOLVE_BLOCK);
+  const order = new Float32Array(blocksX * blocksY);
+  // Thresholds are scaled into [0, 1-BAND] so every block finishes clearing exactly by the time
+  // progress reaches 1 - otherwise a block with a threshold near 1 could still be mid-fade at the
+  // "fully revealed" moment, leaving faint black speckles behind.
+  for (let i = 0; i < order.length; i++) order[i] = Math.random() * (1 - HOLO_DISSOLVE_BAND);
+  ctx.putImageData(shot, 0, 0);
+  return { ctx, blackData: shot, w, h, blocksX, blocksY, order };
+}
+
+function renderHoloDissolve(state, progress) {
+  const frame = new ImageData(new Uint8ClampedArray(state.blackData.data), state.w, state.h);
+  const px = frame.data;
+  const band = HOLO_DISSOLVE_BAND;
+  for (let by = 0; by < state.blocksY; by++) {
+    for (let bx = 0; bx < state.blocksX; bx++) {
+      const threshold = state.order[by * state.blocksX + bx];
+      let mul = 1;
+      if (progress >= threshold + band) mul = 0;
+      else if (progress > threshold) mul = 1 - (progress - threshold) / band;
+      if (mul === 1) continue;
+      const x0 = bx * HOLO_DISSOLVE_BLOCK, y0 = by * HOLO_DISSOLVE_BLOCK;
+      const x1 = Math.min(x0 + HOLO_DISSOLVE_BLOCK, state.w), y1 = Math.min(y0 + HOLO_DISSOLVE_BLOCK, state.h);
+      for (let y = y0; y < y1; y++) {
+        let idx = (y * state.w + x0) * 4 + 3;
+        for (let x = x0; x < x1; x++, idx += 4) px[idx] = Math.round(px[idx] * mul);
+      }
+    }
+  }
+  state.ctx.putImageData(frame, 0, 0);
+}
+
+// Slow at first, then noticeably faster through the final quarter - t^3 puts most of the
+// acceleration exactly there.
+function holoDissolveEase(t) { return t * t * t; }
+
+function holoDissolveOut(state, durationMs) {
+  return new Promise((resolve) => {
+    const start = performance.now();
+    function step(now) {
+      const t = Math.min(1, (now - start) / durationMs);
+      renderHoloDissolve(state, holoDissolveEase(t));
+      if (t < 1) requestAnimationFrame(step);
+      else { renderHoloDissolve(state, 1); resolve(); } // guarantee a fully-cleared final frame
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+async function playHoloAlarmSequence(ctl) {
+  if (!ctl.realImg) return;
+  if (!ctl.realImg.complete) {
+    await new Promise((resolve) => { ctl.realImg.addEventListener("load", resolve, { once: true }); ctl.realImg.addEventListener("error", resolve, { once: true }); });
+  }
+
+  // Phase 1: whole card is a solid black silhouette (border, body, art, text - all hidden).
+  await delay(1500);
+
+  // Phase 2: the frame itself becomes visible, with a holographic shimmer ring around it -
+  // body/art/text stay black/hidden.
+  ctl.cardEl.style.transition = "border-color 1200ms ease";
+  ctl.cardEl.style.borderColor = ctl.targetBorderColor;
+  ctl.shimmer.style.transition = "opacity 900ms ease";
+  ctl.shimmer.style.opacity = "1";
+  await delay(1500);
+
+  // Phase 3: the card body dissolves from black to its real look, but the art itself stays a
+  // black silhouette - so only the outline/shape of the artwork is visible, no color yet.
+  ctl.cardEl.classList.remove("holo-alarm-breathe");
+  ctl.innerCover.style.transition = "opacity 1500ms ease";
+  ctl.innerCover.style.opacity = "0";
+  if (ctl.holoGlitter) {
+    ctl.holoGlitter.style.transition = "opacity 1500ms ease";
+    // Explicit value (matching components.css's own default), not "" - clearing the inline
+    // override would just fall back to the ".holo-alarm-armed .holo-glitter{opacity:0}" class
+    // rule above, which is still in effect since the "armed" class is still on the card.
+    ctl.holoGlitter.style.opacity = "0.55";
+  }
+  const dissolveState = buildHoloDissolveState(ctl);
+  await delay(1650);
+
+  // Phase 4: the artwork dissolves from a black silhouette into full color, block by block.
+  await holoDissolveOut(dissolveState, 4200);
+
+  // Phase 5: only now do title, stars and the corner numbers fade in.
+  if (ctl.footerEl) {
+    ctl.footerEl.style.transition = "opacity 500ms ease";
+    ctl.footerEl.style.opacity = "1";
+  }
+  ctl.cornerEls.forEach((c) => { c.style.transition = "opacity 500ms ease"; c.style.opacity = "1"; });
+  ctl.shimmer.style.transition = "opacity 700ms ease";
+  ctl.shimmer.style.opacity = ".4";
+  await delay(700);
 }
 
 function packFace(booster) {

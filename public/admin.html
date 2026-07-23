@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1784744807">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1784784467">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -577,6 +577,7 @@
               <a href="#jn-cc-dustset" data-i18n="cc-dustset-title">Dust-Auswahl-Befehl</a>
               <a href="#jn-cc-dustall" data-i18n="cc-dustall-title">Dust-Alle-Befehl</a>
               <a href="#cc-section-gift" data-i18n="cc-gift-title">Geschenk-Befehl</a>
+              <a href="#cc-section-compare" data-i18n="cc-compare-title">Vergleichs-Befehl</a>
               <a href="#cc-section-trade" data-i18n="cc-trade-title">Tausch-Befehl</a>
               <a href="#cc-section-tradeyes" data-i18n="cc-tradeyes-title">Tausch-Annahme-Befehl</a>
               <a href="#cc-section-tradeno" data-i18n="cc-tradeno-title">Tausch-Ablehnungs-Befehl</a>
@@ -1276,6 +1277,80 @@
               </div>
             </article>
 
+            <article class="reward-entry command-card" id="cc-section-compare">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-compare-eyebrow">Vergleich</p>
+                  <h3 data-i18n="cc-compare-title">Vergleichs-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-compare-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-compare-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-compare-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-compare-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-compare-hint">Vergleicht die eigene Sammlung mit der eines anderen Zuschauers: "!vergleich @Name". Zeigt im Chat, wie viele Kartenarten beide besitzen, gemeinsam haben und jeweils exklusiv besitzen.</p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-compare-usage">Nachricht bei falscher Nutzung</span>
+                    <div class="var-chips" data-target="cc-compare-usage-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-compare-usage-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-compare-usernotfound">Nachricht bei unbekanntem Nutzer</span>
+                    <div class="var-chips" data-target="cc-compare-usernotfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Nutzer]">[Nutzer]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-compare-usernotfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-compare-self">Nachricht bei Selbst-Vergleich</span>
+                    <div class="var-chips" data-target="cc-compare-self-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-compare-self-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-compare-result">Nachricht mit Vergleichs-Ergebnis</span>
+                    <div class="var-chips" data-target="cc-compare-result-message">
+                      <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                      <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                      <button class="var-chip" type="button" data-insert="[AnzahlA]">[AnzahlA]</button>
+                      <button class="var-chip" type="button" data-insert="[AnzahlB]">[AnzahlB]</button>
+                      <button class="var-chip" type="button" data-insert="[Gemeinsam]">[Gemeinsam]</button>
+                      <button class="var-chip" type="button" data-insert="[ExklusivA]">[ExklusivA]</button>
+                      <button class="var-chip" type="button" data-insert="[ExklusivB]">[ExklusivB]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-compare-result-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
             <article class="reward-entry command-card" id="cc-section-trade">
               <header class="command-card-head">
                 <div>
@@ -1921,6 +1996,7 @@
               <a href="#jn-sub-belohnungen-design" data-i18n="subrewards-title">Sub-Belohnungen</a>
               <a href="#jn-bits-belohnung-design" data-i18n="bits-title">Bits-Belohnung</a>
               <a href="#jn-kampfstaerke-je-seltenheit-design">Kampfstärke je Seltenheit</a>
+              <a href="#jn-treue-bonus-design" data-i18n="loyaltybonus-title">Treue-Bonus</a>
             </nav>
             <section class="tool-panel" id="jn-farben-und-anzeige-design">
             <div class="section-heading">
@@ -2147,6 +2223,39 @@
             </div>
           </section>
 
+          <section class="tool-panel" id="jn-treue-bonus-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="loyaltybonus-eyebrow">Treue</p>
+                <h2 data-i18n="loyaltybonus-title">Treue-Bonus</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="loyaltybonus-hint">Belohnt Zuschauer, die an mehreren Tagen in Folge Kartenpacks öffnen. Sobald ein Zuschauer an einem Tag die eingestellte Mindestanzahl Ziehungen erreicht, zählt das als "Serientag". Jede Stufe unten feuert automatisch, sobald die Serie ein Vielfaches ihrer Tage-Zahl erreicht (z. B. eine Stufe bei 5 Tagen feuert an Tag 5, 10, 15, ... - zusätzlich zu jeder Stufe, die ebenfalls an diesem Tag greift).</p>
+            <label class="switch-row compact-switch">
+              <input id="loyaltybonus-enabled" type="checkbox">
+              <span data-i18n="label-loyaltybonus-enabled">Treue-Bonus aktiviert</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-loyaltybonus-cards-per-day">Ziehungen pro Tag für einen Serientag<input id="loyaltybonus-cards-per-day" type="number" min="1" step="1"></label>
+            </div>
+            <p class="hint" data-i18n="loyaltybonus-stages-hint">Jede Stufe hat eine eigene Tage-Zahl, eine eigene Bonus-Kartenanzahl und eine eigene garantierte Mindest-Seltenheit für diese Bonus-Karten.</p>
+            <div id="loyaltybonus-tiers" class="communitygoal-stage-list"></div>
+            <div class="button-row">
+              <button class="secondary-button" id="loyaltybonus-add-tier" type="button" data-i18n="btn-loyaltybonus-add-tier">+ Stufe hinzufügen</button>
+            </div>
+            <div class="message-field">
+              <div class="message-field-head">
+                <span class="message-field-label" data-i18n="label-loyaltybonus-message">Ankündigungs-Nachricht im Chat</span>
+                <div class="var-chips" data-target="loyaltybonus-message">
+                  <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                  <button class="var-chip" type="button" data-insert="[SerienTage]">[SerienTage]</button>
+                  <button class="var-chip" type="button" data-insert="[BonusAnzahl]">[BonusAnzahl]</button>
+                </div>
+              </div>
+              <textarea id="loyaltybonus-message" rows="2"></textarea>
+            </div>
+          </section>
+
         </section>
 
         <section class="tab-panel" data-panel="animations">
@@ -2176,6 +2285,11 @@
               <label data-i18n="label-cooldown-seconds">Cooldown in Sekunden<input id="cooldown-seconds" type="number" min="0" step="0.1"></label>
               <label data-i18n="label-backs-before-reveal">Verdeckte Karten vor Reveal<input id="backs-before-reveal" type="number" min="0" max="8" step="1"></label>
             </div>
+            <label class="switch-row">
+              <input id="holo-alarm-enabled" type="checkbox">
+              <span data-i18n="label-holo-alarm-enabled">Holo-Alarm aktiviert</span>
+            </label>
+            <p class="hint" data-i18n="holo-alarm-hint">Bei einer Holo-Ziehung ersetzt eine deutlich längere, dramatische Enthüllung (Karte startet komplett schwarz, Rahmen mit Holo-Schimmer, Umriss, Bild löst sich langsam auf, Name/Sterne zuletzt) die normale sofortige Aufdeckung. Gilt nur für Holo-Karten - alle anderen Seltenheiten sind unverändert.</p>
             <div id="overlay-layout-draw"></div>
           </section>
 
@@ -2881,7 +2995,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784744807"></script>
-    <script type="module" src="/assets/js/admin.js?v=1784744807"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784784467"></script>
+    <script type="module" src="/assets/js/admin.js?v=1784784467"></script>
   </body>
 </html>

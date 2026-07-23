@@ -1,4 +1,4 @@
-import {
+﻿import {
   addLog,
   clearLogs,
   connectEventStream,
@@ -41,7 +41,7 @@ import {
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1784744807";
+} from "./api.js?v=1784784467";
 import {
   applyTheme,
   autoImagePosition,
@@ -69,7 +69,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1784744807";
+} from "./render.js?v=1784784467";
 
 let settings;
 let selectedCardId;
@@ -2054,6 +2054,66 @@ const I18N = {
     es: "Meta comunitaria reiniciada.",
     th: "รีเซ็ตเป้าหมายชุมชนแล้ว"
   },
+  "loyaltybonus-eyebrow": { de: "Treue", en: "Loyalty", fr: "Fidélité", es: "Fidelidad", th: "ความภักดี" },
+  "loyaltybonus-title": { de: "Treue-Bonus", en: "Loyalty bonus",
+    fr: "Bonus de fidélité",
+    es: "Bono de fidelidad",
+    th: "โบนัสความภักดี"
+  },
+  "loyaltybonus-hint": {
+    de: "Belohnt Zuschauer, die an mehreren Tagen in Folge Kartenpacks öffnen. Sobald ein Zuschauer an einem Tag die eingestellte Mindestanzahl Ziehungen erreicht, zählt das als \"Serientag\". Jede Stufe unten feuert automatisch, sobald die Serie ein Vielfaches ihrer Tage-Zahl erreicht (z. B. eine Stufe bei 5 Tagen feuert an Tag 5, 10, 15, ... - zusätzlich zu jeder Stufe, die ebenfalls an diesem Tag greift).",
+    en: "Rewards viewers who open boosters on multiple consecutive days. Once a viewer reaches the configured minimum number of draws on a given day, that counts as a \"streak day\". Each tier below fires automatically once the streak is an exact multiple of its day count (e.g. a 5-day tier fires on day 5, 10, 15, ... - in addition to any other tier that also applies on that day).",
+    fr: "Récompense les spectateurs qui ouvrent des boosters sur plusieurs jours consécutifs. Dès qu'un spectateur atteint le nombre minimum de tirages configuré en une journée, cela compte comme un \"jour de série\". Chaque palier ci-dessous se déclenche automatiquement dès que la série est un multiple exact de son nombre de jours (par ex. un palier à 5 jours se déclenche aux jours 5, 10, 15, ... - en plus de tout autre palier qui s'applique aussi ce jour-là).",
+    es: "Recompensa a los espectadores que abren sobres en varios días consecutivos. En cuanto un espectador alcanza el número mínimo de tiradas configurado en un día, eso cuenta como un \"día de racha\". Cada nivel a continuación se activa automáticamente cuando la racha es un múltiplo exacto de su número de días (por ejemplo, un nivel de 5 días se activa en los días 5, 10, 15, ... - además de cualquier otro nivel que también aplique ese día).",
+    th: "ให้รางวัลผู้ชมที่เปิดบูสเตอร์หลายวันติดต่อกัน เมื่อผู้ชมถึงจำนวนการจับขั้นต่ำที่ตั้งไว้ในวันนั้น จะนับเป็น \"วันต่อเนื่อง\" แต่ละระดับด้านล่างจะทำงานอัตโนมัติเมื่อวันต่อเนื่องเป็นจำนวนเท่าของจำนวนวันของระดับนั้น (เช่น ระดับ 5 วันจะทำงานในวันที่ 5, 10, 15, ... นอกเหนือจากระดับอื่นที่ใช้ได้ในวันนั้นด้วย)"
+  },
+  "label-loyaltybonus-enabled": { de: "Treue-Bonus aktiviert", en: "Loyalty bonus enabled",
+    fr: "Bonus de fidélité activé",
+    es: "Bono de fidelidad activado",
+    th: "เปิดใช้งานโบนัสความภักดี"
+  },
+  "label-loyaltybonus-cards-per-day": { de: "Ziehungen pro Tag für einen Serientag", en: "Draws per day for a streak day",
+    fr: "Tirages par jour pour un jour de série",
+    es: "Tiradas por día para un día de racha",
+    th: "จำนวนการจับต่อวันสำหรับวันต่อเนื่อง"
+  },
+  "loyaltybonus-stages-hint": {
+    de: "Jede Stufe hat eine eigene Tage-Zahl, eine eigene Bonus-Kartenanzahl und eine eigene garantierte Mindest-Seltenheit für diese Bonus-Karten.",
+    en: "Each tier has its own day count, its own bonus-card count and its own guaranteed minimum rarity for those bonus cards.",
+    fr: "Chaque palier a son propre nombre de jours, son propre nombre de cartes bonus et sa propre rareté minimale garantie pour ces cartes bonus.",
+    es: "Cada nivel tiene su propio número de días, su propia cantidad de cartas bonus y su propia rareza mínima garantizada para esas cartas bonus.",
+    th: "แต่ละระดับมีจำนวนวัน จำนวนการ์ดโบนัส และระดับความหายากขั้นต่ำที่รับประกันสำหรับการ์ดโบนัสเหล่านั้นของตัวเอง"
+  },
+  "label-loyaltybonus-tier": { de: "Stufe", en: "Tier",
+    fr: "Palier",
+    es: "Nivel",
+    th: "ระดับ"
+  },
+  "label-loyaltybonus-tier-days": { de: "Tage in Folge", en: "Consecutive days",
+    fr: "Jours consécutifs",
+    es: "Días consecutivos",
+    th: "จำนวนวันติดต่อกัน"
+  },
+  "label-loyaltybonus-tier-bonus-cards": { de: "Bonus-Ziehungen", en: "Bonus draws",
+    fr: "Tirages bonus",
+    es: "Tiradas bonus",
+    th: "การจับโบนัส"
+  },
+  "label-loyaltybonus-tier-min-rarity": { de: "Garantierte Mindest-Seltenheit", en: "Guaranteed minimum rarity",
+    fr: "Rareté minimale garantie",
+    es: "Rareza mínima garantizada",
+    th: "ความหายากขั้นต่ำที่รับประกัน"
+  },
+  "btn-loyaltybonus-add-tier": { de: "+ Stufe hinzufügen", en: "+ Add tier",
+    fr: "+ Ajouter un palier",
+    es: "+ Añadir nivel",
+    th: "+ เพิ่มระดับ"
+  },
+  "label-loyaltybonus-message": { de: "Ankündigungs-Nachricht im Chat", en: "Announcement message in chat",
+    fr: "Message d'annonce dans le chat",
+    es: "Mensaje de anuncio en el chat",
+    th: "ข้อความประกาศในแชท"
+  },
   "label-communitygoal-reached": { de: "Ziel erreicht!", en: "Goal reached!",
     fr: "Objectif atteint !",
     es: "¡Meta alcanzada!",
@@ -3094,6 +3154,18 @@ const I18N = {
     es: "Cartas boca abajo antes de revelar",
     th: "การ์ดคว่ำก่อนเปิดเผย"
   },
+  "label-holo-alarm-enabled": { de: "Holo-Alarm aktiviert", en: "Holo alarm enabled",
+    fr: "Alarme Holo activée",
+    es: "Alarma Holo activada",
+    th: "เปิดใช้งานสัญญาณเตือนโฮโล"
+  },
+  "holo-alarm-hint": {
+    de: "Bei einer Holo-Ziehung ersetzt eine deutlich längere, dramatische Enthüllung (Karte startet komplett schwarz, Rahmen mit Holo-Schimmer, Umriss, Bild löst sich langsam auf, Name/Sterne zuletzt) die normale sofortige Aufdeckung. Gilt nur für Holo-Karten - alle anderen Seltenheiten sind unverändert.",
+    en: "For a Holo draw, a much longer, dramatic reveal (card starts completely black, frame with holo shimmer, outline, artwork slowly dissolves in, name/stars last) replaces the normal instant reveal. Only applies to Holo cards - every other rarity is unchanged.",
+    fr: "Lors d'un tirage Holo, une révélation bien plus longue et spectaculaire (la carte démarre entièrement noire, cadre avec chatoiement holographique, contour, l'illustration se dissout lentement, nom/étoiles en dernier) remplace la révélation instantanée normale. Ne s'applique qu'aux cartes Holo - toutes les autres raretés restent inchangées.",
+    es: "En una tirada Holo, una revelación mucho más larga y dramática (la carta empieza completamente negra, marco con destello holográfico, contorno, la ilustración se disuelve lentamente, nombre/estrellas al final) sustituye a la revelación instantánea normal. Solo se aplica a cartas Holo - el resto de rarezas no cambian.",
+    th: "เมื่อจับได้การ์ดโฮโล การเปิดเผยแบบดราม่าที่ยาวนานกว่ามาก (การ์ดเริ่มต้นเป็นสีดำสนิท กรอบมีประกายโฮโล เส้นขอบ ภาพค่อยๆ ปรากฏขึ้น ชื่อ/ดาวปรากฏสุดท้าย) จะแทนที่การเปิดเผยแบบทันทีตามปกติ มีผลเฉพาะการ์ดโฮโลเท่านั้น - ความหายากอื่นๆ ไม่เปลี่ยนแปลง"
+  },
   "showcase-eyebrow": { de: "Sammlung", en: "Collection",
     fr: "Collection",
     es: "Colección",
@@ -3375,6 +3447,39 @@ const I18N = {
     fr: "Message en cas de succès",
     es: "Mensaje de éxito",
     th: "ข้อความเมื่อสำเร็จ"
+  },
+  "cc-compare-eyebrow": { de: "Vergleich", en: "Comparison", fr: "Comparaison", es: "Comparación", th: "การเปรียบเทียบ" },
+  "cc-compare-title": { de: "Vergleichs-Befehl", en: "Comparison command",
+    fr: "Commande de comparaison",
+    es: "Comando de comparación",
+    th: "คำสั่งเปรียบเทียบ"
+  },
+  "cc-compare-hint": {
+    de: "Vergleicht die eigene Sammlung mit der eines anderen Zuschauers: \"!vergleich @Name\". Zeigt im Chat, wie viele Kartenarten beide besitzen, gemeinsam haben und jeweils exklusiv besitzen.",
+    en: "Compares the caller's collection with another viewer's: \"!vergleich @name\". Shows in chat how many card types both own, share, and exclusively own.",
+    fr: "Compare la collection de l'appelant avec celle d'un autre spectateur : \"!vergleich @nom\". Affiche dans le chat combien de types de cartes chacun possède, partage et possède exclusivement.",
+    es: "Compara la colección del usuario con la de otro espectador: \"!vergleich @nombre\". Muestra en el chat cuántos tipos de cartas tienen ambos, comparten y poseen exclusivamente.",
+    th: "เปรียบเทียบคอลเลกชันของผู้เรียกกับผู้ชมคนอื่น: \"!vergleich @ชื่อ\" แสดงในแชทว่าทั้งสองมีการ์ดกี่ประเภท มีร่วมกันเท่าไหร่ และมีเฉพาะตัวเองเท่าไหร่"
+  },
+  "label-cc-compare-usage": { de: "Nachricht bei falscher Nutzung", en: "Message for incorrect usage",
+    fr: "Message en cas d'utilisation incorrecte",
+    es: "Mensaje por uso incorrecto",
+    th: "ข้อความเมื่อใช้งานผิด"
+  },
+  "label-cc-compare-usernotfound": { de: "Nachricht bei unbekanntem Nutzer", en: "Message for unknown user",
+    fr: "Message pour utilisateur inconnu",
+    es: "Mensaje para usuario desconocido",
+    th: "ข้อความเมื่อไม่รู้จักผู้ใช้"
+  },
+  "label-cc-compare-self": { de: "Nachricht bei Selbst-Vergleich", en: "Message for comparing yourself",
+    fr: "Message pour une comparaison avec soi-même",
+    es: "Mensaje al compararse consigo mismo",
+    th: "ข้อความเมื่อเปรียบเทียบกับตัวเอง"
+  },
+  "label-cc-compare-result": { de: "Nachricht mit Vergleichs-Ergebnis", en: "Message with the comparison result",
+    fr: "Message avec le résultat de la comparaison",
+    es: "Mensaje con el resultado de la comparación",
+    th: "ข้อความพร้อมผลการเปรียบเทียบ"
   },
   "label-cc-helptext": { de: "Kurzbeschreibung (für Auto-Hilfe-Nachricht)", en: "Short description (for auto-help message)",
     fr: "Brève description (pour le message d'aide automatique)",
@@ -6059,6 +6164,15 @@ function hydrateChatCommands() {
   $("#cc-gift-self-message").value = cc.gift.selfGiftMessage || "";
   $("#cc-gift-success-message").value = cc.gift.successMessage || "";
   $("#cc-gift-helptext").value = cc.gift.helpText || "";
+
+  $("#cc-compare-enabled").checked = cc.compare.enabled === true;
+  $("#cc-compare-prefix").value = cc.compare.prefix || "!";
+  $("#cc-compare-command").value = cc.compare.command || "vergleich";
+  $("#cc-compare-helptext").value = cc.compare.helpText || "";
+  $("#cc-compare-usage-message").value = cc.compare.usageMessage || "";
+  $("#cc-compare-usernotfound-message").value = cc.compare.userNotFoundMessage || "";
+  $("#cc-compare-self-message").value = cc.compare.selfMessage || "";
+  $("#cc-compare-result-message").value = cc.compare.resultMessage || "";
   // Same underlying value as "#showcase-seconds" in Kanalpunkte (settings.showcase.secondsPerBooster)
   // - the showcase overlay's page-flip timing is one setting regardless of which trigger (channel
   // point reward or chat command) started it, so both fields must always show/write the same number.
@@ -6270,6 +6384,15 @@ function readChatCommandsFromForm() {
   cc.gift.selfGiftMessage = $("#cc-gift-self-message").value;
   cc.gift.successMessage = $("#cc-gift-success-message").value;
   cc.gift.helpText = $("#cc-gift-helptext").value;
+
+  cc.compare.enabled = $("#cc-compare-enabled").checked;
+  cc.compare.prefix = $("#cc-compare-prefix").value || "!";
+  cc.compare.command = $("#cc-compare-command").value.trim() || "vergleich";
+  cc.compare.helpText = $("#cc-compare-helptext").value;
+  cc.compare.usageMessage = $("#cc-compare-usage-message").value;
+  cc.compare.userNotFoundMessage = $("#cc-compare-usernotfound-message").value;
+  cc.compare.selfMessage = $("#cc-compare-self-message").value;
+  cc.compare.resultMessage = $("#cc-compare-result-message").value;
 
   cc.trade ||= {};
   cc.trade.enabled = $("#cc-trade-enabled").checked;
@@ -6633,6 +6756,11 @@ function hydrateDesign() {
   $("#communitygoal-enabled").checked = settings.communityGoal?.enabled === true;
   $("#communitygoal-label").value = settings.communityGoal?.label || "";
   renderCommunityGoalStages();
+
+  $("#loyaltybonus-enabled").checked = settings.loyaltyBonus?.enabled === true;
+  $("#loyaltybonus-cards-per-day").value = settings.loyaltyBonus?.cardsPerDay ?? 10;
+  $("#loyaltybonus-message").value = settings.loyaltyBonus?.bonusMessage || "";
+  renderLoyaltyTiers();
   refreshCommunityGoalProgress();
   $("#tournament-enabled").checked = settings.tournament?.enabled === true;
   $("#tournament-min-participants").value = settings.tournament?.minParticipants ?? 3;
@@ -6672,6 +6800,7 @@ function hydrateDesign() {
   $("#reveal-seconds").value = settings.behavior.revealSeconds ?? 3.2;
   $("#cooldown-seconds").value = settings.behavior.cooldownSeconds ?? 0.8;
   $("#backs-before-reveal").value = settings.behavior.cardBacksBeforeReveal ?? 2;
+  $("#holo-alarm-enabled").checked = settings.holoAlarm?.enabled !== false;
   $("#obs-enabled").checked = settings.obs?.enabled === true;
   $("#obs-host").value = settings.obs?.host || "127.0.0.1";
   $("#obs-port").value = settings.obs?.port || 4455;
@@ -6860,6 +6989,55 @@ function renderCommunityGoalStages() {
   });
   const addButton = $("#communitygoal-add-stage");
   if (addButton) addButton.disabled = stages.length >= 5;
+}
+
+const LOYALTY_TIER_RARITIES = ["uncommon", "rare", "epic", "legendary", "holo"];
+
+// Rebuilds the tier rows from settings.loyaltyBonus.tiers. Each row's inputs write straight
+// back into that array; called on hydrate and after every add/remove. Mirrors
+// renderCommunityGoalStages' pattern.
+function renderLoyaltyTiers() {
+  const container = $("#loyaltybonus-tiers");
+  if (!container) return;
+  const tiers = settings.loyaltyBonus?.tiers || [];
+  container.innerHTML = tiers.map((tier, index) => `
+    <article class="reward-entry command-card" data-tier-index="${index}">
+      <header class="command-card-head">
+        <h3>${t("label-loyaltybonus-tier")} ${index + 1}</h3>
+        <button class="danger-button" type="button" data-tier-remove="${index}" ${tiers.length <= 1 ? "disabled" : ""}>&times;</button>
+      </header>
+      <div class="field-group">
+        <div class="form-grid">
+          <label data-i18n="label-loyaltybonus-tier-days">${t("label-loyaltybonus-tier-days")}<input type="number" min="1" step="1" data-tier-field="days" data-tier-index="${index}" value="${tier.days}"></label>
+          <label data-i18n="label-loyaltybonus-tier-bonus-cards">${t("label-loyaltybonus-tier-bonus-cards")}<input type="number" min="1" step="1" data-tier-field="bonusCards" data-tier-index="${index}" value="${tier.bonusCards}"></label>
+          <label data-i18n="label-loyaltybonus-tier-min-rarity">${t("label-loyaltybonus-tier-min-rarity")}
+            <select data-tier-field="minRarity" data-tier-index="${index}">
+              ${LOYALTY_TIER_RARITIES.map((id) => `<option value="${id}" ${tier.minRarity === id ? "selected" : ""}>${t(`rarity-${id}`)}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+      </div>
+    </article>
+  `).join("");
+  container.querySelectorAll("[data-tier-field]").forEach((field) => {
+    const eventName = field.tagName === "SELECT" ? "change" : "input";
+    field.addEventListener(eventName, (event) => {
+      const index = Number(event.target.dataset.tierIndex);
+      const key = event.target.dataset.tierField;
+      const tier = settings.loyaltyBonus.tiers[index];
+      if (!tier) return;
+      tier[key] = key === "minRarity" ? event.target.value : Math.max(1, Math.round(Number(event.target.value) || 1));
+      scheduleAutoSave();
+    });
+  });
+  container.querySelectorAll("[data-tier-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (settings.loyaltyBonus.tiers.length <= 1) return;
+      settings.loyaltyBonus.tiers.splice(Number(button.dataset.tierRemove), 1);
+      renderLoyaltyTiers();
+      scheduleAutoSave();
+    });
+  });
 }
 
 async function refreshTournamentStatus() {
@@ -7285,6 +7463,29 @@ function bindDesign() {
     await refreshCommunityGoalProgress();
     showNotice(t("notice-communitygoal-reset"));
   });
+  $("#loyaltybonus-enabled").addEventListener("change", (event) => {
+    settings.loyaltyBonus ||= {};
+    settings.loyaltyBonus.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#loyaltybonus-cards-per-day").addEventListener("input", (event) => {
+    settings.loyaltyBonus ||= {};
+    settings.loyaltyBonus.cardsPerDay = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#loyaltybonus-message").addEventListener("input", (event) => {
+    settings.loyaltyBonus ||= {};
+    settings.loyaltyBonus.bonusMessage = event.target.value;
+    scheduleAutoSave();
+  });
+  $("#loyaltybonus-add-tier").addEventListener("click", () => {
+    settings.loyaltyBonus ||= {};
+    settings.loyaltyBonus.tiers ||= [];
+    const lastDays = settings.loyaltyBonus.tiers[settings.loyaltyBonus.tiers.length - 1]?.days || 0;
+    settings.loyaltyBonus.tiers.push({ days: lastDays + 5, bonusCards: 1, minRarity: "rare" });
+    renderLoyaltyTiers();
+    scheduleAutoSave();
+  });
   $("#tournament-enabled").addEventListener("change", (event) => {
     settings.tournament ||= {};
     settings.tournament.enabled = event.target.checked;
@@ -7494,6 +7695,11 @@ function bindDesign() {
       settings.behavior[field] = Number(event.target.value);
     });
   }
+  $("#holo-alarm-enabled").addEventListener("change", (event) => {
+    settings.holoAlarm ||= {};
+    settings.holoAlarm.enabled = event.target.checked;
+    scheduleAutoSave();
+  });
   const obsFields = {
     "#obs-enabled": ["enabled", "checkbox"],
     "#obs-host": ["host"],

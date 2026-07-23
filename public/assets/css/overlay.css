@@ -394,3 +394,70 @@ body {
     right: 4px;
   }
 }
+
+/* ---- Holo-Alarm: dramatic staged reveal for cards drawn at Holo rarity (see overlay.js's
+   prepareHoloAlarm/playHoloAlarmSequence) - replaces the instant reveal with silhouette ->
+   holo-shimmer frame -> outline -> pixel-dissolve -> name/stars, all layered directly on top of
+   the real card markup rather than a separate copy, so it's pixel-identical to the card that's
+   about to be shown. ---- */
+/* Deliberately no !important - once phase 2 sets cardEl.style.borderColor inline (see
+   playHoloAlarmSequence), that inline style must be able to win over this class rule so the
+   border can actually transition to the card's real rarity color. */
+.holo-alarm-armed { border-color: #000; }
+.holo-alarm-armed .holo-glitter,
+.holo-alarm-armed .card-footer,
+.holo-alarm-armed .corner {
+  opacity: 0;
+  transition: opacity .6s ease;
+}
+.holo-alarm-armed.holo-alarm-breathe {
+  animation: holo-alarm-breathe 1.7s ease-in-out infinite;
+}
+@keyframes holo-alarm-breathe {
+  0%, 100% { box-shadow: 0 22px 55px rgba(0, 0, 0, .6); }
+  50% { box-shadow: 0 22px 70px rgba(185, 140, 255, .28); }
+}
+
+.holo-inner-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #050508;
+  opacity: 1;
+  transition: opacity 1.6s ease;
+  pointer-events: none;
+}
+
+/* A <canvas> the same size as .card-art, painted with a pure-black silhouette of the real image
+   (RGB zeroed, alpha kept - a transparent PNG background shows the real, already-colored image
+   beneath immediately instead of a plain black rectangle), then dissolved away block by block
+   instead of a hard wipe edge - see buildHoloDissolveState/renderHoloDissolve in overlay.js. */
+.holo-art-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.holo-shimmer-ring {
+  position: absolute;
+  inset: -6px;
+  z-index: 2;
+  border-radius: 30px;
+  padding: 3px;
+  opacity: 0;
+  background: conic-gradient(from 0deg, transparent, #ff9bd6, #9bb8ff, #7cf0d0, #ffe08a, #d29bff, transparent 70%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: holo-shimmer-spin 2.6s linear infinite;
+  transition: opacity 1s ease;
+  pointer-events: none;
+}
+@keyframes holo-shimmer-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .holo-alarm-armed.holo-alarm-breathe,
+  .holo-shimmer-ring { animation: none !important; }
+}

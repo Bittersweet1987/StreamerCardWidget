@@ -296,6 +296,13 @@ const DEFAULT_MESSAGES = {
     es: "🎉 ¡Meta comunitaria alcanzada ([Ziel] tiradas)! Todos los participantes reciben automáticamente [Karten] sobres extra.",
     th: "🎉 บรรลุเป้าหมายชุมชนแล้ว ([Ziel] ครั้ง)! ผู้เข้าร่วมทุกคนจะได้รับบูสเตอร์โบนัสอัตโนมัติ [Karten] ใบ"
   },
+  loyaltyBonusMessage: {
+    de: "@userName, Treue-Bonus! 🔥 [SerienTage] Tage in Folge - [BonusAnzahl] Bonus-Ziehung(en) unterwegs!",
+    en: "@userName, loyalty bonus! 🔥 [SerienTage] days in a row - [BonusAnzahl] bonus draw(s) incoming!",
+    fr: "@userName, bonus de fidélité ! 🔥 [SerienTage] jours d'affilée - [BonusAnzahl] tirage(s) bonus en approche !",
+    es: "¡@userName, bono de fidelidad! 🔥 [SerienTage] días seguidos - ¡[BonusAnzahl] tirada(s) bonus en camino!",
+    th: "@userName โบนัสความภักดี! 🔥 ติดต่อกัน [SerienTage] วัน - กำลังจะได้รับ [BonusAnzahl] การจับโบนัส!"
+  },
   helpPack: {
     de: "zieht ein zufälliges Kartenpack",
     en: "draws a random card pack",
@@ -351,6 +358,13 @@ const DEFAULT_MESSAGES = {
     fr: "offre une carte à un autre spectateur",
     es: "regala una carta a otro espectador",
     th: "มอบการ์ดให้ผู้ชมคนอื่น"
+  },
+  helpCompare: {
+    de: "vergleicht deine Sammlung mit der eines anderen Zuschauers",
+    en: "compares your collection with another viewer's",
+    fr: "compare ta collection avec celle d'un autre spectateur",
+    es: "compara tu colección con la de otro espectador",
+    th: "เปรียบเทียบคอลเลกชันของคุณกับผู้ชมคนอื่น"
   },
   helpCollection: {
     de: "zeigt deine Kartensammlung",
@@ -590,6 +604,34 @@ const DEFAULT_MESSAGES = {
     es: "¡@userName regaló [Kartenname] a @userNameB!",
     th: "@userName มอบการ์ด [Kartenname] ให้ @userNameB แล้ว!"
   },
+  compareUsage: {
+    de: "@userName, Nutzung: !vergleich @userNameB",
+    en: "@userName, usage: !vergleich @userNameB",
+    fr: "@userName, utilisation : !vergleich @userNameB",
+    es: "@userName, uso: !vergleich @userNameB",
+    th: "@userName วิธีใช้: !vergleich @userNameB"
+  },
+  compareUserNotFound: {
+    de: "@userName, der Nutzer [Nutzer] wurde nicht gefunden.",
+    en: "@userName, the user [Nutzer] was not found.",
+    fr: "@userName, l'utilisateur [Nutzer] est introuvable.",
+    es: "@userName, no se encontró al usuario [Nutzer].",
+    th: "@userName ไม่พบผู้ใช้ [Nutzer]"
+  },
+  compareSelf: {
+    de: "@userName, du kannst dich nicht mit dir selbst vergleichen.",
+    en: "@userName, you can't compare yourself with yourself.",
+    fr: "@userName, tu ne peux pas te comparer à toi-même.",
+    es: "@userName, no puedes compararte contigo mismo.",
+    th: "@userName คุณไม่สามารถเปรียบเทียบกับตัวเองได้"
+  },
+  compareResult: {
+    de: "@userNameA hat [AnzahlA] verschiedene Karten, @userNameB hat [AnzahlB]. Gemeinsam: [Gemeinsam]. Nur bei @userNameA: [ExklusivA]. Nur bei @userNameB: [ExklusivB].",
+    en: "@userNameA has [AnzahlA] different cards, @userNameB has [AnzahlB]. Shared: [Gemeinsam]. Only @userNameA: [ExklusivA]. Only @userNameB: [ExklusivB].",
+    fr: "@userNameA a [AnzahlA] cartes différentes, @userNameB en a [AnzahlB]. En commun : [Gemeinsam]. Seulement @userNameA : [ExklusivA]. Seulement @userNameB : [ExklusivB].",
+    es: "@userNameA tiene [AnzahlA] cartas diferentes, @userNameB tiene [AnzahlB]. En común: [Gemeinsam]. Solo @userNameA: [ExklusivA]. Solo @userNameB: [ExklusivB].",
+    th: "@userNameA มีการ์ดต่าง [AnzahlA] ใบ @userNameB มี [AnzahlB] ใบ ร่วมกัน: [Gemeinsam] เฉพาะ @userNameA: [ExklusivA] เฉพาะ @userNameB: [ExklusivB]"
+  },
   tradeCardNotFound: {
     de: "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?",
     en: "@userName, the card [falscherName] doesn't exist. Did you mean [Kartenname] instead?",
@@ -767,6 +809,11 @@ export function normalizeSettings(settings) {
   settings.behavior.cooldownSeconds ??= 0.8;
   settings.behavior.cardBacksBeforeReveal ??= 2;
   settings.behavior.persistCollections ??= true;
+  // Holo-Alarm: replaces the normal instant reveal with a much longer, dramatic staged
+  // unveiling (silhouette -> holo-shimmer frame -> outline -> dissolve -> name/stars) - only
+  // ever applies to cards actually drawn at Holo rarity, see overlay.js's runOpening.
+  settings.holoAlarm ||= {};
+  settings.holoAlarm.enabled = settings.holoAlarm.enabled !== false;
   settings.twitch ||= {};
   settings.twitch.clientId ||= "klgyxuiixy0mfo7ze7goubj5j16g7u";
   settings.style ||= {};
@@ -1053,6 +1100,15 @@ export function normalizeSettings(settings) {
   settings.chatCommands.gift.notOwnedMessage ||= pickDefault(settings.language, "giftNotOwned");
   settings.chatCommands.gift.selfGiftMessage ||= pickDefault(settings.language, "giftSelf");
   settings.chatCommands.gift.successMessage ||= pickDefault(settings.language, "giftSuccess");
+  settings.chatCommands.compare ||= {};
+  settings.chatCommands.compare.enabled = settings.chatCommands.compare.enabled === true;
+  settings.chatCommands.compare.prefix ||= "!";
+  settings.chatCommands.compare.command ||= "vergleich";
+  settings.chatCommands.compare.helpText ||= pickDefault(settings.language, "helpCompare");
+  settings.chatCommands.compare.usageMessage ||= pickDefault(settings.language, "compareUsage");
+  settings.chatCommands.compare.userNotFoundMessage ||= pickDefault(settings.language, "compareUserNotFound");
+  settings.chatCommands.compare.selfMessage ||= pickDefault(settings.language, "compareSelf");
+  settings.chatCommands.compare.resultMessage ||= pickDefault(settings.language, "compareResult");
   settings.chatCommands.collection ||= {};
   settings.chatCommands.collection.enabled = settings.chatCommands.collection.enabled !== false;
   settings.chatCommands.collection.prefix ||= "!";
@@ -1211,6 +1267,29 @@ export function normalizeSettings(settings) {
   }));
   delete settings.communityGoal.target;
   delete settings.communityGoal.celebrationMessage;
+
+  // Booster-Treue-Bonus: rewards viewers for opening boosters on multiple consecutive days.
+  // "cardsPerDay" draws on a local calendar day count as a completed "streak day"; each tier
+  // below fires its own bonus draws whenever the current streak is an exact multiple of that
+  // tier's "days" (so a days=5 and a days=10 tier both fire on day 10, stacking). Streak/count
+  // tracking itself lives server-side in data/command-usage.json, not here.
+  settings.loyaltyBonus ||= {};
+  settings.loyaltyBonus.enabled = settings.loyaltyBonus.enabled === true;
+  settings.loyaltyBonus.cardsPerDay = Number(settings.loyaltyBonus.cardsPerDay) > 0 ? Math.round(Number(settings.loyaltyBonus.cardsPerDay)) : 10;
+  settings.loyaltyBonus.bonusMessage ||= pickDefault(settings.language, "loyaltyBonusMessage");
+  const validLoyaltyRarities = ["uncommon", "rare", "epic", "legendary", "holo"];
+  if (!Array.isArray(settings.loyaltyBonus.tiers) || !settings.loyaltyBonus.tiers.length) {
+    settings.loyaltyBonus.tiers = [
+      { days: 1, bonusCards: 1, minRarity: "rare" },
+      { days: 5, bonusCards: 1, minRarity: "rare" },
+      { days: 10, bonusCards: 1, minRarity: "rare" }
+    ];
+  }
+  settings.loyaltyBonus.tiers = settings.loyaltyBonus.tiers.slice(0, 10).map((tier) => ({
+    days: Number(tier?.days) > 0 ? Math.round(Number(tier.days)) : 1,
+    bonusCards: Number(tier?.bonusCards) > 0 ? Math.round(Number(tier.bonusCards)) : 1,
+    minRarity: validLoyaltyRarities.includes(tier?.minRarity) ? tier.minRarity : "rare"
+  }));
 
   // Tournament Mode: signup via chat command and/or channel points and/or the admin "Turnier
   // starten" button; a single bracket resolves automatically once the signup window closes (see
