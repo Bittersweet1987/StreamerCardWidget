@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1784801459">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1784883753">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -215,6 +215,7 @@
               <a href="#jn-szene-and-quellen-obs-trigger">OBS Szene &amp; Quellen</a>
               <a href="#jn-websocket-meld-trigger">Meld WebSocket</a>
               <a href="#jn-szene-and-quellen-meld-trigger">Meld Szene &amp; Quellen</a>
+              <a href="#jn-discord-trigger" data-i18n="discord-title">Discord</a>
             </nav>
             <section class="tool-panel" id="jn-verbindung-trigger">
               <div class="section-heading">
@@ -328,6 +329,43 @@
               </div>
               <div class="button-row">
                 <button class="primary-button" id="setup-meld" type="button" data-i18n="btn-setup-meld">Meld Szene / Quellen aktualisieren</button>
+              </div>
+            </section>
+
+            <section class="tool-panel" id="jn-discord-trigger">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="eyebrow-discord">Discord</p>
+                  <h2 data-i18n="discord-title">Discord</h2>
+                </div>
+              </div>
+              <p class="hint" data-i18n="discord-hint">Postet Kartenziehungen ab einer einstellbaren Mindest-Seltenheit automatisch in einen Discord-Kanal – mit dem Twitch-Namen und Profilbild des Zuschauers als Absender und der echten Kartenansicht (inkl. Rahmen) als Bild.</p>
+              <div class="status-line" id="discord-status" data-i18n="status-not-tested">Nicht getestet</div>
+              <label class="switch-row">
+                <input id="discord-enabled" type="checkbox">
+                <span data-i18n="label-discord-enabled">Discord-Benachrichtigungen aktiviert</span>
+              </label>
+              <div class="form-grid">
+                <label class="full-row" data-i18n="label-discord-webhook-url">Webhook-URL<input id="discord-webhook-url" type="password" autocomplete="off" spellcheck="false"></label>
+                <label data-i18n="label-discord-min-rarity">Mindest-Seltenheit
+                  <select id="discord-min-rarity">
+                    <option value="uncommon" data-i18n="rarity-uncommon">Ungewöhnlich</option>
+                    <option value="rare" data-i18n="rarity-rare">Selten</option>
+                    <option value="epic" data-i18n="rarity-epic">Episch</option>
+                    <option value="legendary" data-i18n="rarity-legendary">Legendär</option>
+                    <option value="holo" data-i18n="rarity-holo">Holo</option>
+                  </select>
+                </label>
+              </div>
+              <p class="hint" data-i18n="discord-webhook-hint">Im Discord-Kanal unter Kanal bearbeiten → Integrationen → Webhooks erstellen, die URL hier einfügen.</p>
+              <p class="hint" data-i18n="discord-test-hint">Sendet eine echte Testnachricht mit der gewählten Karte, so wie sie bei einer echten Ziehung aussehen würde – mit einem frei wählbaren Test-Namen und Test-Profilbild als Absender.</p>
+              <div class="form-grid">
+                <label data-i18n="label-discord-test-card">Testkarte<select id="discord-test-card"></select></label>
+                <label data-i18n="label-discord-test-username">Test-Benutzername<input id="discord-test-username" type="text" placeholder="Zuschauer"></label>
+                <label class="full-row" data-i18n="label-discord-test-avatar">Test-Profilbild-URL<input id="discord-test-avatar" type="text" placeholder="https://..."></label>
+              </div>
+              <div class="button-row">
+                <button class="update-button" id="test-discord" type="button" data-i18n="btn-test-discord">Test-Nachricht senden</button>
               </div>
             </section>
           </div>
@@ -1029,6 +1067,7 @@
                     <span class="message-field-label" data-i18n="label-cc-dust-usage">Nachricht bei falscher Nutzung</span>
                     <div class="var-chips" data-target="cc-dust-usage-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Befehl]">[Befehl]</button>
                     </div>
                   </div>
                   <textarea id="cc-dust-usage-message" rows="2"></textarea>
@@ -2575,6 +2614,28 @@
               <textarea id="teamkampf-per-defeat-message" rows="2"></textarea>
             </div>
             <label class="switch-row compact-switch">
+              <input id="teamkampf-per-defeat-all-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-per-defeat-all-enabled">Teilnehmer erhalten zusätzlich Karten pro besiegter Streamer-Karte (alle, nicht nur persönlich besiegte)</span>
+            </label>
+            <p class="hint" data-i18n="teamkampf-per-defeat-all-hint">Wie oben, aber unabhängig davon, WER die Karte besiegt hat: für JEDE im Kampf besiegte Streamer-Karte bekommt JEDER Teilnehmer Ziehungen - beide Optionen lassen sich gleichzeitig aktivieren und stapeln sich dann.</p>
+            <div class="form-grid">
+              <label data-i18n="label-teamkampf-per-defeat-all-draws">Ziehungen pro besiegter Karte (für alle)<input id="teamkampf-per-defeat-all-draws" type="number" min="1" step="1"></label>
+            </div>
+            <label class="switch-row compact-switch">
+              <input id="teamkampf-per-defeat-all-announce-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-per-defeat-all-announce-enabled">Chat-Nachricht bei besiegten Karten (gesamt)</span>
+            </label>
+            <div class="message-field">
+              <div class="message-field-head">
+                <span class="message-field-label" data-i18n="label-teamkampf-per-defeat-all-message">Nachricht bei besiegten Karten (gesamt)</span>
+                <div class="var-chips" data-target="teamkampf-per-defeat-all-message">
+                  <button class="var-chip" type="button" data-insert="[AnzahlBesiegt]">[AnzahlBesiegt]</button>
+                  <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
+                </div>
+              </div>
+              <textarea id="teamkampf-per-defeat-all-message" rows="2"></textarea>
+            </div>
+            <label class="switch-row compact-switch">
               <input id="teamkampf-lose-card-enabled" type="checkbox">
               <span data-i18n="label-teamkampf-lose-card-enabled">Bei Niederlage verliert jeder Teilnehmer die eingesetzte Karte</span>
             </label>
@@ -2995,7 +3056,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784801459"></script>
-    <script type="module" src="/assets/js/admin.js?v=1784801459"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784883753"></script>
+    <script type="module" src="/assets/js/admin.js?v=1784883753"></script>
   </body>
 </html>

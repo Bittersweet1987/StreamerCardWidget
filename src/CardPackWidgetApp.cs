@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.13.6";
-        public const string ReleaseDate = "2026-07-23";
+        public const string Version = "2.13.7";
+        public const string ReleaseDate = "2026-07-24";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -682,6 +682,30 @@ namespace CardPackWidgetApp
                 // every admin.js call site does "await saveSettings(settings)" and discards the
                 // result. A plain ack makes autosave noticeably faster, especially with many cards.
                 SendJson(stream, 200, "{\"ok\":true}");
+                return;
+            }
+
+            if (request.Method == "POST" && request.Path == "/api/discord/notify-draw")
+            {
+                Dictionary<string, object> body = ParseObject(request.Body);
+                string login = GetString(body, "login", "");
+                string displayName = GetString(body, "displayName", login);
+                string cardTitle = GetString(body, "cardTitle", "");
+                string boosterTitle = GetString(body, "boosterTitle", "");
+                string rarity = GetString(body, "rarity", "common");
+                bool isTest = GetBool(body, "isTest", false);
+                string testAvatarUrl = GetString(body, "testAvatarUrl", "");
+                byte[] imageBytes = null;
+                try
+                {
+                    string imageBase64 = GetString(body, "image", "");
+                    int comma = imageBase64.IndexOf(',');
+                    imageBytes = Convert.FromBase64String(comma >= 0 ? imageBase64.Substring(comma + 1) : imageBase64);
+                }
+                catch { }
+                string discordError = twitchBridge.NotifyDiscordDraw(login, displayName, cardTitle, boosterTitle, rarity, imageBytes, isTest, testAvatarUrl);
+                if (isTest && discordError != null) SendJson(stream, 200, "{\"ok\":false,\"error\":" + json.Serialize(discordError) + "}");
+                else SendJson(stream, 200, "{\"ok\":true}");
                 return;
             }
 
@@ -2670,6 +2694,7 @@ namespace CardPackWidgetApp
                 settings["twitch"] = ParseObject(ReadFile(TwitchConfigPath(), "{}"));
                 settings["twitchBot"] = ParseObject(ReadFile(TwitchBotConfigPath(), "{}"));
                 settings["obs"] = ParseObject(ReadFile(ObsConfigPath(), "{}"));
+                settings["discord"] = ParseObject(ReadFile(DiscordConfigPath(), "{}"));
                 if (File.Exists(BoostersPath()))
                 {
                     settings["boosters"] = ReadArrayCached(BoostersPath());
@@ -2715,6 +2740,10 @@ namespace CardPackWidgetApp
                 {
                     File.WriteAllText(ObsConfigPath(), json.Serialize(settings["obs"]), Encoding.UTF8);
                 }
+                if (settings.ContainsKey("discord") && settings["discord"] is Dictionary<string, object>)
+                {
+                    File.WriteAllText(DiscordConfigPath(), json.Serialize(settings["discord"]), Encoding.UTF8);
+                }
                 // Boosters and cards live in their own files so updates / new rarities never
                 // overwrite user-created content (same rationale as twitch.json/obs.json).
                 if (settings.ContainsKey("boosters") && settings["boosters"] is object[])
@@ -2736,6 +2765,7 @@ namespace CardPackWidgetApp
                 toStore.Remove("twitch");
                 toStore.Remove("twitchBot");
                 toStore.Remove("obs");
+                toStore.Remove("discord");
                 toStore.Remove("boosters");
                 if (toStore.ContainsKey("deck") && toStore["deck"] is Dictionary<string, object>)
                 {
@@ -2865,6 +2895,11 @@ namespace CardPackWidgetApp
         private string ObsConfigPath()
         {
             return Path.Combine(dataDir, "obs.json");
+        }
+
+        private string DiscordConfigPath()
+        {
+            return Path.Combine(dataDir, "discord.json");
         }
 
         private string LogPath()
@@ -3515,7 +3550,7 @@ namespace CardPackWidgetApp
         private const string DefaultTradeDecline = "@userNameA, leider hat @userNameB deine Tauschanfrage abgelehnt, damit bleiben dir bis zum [Uhrzeit] noch [Anzahl] Tauschanfragen.";
         private const string DefaultTradeNotOwned = "@userNameB, du besitzt diese Karte leider nicht. Bitte wähle eine andere.";
         private const string DefaultTradeSuccess = "@userNameA tauschte seine Karte [KarteA] aus [BoosterA] erfolgreich mit @userNameB gegen Karte [KarteB] aus [BoosterB]. Damit hat @userNameA nun [AnzahlA] Karten [KarteB] und @userNameB [AnzahlB] Karten [KarteA].";
-        private const string DefaultDustUsage = "@userName, Nutzung: !dust <Kartenname> <Anzahl>";
+        private const string DefaultDustUsage = "@userName, Nutzung: [Befehl] <Kartenname> <Anzahl>";
         private const string DefaultDustCardNotFound = "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?";
         private const string DefaultDustNotEnough = "@userName, du hast nicht genug Duplikate von [Kartenname] (du besitzt [Besitz], mindestens 1 muss dir erhalten bleiben).";
         private const string DefaultDustSuccess = "@userName hat [Anzahl]x [Kartenname] geopfert (+[Punkte] Garantie-Punkte). [GarantieAnzahl] garantierte Ziehung(en) bereit, noch [GarantieRest] Ziehungen bis zur naechsten.";
@@ -3575,6 +3610,7 @@ namespace CardPackWidgetApp
         private const string DefaultTeamBattleFinisherMessageNoBonus = "@userName hat den entscheidenden Schlag gelandet!";
         private const string DefaultTeamBattleLostCardMessage = "@userName hat [Kartenname] verloren.";
         private const string DefaultTeamBattlePerDefeatMessage = "@userName hat [AnzahlBesiegt] gegnerische Karte(n) besiegt und erhält dafür [Anzahl] Kartenpack-Ziehung(en)!";
+        private const string DefaultTeamBattlePerDefeatAllMessage = "Insgesamt wurden [AnzahlBesiegt] gegnerische Karte(n) besiegt - jeder Teilnehmer erhält dafür [Anzahl] Kartenpack-Ziehung(en)!";
         private const string DefaultTournamentCancel = "Das Turnier wurde abgesagt - nur [Anzahl] von mindestens [Mindestteilnehmer] nötigen Teilnehmern haben sich angemeldet.";
         private const string DefaultTournamentRoundAnnounce = "🏆 Turnier [Runde]: [SpielerA] vs [SpielerB]!";
         private const string DefaultTournamentByeAnnounce = "🏆 Turnier [Runde]: [Spieler] hat ein Freilos und zieht kampflos weiter!";
@@ -4407,7 +4443,18 @@ namespace CardPackWidgetApp
                 // HandleSpecificPackDrawCommand/HandleSpecificPackRedemption) - none of them may
                 // ever resolve to a sub-exclusive pack.
                 if (GetBool(b, "subExclusive", false)) continue;
-                if (String.Equals(GetString(b, "title", ""), needle, StringComparison.OrdinalIgnoreCase)) return b;
+                string title = GetString(b, "title", "");
+                if (String.Equals(title, needle, StringComparison.OrdinalIgnoreCase)) return b;
+                // Also accept "<Titel> <Untertitel>" combined as one string (e.g. "Jeanne, die
+                // Kamikaze Diebin" for a booster titled "Jeanne, die" with subtitle "Kamikaze
+                // Diebin") - viewers naturally read/type the pack's full displayed name as it
+                // appears on the pack graphic, not just its bare title field.
+                string subtitle = GetString(b, "subtitle", "");
+                if (!String.IsNullOrWhiteSpace(subtitle) &&
+                    String.Equals((title + " " + subtitle).Trim(), needle, StringComparison.OrdinalIgnoreCase))
+                {
+                    return b;
+                }
             }
             return null;
         }
@@ -5407,30 +5454,59 @@ namespace CardPackWidgetApp
                 // are only ever enqueued once, right here, at the very end of the whole fight - see
                 // defeatsByLogin (tallied in ResolveTeamBattleSignup) for why this can only be
                 // computed once the whole HP-elimination result is known.
-                if (GetBool(tbCfg, "perDefeatEnabled", false))
+                object defeatsByLoginObj;
+                Dictionary<string, object> defeatsByLoginMap = item.TryGetValue("defeatsByLogin", out defeatsByLoginObj) && defeatsByLoginObj is Dictionary<string, object>
+                    ? (Dictionary<string, object>)defeatsByLoginObj
+                    : null;
+
+                if (GetBool(tbCfg, "perDefeatEnabled", false) && defeatsByLoginMap != null)
                 {
                     int perDefeatDraws = Math.Max(1, GetInt(tbCfg, "perDefeatDraws", 1));
-                    object defeatsObj;
-                    if (item.TryGetValue("defeatsByLogin", out defeatsObj) && defeatsObj is Dictionary<string, object>)
+                    foreach (Dictionary<string, object> p in participants)
                     {
-                        Dictionary<string, object> defeatsByLoginMap = (Dictionary<string, object>)defeatsObj;
+                        string pLogin = GetString(p, "login", "");
+                        string pName = GetString(p, "displayName", pLogin);
+                        if (String.IsNullOrEmpty(pLogin)) continue;
+                        object countObj;
+                        int defeatCount = defeatsByLoginMap.TryGetValue(pLogin, out countObj) ? Convert.ToInt32(countObj) : 0;
+                        if (defeatCount <= 0) continue;
+                        int totalDraws = defeatCount * perDefeatDraws;
+                        if (GetBool(tbCfg, "perDefeatAnnounceEnabled", true))
+                        {
+                            SendChatMessageSafe(GetString(tbCfg, "perDefeatMessage", DefaultTeamBattlePerDefeatMessage)
+                                .Replace("@userName", "@" + pName)
+                                .Replace("[AnzahlBesiegt]", defeatCount.ToString())
+                                .Replace("[Anzahl]", totalDraws.ToString()));
+                        }
+                        for (int i = 0; i < totalDraws; i++) Enqueue("draw", pLogin, pName, "teamkampf");
+                    }
+                }
+
+                // "Pro besiegter Karte eine Karte FÜR ALLE" - unlike perDefeatEnabled above (only the
+                // viewer who personally landed the blow), this rewards EVERY participant for EACH
+                // streamer card defeated overall, regardless of who defeated it. Both options can run
+                // side by side (a participant who both defeated cards personally AND took part in the
+                // team gets both bonuses stacked). Announced once for the whole fight, not per viewer.
+                if (GetBool(tbCfg, "perDefeatAllEnabled", false) && defeatsByLoginMap != null)
+                {
+                    int totalDefeats = 0;
+                    foreach (object countObj in defeatsByLoginMap.Values) totalDefeats += Convert.ToInt32(countObj);
+                    if (totalDefeats > 0)
+                    {
+                        int perDefeatAllDraws = Math.Max(1, GetInt(tbCfg, "perDefeatAllDraws", 1));
+                        int totalDrawsEach = totalDefeats * perDefeatAllDraws;
+                        if (GetBool(tbCfg, "perDefeatAllAnnounceEnabled", true))
+                        {
+                            SendChatMessageSafe(GetString(tbCfg, "perDefeatAllMessage", DefaultTeamBattlePerDefeatAllMessage)
+                                .Replace("[AnzahlBesiegt]", totalDefeats.ToString())
+                                .Replace("[Anzahl]", totalDrawsEach.ToString()));
+                        }
                         foreach (Dictionary<string, object> p in participants)
                         {
                             string pLogin = GetString(p, "login", "");
                             string pName = GetString(p, "displayName", pLogin);
                             if (String.IsNullOrEmpty(pLogin)) continue;
-                            object countObj;
-                            int defeatCount = defeatsByLoginMap.TryGetValue(pLogin, out countObj) ? Convert.ToInt32(countObj) : 0;
-                            if (defeatCount <= 0) continue;
-                            int totalDraws = defeatCount * perDefeatDraws;
-                            if (GetBool(tbCfg, "perDefeatAnnounceEnabled", true))
-                            {
-                                SendChatMessageSafe(GetString(tbCfg, "perDefeatMessage", DefaultTeamBattlePerDefeatMessage)
-                                    .Replace("@userName", "@" + pName)
-                                    .Replace("[AnzahlBesiegt]", defeatCount.ToString())
-                                    .Replace("[Anzahl]", totalDraws.ToString()));
-                            }
-                            for (int i = 0; i < totalDraws; i++) Enqueue("draw", pLogin, pName, "teamkampf");
+                            for (int i = 0; i < totalDrawsEach; i++) Enqueue("draw", pLogin, pName, "teamkampf");
                         }
                     }
                 }
@@ -6811,11 +6887,15 @@ namespace CardPackWidgetApp
         // cost (giving up owned duplicates) is the limiting factor. ----
         private void HandleDustCommand(string login, string displayName, string args, Dictionary<string, object> dustCfg, Dictionary<string, object> settingsIn = null)
         {
+            // The default (and any un-customized) usage message references this command's own
+            // name via [Befehl] - always the ACTUAL configured prefix+command, never a hardcoded
+            // "!dust", so a renamed command still shows its real trigger to the viewer.
+            string commandText = GetString(dustCfg, "prefix", "!") + GetString(dustCfg, "command", "dust");
             string rest = args.Trim();
             int lastSpace = rest.LastIndexOf(' ');
             if (lastSpace < 0)
             {
-                SendChatMessageSafe(GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName));
+                SendChatMessageSafe(GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName).Replace("[Befehl]", commandText));
                 return;
             }
             string cardName = rest.Substring(0, lastSpace).Trim();
@@ -6823,7 +6903,7 @@ namespace CardPackWidgetApp
             int count;
             if (cardName.Length == 0 || !Int32.TryParse(countText, out count) || count < 1)
             {
-                SendChatMessageSafe(GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName));
+                SendChatMessageSafe(GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName).Replace("[Befehl]", commandText));
                 return;
             }
 
@@ -8876,13 +8956,28 @@ namespace CardPackWidgetApp
             return result;
         }
 
-        // One round: strength (from rarity, via the configurable table) times a random variance
-        // factor decides the winner. Best-of-3 independent attacks (each with its OWN variance
-        // roll) rather than a single roll - a single roll only ever gives variance one chance to
-        // matter for the whole matchup, which barely shows against a real strength gap. Rolling
-        // three separate "attacks" and taking the majority lets variance compound (or cancel out)
-        // attack to attack, the way it already visibly does in HP-Duell mode (ResolveHpElimination
-        // re-rolls variance per hit too).
+        // Only the WEAKER side of a matchup rolls variance - the stronger (or equal) side hits at
+        // its plain, constant strength. Applying variance to both sides equally (the old behavior)
+        // drowned the strength gap in noise: with the default variance of 8, even a Holo (12) could
+        // swing anywhere from 12 to 108 damage, which made its rarity all but irrelevant. With only
+        // the underdog rolling, the upset ceiling is a fixed multiple of ITS OWN strength - so how
+        // big a gap that ceiling can actually close shrinks automatically as the gap widens,
+        // without any special-casing: adjacent rarities (small base-strength gap) stay genuinely
+        // contestable, while a Common vs. Holo gap stays effectively hopeless unless the variance
+        // setting is cranked up disproportionately.
+        private double RollDamage(double attackerStrength, double opponentStrength, double variance)
+        {
+            if (attackerStrength >= opponentStrength) return attackerStrength;
+            return attackerStrength * (1 + BattleRandom.NextDouble() * variance);
+        }
+
+        // One round: strength (from rarity, via the configurable table), with variance only for
+        // whichever card is weaker in this matchup (see RollDamage). Best-of-3 independent attacks
+        // (each with its OWN variance roll) rather than a single roll - a single roll only ever
+        // gives variance one chance to matter for the whole matchup, which barely shows against a
+        // real strength gap. Rolling three separate "attacks" and taking the majority lets variance
+        // compound (or cancel out) attack to attack, the way it already visibly does in HP-Duell
+        // mode (ResolveHpElimination re-rolls variance per hit too).
         private bool RollRound(Dictionary<string, string> cardA, Dictionary<string, string> cardB, Dictionary<string, object> strengthCfg, double variance)
         {
             double strengthA = CardBattleStrength(cardA["cardId"], strengthCfg);
@@ -8891,8 +8986,8 @@ namespace CardPackWidgetApp
             int winsA = 0, winsB = 0;
             for (int i = 0; i < attacks; i++)
             {
-                double rollA = strengthA * (1 + BattleRandom.NextDouble() * variance);
-                double rollB = strengthB * (1 + BattleRandom.NextDouble() * variance);
+                double rollA = RollDamage(strengthA, strengthB, variance);
+                double rollB = RollDamage(strengthB, strengthA, variance);
                 if (rollA >= rollB) winsA++; else winsB++;
             }
             return winsA >= winsB;
@@ -8918,8 +9013,9 @@ namespace CardPackWidgetApp
         }
 
         // Pokemon-style elimination for the "HP-Leisten-Duell" animation: cards fight one matchup
-        // at a time, trading hits (damage = attacker strength x variance) until one card's HP
-        // reaches zero; the surviving card keeps its remaining HP into the next matchup against
+        // at a time, trading hits (damage = attacker strength, with variance only if the attacker
+        // is the weaker of the two - see RollDamage) until one card's HP reaches zero; the
+        // surviving card keeps its remaining HP into the next matchup against
         // the opponent's next bench card. Overall winner = the side that still has a card standing
         // once the other side runs out. HP per card = battle strength x a configurable factor.
         // Rough estimate of how long the client-side battle animation will take, so the chat
@@ -8977,14 +9073,14 @@ namespace CardPackWidgetApp
                     double dmg;
                     if (attackerIsA)
                     {
-                        dmg = strengthA * (1 + BattleRandom.NextDouble() * variance);
+                        dmg = RollDamage(strengthA, strengthB, variance);
                         hpB = Math.Max(0, hpB - dmg);
                         hits.Add(new Dictionary<string, object> { { "attacker", "A" }, { "damage", Math.Round(dmg, 1) }, { "hpAfter", Math.Round(hpB, 1) } });
                         if (hpB <= 0) matchupWinner = "A";
                     }
                     else
                     {
-                        dmg = strengthB * (1 + BattleRandom.NextDouble() * variance);
+                        dmg = RollDamage(strengthB, strengthA, variance);
                         hpA = Math.Max(0, hpA - dmg);
                         hits.Add(new Dictionary<string, object> { { "attacker", "B" }, { "damage", Math.Round(dmg, 1) }, { "hpAfter", Math.Round(hpA, 1) } });
                         if (hpA <= 0) matchupWinner = "B";
@@ -9925,6 +10021,108 @@ namespace CardPackWidgetApp
                 return url;
             }
             catch { return ""; }
+        }
+
+        // ---- Discord webhook: posts a card draw as if the viewer themselves posted it (their
+        // Twitch display name as the webhook username, their Twitch avatar as the webhook
+        // avatar) - see /api/discord/notify-draw, called by the overlay right after a draw's
+        // card is fully revealed with a PNG snapshot of the actual card DOM. ----
+
+        public void NotifyDiscordDraw(string login, string displayName, string cardTitle, string boosterTitle, string rarity, byte[] imageBytes)
+        {
+            NotifyDiscordDraw(login, displayName, cardTitle, boosterTitle, rarity, imageBytes, false, "");
+        }
+
+        // isTest (from the admin panel's "Test-Nachricht senden" button, see /api/discord/notify-draw)
+        // bypasses the enabled/minRarity gate - it's an explicit manual trigger, not a real draw -
+        // and uses the caller-supplied testAvatarUrl (a free-text field in the admin UI) instead of
+        // looking the drawer's avatar up via Twitch, so the admin can preview the exact look with any
+        // placeholder name/picture without needing a real Twitch account to test against. Returns an
+        // error message (null on success) - only surfaced back to the caller for isTest, since a real
+        // draw's Discord post is a fire-and-forget side effect that must never affect the draw itself.
+        public string NotifyDiscordDraw(string login, string displayName, string cardTitle, string boosterTitle, string rarity, byte[] imageBytes, bool isTest, string testAvatarUrl)
+        {
+            try
+            {
+                if (imageBytes == null || imageBytes.Length == 0) return "Kein Kartenbild empfangen.";
+                Dictionary<string, object> discordCfg = Obj(server.ReadSettingsObject(), "discord");
+                string webhookUrl = GetString(discordCfg, "webhookUrl", "");
+                if (String.IsNullOrWhiteSpace(webhookUrl)) return "Keine Webhook-URL hinterlegt.";
+                if (!isTest)
+                {
+                    if (!GetBool(discordCfg, "enabled", false)) return null;
+                    string minRarity = GetString(discordCfg, "minRarity", "legendary");
+                    if (CardPackServer.GetRarityRank(rarity) < CardPackServer.GetRarityRank(minRarity)) return null;
+                }
+
+                string avatarUrl = isTest ? testAvatarUrl : GetUserAvatarUrl(login);
+                string content = (isTest ? "🧪 **Test** - " : "") + "🎴 **" + cardTitle + "** aus **" + boosterTitle + "**";
+                return PostDiscordWebhook(webhookUrl, String.IsNullOrWhiteSpace(displayName) ? login : displayName, avatarUrl, content, imageBytes);
+            }
+            catch (Exception ex)
+            {
+                server.Log("discord", "error", "Discord-Benachrichtigung fehlgeschlagen: " + ex.Message);
+                return ex.Message;
+            }
+        }
+
+        // Hand-rolled multipart/form-data POST (no library support for this in the .NET Framework
+        // classes already used elsewhere in this file - WebClient can't combine a JSON part with a
+        // binary file part the way Discord's webhook API expects). Two parts: "payload_json" (the
+        // username/avatar/content) and "file" (the PNG bytes). Returns an error message, or null on
+        // a successful (2xx) response.
+        private string PostDiscordWebhook(string webhookUrl, string username, string avatarUrl, string content, byte[] imageBytes)
+        {
+            try
+            {
+                string boundary = "----CardPackWidgetBoundary" + Guid.NewGuid().ToString("N");
+                Dictionary<string, object> payload = new Dictionary<string, object> { { "username", username }, { "content", content } };
+                if (!String.IsNullOrWhiteSpace(avatarUrl)) payload["avatar_url"] = avatarUrl;
+                string payloadJson = server.Serializer.Serialize(payload);
+
+                MemoryStream body = new MemoryStream();
+                byte[] head = Encoding.UTF8.GetBytes(
+                    "--" + boundary + "\r\n" +
+                    "Content-Disposition: form-data; name=\"payload_json\"\r\n" +
+                    "Content-Type: application/json\r\n\r\n" +
+                    payloadJson + "\r\n" +
+                    "--" + boundary + "\r\n" +
+                    "Content-Disposition: form-data; name=\"file\"; filename=\"card.png\"\r\n" +
+                    "Content-Type: image/png\r\n\r\n");
+                body.Write(head, 0, head.Length);
+                body.Write(imageBytes, 0, imageBytes.Length);
+                byte[] tail = Encoding.UTF8.GetBytes("\r\n--" + boundary + "--\r\n");
+                body.Write(tail, 0, tail.Length);
+                byte[] bodyBytes = body.ToArray();
+
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(webhookUrl);
+                req.Method = "POST";
+                req.ContentType = "multipart/form-data; boundary=" + boundary;
+                req.Timeout = 15000;
+                req.ContentLength = bodyBytes.Length;
+                using (Stream reqStream = req.GetRequestStream())
+                {
+                    reqStream.Write(bodyBytes, 0, bodyBytes.Length);
+                }
+                using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse()) { }
+                return null;
+            }
+            catch (WebException ex)
+            {
+                string detail = "";
+                if (ex.Response != null)
+                {
+                    using (var reader = new StreamReader(ex.Response.GetResponseStream(), Encoding.UTF8)) { detail = reader.ReadToEnd(); }
+                }
+                string message = "Discord-Webhook fehlgeschlagen: " + ex.Message + (String.IsNullOrWhiteSpace(detail) ? "" : " - " + detail);
+                server.Log("discord", "error", message);
+                return message;
+            }
+            catch (Exception ex)
+            {
+                server.Log("discord", "error", "Discord-Webhook fehlgeschlagen: " + ex.Message);
+                return ex.Message;
+            }
         }
 
         // Looks up a reward we can still manage (created by this or another app using the same

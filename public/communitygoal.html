@@ -19,12 +19,17 @@
           <div class="communitygoal-bar-fill" id="communitygoal-bar-fill"></div>
         </div>
       </div>
-      <div id="communitygoal-celebration" class="communitygoal-celebration" hidden>
-        <div class="communitygoal-celebration-burst"></div>
-        <p class="communitygoal-celebration-text" id="communitygoal-celebration-text"></p>
-      </div>
       <div id="status" class="status" hidden></div>
     </main>
+    <!-- Deliberately OUTSIDE #communitygoal-overlay (which is what applyOverlayLayout moves/scales
+         for the widget's own positioning) - the celebration must always play dead-center on the
+         real viewport regardless of where the admin has placed the progress bar widget itself.
+         Nesting it inside the transformed element used to make its "position:absolute; inset:0"
+         resolve against that transformed (translated/scaled) box instead of the true viewport. -->
+    <div id="communitygoal-celebration" class="communitygoal-celebration" hidden>
+      <div class="communitygoal-celebration-burst"></div>
+      <p class="communitygoal-celebration-text" id="communitygoal-celebration-text"></p>
+    </div>
     <script>
       // Bootstrap loader: ask the server which asset version (BootId, changes every app start)
       // is current and load all CSS/JS with it. The version request itself carries a unique

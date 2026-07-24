@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1784801459";
+} from "./api.js?v=1784883753";
 import {
   applyTheme,
   autoImagePosition,
@@ -49,6 +49,7 @@ import {
   boosterMarkup,
   CARD_ART_RATIO,
   CARD_THEMES,
+  captureNodeAsPng,
   cardMarkup,
   cardsForBooster,
   compressImageDataUrl,
@@ -69,7 +70,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1784801459";
+} from "./render.js?v=1784883753";
 
 let settings;
 let selectedCardId;
@@ -504,6 +505,81 @@ const I18N = {
   "eyebrow-meld": { de: "Meld Studio", en: "Meld Studio", fr: "Meld Studio", es: "Meld Studio", th: "Meld Studio" },
   "obs-websocket-title": { de: "WebSocket", en: "WebSocket", fr: "WebSocket", es: "WebSocket", th: "WebSocket" },
   "meld-websocket-title": { de: "WebSocket", en: "WebSocket", fr: "WebSocket", es: "WebSocket", th: "WebSocket" },
+  "eyebrow-discord": { de: "Discord", en: "Discord", fr: "Discord", es: "Discord", th: "Discord" },
+  "discord-title": { de: "Discord", en: "Discord", fr: "Discord", es: "Discord", th: "Discord" },
+  "discord-hint": {
+    de: "Postet Kartenziehungen ab einer einstellbaren Mindest-Seltenheit automatisch in einen Discord-Kanal – mit dem Twitch-Namen und Profilbild des Zuschauers als Absender und der echten Kartenansicht (inkl. Rahmen) als Bild.",
+    en: "Automatically posts card draws from a configurable minimum rarity to a Discord channel - with the viewer's Twitch name and profile picture as the poster, and the real card view (including border) as the image.",
+    fr: "Publie automatiquement les tirages de cartes à partir d'une rareté minimale configurable dans un salon Discord - avec le nom Twitch et la photo de profil du spectateur comme auteur, et la vraie vue de la carte (bordure incluse) comme image.",
+    es: "Publica automáticamente las tiradas de cartas a partir de una rareza mínima configurable en un canal de Discord - con el nombre de Twitch y la foto de perfil del espectador como autor, y la vista real de la carta (incluido el borde) como imagen.",
+    th: "โพสต์การจับการ์ดไปยังช่อง Discord โดยอัตโนมัติตั้งแต่ความหายากขั้นต่ำที่ตั้งค่าได้ - โดยใช้ชื่อ Twitch และรูปโปรไฟล์ของผู้ชมเป็นผู้โพสต์ และภาพการ์ดจริง (รวมขอบ) เป็นรูปภาพ"
+  },
+  "label-discord-enabled": { de: "Discord-Benachrichtigungen aktiviert", en: "Discord notifications enabled",
+    fr: "Notifications Discord activées",
+    es: "Notificaciones de Discord activadas",
+    th: "เปิดใช้งานการแจ้งเตือน Discord"
+  },
+  "label-discord-webhook-url": { de: "Webhook-URL", en: "Webhook URL", fr: "URL du webhook", es: "URL del webhook", th: "URL เว็บฮุก" },
+  "label-discord-min-rarity": { de: "Mindest-Seltenheit", en: "Minimum rarity",
+    fr: "Rareté minimale",
+    es: "Rareza mínima",
+    th: "ความหายากขั้นต่ำ"
+  },
+  "discord-webhook-hint": {
+    de: "Im Discord-Kanal unter Kanal bearbeiten → Integrationen → Webhooks erstellen, die URL hier einfügen.",
+    en: "In the Discord channel, go to Edit Channel → Integrations → Webhooks, create one, and paste the URL here.",
+    fr: "Dans le salon Discord, va dans Modifier le salon → Intégrations → Webhooks, crées-en un et colle l'URL ici.",
+    es: "En el canal de Discord, ve a Editar canal → Integraciones → Webhooks, crea uno y pega la URL aquí.",
+    th: "ในช่อง Discord ไปที่ แก้ไขช่อง → การผสานการทำงาน → เว็บฮุก สร้างหนึ่งอันแล้ววาง URL ที่นี่"
+  },
+  "btn-test-discord": { de: "Test-Nachricht senden", en: "Send test message",
+    fr: "Envoyer un message de test",
+    es: "Enviar mensaje de prueba",
+    th: "ส่งข้อความทดสอบ"
+  },
+  "status-testing-discord": { de: "Teste Discord-Verbindung...", en: "Testing Discord connection...",
+    fr: "Test de la connexion Discord...",
+    es: "Probando la conexión con Discord...",
+    th: "กำลังทดสอบการเชื่อมต่อ Discord..."
+  },
+  "status-discord-ok": { de: "Verbindung erfolgreich - Test-Nachricht gesendet.", en: "Connection successful - test message sent.",
+    fr: "Connexion réussie - message de test envoyé.",
+    es: "Conexión exitosa - mensaje de prueba enviado.",
+    th: "เชื่อมต่อสำเร็จ - ส่งข้อความทดสอบแล้ว"
+  },
+  "error-discord-no-url": { de: "Bitte zuerst eine Webhook-URL eintragen.", en: "Please enter a webhook URL first.",
+    fr: "Merci de d'abord saisir une URL de webhook.",
+    es: "Por favor, introduce primero una URL de webhook.",
+    th: "กรุณาใส่ URL เว็บฮุกก่อน"
+  },
+  "error-discord-failed": { de: "Verbindung fehlgeschlagen:", en: "Connection failed:",
+    fr: "Échec de la connexion :",
+    es: "Conexión fallida:",
+    th: "การเชื่อมต่อล้มเหลว:"
+  },
+  "error-discord-no-card": { de: "Es ist noch keine Karte angelegt, die getestet werden könnte.", en: "No card exists yet to test with.",
+    fr: "Aucune carte n'existe encore pour effectuer un test.",
+    es: "Aún no existe ninguna carta con la que probar.",
+    th: "ยังไม่มีการ์ดให้ทดสอบ"
+  },
+  "discord-test-hint": {
+    de: "Sendet eine echte Testnachricht mit der gewählten Karte, so wie sie bei einer echten Ziehung aussehen würde – mit einem frei wählbaren Test-Namen und Test-Profilbild als Absender.",
+    en: "Sends a real test message with the selected card, exactly as it would look for a real draw - with a freely chosen test name and test profile picture as the poster.",
+    fr: "Envoie un vrai message de test avec la carte sélectionnée, exactement comme pour un tirage réel - avec un nom de test et une photo de profil de test librement choisis comme auteur.",
+    es: "Envía un mensaje de prueba real con la carta seleccionada, tal como se vería en una tirada real - con un nombre de prueba y una foto de perfil de prueba elegidos libremente como autor.",
+    th: "ส่งข้อความทดสอบจริงพร้อมการ์ดที่เลือก เหมือนกับที่จะปรากฏในการจับจริง - พร้อมชื่อทดสอบและรูปโปรไฟล์ทดสอบที่เลือกได้อิสระเป็นผู้โพสต์"
+  },
+  "label-discord-test-card": { de: "Testkarte", en: "Test card", fr: "Carte de test", es: "Carta de prueba", th: "การ์ดทดสอบ" },
+  "label-discord-test-username": { de: "Test-Benutzername", en: "Test username",
+    fr: "Nom d'utilisateur de test",
+    es: "Nombre de usuario de prueba",
+    th: "ชื่อผู้ใช้ทดสอบ"
+  },
+  "label-discord-test-avatar": { de: "Test-Profilbild-URL", en: "Test profile picture URL",
+    fr: "URL de la photo de profil de test",
+    es: "URL de la foto de perfil de prueba",
+    th: "URL รูปโปรไฟล์ทดสอบ"
+  },
   "bot-trigger-title": { de: "Bot-Verbindung (Chat)", en: "Bot connection (chat)",
     fr: "Connexion du bot (chat)",
     es: "Conexión del bot (chat)",
@@ -2291,6 +2367,23 @@ const I18N = {
   "label-teamkampf-per-defeat-draws": { de: "Ziehungen pro besiegter Karte", en: "Draws per defeated card", fr: "Tirages par carte vaincue", es: "Tiradas por carta derrotada", th: "จำนวนการจับสลากต่อการ์ดที่เอาชนะ" },
   "label-teamkampf-per-defeat-announce-enabled": { de: "Chat-Nachricht bei besiegten Karten", en: "Chat message for defeated cards", fr: "Message dans le chat pour les cartes vaincues", es: "Mensaje en el chat por cartas derrotadas", th: "ข้อความแชทสำหรับการ์ดที่เอาชนะ" },
   "label-teamkampf-per-defeat-message": { de: "Nachricht bei besiegten Karten", en: "Message for defeated cards", fr: "Message pour les cartes vaincues", es: "Mensaje por cartas derrotadas", th: "ข้อความสำหรับการ์ดที่เอาชนะ" },
+  "label-teamkampf-per-defeat-all-enabled": {
+    de: "Teilnehmer erhalten zusätzlich Karten pro besiegter Streamer-Karte (alle, nicht nur persönlich besiegte)",
+    en: "Participants additionally get cards per streamer card defeated (all, not just personally defeated)",
+    fr: "Les participants reçoivent en plus des cartes par carte du streamer vaincue (toutes, pas seulement celles vaincues personnellement)",
+    es: "Los participantes reciben además cartas por cada carta del streamer derrotada (todas, no solo las derrotadas personalmente)",
+    th: "ผู้เข้าร่วมจะได้รับการ์ดเพิ่มเติมต่อการ์ดสตรีมเมอร์ที่ถูกเอาชนะ (ทั้งหมด ไม่ใช่แค่ที่เอาชนะด้วยตนเอง)"
+  },
+  "teamkampf-per-defeat-all-hint": {
+    de: "Wie oben, aber unabhängig davon, WER die Karte besiegt hat: für JEDE im Kampf besiegte Streamer-Karte bekommt JEDER Teilnehmer Ziehungen - beide Optionen lassen sich gleichzeitig aktivieren und stapeln sich dann.",
+    en: "Like above, but regardless of WHO defeated the card: for EVERY streamer card defeated in the fight, EVERY participant gets draws - both options can be enabled at once and then stack.",
+    fr: "Comme ci-dessus, mais peu importe QUI a vaincu la carte : pour CHAQUE carte du streamer vaincue pendant le combat, CHAQUE participant reçoit des tirages - les deux options peuvent être activées en même temps et se cumulent alors.",
+    es: "Como arriba, pero sin importar QUIÉN derrotó la carta: por CADA carta del streamer derrotada en el combate, CADA participante recibe tiradas - ambas opciones pueden activarse a la vez y entonces se acumulan.",
+    th: "เหมือนด้านบน แต่ไม่สนใจว่าใครเป็นผู้เอาชนะการ์ด: สำหรับการ์ดสตรีมเมอร์ทุกใบที่ถูกเอาชนะในการต่อสู้ ผู้เข้าร่วมทุกคนจะได้รับการจับสลาก - สามารถเปิดใช้งานทั้งสองตัวเลือกพร้อมกันได้และจะรวมกัน"
+  },
+  "label-teamkampf-per-defeat-all-draws": { de: "Ziehungen pro besiegter Karte (für alle)", en: "Draws per defeated card (for all)", fr: "Tirages par carte vaincue (pour tous)", es: "Tiradas por carta derrotada (para todos)", th: "จำนวนการจับสลากต่อการ์ดที่เอาชนะ (สำหรับทุกคน)" },
+  "label-teamkampf-per-defeat-all-announce-enabled": { de: "Chat-Nachricht bei besiegten Karten (gesamt)", en: "Chat message for defeated cards (total)", fr: "Message dans le chat pour les cartes vaincues (total)", es: "Mensaje en el chat por cartas derrotadas (total)", th: "ข้อความแชทสำหรับการ์ดที่เอาชนะ (รวม)" },
+  "label-teamkampf-per-defeat-all-message": { de: "Nachricht bei besiegten Karten (gesamt)", en: "Message for defeated cards (total)", fr: "Message pour les cartes vaincues (total)", es: "Mensaje por cartas derrotadas (total)", th: "ข้อความสำหรับการ์ดที่เอาชนะ (รวม)" },
   "label-teamkampf-lose-card-enabled": { de: "Bei Niederlage verliert jeder Teilnehmer die eingesetzte Karte", en: "On defeat, every participant loses their staked card", fr: "En cas de défaite, chaque participant perd sa carte engagée", es: "En caso de derrota, cada participante pierde la carta apostada", th: "เมื่อพ่ายแพ้ ผู้เข้าร่วมทุกคนจะเสียการ์ดที่วางเดิมพัน" },
   "label-teamkampf-lost-card-announce-enabled": { de: "Chat-Nachricht bei Kartenverlust", en: "Chat message on card loss", fr: "Message dans le chat en cas de perte de carte", es: "Mensaje en el chat al perder una carta", th: "ข้อความแชทเมื่อเสียการ์ด" },
   "label-teamkampf-lost-card-message": { de: "Nachricht bei Kartenverlust", en: "Message on card loss", fr: "Message en cas de perte de carte", es: "Mensaje al perder una carta", th: "ข้อความเมื่อเสียการ์ด" },
@@ -4968,6 +5061,64 @@ async function testMeldConnection() {
   }
 }
 
+async function testDiscordConnection() {
+  const webhookUrl = settings.discord?.webhookUrl || "";
+  if (!webhookUrl.trim()) {
+    setStatus("#discord-status", t("error-discord-no-url"), "error");
+    return;
+  }
+  const cardId = $("#discord-test-card")?.value;
+  const card = settings.deck?.cards?.find((item) => item.id === cardId) || settings.deck?.cards?.[0];
+  if (!card) {
+    setStatus("#discord-status", t("error-discord-no-card"), "error");
+    return;
+  }
+  const boosterId = card.boosterIds?.[0] || "";
+  const testUsername = $("#discord-test-username")?.value.trim() || "Zuschauer";
+  const testAvatarUrl = $("#discord-test-avatar")?.value.trim() || "";
+
+  setStatus("#discord-status", t("status-testing-discord"), "neutral");
+
+  // Render the real card markup off-screen (not display:none - it must actually be laid out for
+  // getComputedStyle/getBoundingClientRect to have anything meaningful to capture) so the
+  // snapshot is pixel-identical to a real draw's card, not a hand-approximated preview.
+  const stage = document.createElement("div");
+  stage.style.cssText = "position:fixed;left:-9999px;top:0;pointer-events:none;";
+  stage.innerHTML = cardMarkup(card);
+  document.body.append(stage);
+  try {
+    const cardEl = stage.querySelector(".tcg-card");
+    const image = await captureNodeAsPng(cardEl);
+    const response = await fetch("/api/discord/notify-draw", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        login: "",
+        displayName: testUsername,
+        cardTitle: card.title || card.id,
+        boosterTitle: boosterTitle(boosterId),
+        rarity: card.rarity || "common",
+        image,
+        isTest: true,
+        testAvatarUrl
+      })
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    if (result.ok === false) throw new Error(result.error || "");
+    setStatus("#discord-status", t("status-discord-ok"), "ok");
+    try {
+      await saveSettings(settings);
+    } catch (saveError) {
+      addLog("discord", "error", `Discord-Einstellungen konnten nicht gespeichert werden: ${saveError.message}`);
+    }
+  } catch (error) {
+    setStatus("#discord-status", `${t("error-discord-failed")} ${error.message || ""}`, "error");
+  } finally {
+    stage.remove();
+  }
+}
+
 async function setupMeldOverlay() {
   setStatus("#meld-status", t("status-setting-up-meld"), "neutral");
   let ws;
@@ -5237,6 +5388,12 @@ function renderOverview() {
     $("#test-card").innerHTML = `<option value="">${t("option-random")}</option>${cards
       .map((card) => `<option value="${card.id}">${escapeHtml(card.title)}</option>`)
       .join("")}`;
+  }
+  if ($("#discord-test-card")) {
+    const allCards = settings.deck?.cards || [];
+    $("#discord-test-card").innerHTML = allCards
+      .map((card) => `<option value="${card.id}">${escapeHtml(card.title)} (${escapeHtml(t(`rarity-${card.rarity || "common"}`))})</option>`)
+      .join("");
   }
 }
 
@@ -6785,6 +6942,10 @@ function hydrateDesign() {
   $("#teamkampf-per-defeat-draws").value = settings.teamBattle?.perDefeatDraws ?? 1;
   $("#teamkampf-per-defeat-announce-enabled").checked = settings.teamBattle?.perDefeatAnnounceEnabled !== false;
   $("#teamkampf-per-defeat-message").value = settings.teamBattle?.perDefeatMessage ?? "@userName hat [AnzahlBesiegt] gegnerische Karte(n) besiegt und erhält dafür [Anzahl] Kartenpack-Ziehung(en)!";
+  $("#teamkampf-per-defeat-all-enabled").checked = settings.teamBattle?.perDefeatAllEnabled === true;
+  $("#teamkampf-per-defeat-all-draws").value = settings.teamBattle?.perDefeatAllDraws ?? 1;
+  $("#teamkampf-per-defeat-all-announce-enabled").checked = settings.teamBattle?.perDefeatAllAnnounceEnabled !== false;
+  $("#teamkampf-per-defeat-all-message").value = settings.teamBattle?.perDefeatAllMessage ?? "Insgesamt wurden [AnzahlBesiegt] gegnerische Karte(n) besiegt - jeder Teilnehmer erhält dafür [Anzahl] Kartenpack-Ziehung(en)!";
   $("#teamkampf-lose-card-enabled").checked = settings.teamBattle?.loseCardOnDefeat === true;
   $("#teamkampf-lost-card-announce-enabled").checked = settings.teamBattle?.lostCardAnnounceEnabled !== false;
   $("#teamkampf-lost-card-message").value = settings.teamBattle?.lostCardMessage ?? "@userName hat [Kartenname] verloren.";
@@ -6808,6 +6969,9 @@ function hydrateDesign() {
   $("#meld-enabled").checked = settings.meld?.enabled === true;
   $("#meld-host").value = settings.meld?.host || "127.0.0.1";
   $("#meld-port").value = settings.meld?.port || 13376;
+  $("#discord-enabled").checked = settings.discord?.enabled === true;
+  $("#discord-webhook-url").value = settings.discord?.webhookUrl || "";
+  $("#discord-min-rarity").value = settings.discord?.minRarity || "legendary";
   $("#obs-scene-name").value = settings.obs?.sceneName || "Streamer Card Overlay";
   $("#obs-combined-source-name").value = settings.obs?.combinedSourceName || "Streamer Card Overlays";
   $("#trade-anim-enabled").checked = settings.tradeAnimation?.enabled === true;
@@ -7607,6 +7771,26 @@ function bindDesign() {
     settings.teamBattle.perDefeatMessage = event.target.value;
     scheduleAutoSave();
   });
+  $("#teamkampf-per-defeat-all-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.perDefeatAllEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-per-defeat-all-draws").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.perDefeatAllDraws = Math.max(1, Math.round(Number(event.target.value) || 1));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-per-defeat-all-announce-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.perDefeatAllAnnounceEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-per-defeat-all-message").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.perDefeatAllMessage = event.target.value;
+    scheduleAutoSave();
+  });
   $("#teamkampf-lose-card-enabled").addEventListener("change", (event) => {
     settings.teamBattle ||= {};
     settings.teamBattle.loseCardOnDefeat = event.target.checked;
@@ -7740,6 +7924,19 @@ function bindDesign() {
   }
   $("#test-meld").addEventListener("click", testMeldConnection);
   $("#setup-meld").addEventListener("click", setupMeldOverlay);
+  const discordFields = {
+    "#discord-enabled": ["enabled", "checkbox"],
+    "#discord-webhook-url": ["webhookUrl"],
+    "#discord-min-rarity": ["minRarity"]
+  };
+  for (const [selector, [field, type]] of Object.entries(discordFields)) {
+    const eventName = type === "checkbox" || $(selector).tagName === "SELECT" ? "change" : "input";
+    $(selector).addEventListener(eventName, (event) => {
+      settings.discord ||= {};
+      settings.discord[field] = type === "checkbox" ? event.target.checked : event.target.value;
+    });
+  }
+  $("#test-discord").addEventListener("click", testDiscordConnection);
   $("#meld-info-toggle").addEventListener("click", () => {
     const box = $("#meld-info");
     const toggle = $("#meld-info-toggle");

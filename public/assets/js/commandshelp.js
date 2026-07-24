@@ -35,8 +35,12 @@ const STRINGS = {
     exampleLabel: "Beispiel",
     sampleUser: "@Zuschauer",
     sampleCard: "Kartenname",
+    sampleBooster: "Boostername",
     packDesc: "Löst einen zufälligen Kartenpack aus.",
     packsDesc: "Listet alle verfügbaren Booster mit ihrer Ziehchance auf.",
+    showPackDesc: "Zeigt die eigenen Karten aus einem bestimmten Booster.",
+    specificPackDrawDesc: "Zieht eine Karte aus einem bestimmten Booster.",
+    compareDesc: "Vergleicht die eigene Sammlung mit der eines anderen Zuschauers.",
     collectionDesc: "Zeigt die eigene Kartensammlung im Overlay und/oder im Chat.",
     dustDesc: "Opfert doppelt besessene Karten gegen Garantie-Punkte.",
     dustSetDesc: "Legt fest, bis zu welcher Seltenheit \"Alle Duplikate opfern\" automatisch greift.",
@@ -57,8 +61,12 @@ const STRINGS = {
     exampleLabel: "Example",
     sampleUser: "@viewer",
     sampleCard: "card name",
+    sampleBooster: "booster name",
     packDesc: "Draws a random card pack.",
     packsDesc: "Lists every available booster with its draw chance.",
+    showPackDesc: "Shows your own cards from a specific booster.",
+    specificPackDrawDesc: "Draws a card from a specific booster.",
+    compareDesc: "Compares your own collection with another viewer's.",
     collectionDesc: "Shows your own card collection in the overlay and/or chat.",
     dustDesc: "Sacrifices duplicate cards for pity points.",
     dustSetDesc: "Sets up to which rarity \"sacrifice all duplicates\" applies automatically.",
@@ -79,8 +87,12 @@ const STRINGS = {
     exampleLabel: "Exemple",
     sampleUser: "@spectateur",
     sampleCard: "nom de la carte",
+    sampleBooster: "nom du booster",
     packDesc: "Tire un booster de cartes aléatoire.",
     packsDesc: "Liste tous les boosters disponibles avec leur chance de tirage.",
+    showPackDesc: "Affiche tes propres cartes d'un booster spécifique.",
+    specificPackDrawDesc: "Tire une carte d'un booster spécifique.",
+    compareDesc: "Compare ta propre collection avec celle d'un autre spectateur.",
     collectionDesc: "Affiche ta collection de cartes dans l'overlay et/ou le chat.",
     dustDesc: "Sacrifie des cartes en double contre des points de pitié.",
     dustSetDesc: "Définit jusqu'à quelle rareté \"sacrifier tous les doublons\" s'applique automatiquement.",
@@ -101,8 +113,12 @@ const STRINGS = {
     exampleLabel: "Ejemplo",
     sampleUser: "@espectador",
     sampleCard: "nombre de la carta",
+    sampleBooster: "nombre del sobre",
     packDesc: "Saca un sobre de cartas al azar.",
     packsDesc: "Lista todos los sobres disponibles con su probabilidad de tirada.",
+    showPackDesc: "Muestra tus propias cartas de un sobre específico.",
+    specificPackDrawDesc: "Saca una carta de un sobre específico.",
+    compareDesc: "Compara tu propia colección con la de otro espectador.",
     collectionDesc: "Muestra tu colección de cartas en el overlay y/o el chat.",
     dustDesc: "Sacrifica cartas duplicadas a cambio de puntos de compensación.",
     dustSetDesc: "Define hasta qué rareza se aplica automáticamente \"sacrificar todos los duplicados\".",
@@ -123,8 +139,12 @@ const STRINGS = {
     exampleLabel: "ตัวอย่าง",
     sampleUser: "@ผู้ชม",
     sampleCard: "ชื่อการ์ด",
+    sampleBooster: "ชื่อบูสเตอร์",
     packDesc: "สุ่มเปิดบูสเตอร์การ์ด",
     packsDesc: "แสดงรายการบูสเตอร์ที่ใช้งานได้ทั้งหมดพร้อมโอกาสสุ่ม",
+    showPackDesc: "แสดงการ์ดของคุณจากบูสเตอร์ที่ระบุ",
+    specificPackDrawDesc: "สุ่มการ์ดจากบูสเตอร์ที่ระบุ",
+    compareDesc: "เปรียบเทียบคอลเลกชันของคุณกับผู้ชมคนอื่น",
     collectionDesc: "แสดงคอลเลกชันการ์ดของคุณในโอเวอร์เลย์และ/หรือแชท",
     dustDesc: "สังเวยการ์ดที่มีซ้ำเพื่อแลกแต้มการันตี",
     dustSetDesc: "กำหนดว่า \"สังเวยการ์ดซ้ำทั้งหมด\" จะมีผลอัตโนมัติถึงระดับความหายากใด",
@@ -150,6 +170,11 @@ function sampleCardTitle() {
   return cards[0]?.title || strings().sampleCard;
 }
 
+function sampleBoosterTitle() {
+  const boosters = (settings?.boosters || []).filter((booster) => booster.enabled !== false && booster.title);
+  return boosters[0]?.title || strings().sampleBooster;
+}
+
 // Builds the list of currently active items to cycle through - every enabled chat command and
 // every enabled (and unpaused) channel-points reward, each with a category, a title, a
 // description (the streamer's own configured helpText when set, otherwise a sensible built-in
@@ -173,6 +198,8 @@ function buildItems() {
 
   addChat("pack", "", s.packDesc);
   addChat("packs", "", s.packsDesc);
+  addChat("specificPackDraw", sampleBoosterTitle(), s.specificPackDrawDesc);
+  addChat("showPack", sampleBoosterTitle(), s.showPackDesc);
   addChat("collection", "", s.collectionDesc);
   if (cc.dust?.enabled) {
     addChat("dust", `${sampleCardTitle()} 1`, s.dustDesc);
@@ -197,6 +224,7 @@ function buildItems() {
     }
   }
   addChat("gift", `${s.sampleUser} ${sampleCardTitle()}`, s.giftDesc);
+  addChat("compare", s.sampleUser, s.compareDesc);
   addChat("trade", `${s.sampleUser} ${sampleCardTitle()}`, s.tradeDesc);
   addChat("battle", s.sampleUser, s.battleDesc);
   addChat("ranking", sampleCardTitle(), s.rankingDesc);
@@ -220,6 +248,7 @@ function buildItems() {
   };
   addReward(settings?.draw);
   addReward(settings?.showcase);
+  addReward(settings?.specificPackDraw);
   addReward(settings?.tournament, settings?.tournament?.enabled);
   addReward(settings?.teamBattle, settings?.teamBattle?.enabled);
 

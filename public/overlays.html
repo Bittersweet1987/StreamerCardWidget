@@ -47,11 +47,14 @@
           <div class="communitygoal-bar-fill" id="communitygoal-bar-fill"></div>
         </div>
       </div>
-      <div id="communitygoal-celebration" class="communitygoal-celebration" hidden>
-        <div class="communitygoal-celebration-burst"></div>
-        <p class="communitygoal-celebration-text" id="communitygoal-celebration-text"></p>
-      </div>
     </main>
+    <!-- Deliberately OUTSIDE #communitygoal-overlay (see communitygoal.html for the full reasoning)
+         - must always play dead-center on the real viewport, independent of wherever the progress
+         bar widget itself has been positioned. -->
+    <div id="communitygoal-celebration" class="communitygoal-celebration" hidden>
+      <div class="communitygoal-celebration-burst"></div>
+      <p class="communitygoal-celebration-text" id="communitygoal-celebration-text"></p>
+    </div>
     <main id="liveticker-overlay" aria-live="polite">
       <div id="liveticker-stage" class="liveticker-stage">
         <div id="liveticker-banner" class="liveticker-banner" hidden>

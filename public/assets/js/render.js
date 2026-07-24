@@ -500,11 +500,11 @@ const DEFAULT_MESSAGES = {
     th: "📋 คำสั่งที่ใช้ได้: [Befehle]"
   },
   dustUsage: {
-    de: "@userName, Nutzung: !dust <Kartenname> <Anzahl>",
-    en: "@userName, usage: !dust <card name> <count>",
-    fr: "@userName, utilisation : !dust <nom de la carte> <nombre>",
-    es: "@userName, uso: !dust <nombre de la carta> <cantidad>",
-    th: "@userName วิธีใช้: !dust <ชื่อการ์ด> <จำนวน>"
+    de: "@userName, Nutzung: [Befehl] <Kartenname> <Anzahl>",
+    en: "@userName, usage: [Befehl] <card name> <count>",
+    fr: "@userName, utilisation : [Befehl] <nom de la carte> <nombre>",
+    es: "@userName, uso: [Befehl] <nombre de la carta> <cantidad>",
+    th: "@userName วิธีใช้: [Befehl] <ชื่อการ์ด> <จำนวน>"
   },
   dustCardNotFound: {
     de: "@userName, die Karte [falscherName] existiert nicht. Meintest du stattdessen [Kartenname]?",
@@ -947,6 +947,17 @@ export function normalizeSettings(settings) {
   settings.meld.communityGoalSourceName ||= settings.communityGoal?.sourceName || "Streamer Card Community-Ziel";
   settings.meld.combinedSourceName ||= settings.obs.combinedSourceName || "Streamer Card Overlays";
 
+  // Discord webhook: posts a card draw (title, booster, PNG snapshot of the real card) to a
+  // Discord channel, with the drawer's own Twitch name/avatar as the webhook poster - see
+  // NotifyDiscordDraw server-side and playHoloAlarmSequence's neighbor in overlay.js for the
+  // client-side capture. webhookUrl itself lives in data/discord.json (see ReadSettingsObject),
+  // merged in here just like obs/meld's connection settings.
+  settings.discord ||= {};
+  settings.discord.enabled = settings.discord.enabled === true;
+  settings.discord.webhookUrl ||= "";
+  const validDiscordRarities = ["uncommon", "rare", "epic", "legendary", "holo"];
+  settings.discord.minRarity = validDiscordRarities.includes(settings.discord.minRarity) ? settings.discord.minRarity : "legendary";
+
   // Collection showcase: a dedicated channel-point reward that, when redeemed, slides through
   // every active booster showing the redeemer's owned + still-unknown cards in its own OBS source.
   settings.showcase ||= {};
@@ -1040,6 +1051,18 @@ export function normalizeSettings(settings) {
   settings.chatCommands.dust.prefix ||= "!";
   settings.chatCommands.dust.command ||= "dust";
   settings.chatCommands.dust.helpText ||= pickDefault(settings.language, "helpDust");
+  // One-time repair: the old default hard-referenced "!dust" literally instead of the [Befehl]
+  // variable, so it never reflected a renamed command - any untouched message still carrying
+  // that exact old wording (any supported language) is almost certainly unmodified by the
+  // streamer, so it's safe to refresh to the current [Befehl]-based default.
+  const staleDustUsageMessages = new Set([
+    "@userName, Nutzung: !dust <Kartenname> <Anzahl>",
+    "@userName, usage: !dust <card name> <count>",
+    "@userName, utilisation : !dust <nom de la carte> <nombre>",
+    "@userName, uso: !dust <nombre de la carta> <cantidad>",
+    "@userName วิธีใช้: !dust <ชื่อการ์ด> <จำนวน>"
+  ]);
+  if (staleDustUsageMessages.has(settings.chatCommands.dust.usageMessage)) settings.chatCommands.dust.usageMessage = "";
   settings.chatCommands.dust.usageMessage ||= pickDefault(settings.language, "dustUsage");
   settings.chatCommands.dust.cardNotFoundMessage ||= pickDefault(settings.language, "dustCardNotFound");
   settings.chatCommands.dust.notEnoughMessage ||= pickDefault(settings.language, "dustNotEnough");
@@ -1366,6 +1389,12 @@ export function normalizeSettings(settings) {
   settings.teamBattle.perDefeatEnabled = settings.teamBattle.perDefeatEnabled === true;
   settings.teamBattle.perDefeatDraws = Number(settings.teamBattle.perDefeatDraws) >= 1 ? Math.round(Number(settings.teamBattle.perDefeatDraws)) : 1;
   settings.teamBattle.perDefeatAnnounceEnabled = settings.teamBattle.perDefeatAnnounceEnabled !== false;
+  // Same idea as perDefeatEnabled above, but rewards EVERY participant for EACH streamer card
+  // defeated overall, regardless of who personally landed the blow - can run alongside
+  // perDefeatEnabled (both stack) rather than replacing it.
+  settings.teamBattle.perDefeatAllEnabled = settings.teamBattle.perDefeatAllEnabled === true;
+  settings.teamBattle.perDefeatAllDraws = Number(settings.teamBattle.perDefeatAllDraws) >= 1 ? Math.round(Number(settings.teamBattle.perDefeatAllDraws)) : 1;
+  settings.teamBattle.perDefeatAllAnnounceEnabled = settings.teamBattle.perDefeatAllAnnounceEnabled !== false;
   // Not normalized to a default here, same as teamBattle.lostCardMessage - the admin UI shows the
   // hardcoded German default text directly (see admin.js hydrateTeamKampf) rather than going
   // through pickDefault/settings.language, and the C# side falls back to its own default constant
@@ -1592,6 +1621,46 @@ export function cardMarkup(card, options = {}) {
       ${holoOverlay}
     </article>
   `;
+}
+
+// Snapshots a live, already-laid-out DOM node (e.g. a rendered .tcg-card) as a PNG data URL - a
+// clone gets every element's CURRENT computed style inlined onto it (so it doesn't depend on the
+// stylesheet being reachable from inside the data: URI below), is serialized into an SVG
+// <foreignObject>, and that SVG is drawn onto a canvas. Used by both the overlay (real draws,
+// see overlay.js's notifyDiscordDraw) and the admin panel (manual Discord test button) so the
+// two never drift into two different, possibly-inconsistent capture implementations.
+function inlineComputedStyles(source, target) {
+  const computed = getComputedStyle(source);
+  let cssText = "";
+  for (const prop of computed) cssText += `${prop}:${computed.getPropertyValue(prop)};`;
+  target.style.cssText = cssText;
+  for (let i = 0; i < source.children.length; i++) inlineComputedStyles(source.children[i], target.children[i]);
+}
+
+export async function captureNodeAsPng(node, scale = 2) {
+  const rect = node.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width * scale));
+  const height = Math.max(1, Math.round(rect.height * scale));
+
+  const clone = node.cloneNode(true);
+  inlineComputedStyles(node, clone);
+  const serialized = new XMLSerializer().serializeToString(clone);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}">` +
+    `<foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">${serialized}</div></foreignObject></svg>`;
+  const dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+
+  const img = new Image();
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
+    img.src = dataUri;
+  });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/png");
 }
 
 export function boosterMarkup(booster = {}) {

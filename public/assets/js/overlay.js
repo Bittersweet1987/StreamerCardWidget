@@ -3,7 +3,7 @@
 // same version as this file - OBS/Meld can never mix a fresh page module with stale shared code.
 const __v = new URL(import.meta.url).searchParams.get("v") || String(Date.now());
 const { addLog, announceDraw, completeQueueItem, connectEventStream, getCollections, getSettings, persistCollectionSnapshot } = await import(`./api.js?v=${__v}`);
-const { applyOverlayLayout, applyTheme, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES, weightedBoosterPick, weightedPick } = await import(`./render.js?v=${__v}`);
+const { applyOverlayLayout, applyTheme, captureNodeAsPng, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES, weightedBoosterPick, weightedPick } = await import(`./render.js?v=${__v}`);
 
 const stage = document.querySelector("#stage");
 const status = document.querySelector("#status");
@@ -187,6 +187,31 @@ async function runQueue() {
   running = false;
 }
 
+// ---- Discord webhook: snapshot the real revealed card as a PNG and hand it off to the server,
+// which relays it to Discord as the drawer's own Twitch name/avatar (see NotifyDiscordDraw
+// server-side). The snapshot itself (captureNodeAsPng, shared with the admin panel's manual test
+// button) is a DOM-to-canvas trick rather than a from-scratch re-render, so it's pixel-identical
+// to what's actually on screen - including whatever card theme/background/border color is active.
+// Card art is already an inline base64 data URI (see cardMarkup), so nothing here needs a network
+// fetch that could taint the canvas. ----
+
+async function notifyDiscordDraw(cardEl, login, displayName, cardTitle, boosterTitle, rarity) {
+  if (settings.discord?.enabled !== true) return;
+  const minIndex = RARITIES.findIndex((r) => r.id === (settings.discord?.minRarity || "legendary"));
+  const cardIndex = RARITIES.findIndex((r) => r.id === (rarity || "common"));
+  if (cardIndex < 0 || cardIndex < minIndex) return;
+  try {
+    const image = await captureNodeAsPng(cardEl);
+    await fetch("/api/discord/notify-draw", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ login, displayName, cardTitle, boosterTitle, rarity, image })
+    });
+  } catch {
+    // Best-effort - a failed snapshot/upload must never affect the on-screen animation.
+  }
+}
+
 async function runOpening(request = {}) {
   const booster = pickBooster(request.boosterId);
   const card = booster ? pickCard(booster, request) : null;
@@ -262,6 +287,12 @@ async function runOpening(request = {}) {
   // the post-draw chat message and live-ticker entry should go out, not several seconds later
   // once the whole animation finishes.
   announceDraw(request.eventId, request.drawnCardTitle, request.drawnBoosterTitle);
+  // Fire-and-forget: never await this, and never let a capture/upload failure affect the
+  // on-screen animation - Discord notification is a best-effort side effect.
+  const cardElForDiscord = scene.querySelector(".tcg-card");
+  if (cardElForDiscord) {
+    notifyDiscordDraw(cardElForDiscord, login, user, request.drawnCardTitle, request.drawnBoosterTitle, card.rarity || "common");
+  }
   // A beat after the card is fully visible, count up from the pre-draw total to the new one.
   await delay(350);
   const bubble = scene.querySelector(".draw-count-bubble");
@@ -307,6 +338,27 @@ function prepareHoloAlarm(cardEl) {
   return { cardEl, realImg, innerCover, canvas, footerEl, cornerEls, holoGlitter, targetBorderColor };
 }
 
+// Replicates the CSS object-fit/object-position box-to-image mapping actually applied to the real
+// <img> - card art can be "cover" (default) or "contain" (data-position="contain"), and its anchor
+// can be off-center (top/bottom/left/right, or an auto-picked one via autoImagePosition), see
+// components.css's ".card-art img" rules. Reading getComputedStyle gives the FINAL resolved
+// fit/position regardless of which CSS rule/specificity actually won, so this stays correct
+// without having to reimplement the cascade - the box formula (gap/overflow * position%) is the
+// same one the browser itself uses for both cover (negative "gap" = overflow, cropped) and contain
+// (positive gap = letterboxing).
+function objectFitDrawRect(img, boxW, boxH) {
+  const computed = getComputedStyle(img);
+  const fit = computed.objectFit || "cover";
+  const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
+  if (fit === "fill") return { dx: 0, dy: 0, dw: boxW, dh: boxH };
+  const scale = fit === "contain" ? Math.min(boxW / iw, boxH / ih) : Math.max(boxW / iw, boxH / ih);
+  const dw = iw * scale, dh = ih * scale;
+  const [posXRaw, posYRaw] = (computed.objectPosition || "50% 50%").split(/\s+/);
+  const parsePercent = (value) => (value && value.endsWith("%") ? parseFloat(value) / 100 : 0.5);
+  const posX = parsePercent(posXRaw), posY = parsePercent(posYRaw);
+  return { dx: (boxW - dw) * posX, dy: (boxH - dh) * posY, dw, dh };
+}
+
 function buildHoloDissolveState(ctl) {
   const rect = ctl.canvas.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -316,10 +368,8 @@ function buildHoloDissolveState(ctl) {
   ctl.canvas.height = h;
   const ctx = ctl.canvas.getContext("2d");
   ctx.clearRect(0, 0, w, h);
-  const iw = ctl.realImg.naturalWidth || 1, ih = ctl.realImg.naturalHeight || 1;
-  const scale = Math.max(w / iw, h / ih);
-  const dw = iw * scale, dh = ih * scale;
-  ctx.drawImage(ctl.realImg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  const { dx, dy, dw, dh } = objectFitDrawRect(ctl.realImg, w, h);
+  ctx.drawImage(ctl.realImg, dx, dy, dw, dh);
   const shot = ctx.getImageData(0, 0, w, h);
   const px = shot.data;
   for (let i = 0; i < px.length; i += 4) { px[i] = 0; px[i + 1] = 0; px[i + 2] = 0; }
