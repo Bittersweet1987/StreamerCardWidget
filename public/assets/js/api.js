@@ -1,7 +1,26 @@
+// The combined overlays.html page loads ~10 independent modules (pack draw, trade, battle,
+// live-ticker, community-goal, ...), each with its own "settings" SSE handler that calls this on
+// every save. Without dedup, one Speichern-click fired 10 concurrent GETs of the full settings
+// blob (base64 card images included - can run into the MBs, see CLAUDE.md) and 10 JSON.parse
+// calls, all competing for the same single JS thread the page's running animations (e.g. the
+// live-ticker's requestAnimationFrame loop) also depend on - long enough to visibly freeze them.
+// All handlers fire synchronously back-to-back in dispatchStreamEvent's loop, so whichever call
+// arrives while a fetch is already in flight just awaits that same promise instead of starting
+// its own - collapsing N concurrent requests into exactly 1.
+let settingsInFlight = null;
+
 export async function getSettings() {
-  const response = await fetch("/api/settings", { cache: "no-store" });
-  if (!response.ok) throw new Error("Einstellungen konnten nicht geladen werden.");
-  return response.json();
+  if (settingsInFlight) return settingsInFlight;
+  settingsInFlight = (async () => {
+    const response = await fetch("/api/settings", { cache: "no-store" });
+    if (!response.ok) throw new Error("Einstellungen konnten nicht geladen werden.");
+    return response.json();
+  })();
+  try {
+    return await settingsInFlight;
+  } finally {
+    settingsInFlight = null;
+  }
 }
 
 export async function getCollections() {

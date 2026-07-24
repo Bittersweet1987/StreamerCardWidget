@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1784889667";
+} from "./api.js?v=1784895593";
 import {
   applyTheme,
   autoImagePosition,
@@ -70,7 +70,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1784889667";
+} from "./render.js?v=1784895593";
 
 let settings;
 let selectedCardId;
@@ -1728,6 +1728,23 @@ const I18N = {
     fr: "Cartes créées à partir de la liste texte.",
     es: "Cartas creadas a partir de la lista de texto.",
     th: "สร้างการ์ดจากรายการข้อความแล้ว"
+  },
+  "btn-import-cards-images": { de: "Bilder importieren", en: "Import images",
+    fr: "Importer des images",
+    es: "Importar imágenes",
+    th: "นำเข้ารูปภาพ"
+  },
+  "hint-import-cards-images": {
+    de: "Bilder importieren: jede ausgewählte Bilddatei wird zu einer neuen Karte, der Dateiname (ohne Endung) wird als Kartenname übernommen.",
+    en: "Import images: each selected image file becomes a new card, its filename (without extension) is used as the card name.",
+    fr: "Importer des images : chaque fichier image sélectionné devient une nouvelle carte, son nom de fichier (sans extension) est utilisé comme nom de carte.",
+    es: "Importar imágenes: cada archivo de imagen seleccionado se convierte en una nueva carta, su nombre de archivo (sin extensión) se usa como nombre de la carta.",
+    th: "นำเข้ารูปภาพ: ไฟล์รูปภาพแต่ละไฟล์ที่เลือกจะกลายเป็นการ์ดใหม่ โดยใช้ชื่อไฟล์ (ไม่รวมนามสกุล) เป็นชื่อการ์ด"
+  },
+  "notice-cards-images-imported": { de: "Karten aus Bildern erstellt.", en: "Cards created from images.",
+    fr: "Cartes créées à partir des images.",
+    es: "Cartas creadas a partir de las imágenes.",
+    th: "สร้างการ์ดจากรูปภาพแล้ว"
   },
   "btn-export-card": { de: "Exportieren", en: "Export",
     fr: "Exporter",
@@ -4222,6 +4239,28 @@ async function importCardsFromTextFile(file) {
   let text;
   try { text = await file.text(); } catch { showNotice(t("error-import-invalid"), "error"); return; }
   if (!createCardsFromText(text)) showNotice(t("error-import-invalid"), "error");
+}
+
+// Bulk card creation from a batch of image files: each file becomes a new card, titled after its
+// own filename (extension stripped) - saves typing out titles AND the usual one-by-one manual
+// image upload per card, for the common case where the images are already named after the card.
+async function importCardsFromImages(files) {
+  const list = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
+  if (!list.length) return;
+  const newCards = [];
+  for (const file of list) {
+    const card = blankCard();
+    card.title = file.name.replace(/\.[^.]+$/, "");
+    card.image = await compressImageDataUrl(await readFileAsDataUrl(file));
+    card.imagePosition = autoImagePosition(await getImageDimensions(card.image), CARD_ART_RATIO);
+    newCards.push(card);
+  }
+  settings.deck.cards.unshift(...newCards);
+  selectedCardId = newCards[0].id;
+  renderCards();
+  renderOverview();
+  scheduleAutoSave();
+  showNotice(t("notice-cards-images-imported"));
 }
 
 function randomUsername() {
@@ -8297,6 +8336,14 @@ function bindGlobalActions() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (file) await importCardsFromTextFile(file);
+  });
+  $("#import-cards-images").addEventListener("change", async (event) => {
+    // Copy the files out BEFORE clearing the input - resetting a file input's value also empties
+    // its live FileList, so a reference taken beforehand would resolve to zero files by the time
+    // the (async) import actually reads it.
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (files.length) await importCardsFromImages(files);
   });
   $("#cards-text-create").addEventListener("click", () => {
     const textarea = $("#cards-text-paste");
