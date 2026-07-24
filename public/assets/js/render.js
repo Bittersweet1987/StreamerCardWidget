@@ -955,7 +955,7 @@ export function normalizeSettings(settings) {
   settings.discord ||= {};
   settings.discord.enabled = settings.discord.enabled === true;
   settings.discord.webhookUrl ||= "";
-  const validDiscordRarities = ["uncommon", "rare", "epic", "legendary", "holo"];
+  const validDiscordRarities = ["common", "uncommon", "rare", "epic", "legendary", "holo"];
   settings.discord.minRarity = validDiscordRarities.includes(settings.discord.minRarity) ? settings.discord.minRarity : "legendary";
 
   // Collection showcase: a dedicated channel-point reward that, when redeemed, slides through
