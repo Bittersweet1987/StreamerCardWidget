@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1784895593";
+} from "./api.js?v=1784952857";
 import {
   applyTheme,
   autoImagePosition,
@@ -70,7 +70,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1784895593";
+} from "./render.js?v=1784952857";
 
 let settings;
 let selectedCardId;
@@ -3058,6 +3058,11 @@ const I18N = {
     es: "Crear / actualizar escena y fuentes de OBS",
     th: "สร้าง/อัปเดตฉากและซอร์ส OBS"
   },
+  "btn-obs-busy": { de: "In Arbeit...", en: "Working...",
+    fr: "En cours...",
+    es: "En curso...",
+    th: "กำลังดำเนินการ..."
+  },
   "users-eyebrow": { de: "Sammlung", en: "Collection",
     fr: "Collection",
     es: "Colección",
@@ -4610,6 +4615,15 @@ function bindDrawReward() {
   $("#delete-reward").addEventListener("click", handleDrawRewardDelete);
 }
 
+// Reward sync/delete responses no longer echo the full settings back - the server strips the
+// multi-MB cards/boosters payload before responding (see StripDeckForRewardSave in
+// CardPackWidgetApp.cs), because a reward save never changes the deck. Merge whatever sections
+// the server DID send over the local state and keep the local deck/boosters untouched.
+async function absorbRewardResult(result) {
+  const fresh = (result ? result.settings : null) || await getSettings();
+  return normalizeSettings({ ...settings, ...fresh });
+}
+
 async function handleDrawRewardSync() {
   settings.draw ||= {};
   setStatus("#reward-status", t("status-saving-reward"), "neutral");
@@ -4628,7 +4642,7 @@ async function handleDrawRewardSync() {
       maxPerUserPerStream: Math.max(0, Number(draw.rewardMaxPerUserPerStream || 0)),
       globalCooldown: Math.max(0, Number(draw.rewardGlobalCooldown || 0))
     });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateDrawReward();
     setStatus("#reward-status", t("notice-reward-saved"), "ok");
     showNotice(t("notice-reward-saved"));
@@ -4645,7 +4659,7 @@ async function handleDrawRewardDelete() {
   setStatus("#reward-status", t("status-deleting-reward"), "neutral");
   try {
     const result = await deleteTwitchReward({ rewardId });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateDrawReward();
     setStatus("#reward-status", t("notice-reward-deleted"), "ok");
     showNotice(t("notice-reward-deleted"));
@@ -4875,7 +4889,31 @@ function obsRequest(ws, requestType, requestData = {}, timeoutMs = 4000) {
 
 let lastObsConnected = null;
 
-async function testObsConnection() {
+// Visible in-progress feedback for the two OBS buttons: while the async work runs, the clicked
+// button is disabled (no accidental double-fire) and its label swaps to a busy text, so a click
+// is acknowledged immediately even before the status line below updates.
+async function withBusyButton(selector, busyLabel, work) {
+  const button = $(selector);
+  const originalLabel = button ? button.textContent : "";
+  if (button) {
+    button.disabled = true;
+    button.textContent = busyLabel;
+  }
+  try {
+    return await work();
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
+}
+
+function testObsConnection() {
+  return withBusyButton("#test-obs", t("btn-obs-busy"), doTestObsConnection);
+}
+
+async function doTestObsConnection() {
   setStatus("#obs-status", t("status-testing-obs"), "neutral");
   let ws;
   try {
@@ -4923,11 +4961,18 @@ async function sourceUrl(pathname) {
   return url.toString();
 }
 
-async function setupObsOverlay() {
+function setupObsOverlay() {
+  return withBusyButton("#setup-obs", t("btn-obs-busy"), doSetupObsOverlay);
+}
+
+async function doSetupObsOverlay() {
   setStatus("#obs-status", t("status-setting-up-obs"), "neutral");
   let ws;
   try {
-    await saveSettings(settings);
+    // No settings save up front: the OBS calls below only read the in-memory settings, and the
+    // success path saves at the end anyway. The save is the expensive part of this whole flow
+    // (the settings blob carries every card image, several MB) - doing it twice made the button
+    // feel like it hung for seconds before anything OBS-related even started.
     ws = await connectObs();
     const sceneName = settings.obs?.sceneName || "Streamer Card Overlay";
     const combinedSourceName = settings.obs?.combinedSourceName || "Streamer Card Overlays";
@@ -5213,7 +5258,7 @@ async function handleShowcaseSync() {
       isPaused: $("#showcase-paused").checked,
       globalCooldown: Math.max(0, Number($("#showcase-cooldown").value || 0))
     });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateTrigger();
     setStatus("#showcase-status", t("notice-showcase-saved"), "ok");
     showNotice(t("notice-showcase-saved"));
@@ -5230,7 +5275,7 @@ async function handleShowcaseDelete() {
   setStatus("#showcase-status", t("status-deleting-reward"), "neutral");
   try {
     const result = await deleteTwitchReward({ rewardId });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateTrigger();
     setStatus("#showcase-status", t("notice-reward-deleted"), "ok");
     showNotice(t("notice-reward-deleted"));
@@ -5283,7 +5328,7 @@ async function handleTournamentRewardSync() {
       isPaused: $("#tournament-reward-paused").checked,
       globalCooldown: Math.max(0, Number($("#tournament-reward-cooldown").value || 0))
     });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateTrigger();
     setStatus("#tournament-reward-status", t("notice-tournament-reward-saved"), "ok");
     showNotice(t("notice-tournament-reward-saved"));
@@ -5300,7 +5345,7 @@ async function handleTournamentRewardDelete() {
   setStatus("#tournament-reward-status", t("status-deleting-reward"), "neutral");
   try {
     const result = await deleteTwitchReward({ rewardId });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateTrigger();
     setStatus("#tournament-reward-status", t("notice-reward-deleted"), "ok");
     showNotice(t("notice-reward-deleted"));
@@ -5332,7 +5377,7 @@ async function handleTeamBattleRewardSync() {
       isPaused: $("#teamkampf-reward-paused").checked,
       globalCooldown: Math.max(0, Number($("#teamkampf-reward-cooldown").value || 0))
     });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateTrigger();
     setStatus("#teamkampf-reward-status", t("notice-teamkampf-reward-saved"), "ok");
     showNotice(t("notice-teamkampf-reward-saved"));
@@ -5349,7 +5394,7 @@ async function handleTeamBattleRewardDelete() {
   setStatus("#teamkampf-reward-status", t("status-deleting-reward"), "neutral");
   try {
     const result = await deleteTwitchReward({ rewardId });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateTrigger();
     setStatus("#teamkampf-reward-status", t("notice-reward-deleted"), "ok");
     showNotice(t("notice-reward-deleted"));
@@ -5382,7 +5427,7 @@ async function handleSpecificPackRewardSync() {
       isPaused: $("#specificpack-reward-paused").checked,
       globalCooldown: Math.max(0, Number($("#specificpack-reward-cooldown").value || 0))
     });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateTrigger();
     setStatus("#specificpack-reward-status", t("notice-specificpack-reward-saved"), "ok");
     showNotice(t("notice-specificpack-reward-saved"));
@@ -5399,7 +5444,7 @@ async function handleSpecificPackRewardDelete() {
   setStatus("#specificpack-reward-status", t("status-deleting-reward"), "neutral");
   try {
     const result = await deleteTwitchReward({ rewardId });
-    settings = normalizeSettings(result.settings || await getSettings());
+    settings = await absorbRewardResult(result);
     hydrateTrigger();
     setStatus("#specificpack-reward-status", t("notice-reward-deleted"), "ok");
     showNotice(t("notice-reward-deleted"));

@@ -14,7 +14,11 @@ export async function getSettings() {
   settingsInFlight = (async () => {
     const response = await fetch("/api/settings", { cache: "no-store" });
     if (!response.ok) throw new Error("Einstellungen konnten nicht geladen werden.");
-    return response.json();
+    const parsed = await response.json();
+    // Freshly fetched = identical to what's on disk; record that as the deck baseline so
+    // saveSettings below can tell whether cards/boosters actually changed since.
+    savedDeckFingerprint = deckFingerprint(parsed);
+    return parsed;
   })();
   try {
     return await settingsInFlight;
@@ -22,6 +26,33 @@ export async function getSettings() {
     settingsInFlight = null;
   }
 }
+
+// ---- Deck change detection for saveSettings ----
+// The settings blob is dominated by the card/booster images (base64 data URIs, easily 10MB+
+// with a real collection), but the vast majority of saves never touch cards or boosters at all
+// (toggles, messages, positions, ...). Sending the full deck anyway meant: JSON.stringify of
+// several MB in the admin page, a multi-MB upload, a slow full-body parse in the C# server, and
+// a rewrite of cards.json/boosters.json - all for data that didn't change. So saveSettings only
+// includes deck/boosters when this fingerprint differs from the state last loaded from or saved
+// to the server (the server's /api/settings POST handler treats absent keys as "leave the stored
+// files untouched"). Long strings (the images) enter the fingerprint as length + head + tail
+// instead of their full content, so computing it costs a few ms, not a full serialization.
+function deckFingerprint(settings) {
+  const light = (item) => {
+    const copy = {};
+    for (const [key, value] of Object.entries(item || {})) {
+      copy[key] = typeof value === "string" && value.length > 256
+        ? `s${value.length}:${value.slice(0, 32)}:${value.slice(-32)}`
+        : value;
+    }
+    return copy;
+  };
+  return JSON.stringify([
+    ((settings?.deck || {}).cards || []).map(light),
+    (settings?.boosters || []).map(light)
+  ]);
+}
+let savedDeckFingerprint = null;
 
 export async function getCollections() {
   const response = await fetch("/api/collections", { cache: "no-store" });
@@ -58,12 +89,21 @@ export async function saveSettings(settings) {
   // endpoints. Never include them in a settings save, otherwise a stale in-memory copy could
   // resurrect a disconnected account or overwrite freshly issued tokens.
   const { twitch, twitchBot, ...safe } = settings || {};
+  // Deck unchanged since last load/save -> leave cards/boosters out entirely (see
+  // deckFingerprint above); the server keeps its stored cards.json/boosters.json as they are.
+  const fingerprint = deckFingerprint(safe);
+  const includeDeck = savedDeckFingerprint === null || fingerprint !== savedDeckFingerprint;
+  if (!includeDeck) {
+    delete safe.deck;
+    delete safe.boosters;
+  }
   const response = await fetch("/api/settings", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(safe)
   });
   if (!response.ok) throw new Error("Einstellungen konnten nicht gespeichert werden.");
+  if (includeDeck) savedDeckFingerprint = fingerprint;
   return response.json();
 }
 

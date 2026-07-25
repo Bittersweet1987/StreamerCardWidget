@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.13.9";
-        public const string ReleaseDate = "2026-07-24";
+        public const string Version = "2.13.10";
+        public const string ReleaseDate = "2026-07-25";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -3711,6 +3711,7 @@ namespace CardPackWidgetApp
             twitch["displayName"] = login;
             twitch["broadcasterId"] = broadcasterId;
             twitch["expiresAt"] = DateTime.UtcNow.AddSeconds(GetInt(validation, "expires_in", 0)).ToString("o");
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             Start();
             server.Log("twitch", "info", "Twitch verbunden als " + login + ".");
@@ -3861,6 +3862,7 @@ namespace CardPackWidgetApp
             draw["rewardMaxPerStream"] = maxPerStream;
             draw["rewardMaxPerUserPerStream"] = maxPerUserPerStream;
             draw["rewardGlobalCooldown"] = globalCooldown;
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             RestartQuietly();
             return settings;
@@ -3894,6 +3896,7 @@ namespace CardPackWidgetApp
             RemoveRewardId(Obj(settings, "tournament"), rewardId);
             RemoveRewardId(Obj(settings, "teamBattle"), rewardId);
             RemoveRewardId(Obj(settings, "specificPackDraw"), rewardId);
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             RestartQuietly();
             return settings;
@@ -5745,6 +5748,7 @@ namespace CardPackWidgetApp
             bot["displayName"] = login;
             bot["broadcasterId"] = userId;
             bot["expiresAt"] = DateTime.UtcNow.AddSeconds(GetInt(validation, "expires_in", 0)).ToString("o");
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             server.Log("twitch", "info", "Twitch-Bot verbunden als " + login + ".");
             RefreshChatCommands();
@@ -9627,6 +9631,7 @@ namespace CardPackWidgetApp
             if (String.IsNullOrWhiteSpace(name) || Normalize(name) != Normalize(rewardTitle)) return false;
 
             holder["rewardIds"] = new object[] { rewardId };
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             server.Log("twitch", "info", "Belohnung \"" + rewardTitle + "\" hatte eine veraltete ID - automatisch aktualisiert.");
             return true;
@@ -9705,6 +9710,7 @@ namespace CardPackWidgetApp
             showcase["rewardEnabled"] = isEnabled;
             showcase["rewardPaused"] = isPaused;
             showcase["rewardGlobalCooldown"] = globalCooldown;
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             return settings;
         }
@@ -9780,6 +9786,7 @@ namespace CardPackWidgetApp
             tournament["rewardEnabled"] = isEnabled;
             tournament["rewardPaused"] = isPaused;
             tournament["rewardGlobalCooldown"] = globalCooldown;
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             return settings;
         }
@@ -9854,6 +9861,7 @@ namespace CardPackWidgetApp
             teamBattle["rewardEnabled"] = isEnabled;
             teamBattle["rewardPaused"] = isPaused;
             teamBattle["rewardGlobalCooldown"] = globalCooldown;
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             return settings;
         }
@@ -9931,6 +9939,7 @@ namespace CardPackWidgetApp
             specificPack["rewardEnabled"] = isEnabled;
             specificPack["rewardPaused"] = isPaused;
             specificPack["rewardGlobalCooldown"] = globalCooldown;
+            StripDeckForRewardSave(settings);
             server.WriteSettingsObject(settings);
             return settings;
         }
@@ -9938,6 +9947,23 @@ namespace CardPackWidgetApp
         private void RestartQuietly()
         {
             try { Start(); } catch { }
+        }
+
+        // Reward syncs/deletes only ever touch their own holder section (draw/showcase/...), never
+        // cards or boosters - yet the settings dict obtained via ReadSettingsObject carries both.
+        // Passing it to WriteSettingsObject as-is re-serialized and rewrote cards.json/boosters.json
+        // (multi-MB with real card images) on every reward save, and returning it to the client
+        // serialized those same megabytes into the HTTP response. Dropping the keys before the write
+        // skips both: WriteSettingsObject leaves absent sections' files untouched, and the response
+        // shrinks to the actual settings. Safe to remove here because the deck was never modified;
+        // the removed keys only lived in this per-call dict, the files on disk keep their content.
+        private static void StripDeckForRewardSave(Dictionary<string, object> settings)
+        {
+            settings.Remove("boosters");
+            if (settings.ContainsKey("deck") && settings["deck"] is Dictionary<string, object>)
+            {
+                ((Dictionary<string, object>)settings["deck"]).Remove("cards");
+            }
         }
 
         private Dictionary<string, object> RequireTwitch()
