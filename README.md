@@ -58,6 +58,7 @@ Team-Kämpfen** antreten.
 - [Nutzung Befehle](#nutzung-befehle)
 - [Queue](#queue)
 - [Karten-Themes](#karten-themes)
+- [Discord](#discord)
 - [Darstellung & Sounds](#darstellung--sounds)
 - [Nutzer verwalten](#nutzer-verwalten)
 - [Daten & Updates](#daten--updates)
@@ -313,7 +314,9 @@ eigenen **Aktiviert**-Schalter – es gibt keinen globalen Hauptschalter mehr.
   **Alphabet**, in beliebiger Reihenfolge (z. B. erst nach Pack, dann nach Seltenheit, dann A–Z).
   Wird die Liste zu lang für eine einzelne Twitch-Chat-Nachricht, teilt die App sie automatisch auf
   mehrere Nachrichten auf (nummeriert „(1/2)" usw.). Die Chat-Ausgabe kann auch **per Flüster-
-  Nachricht** statt öffentlich erfolgen.
+  Nachricht** statt öffentlich erfolgen – diese **Versandart** (öffentlich/Flüstern) lässt sich für
+  die meisten Chat-Befehle einzeln einstellen, u. a. für `!pack`, `!packs`, `!dust`, `!dustall`,
+  `!vergleich`, `!ranking` sowie beim Beitritt zu bzw. Start von Turnier und Team-Kampf.
 
 Alle Nachrichten lassen sich frei bearbeiten. Die verfügbaren **Variablen** (z. B. `@userName`,
 `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) stehen als anklickbare Chips über dem
@@ -353,7 +356,8 @@ bereits besitzt, sind sichtbar, alle anderen bleiben als **„?"** verdeckt.
   Packs automatisch weiter) – Position/Größe wie gewohnt unter **Animationen → !show-Animation**
   einstellbar.
 - Eine **zusätzliche, unabhängig konfigurierbare Chat-Ausgabe** listet die eigenen Karten aus
-  genau diesem Pack auf (öffentlich oder als Flüster-Nachricht) und zeigt dabei auch, **wie viele
+  genau diesem Pack auf (öffentlich oder als Flüster-Nachricht – diese Versandart steht mittlerweile
+  für die meisten Chat-Befehle zur Verfügung) und zeigt dabei auch, **wie viele
   von wie vielen Karten** des Packs man besitzt (z. B. „7/20").
 - Befehlswort, Präfix, Cooldown und alle Texte (Nutzungshinweis, unbekanntes Pack, Cooldown,
   Einleitung, „keine Karten besessen") sind frei einstellbar – im Tab **Chat Befehle** unter
@@ -641,6 +645,22 @@ Darunter gibt es einen **Theme-Editor** für ein **eigenes** Design: Hintergrund
 Verlaufswinkel), Glanz und Bildrahmen (Farbe + Deckkraft) frei einstellbar, mit Live-Vorschau.
 Diese Einstellungen wirken **nur auf die Karte** – nichts anderes in App oder Overlay ändert sich.
 
+Parallel dazu gibt es **Booster-Themes**: Jeder Booster kann ein eigenes Aussehen bekommen (Muster,
+Verlauf ein-/ausschaltbar, Titel-Hintergrundfarbe). Du kannst beliebig viele eigene, benannte
+Booster-Themes anlegen und jedem Booster einzeln eines zuweisen; die 12 mitgelieferten
+Booster-Presets lassen sich ausblenden und jederzeit wiederherstellen.
+
+---
+
+## Discord
+
+Der Bot kann Kartenziehungen automatisch als Discord-Nachricht posten – ab einer einstellbaren
+**Mindest-Seltenheit** (ab *Gewöhnlich* aufwärts wählbar), mit dem **Twitch-Namen und Profilbild**
+des Zuschauers als Absender und der echten Kartenansicht (inkl. Rahmen) als Bild. Einstellbar im
+Tab **Discord**: Webhook-URL (in Discord unter Kanal bearbeiten → Integrationen → Webhooks
+erstellen), Mindest-Seltenheit sowie eine Testnachricht mit frei wählbarer Testkarte, Test-Name und
+Test-Profilbild.
+
 ---
 
 ## Darstellung & Sounds
@@ -779,6 +799,7 @@ cards to each other, and even face off in **card duels, tournaments and team bat
 - [Command usage](#en-command-usage)
 - [Queue](#en-queue)
 - [Card themes](#en-card-themes)
+- [Discord](#en-discord)
 - [Appearance & sounds](#en-appearance--sounds)
 - [Manage users](#en-manage-users)
 - [Data & updates](#en-data--updates)
@@ -1017,7 +1038,9 @@ is no global master switch anymore.
   independently by **pack**, **rarity** or **alphabet**, in any order (e.g. pack first, then
   rarity, then A-Z). If the list is too long for a single Twitch chat message, the app
   automatically splits it across multiple messages (numbered "(1/2)" etc). Chat output can also go
-  out as a **whisper** instead of publicly.
+  out as a **whisper** instead of publicly - this **delivery mode** (public/whisper) can be set
+  individually for most chat commands, including `!pack`, `!packs`, `!dust`, `!dustall`,
+  `!compare`, `!ranking`, and joining or starting a tournament or team battle.
 
 All messages can be freely edited. The available **variables** (e.g. `@userName`, `[Kartenname]`,
 `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) appear as clickable chips above each text field and
@@ -1054,7 +1077,8 @@ everything else stays hidden as **"?"**.
 - Runs as its **own overlay** in OBS/Meld (5×5 = 25 cards per page, auto-paging for larger packs)
   - position/size configurable under **Animations → !show animation**, as usual.
 - An **additional, independently configurable chat output** lists the viewer's own cards from
-  exactly that pack (public or as a whisper), also showing **how many of how many** cards in the
+  exactly that pack (public or as a whisper - this delivery mode is now available for most chat
+  commands), also showing **how many of how many** cards in the
   pack they own (e.g. "7/20").
 - Command word, prefix, cooldown and every text (usage hint, unknown pack, cooldown, intro, "no
   cards owned") are freely configurable - in the **Chat Commands** tab under **Show-pack
@@ -1316,6 +1340,20 @@ Below that is a **theme editor** for your **own** design: background (2-3 colors
 angle), sheen and image frame (color + opacity) freely adjustable, with a live preview. These
 settings affect **only the card** - nothing else in the app or overlay changes.
 
+Alongside that there are **booster themes**: each booster can get its own look (pattern, gradient
+toggle, title background color). You can create any number of your own named booster themes and
+assign one to each booster individually; the 12 built-in booster presets can be hidden and
+restored at any time.
+
+<a id="en-discord"></a>
+### Discord
+
+The bot can automatically post card draws to Discord - from a configurable **minimum rarity**
+upward (selectable from *Common* and above), with the viewer's **Twitch name and avatar** as the
+sender and the actual card image (including frame). Configurable in the **Discord** tab: webhook
+URL (in Discord under Edit Channel → Integrations → Create Webhook), minimum rarity, and a test
+message with a freely chosen test card, test username and test avatar.
+
 <a id="en-appearance--sounds"></a>
 ### Appearance & sounds
 
@@ -1438,6 +1476,7 @@ Application Windows locale pour cartes à collectionner Twitch – avec un **ove
 - [Utilisation des commandes](#fr-utilisation-des-commandes)
 - [File d'attente](#fr-file-dattente)
 - [Thèmes de cartes](#fr-thèmes-de-cartes)
+- [Discord](#fr-discord)
 - [Apparence et sons](#fr-apparence-et-sons)
 - [Gérer les utilisateurs](#fr-gérer-les-utilisateurs)
 - [Données et mises à jour](#fr-données-et-mises-à-jour)
@@ -1697,7 +1736,9 @@ global.
   ordre (par ex. d'abord par pack, puis par rareté, puis A-Z). Si la liste est trop longue pour un
   seul message de chat Twitch, l'app la scinde automatiquement en plusieurs messages (numérotés
   « (1/2) » etc.). La sortie de chat peut aussi se faire **en message privé** plutôt que
-  publiquement.
+  publiquement – ce **mode d'envoi** (public/message privé) est désormais réglable individuellement
+  pour la plupart des commandes de chat, notamment `!pack`, `!packs`, `!dust`, `!dustall`,
+  `!compare`, `!ranking`, ainsi que pour rejoindre ou démarrer un tournoi ou un combat d'équipe.
 
 Tous les messages peuvent être librement modifiés. Les **variables** disponibles (par ex.
 `@userName`, `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) apparaissent sous forme
@@ -1736,7 +1777,8 @@ sont visibles, tout le reste reste masqué par **« ? »**.
   automatique pour les packs plus grands) – position/taille configurables sous **Animations →
   Animation !show**, comme d'habitude.
 - Une **sortie de chat supplémentaire, configurable indépendamment**, liste les cartes du
-  spectateur pour exactement ce pack (publiquement ou en message privé), en montrant aussi
+  spectateur pour exactement ce pack (publiquement ou en message privé – ce mode d'envoi est
+  désormais disponible pour la plupart des commandes de chat), en montrant aussi
   **combien de cartes sur combien** de ce pack il possède (par ex. « 7/20 »).
 - Mot de commande, préfixe, temps de recharge et tous les textes (indication d'utilisation, pack
   inconnu, temps de recharge, introduction, « aucune carte possédée ») sont librement
@@ -2029,6 +2071,22 @@ En dessous se trouve un **éditeur de thème** pour un design **personnalisé** 
 aperçu en direct. Ces réglages n'affectent **que la carte** – rien d'autre dans l'app ou l'overlay
 ne change.
 
+En parallèle, il existe des **thèmes de boosters** : chaque booster peut avoir sa propre
+apparence (motif, dégradé activable/désactivable, couleur de fond du titre). Vous pouvez créer
+autant de thèmes de boosters personnalisés et nommés que vous le souhaitez et en attribuer un à
+chaque booster individuellement ; les 12 préréglages de boosters intégrés peuvent être masqués et
+restaurés à tout moment.
+
+<a id="fr-discord"></a>
+### Discord
+
+Le bot peut publier automatiquement les tirages de cartes sur Discord – à partir d'une **rareté
+minimale** réglable (sélectionnable dès *Commune*), avec le **nom Twitch et l'avatar** du
+spectateur comme expéditeur et l'image réelle de la carte (cadre inclus). Réglable dans l'onglet
+**Discord** : URL du webhook (dans Discord, sous Modifier le salon → Intégrations → Créer un
+webhook), rareté minimale, ainsi qu'un message de test avec une carte de test, un nom de test et
+un avatar de test librement choisis.
+
 <a id="fr-apparence-et-sons"></a>
 ### Apparence et sons
 
@@ -2156,6 +2214,7 @@ OBS** o **Meld Studio**. Tus espectadores sacan cartas de sobres mediante **punt
 - [Uso de comandos](#es-uso-de-comandos)
 - [Cola](#es-cola)
 - [Temas de cartas](#es-temas-de-cartas)
+- [Discord](#es-discord)
 - [Apariencia y sonidos](#es-apariencia-y-sonidos)
 - [Gestionar usuarios](#es-gestionar-usuarios)
 - [Datos y actualizaciones](#es-datos-y-actualizaciones)
@@ -2412,7 +2471,10 @@ global.
   por **sobre**, **rareza** o **alfabético**, en cualquier orden (p. ej. primero por sobre, luego
   por rareza, luego A-Z). Si la lista es demasiado larga para un solo mensaje de chat de Twitch, la
   app la divide automáticamente en varios mensajes (numerados "(1/2)" etc.). La salida de chat
-  también puede hacerse **como susurro** en lugar de públicamente.
+  también puede hacerse **como susurro** en lugar de públicamente – este **modo de envío**
+  (público/susurro) ahora se puede configurar individualmente para la mayoría de los comandos de
+  chat, incluyendo `!pack`, `!packs`, `!dust`, `!dustall`, `!compare`, `!ranking`, y al unirse o
+  iniciar un torneo o un combate de equipo.
 
 Todos los mensajes se pueden editar libremente. Las **variables** disponibles (p. ej. `@userName`,
 `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) aparecen como chips clicables encima
@@ -2451,7 +2513,8 @@ espectador ya posee, todo lo demás queda oculto como **"?"**.
   automáticamente en sobres más grandes) – posición/tamaño configurables en **Animaciones →
   Animación !show**, como de costumbre.
 - Una **salida de chat adicional, configurable de forma independiente**, lista las cartas propias
-  del espectador de exactamente ese sobre (públicamente o como susurro), mostrando también
+  del espectador de exactamente ese sobre (públicamente o como susurro – este modo de envío ahora
+  está disponible para la mayoría de los comandos de chat), mostrando también
   **cuántas de cuántas** cartas del sobre posee (p. ej. "7/20").
 - Palabra de comando, prefijo, tiempo de espera y todos los textos (aviso de uso, sobre
   desconocido, tiempo de espera, introducción, "sin cartas propias") son libremente
@@ -2737,6 +2800,21 @@ Debajo hay un **editor de temas** para un diseño **propio**: fondo (2-3 colores
 degradado), brillo y marco de imagen (color + opacidad) libremente ajustables, con vista previa en
 vivo. Estos ajustes afectan **solo a la carta** – nada más cambia en la app o el overlay.
 
+Junto a esto existen los **temas de sobres**: cada sobre puede tener su propio aspecto (patrón,
+degradado activable/desactivable, color de fondo del título). Puedes crear tantos temas de sobres
+propios y con nombre como quieras y asignar uno a cada sobre individualmente; los 12 preajustes de
+sobres incluidos se pueden ocultar y restaurar en cualquier momento.
+
+<a id="es-discord"></a>
+### Discord
+
+El bot puede publicar automáticamente las tiradas de cartas en Discord – a partir de una **rareza
+mínima** configurable (seleccionable desde *Común* en adelante), con el **nombre de Twitch y el
+avatar** del espectador como remitente y la imagen real de la carta (marco incluido). Configurable
+en la pestaña **Discord**: URL del webhook (en Discord, en Editar canal → Integraciones → Crear
+webhook), rareza mínima, y un mensaje de prueba con una carta, nombre de usuario y avatar de
+prueba libremente elegibles.
+
 <a id="es-apariencia-y-sonidos"></a>
 ### Apariencia y sonidos
 
@@ -2860,6 +2938,7 @@ Este proyecto está bajo la **Licencia Pública General de GNU v3.0** – ver [L
 - [การใช้งานคำสั่ง](#th-การใช้งานคำสั่ง)
 - [คิว](#th-คิว)
 - [ธีมการ์ด](#th-ธีมการ์ด)
+- [Discord](#th-discord)
 - [รูปลักษณ์และเสียง](#th-รูปลักษณ์และเสียง)
 - [จัดการผู้ใช้](#th-จัดการผู้ใช้)
 - [ข้อมูลและการอัปเดต](#th-ข้อมูลและการอัปเดต)
@@ -3089,7 +3168,9 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
   **ความหายาก** หรือ**ตัวอักษร**อย่างอิสระ ในลำดับใดก็ได้ (เช่น เรียงตามแพ็กก่อน แล้วตามความหายาก
   แล้วตาม A-Z) หากรายการยาวเกินไปสำหรับข้อความแชท Twitch หนึ่งข้อความ แอปจะแบ่งเป็นหลายข้อความ
   อัตโนมัติ (มีหมายเลข "(1/2)" เป็นต้น) เอาต์พุตแชทยังสามารถส่งเป็น**ข้อความกระซิบ**แทนการส่งแบบ
-  สาธารณะได้
+  สาธารณะได้ – **วิธีการส่ง**นี้ (สาธารณะ/กระซิบ) ตอนนี้ปรับได้แยกกันสำหรับคำสั่งแชทส่วนใหญ่ เช่น
+  `!pack`, `!packs`, `!dust`, `!dustall`, `!compare`, `!ranking` รวมถึงการเข้าร่วมหรือเริ่ม
+  ทัวร์นาเมนต์และการต่อสู้ทีม
 
 ข้อความทั้งหมดแก้ไขได้อย่างอิสระ **ตัวแปร** ที่ใช้ได้ (เช่น `@userName`, `[Kartenname]`,
 `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) จะแสดงเป็นชิปที่คลิกได้เหนือช่องข้อความแต่ละช่อง
@@ -3122,7 +3203,8 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 - ทำงานเป็น**โอเวอร์เลย์ของตัวเอง**ใน OBS/Meld (5×5 = 25 การ์ดต่อหน้า เปลี่ยนหน้าอัตโนมัติสำหรับ
   แพ็กที่ใหญ่กว่า) – ตำแหน่ง/ขนาดปรับได้ที่ **แอนิเมชัน → แอนิเมชัน !show** เหมือนปกติ
 - มี**เอาต์พุตแชทเพิ่มเติมที่ปรับแต่งได้อิสระ**ซึ่งแสดงรายชื่อการ์ดของผู้ชมจากแพ็กนั้นโดยเฉพาะ
-  (แบบสาธารณะหรือกระซิบ) และแสดง**จำนวนที่มีจากทั้งหมด**ของการ์ดในแพ็กนั้นด้วย (เช่น "7/20")
+  (แบบสาธารณะหรือกระซิบ – วิธีการส่งนี้ตอนนี้ใช้ได้กับคำสั่งแชทส่วนใหญ่แล้ว) และแสดง
+  **จำนวนที่มีจากทั้งหมด**ของการ์ดในแพ็กนั้นด้วย (เช่น "7/20")
 - คำสั่ง คำนำหน้า คูลดาวน์ และข้อความทั้งหมด (คำแนะนำการใช้งาน แพ็กที่ไม่รู้จัก คูลดาวน์
   ข้อความนำ "ไม่มีการ์ดที่ครอบครอง") ปรับแต่งได้อิสระ – ในแท็บ **คำสั่งแชท** ใต้
   **คำสั่งแสดงแพ็ก**
@@ -3369,6 +3451,19 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 ด้านล่างมี**ตัวแก้ไขธีม**สำหรับการออกแบบ**ของตัวเอง**: พื้นหลัง (2-3 สี + มุมไล่เฉด) ความมันวาว
 และกรอบภาพ (สี + ความทึบ) ปรับได้อิสระ พร้อมตัวอย่างสด การตั้งค่าเหล่านี้มีผล**เฉพาะการ์ด**
 เท่านั้น – ไม่มีอะไรอื่นในแอปหรือโอเวอร์เลย์เปลี่ยนแปลง
+
+นอกจากนี้ยังมี**ธีมบูสเตอร์**: แต่ละบูสเตอร์สามารถมีรูปลักษณ์ของตัวเองได้ (ลวดลาย เปิด/ปิดไล่เฉด
+สีพื้นหลังของชื่อเรื่อง) คุณสามารถสร้างธีมบูสเตอร์ที่ตั้งชื่อเองได้ไม่จำกัดจำนวนและกำหนดให้แต่ละ
+บูสเตอร์แยกกันได้ ธีมสำเร็จรูป 12 แบบที่มากับแอปสามารถซ่อนและกู้คืนได้ทุกเมื่อ
+
+<a id="th-discord"></a>
+### Discord
+
+บอทสามารถโพสต์การจับการ์ดไปยัง Discord โดยอัตโนมัติ – ตั้งแต่**ความหายากขั้นต่ำ**ที่ปรับได้
+(เลือกได้ตั้งแต่*ธรรมดา*ขึ้นไป) โดยใช้**ชื่อ Twitch และรูปโปรไฟล์**ของผู้ชมเป็นผู้ส่ง พร้อมภาพ
+การ์ดจริง (รวมกรอบ) ปรับได้ในแท็บ **Discord**: URL เว็บฮุก (ใน Discord ที่แก้ไขช่อง → การผสาน
+รวม → สร้างเว็บฮุก) ความหายากขั้นต่ำ และข้อความทดสอบด้วยการ์ดทดสอบ ชื่อผู้ใช้ทดสอบ และรูปโปรไฟล์
+ทดสอบที่เลือกได้อิสระ
 
 <a id="th-รูปลักษณ์และเสียง"></a>
 ### รูปลักษณ์และเสียง
