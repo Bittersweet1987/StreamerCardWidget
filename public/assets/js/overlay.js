@@ -3,7 +3,7 @@
 // same version as this file - OBS/Meld can never mix a fresh page module with stale shared code.
 const __v = new URL(import.meta.url).searchParams.get("v") || String(Date.now());
 const { addLog, announceDraw, completeQueueItem, connectEventStream, getCollections, getSettings, persistCollectionSnapshot } = await import(`./api.js?v=${__v}`);
-const { applyOverlayLayout, applyTheme, captureNodeAsPng, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES, weightedBoosterPick, weightedPick } = await import(`./render.js?v=${__v}`);
+const { applyOverlayLayout, applyTheme, captureNodeAsPng, cardMarkup, cardsForBooster, normalizeSettings, overlayText, RARITIES, resolveBoosterTheme, weightedBoosterPick, weightedPick } = await import(`./render.js?v=${__v}`);
 
 const stage = document.querySelector("#stage");
 const status = document.querySelector("#status");
@@ -291,7 +291,10 @@ async function runOpening(request = {}) {
   // on-screen animation - Discord notification is a best-effort side effect.
   const cardElForDiscord = scene.querySelector(".tcg-card");
   if (cardElForDiscord) {
-    notifyDiscordDraw(cardElForDiscord, login, user, request.drawnCardTitle, request.drawnBoosterTitle, card.rarity || "common");
+    // Discord names the pack by "<title> <subtitle>" (e.g. "Jeanne, die Kamikaze Diebin"),
+    // unlike the chat message's [Boostername], which stays title-only.
+    const discordBoosterTitle = [booster.title, booster.subtitle].filter(Boolean).join(" ").trim() || request.drawnBoosterTitle;
+    notifyDiscordDraw(cardElForDiscord, login, user, request.drawnCardTitle, discordBoosterTitle, card.rarity || "common");
   }
   // A beat after the card is fully visible, count up from the pre-draw total to the new one.
   await delay(350);
@@ -468,8 +471,9 @@ function packFace(booster) {
   const image = booster.image
     ? `<img src="${escapeForOverlay(booster.image)}" alt="">`
     : `<div class="fallback-booster">${escapeForOverlay(booster.title || "Pack")}</div>`;
+  const { attr, css } = resolveBoosterTheme(booster.themeId, settings);
   return `
-    <div class="opening-pack-face">
+    <div class="opening-pack-face" data-booster-theme="${attr}" style="${css}">
       <div class="pack-body">${image}</div>
       <div class="pack-label"><strong>${escapeForOverlay(booster.title || "Cards")}</strong><span>${escapeForOverlay(booster.subtitle || "Pack")}</span></div>
     </div>

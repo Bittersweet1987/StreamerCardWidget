@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.13.10";
-        public const string ReleaseDate = "2026-07-25";
+        public const string Version = "2.13.11";
+        public const string ReleaseDate = "2026-07-26";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL
@@ -3160,7 +3160,7 @@ namespace CardPackWidgetApp
             catch (Exception ex) { server.Log("draw", "error", "Community-Ziel-Speicherung fehlgeschlagen: " + ex.Message); }
         }
 
-        // Reads up to 5 goal stages from settings.communityGoal.stages (each with its own target,
+        // Reads every goal stage from settings.communityGoal.stages (each with its own target,
         // bonus-card count and celebration text), sorted ascending by target. Falls back to a
         // single stage built from the pre-multi-stage "target"/"celebrationMessage" fields if no
         // stages array is present yet (older settings.json / first run).
@@ -3179,7 +3179,6 @@ namespace CardPackWidgetApp
                     int bonusCards = Math.Max(1, GetInt(stage, "bonusCards", 1));
                     string message = GetString(stage, "celebrationMessage", DefaultCommunityGoalMessage);
                     result.Add(new Dictionary<string, object> { { "target", target }, { "bonusCards", bonusCards }, { "celebrationMessage", message } });
-                    if (result.Count >= 5) break;
                 }
             }
             if (result.Count == 0)
@@ -4346,9 +4345,10 @@ namespace CardPackWidgetApp
                 }
             }
 
+            string packsMode = GetString(packsCfg, "outputMode", "chat");
             if (normalPool.Count == 0 && subOnlyList.Count == 0)
             {
-                SendChatMessageSafe(GetString(packsCfg, "emptyMessage", DefaultPacksEmpty).Replace("@userName", "@" + displayName));
+                SendCollectionOutput(login, packsMode, GetString(packsCfg, "emptyMessage", DefaultPacksEmpty).Replace("@userName", "@" + displayName));
                 return;
             }
 
@@ -4378,7 +4378,7 @@ namespace CardPackWidgetApp
             }
 
             string header = GetString(packsCfg, "headerMessage", DefaultPacksHeader).Replace("@userName", "@" + displayName);
-            SendCardListChunked(login, "chat", header, names);
+            SendCardListChunked(login, packsMode, header, names);
         }
 
         private static readonly Dictionary<string, double> DefaultRarityWeights = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
@@ -4817,10 +4817,12 @@ namespace CardPackWidgetApp
             string user = GetString(item, "user", "Viewer");
             Dictionary<string, object> settings = server.ReadSettingsObject();
             string template = null;
+            Dictionary<string, object> packCfg = null;
             if (source == "chat")
             {
                 // The !pack "Nachricht bei Einloesung" - always sent (no separate toggle).
-                template = GetString(Obj(Obj(settings, "chatCommands"), "pack"), "successMessage", "");
+                packCfg = Obj(Obj(settings, "chatCommands"), "pack");
+                template = GetString(packCfg, "successMessage", "");
             }
             else
             {
@@ -4865,7 +4867,8 @@ namespace CardPackWidgetApp
                 .Replace("[Besitz]", count)
                 .Replace("[Seltenheit]", rarityLabel)
                 .Replace("[Quelle]", sourceLabel);
-            SendChatMessageSafe(msg);
+            if (source == "chat") SendCommandOutput(login, packCfg, msg);
+            else SendChatMessageSafe(msg);
         }
 
         public bool QueuePaused { get { return queuePaused; } }
@@ -6155,6 +6158,18 @@ namespace CardPackWidgetApp
             else SendChatMessageSafe(message);
         }
 
+        // Same routing as SendCollectionOutput, but reads outputMode straight off a command's own
+        // config dict - used by every chat command whose ENTIRE section (all its messages: usage,
+        // cooldown, success, ...) shares one "Versandart" (öffentlich/Flüster) setting, rather than
+        // a single list-style message. cmdCfg == null means the section has no outputMode concept
+        // (e.g. non-chat trigger sources) - always public chat in that case.
+        private void SendCommandOutput(string login, Dictionary<string, object> cmdCfg, string message)
+        {
+            string mode = cmdCfg != null ? GetString(cmdCfg, "outputMode", "chat") : "chat";
+            if (String.Equals(mode, "whisper", StringComparison.OrdinalIgnoreCase)) SendWhisperMessageSafe(login, message);
+            else SendChatMessageSafe(message);
+        }
+
         // ---- Outbound queue: every chat send / whisper / avatar-enriched overlay broadcast is
         // a synchronous Twitch API round-trip (~200-500ms each). Doing that inline on the event
         // dispatch worker (see DispatchEventSubWork) meant a burst of commands - e.g. several
@@ -6518,7 +6533,7 @@ namespace CardPackWidgetApp
                 {
                     int cooldownSeconds = Math.Max(0, GetInt(tournamentStart, "cooldownSeconds", 0));
                     string cooldownMessage = GetString(tournamentStart, "cooldownMessage", DefaultCooldownMessage);
-                    if (!IsGlobalCommandOnCooldown("tournamentStart", cooldownSeconds, displayName, cooldownMessage))
+                    if (!IsGlobalCommandOnCooldown("tournamentStart", cooldownSeconds, login, displayName, cooldownMessage, tournamentStart))
                         StartTournamentSignup(login, displayName, "chat");
                 }
                 return;
@@ -6534,7 +6549,7 @@ namespace CardPackWidgetApp
                 {
                     int cooldownSeconds = Math.Max(0, GetInt(teamBattleStart, "cooldownSeconds", 0));
                     string cooldownMessage = GetString(teamBattleStart, "cooldownMessage", DefaultCooldownMessage);
-                    if (!IsGlobalCommandOnCooldown("teamBattleStart", cooldownSeconds, displayName, cooldownMessage))
+                    if (!IsGlobalCommandOnCooldown("teamBattleStart", cooldownSeconds, login, displayName, cooldownMessage, teamBattleStart))
                         StartTeamBattleSignup(login, displayName, "chat");
                 }
                 return;
@@ -6566,7 +6581,7 @@ namespace CardPackWidgetApp
         private readonly object commandCooldownLock = new object();
         private readonly Dictionary<string, DateTime> commandCooldownUntil = new Dictionary<string, DateTime>();
 
-        private bool IsGlobalCommandOnCooldown(string key, int cooldownSeconds, string displayName, string cooldownMessageTemplate)
+        private bool IsGlobalCommandOnCooldown(string key, int cooldownSeconds, string login, string displayName, string cooldownMessageTemplate, Dictionary<string, object> cmdCfg)
         {
             if (cooldownSeconds <= 0) return false;
             DateTime now = DateTime.UtcNow;
@@ -6576,7 +6591,7 @@ namespace CardPackWidgetApp
                 if (commandCooldownUntil.TryGetValue(key, out until) && until > now)
                 {
                     int remaining = (int)Math.Ceiling((until - now).TotalSeconds);
-                    SendChatMessageSafe(cooldownMessageTemplate
+                    SendCommandOutput(login, cmdCfg, cooldownMessageTemplate
                         .Replace("@userName", "@" + displayName)
                         .Replace("[Restzeit]", remaining.ToString()));
                     return true;
@@ -6614,7 +6629,7 @@ namespace CardPackWidgetApp
                     string message = GetString(packCfg, "cooldownMessage", DefaultCooldownMessage)
                         .Replace("@userName", "@" + displayName)
                         .Replace("[Restzeit]", remaining.ToString());
-                    SendChatMessageSafe(message);
+                    SendCommandOutput(login, packCfg, message);
                     return;
                 }
 
@@ -6625,7 +6640,7 @@ namespace CardPackWidgetApp
                     string message = GetString(packCfg, "limitMessage", DefaultLimitMessage)
                         .Replace("@userName", "@" + displayName)
                         .Replace("[Uhrzeit]", resetTimeText);
-                    SendChatMessageSafe(message);
+                    SendCommandOutput(login, packCfg, message);
                     return;
                 }
 
@@ -6678,7 +6693,7 @@ namespace CardPackWidgetApp
             string commandText = GetString(joinCfg, "prefix", "!") + GetString(joinCfg, "command", "packziehen");
             if (packTitle.Length == 0)
             {
-                SendChatMessageSafe(GetString(cmdCfg, "usageMessage", DefaultSpecificPackUsage)
+                SendCommandOutput(login, cmdCfg, GetString(cmdCfg, "usageMessage", DefaultSpecificPackUsage)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[Befehl]", commandText));
                 return;
@@ -6694,7 +6709,7 @@ namespace CardPackWidgetApp
                 if (cooldownSeconds > 0 && cooldownUntil > now)
                 {
                     int remaining = (int)Math.Ceiling((cooldownUntil - now).TotalSeconds);
-                    SendChatMessageSafe(GetString(cmdCfg, "cooldownMessage", DefaultCooldownMessage)
+                    SendCommandOutput(login, cmdCfg, GetString(cmdCfg, "cooldownMessage", DefaultCooldownMessage)
                         .Replace("@userName", "@" + displayName)
                         .Replace("[Restzeit]", remaining.ToString()));
                     return;
@@ -6706,7 +6721,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> booster = FindBoosterByTitle(settings, packTitle);
             if (booster == null)
             {
-                SendChatMessageSafe(GetString(cmdCfg, "notFoundMessage", DefaultSpecificPackNotFound)
+                SendCommandOutput(login, cmdCfg, GetString(cmdCfg, "notFoundMessage", DefaultSpecificPackNotFound)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[Eingabe]", packTitle));
                 return;
@@ -6899,7 +6914,7 @@ namespace CardPackWidgetApp
             int lastSpace = rest.LastIndexOf(' ');
             if (lastSpace < 0)
             {
-                SendChatMessageSafe(GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName).Replace("[Befehl]", commandText));
+                SendCommandOutput(login, dustCfg, GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName).Replace("[Befehl]", commandText));
                 return;
             }
             string cardName = rest.Substring(0, lastSpace).Trim();
@@ -6907,14 +6922,14 @@ namespace CardPackWidgetApp
             int count;
             if (cardName.Length == 0 || !Int32.TryParse(countText, out count) || count < 1)
             {
-                SendChatMessageSafe(GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName).Replace("[Befehl]", commandText));
+                SendCommandOutput(login, dustCfg, GetString(dustCfg, "usageMessage", DefaultDustUsage).Replace("@userName", "@" + displayName).Replace("[Befehl]", commandText));
                 return;
             }
 
             Dictionary<string, object> card = server.ResolveCardByName(cardName);
             if (!Convert.ToBoolean(card["found"]))
             {
-                SendChatMessageSafe(GetString(dustCfg, "cardNotFoundMessage", DefaultDustCardNotFound)
+                SendCommandOutput(login, dustCfg, GetString(dustCfg, "cardNotFoundMessage", DefaultDustCardNotFound)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[falscherName]", cardName)
                     .Replace("[Kartenname]", GetString(card, "suggestion", "")));
@@ -6927,7 +6942,7 @@ namespace CardPackWidgetApp
             int owned = server.GetCardCount(login, boosterId, cardId);
             if (owned - count < 1)
             {
-                SendChatMessageSafe(GetString(dustCfg, "notEnoughMessage", DefaultDustNotEnough)
+                SendCommandOutput(login, dustCfg, GetString(dustCfg, "notEnoughMessage", DefaultDustNotEnough)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[Kartenname]", cardTitle)
                     .Replace("[Besitz]", owned.ToString()));
@@ -6938,7 +6953,7 @@ namespace CardPackWidgetApp
             {
                 // Lost a race against a trade/draw between the check above and here - safe to
                 // just ask the viewer to retry rather than silently drop their points.
-                SendChatMessageSafe(GetString(dustCfg, "notEnoughMessage", DefaultDustNotEnough)
+                SendCommandOutput(login, dustCfg, GetString(dustCfg, "notEnoughMessage", DefaultDustNotEnough)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[Kartenname]", cardTitle)
                     .Replace("[Besitz]", owned.ToString()));
@@ -6964,7 +6979,7 @@ namespace CardPackWidgetApp
                 ComputePityProgress(streak, bank, pityThreshold, out pityReady, out pityRest);
             }
 
-            SendChatMessageSafe(GetString(dustCfg, "successMessage", DefaultDustSuccess)
+            SendCommandOutput(login, dustCfg, GetString(dustCfg, "successMessage", DefaultDustSuccess)
                 .Replace("@userName", "@" + displayName)
                 .Replace("[Kartenname]", cardTitle)
                 .Replace("[Anzahl]", count.ToString())
@@ -7187,7 +7202,7 @@ namespace CardPackWidgetApp
             List<Dictionary<string, string>> dusted = server.DustAllDuplicates(login, displayName, maxRarityRank);
             if (dusted.Count == 0)
             {
-                SendChatMessageSafe(GetString(dustAllCfg, "nothingMessage", DefaultDustAllNothing)
+                SendCommandOutput(login, dustAllCfg, GetString(dustAllCfg, "nothingMessage", DefaultDustAllNothing)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[Seltenheit]", RarityLabel(thresholdRarity, rarityLanguage)));
                 return;
@@ -7230,7 +7245,7 @@ namespace CardPackWidgetApp
                 ComputePityProgress(streak, bank, pityThreshold, out pityReady, out pityRest);
             }
 
-            SendChatMessageSafe(GetString(dustAllCfg, "successMessage", DefaultDustAllSuccess)
+            SendCommandOutput(login, dustAllCfg, GetString(dustAllCfg, "successMessage", DefaultDustAllSuccess)
                 .Replace("@userName", "@" + displayName)
                 .Replace("[Aufschluesselung]", breakdown)
                 .Replace("[Gesamtanzahl]", totalCards.ToString())
@@ -7352,18 +7367,18 @@ namespace CardPackWidgetApp
             string partnerRaw = args.Trim().TrimStart('@');
             if (partnerRaw.Length == 0)
             {
-                SendChatMessageSafe(GetString(compareCfg, "usageMessage", DefaultCompareUsage).Replace("@userName", "@" + displayName));
+                SendCommandOutput(login, compareCfg, GetString(compareCfg, "usageMessage", DefaultCompareUsage).Replace("@userName", "@" + displayName));
                 return;
             }
             string partnerLogin = partnerRaw.ToLowerInvariant();
             if (partnerLogin == login.ToLowerInvariant())
             {
-                SendChatMessageSafe(GetString(compareCfg, "selfMessage", DefaultCompareSelf).Replace("@userName", "@" + displayName));
+                SendCommandOutput(login, compareCfg, GetString(compareCfg, "selfMessage", DefaultCompareSelf).Replace("@userName", "@" + displayName));
                 return;
             }
             if (!server.UserExistsInCollections(partnerLogin))
             {
-                SendChatMessageSafe(GetString(compareCfg, "userNotFoundMessage", DefaultCompareUserNotFound)
+                SendCommandOutput(login, compareCfg, GetString(compareCfg, "userNotFoundMessage", DefaultCompareUserNotFound)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[Nutzer]", partnerRaw));
                 return;
@@ -7381,7 +7396,7 @@ namespace CardPackWidgetApp
             int exclusiveA = setA.Count - shared;
             int exclusiveB = setB.Count - shared;
 
-            SendChatMessageSafe(GetString(compareCfg, "resultMessage", DefaultCompareResult)
+            SendCommandOutput(login, compareCfg, GetString(compareCfg, "resultMessage", DefaultCompareResult)
                 .Replace("@userNameB", "@" + partnerRaw)
                 .Replace("@userNameA", "@" + displayName)
                 .Replace("@userName", "@" + displayName)
@@ -7988,13 +8003,17 @@ namespace CardPackWidgetApp
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> tCfg = Obj(settings, "tournament");
             if (!GetBool(tCfg, "enabled", false)) return "disabled";
+            // Versandart only applies to the chat-triggered path ("Turnier-Start (Chat)") - a
+            // channel-points-started tournament has no outputMode concept of its own (see
+            // StripDeckForRewardSave's rationale: Kanalpunkte only covers reward creation).
+            Dictionary<string, object> tournamentStartCfg = source == "chat" ? Obj(Obj(settings, "chatCommands"), "tournamentStart") : null;
 
             // Only one bracket event (tournament OR Team-Kampf) may run at a time - a Team-Kampf
             // still playing out its matches would otherwise inject a fight into the middle of this
             // tournament's animations (and vice versa). See IsBracketEventBusy.
             if (IsBracketEventBusy())
             {
-                SendChatMessageSafe(GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
+                SendCommandOutput(login, tournamentStartCfg, GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
                     .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
                 return "already_running";
             }
@@ -8044,12 +8063,12 @@ namespace CardPackWidgetApp
 
             if (alreadyRunning)
             {
-                SendChatMessageSafe(GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
+                SendCommandOutput(login, tournamentStartCfg, GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
                     .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
                 return "already_running";
             }
 
-            SendChatMessageSafe(startMessage);
+            SendCommandOutput(login, tournamentStartCfg, startMessage);
             BroadcastTournamentSignupState(new List<object>(), deadlineUtc, minParticipantsForBroadcast, joinCommandText);
 
             // Whoever spent the channel points to start the tournament obviously wants to play in
@@ -8074,6 +8093,7 @@ namespace CardPackWidgetApp
             string deadlineUtc = null;
             int minParticipantsForBroadcast = 0;
             string joinCommandText = null;
+            Dictionary<string, object> joinCfg = null;
 
             lock (tournamentLock)
             {
@@ -8088,6 +8108,7 @@ namespace CardPackWidgetApp
 
                 Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
                 Dictionary<string, object> tCfg = Obj(settings, "tournament");
+                joinCfg = Obj(Obj(settings, "chatCommands"), "tournamentJoin");
                 int lineupSize = GetInt(activeTournament, "lineupSize", 3);
                 List<Dictionary<string, string>> owned = server.GetUserOwnedCardTypes(login);
                 if (owned.Count < lineupSize)
@@ -8115,8 +8136,8 @@ namespace CardPackWidgetApp
                 }
             }
 
-            if (notEligibleMessage != null) { SendChatMessageSafe(notEligibleMessage); return; }
-            if (joinAckMessage != null) SendChatMessageSafe(joinAckMessage);
+            if (notEligibleMessage != null) { SendCommandOutput(login, joinCfg, notEligibleMessage); return; }
+            if (joinAckMessage != null) SendCommandOutput(login, joinCfg, joinAckMessage);
             if (participantsSnapshot != null) BroadcastTournamentSignupState(participantsSnapshot, deadlineUtc, minParticipantsForBroadcast, joinCommandText);
         }
 
@@ -8301,6 +8322,9 @@ namespace CardPackWidgetApp
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
             if (!GetBool(tbCfg, "enabled", false)) return "disabled";
+            // Versandart only applies to the chat-triggered path ("Team-Kampf-Start (Chat)") - a
+            // channel-points-started Team-Kampf has no outputMode concept of its own.
+            Dictionary<string, object> teamBattleStartCfg = source == "chat" ? Obj(Obj(settings, "chatCommands"), "teamBattleStart") : null;
 
             // Only one bracket event (tournament OR Team-Kampf) may run at a time - a tournament
             // still playing out its bracket would otherwise get this Team-Kampf injected into the
@@ -8311,7 +8335,7 @@ namespace CardPackWidgetApp
                 lock (teamBattleLock) { teamBattleAlreadyActive = activeTeamBattle != null; }
                 if (teamBattleAlreadyActive)
                 {
-                    SendChatMessageSafe(GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
+                    SendCommandOutput(login, teamBattleStartCfg, GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
                         .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
                     return "already_running";
                 }
@@ -8327,7 +8351,7 @@ namespace CardPackWidgetApp
                         { "login", login }, { "displayName", displayName }, { "source", source }
                     };
                 }
-                SendChatMessageSafe(GetString(tbCfg, "queuedMessage", DefaultTeamBattleQueued)
+                SendCommandOutput(login, teamBattleStartCfg, GetString(tbCfg, "queuedMessage", DefaultTeamBattleQueued)
                     .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
                 return "queued";
             }
@@ -8413,7 +8437,7 @@ namespace CardPackWidgetApp
 
             if (alreadyRunning)
             {
-                SendChatMessageSafe(GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
+                SendCommandOutput(login, teamBattleStartCfg, GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
                     .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
                 return "already_running";
             }
@@ -8423,7 +8447,7 @@ namespace CardPackWidgetApp
                 return "no_cards";
             }
 
-            SendChatMessageSafe(startMessage);
+            SendCommandOutput(login, teamBattleStartCfg, startMessage);
             BroadcastTeamBattleSignupState(streamerLineupForBroadcast, new List<object>(), deadlineUtc, joinCommandText);
 
             // Whoever spent the channel points obviously wants their own card in the fight too.
@@ -8488,12 +8512,15 @@ namespace CardPackWidgetApp
             List<object> participantsSnapshot = null;
             string deadlineUtc = null;
             string joinCommandText = null;
+            Dictionary<string, object> joinCfg = null;
 
             lock (teamBattleLock)
             {
                 if (activeTeamBattle == null || GetString(activeTeamBattle, "state", "") != "signup")
                 {
-                    Dictionary<string, object> tbCfgIdle = Obj(settingsIn != null ? settingsIn : server.ReadSettingsObject(), "teamBattle");
+                    Dictionary<string, object> settingsIdle = settingsIn != null ? settingsIn : server.ReadSettingsObject();
+                    Dictionary<string, object> tbCfgIdle = Obj(settingsIdle, "teamBattle");
+                    joinCfg = Obj(Obj(settingsIdle, "chatCommands"), "teamBattleJoin");
                     noActiveMessage = GetString(tbCfgIdle, "noActiveMessage", DefaultTeamBattleNoActive).Replace("@userName", "@" + displayName);
                 }
                 else
@@ -8502,6 +8529,7 @@ namespace CardPackWidgetApp
                     string loginKey = login.ToLowerInvariant();
                     Dictionary<string, object> settings = settingsIn != null ? settingsIn : server.ReadSettingsObject();
                     Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
+                    joinCfg = Obj(Obj(settings, "chatCommands"), "teamBattleJoin");
                     bool alreadyIn = false;
                     foreach (object p in participants)
                     {
@@ -8544,10 +8572,10 @@ namespace CardPackWidgetApp
                 }
             }
 
-            if (noActiveMessage != null) { SendChatMessageSafe(noActiveMessage); return; }
-            if (alreadyMessage != null) { SendChatMessageSafe(alreadyMessage); return; }
-            if (notOwnedMessage != null) { SendChatMessageSafe(notOwnedMessage); return; }
-            SendChatMessageSafe(successMessage);
+            if (noActiveMessage != null) { SendCommandOutput(login, joinCfg, noActiveMessage); return; }
+            if (alreadyMessage != null) { SendCommandOutput(login, joinCfg, alreadyMessage); return; }
+            if (notOwnedMessage != null) { SendCommandOutput(login, joinCfg, notOwnedMessage); return; }
+            SendCommandOutput(login, joinCfg, successMessage);
             BroadcastTeamBattleSignupState(streamerLineupForBroadcast, participantsSnapshot, deadlineUtc, joinCommandText);
         }
 
@@ -9212,7 +9240,7 @@ namespace CardPackWidgetApp
             Dictionary<string, object> card = server.ResolveCardByName(arg);
             if (!Convert.ToBoolean(card["found"]))
             {
-                SendChatMessageSafe(GetString(rankingCfg, "cardNotFoundMessage", DefaultRankingCardNotFound)
+                SendCommandOutput(login, rankingCfg, GetString(rankingCfg, "cardNotFoundMessage", DefaultRankingCardNotFound)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[falscherName]", arg)
                     .Replace("[Kartenname]", GetString(card, "suggestion", "")));
@@ -9223,7 +9251,7 @@ namespace CardPackWidgetApp
             object[] owners = server.GetTopCardOwners(boosterId, cardId, 5);
             if (owners.Length == 0)
             {
-                SendChatMessageSafe(GetString(rankingCfg, "noOwnersMessage", DefaultRankingNoOwners)
+                SendCommandOutput(login, rankingCfg, GetString(rankingCfg, "noOwnersMessage", DefaultRankingNoOwners)
                     .Replace("@userName", "@" + displayName)
                     .Replace("[Kartenname]", GetString(card, "cardTitle", "")));
                 return;

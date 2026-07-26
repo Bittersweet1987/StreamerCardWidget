@@ -832,6 +832,32 @@ export function normalizeSettings(settings) {
   settings.style.customTheme.sheen = clamp(settings.style.customTheme.sheen ?? 30, 0, 70);
   settings.style.customTheme.artColor ||= "#ffffff";
   settings.style.customTheme.artOpacity = clamp(settings.style.customTheme.artOpacity ?? 45, 0, 100);
+  // Boosters support an arbitrary NAMED list of custom themes (unlike cards' single "custom"
+  // slot) since each booster can pick its own theme independently - see resolveBoosterTheme.
+  // settings.style.boosterTheme is the shop-wide DEFAULT for boosters that don't set their own
+  // themeId; it can reference either a BOOSTER_THEMES preset id or one of these custom themes' id.
+  settings.style.customBoosterThemes = Array.isArray(settings.style.customBoosterThemes)
+    ? settings.style.customBoosterThemes.filter((t) => t && t.id).map((t) => ({
+        id: t.id,
+        name: t.name || "Eigenes Theme",
+        color1: t.color1 || "#6a5cff",
+        color2: t.color2 || "#22d3ee",
+        color3: t.color3 || "#ff7ad9",
+        useColor3: t.useColor3 === true,
+        gradientEnabled: t.gradientEnabled !== false,
+        angle: clamp(t.angle ?? 155, 0, 360),
+        sheen: clamp(t.sheen ?? 30, 0, 70),
+        titleBgColor: t.titleBgColor || "#3a2a80"
+      }))
+    : [];
+  // Built-in presets can't be deleted (they're code, not data), but can be hidden from the
+  // picker/grid for streamers who only ever want their own handful of themes on offer -
+  // "default" is exempt (never hideable), since it's the always-available fallback look every
+  // booster/custom-theme-less shop still needs.
+  settings.style.hiddenBoosterThemes = Array.isArray(settings.style.hiddenBoosterThemes)
+    ? settings.style.hiddenBoosterThemes.filter((id) => BOOSTER_THEMES.includes(id) && id !== "default")
+    : [];
+  settings.style.boosterTheme ||= "default";
   settings.style.namePosition = ["bottom", "top"].includes(settings.style.namePosition) ? settings.style.namePosition : "bottom";
   settings.style.cardPatternEnabled = settings.style.cardPatternEnabled !== false;
   settings.style.boosterPatternEnabled = settings.style.boosterPatternEnabled !== false;
@@ -1024,6 +1050,7 @@ export function normalizeSettings(settings) {
       || settings.chatCommands.pack.successMessage === "@userName, ein Booster wurde verkauft und wird gleich für dich geöffnet.") {
     settings.chatCommands.pack.successMessage = pickDefault(settings.language, "drawPost");
   }
+  settings.chatCommands.pack.outputMode = settings.chatCommands.pack.outputMode === "whisper" ? "whisper" : "chat";
   settings.chatCommands.packs ||= {};
   settings.chatCommands.packs.enabled = settings.chatCommands.packs.enabled !== false;
   settings.chatCommands.packs.prefix ||= "!";
@@ -1032,6 +1059,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.packs.headerMessage ||= pickDefault(settings.language, "packsHeader");
   settings.chatCommands.packs.emptyMessage ||= pickDefault(settings.language, "packsEmpty");
   settings.chatCommands.packs.subOnlyLabel ||= "Sub Only";
+  settings.chatCommands.packs.outputMode = settings.chatCommands.packs.outputMode === "whisper" ? "whisper" : "chat";
 
   // "!<command> <Packname>" - draws a card from a booster the viewer names themselves (see
   // HandleSpecificPackDrawCommand server-side). Off by default - it's an opt-in extra, not
@@ -1045,6 +1073,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.specificPackDraw.usageMessage ||= pickDefault(settings.language, "specificPackUsage");
   settings.chatCommands.specificPackDraw.cooldownMessage ||= pickDefault(settings.language, "packCooldown");
   settings.chatCommands.specificPackDraw.notFoundMessage ||= pickDefault(settings.language, "specificPackNotFound");
+  settings.chatCommands.specificPackDraw.outputMode = settings.chatCommands.specificPackDraw.outputMode === "whisper" ? "whisper" : "chat";
 
   settings.chatCommands.dust ||= {};
   settings.chatCommands.dust.enabled = settings.chatCommands.dust.enabled === true;
@@ -1067,6 +1096,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.dust.cardNotFoundMessage ||= pickDefault(settings.language, "dustCardNotFound");
   settings.chatCommands.dust.notEnoughMessage ||= pickDefault(settings.language, "dustNotEnough");
   settings.chatCommands.dust.successMessage ||= pickDefault(settings.language, "dustSuccess");
+  settings.chatCommands.dust.outputMode = settings.chatCommands.dust.outputMode === "whisper" ? "whisper" : "chat";
 
   // "!dustset"/"!dustall" are sub-commands of !dust - no prefix of their own (always uses dust's),
   // only the command word + messages are independently configurable.
@@ -1106,6 +1136,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.dustAll.helpText ||= pickDefault(settings.language, "helpDustAll");
   settings.chatCommands.dustAll.nothingMessage ||= pickDefault(settings.language, "dustAllNothing");
   settings.chatCommands.dustAll.successMessage ||= pickDefault(settings.language, "dustAllSuccess");
+  settings.chatCommands.dustAll.outputMode = settings.chatCommands.dustAll.outputMode === "whisper" ? "whisper" : "chat";
   // "!gift @recipient <card>" - one-sided, no confirmation needed from the recipient (see
   // HandleGiftCommand server-side). Was missing its own normalization block entirely, which left
   // every chat message here as an empty string ("" survives GetString's fallback check on the
@@ -1132,6 +1163,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.compare.userNotFoundMessage ||= pickDefault(settings.language, "compareUserNotFound");
   settings.chatCommands.compare.selfMessage ||= pickDefault(settings.language, "compareSelf");
   settings.chatCommands.compare.resultMessage ||= pickDefault(settings.language, "compareResult");
+  settings.chatCommands.compare.outputMode = settings.chatCommands.compare.outputMode === "whisper" ? "whisper" : "chat";
   settings.chatCommands.collection ||= {};
   settings.chatCommands.collection.enabled = settings.chatCommands.collection.enabled !== false;
   settings.chatCommands.collection.prefix ||= "!";
@@ -1250,6 +1282,7 @@ export function normalizeSettings(settings) {
   // is no overlay animation to fall back on either.
   settings.chatCommands.ranking.cardNotFoundMessage ||= pickDefault(settings.language, "rankingCardNotFound");
   settings.chatCommands.ranking.noOwnersMessage ||= pickDefault(settings.language, "rankingNoOwners");
+  settings.chatCommands.ranking.outputMode = settings.chatCommands.ranking.outputMode === "whisper" ? "whisper" : "chat";
 
   settings.ranking ||= {};
   settings.ranking.sourceName ||= "Streamer Card Ranking";
@@ -1465,6 +1498,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.tournamentJoin.prefix ||= "!";
   settings.chatCommands.tournamentJoin.command ||= "turnier";
   settings.chatCommands.tournamentJoin.helpText ||= pickDefault(settings.language, "helpTournamentJoin");
+  settings.chatCommands.tournamentJoin.outputMode = settings.chatCommands.tournamentJoin.outputMode === "whisper" ? "whisper" : "chat";
 
   settings.chatCommands.tournamentStart ||= {};
   settings.chatCommands.tournamentStart.enabled = settings.chatCommands.tournamentStart.enabled !== false;
@@ -1475,12 +1509,14 @@ export function normalizeSettings(settings) {
   // the previous tournament ends - see IsGlobalCommandOnCooldown server-side.
   settings.chatCommands.tournamentStart.cooldownSeconds = Number(settings.chatCommands.tournamentStart.cooldownSeconds) >= 0 ? Number(settings.chatCommands.tournamentStart.cooldownSeconds) : 0;
   settings.chatCommands.tournamentStart.cooldownMessage ||= pickDefault(settings.language, "packCooldown");
+  settings.chatCommands.tournamentStart.outputMode = settings.chatCommands.tournamentStart.outputMode === "whisper" ? "whisper" : "chat";
 
   settings.chatCommands.teamBattleJoin ||= {};
   settings.chatCommands.teamBattleJoin.enabled = settings.chatCommands.teamBattleJoin.enabled !== false;
   settings.chatCommands.teamBattleJoin.prefix ||= "!";
   settings.chatCommands.teamBattleJoin.command ||= "teamkampf";
   settings.chatCommands.teamBattleJoin.helpText ||= pickDefault(settings.language, "helpTeamBattleJoin");
+  settings.chatCommands.teamBattleJoin.outputMode = settings.chatCommands.teamBattleJoin.outputMode === "whisper" ? "whisper" : "chat";
 
   settings.chatCommands.teamBattleStart ||= {};
   settings.chatCommands.teamBattleStart.enabled = settings.chatCommands.teamBattleStart.enabled !== false;
@@ -1489,6 +1525,7 @@ export function normalizeSettings(settings) {
   settings.chatCommands.teamBattleStart.helpText ||= pickDefault(settings.language, "helpTeamBattleStart");
   settings.chatCommands.teamBattleStart.cooldownSeconds = Number(settings.chatCommands.teamBattleStart.cooldownSeconds) >= 0 ? Number(settings.chatCommands.teamBattleStart.cooldownSeconds) : 0;
   settings.chatCommands.teamBattleStart.cooldownMessage ||= pickDefault(settings.language, "packCooldown");
+  settings.chatCommands.teamBattleStart.outputMode = settings.chatCommands.teamBattleStart.outputMode === "whisper" ? "whisper" : "chat";
 
   // Automatic "which commands are available" chat message - see CheckAutoHelp (server-side) for
   // the trigger logic (fires after N minutes and/or N chat messages, whichever comes first).
@@ -1663,13 +1700,19 @@ export async function captureNodeAsPng(node, scale = 2) {
   return canvas.toDataURL("image/png");
 }
 
-export function boosterMarkup(booster = {}) {
+// settings: optional - when passed, resolves this booster's OWN theme (booster.themeId, falling
+// back to the shop-wide settings.style.boosterTheme default) via resolveBoosterTheme, so every
+// booster can carry its own theme independent of any other. Without settings (a few legacy
+// call sites that don't have it handy), falls back to the "default" look, same as before this
+// feature existed.
+export function boosterMarkup(booster = {}, settings = null) {
   const boosterPositionAttr = booster.imagePosition ? ` data-position="${escapeHtml(booster.imagePosition)}"` : "";
   const image = booster.image
     ? `<img src="${escapeHtml(booster.image)}" alt=""${boosterPositionAttr}>`
     : `<div class="fallback-booster">${escapeHtml(booster.title || "Pack")}</div>`;
+  const { attr, css } = settings ? resolveBoosterTheme(booster.themeId, settings) : { attr: "default", css: "" };
   return `
-    <article class="booster-pack" data-image-fit="${activeBoosterImageFit}" style="--pack-accent:${booster.accent || "#ff78bb"}">
+    <article class="booster-pack" data-booster-theme="${attr}" data-image-fit="${activeBoosterImageFit}" style="--pack-accent:${booster.accent || "#ff78bb"};${css}">
       <div class="pack-teeth top"></div>
       <div class="pack-body">${image}</div>
       <div class="pack-label">
@@ -1695,6 +1738,12 @@ export const CARD_THEMES = [
   "prism", "gold", "sunset", "mint", "ocean", "rose", "forest",
   "custom"
 ];
+
+// Same preset family as CARD_THEMES (minus "custom" - boosters support an arbitrary NAMED list of
+// custom themes instead of one fixed custom slot, see settings.style.customBoosterThemes /
+// resolveBoosterTheme below), applied to the booster pack instead of the card surface - see the
+// "[data-booster-theme]" rules in components.css and customBoosterThemeCss below.
+export const BOOSTER_THEMES = CARD_THEMES.filter((id) => id !== "custom");
 
 function hexToRgba(hex, alpha) {
   let h = String(hex || "#ffffff").replace("#", "").trim();
@@ -1722,6 +1771,44 @@ export function customThemeCss(ct = {}) {
 }
 
 const CARD_VARS = ["--card-bg", "--card-pattern", "--card-pattern-opacity", "--card-art-bg"];
+
+// Builds the booster CSS variables for a user-defined theme - same shape as customThemeCss, plus
+// a "gradient enabled" switch (a flat color1 surface when off, per the "aus"-toggle requirement)
+// and its own title-background color (independent of the pack surface, so the label can stay
+// readable/branded regardless of what the surface gradient looks like).
+export function customBoosterThemeCss(bt = {}) {
+  const c1 = bt.color1 || "#6a5cff";
+  const c2 = bt.color2 || "#22d3ee";
+  const c3 = bt.color3 || "#ff7ad9";
+  const angle = clamp(bt.angle ?? 155, 0, 360);
+  const colors = bt.useColor3 ? [c1, c2, c3] : [c1, c2];
+  const bg = bt.gradientEnabled === false ? c1 : `linear-gradient(${angle}deg, ${colors.join(", ")})`;
+  const sheen = clamp(bt.sheen ?? 30, 0, 70) / 100;
+  const pattern = sheen > 0
+    ? `linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, ${sheen}) 64%)`
+    : "none";
+  const titleBg = bt.titleBgColor || "#3a2a80";
+  return `--booster-bg:${bg};--booster-theme-pattern:${pattern};--booster-theme-pattern-opacity:1;--booster-title-bg:${titleBg};`;
+}
+
+const BOOSTER_VARS = ["--booster-bg", "--booster-theme-pattern", "--booster-theme-pattern-opacity", "--booster-title-bg"];
+
+// Resolves which theme a booster should render with: its OWN themeId if set, otherwise the
+// shop-wide default (settings.style.boosterTheme), otherwise "default". themeId can point at
+// either a built-in BOOSTER_THEMES preset or one of settings.style.customBoosterThemes' entries
+// (by id) - unlike cards, boosters can have any number of independently named custom themes, so
+// there is no single fixed "custom" slot to fall into. Returns the attribute value for
+// [data-booster-theme] (a preset id, or "custom" when a saved custom theme matched) plus the
+// inline CSS text to apply alongside it (empty for presets, since those are driven by the static
+// CSS rules in components.css).
+export function resolveBoosterTheme(themeId, settings) {
+  const style = settings?.style || {};
+  const id = themeId || style.boosterTheme || "default";
+  const custom = (style.customBoosterThemes || []).find((theme) => theme.id === id);
+  if (custom) return { attr: "custom", css: customBoosterThemeCss(custom) };
+  if (BOOSTER_THEMES.includes(id)) return { attr: id, css: "" };
+  return { attr: "default", css: "" };
+}
 
 // Applies a per-animation position/scale setting (see settings.overlayLayout in
 // normalizeSettings) to that animation's own root stage element. The element keeps whatever
@@ -1818,6 +1905,20 @@ export function applyTheme(settings) {
       }
     } else {
       for (const prop of CARD_VARS) document.body.style.removeProperty(prop);
+    }
+    // Body-level = the shop-wide DEFAULT booster theme, for any booster markup that couldn't be
+    // given per-instance theming (e.g. legacy call sites without settings handy). Boosters with
+    // their own themeId override this via their own [data-booster-theme] attribute, which wins
+    // over the body-level one since custom properties resolve by DOM proximity.
+    const { attr: boosterThemeAttr, css: boosterThemeCss } = resolveBoosterTheme(null, settings);
+    document.body.dataset.boosterTheme = boosterThemeAttr;
+    if (boosterThemeAttr === "custom") {
+      for (const decl of boosterThemeCss.split(";")) {
+        const [prop, value] = decl.split(":");
+        if (prop && value) document.body.style.setProperty(prop.trim(), value.trim());
+      }
+    } else {
+      for (const prop of BOOSTER_VARS) document.body.style.removeProperty(prop);
     }
     // Overrides whichever pattern the chosen theme set (including "no theme"'s built-in
     // dot/stripe fallback) - a single always-available switch instead of needing "custom".

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1784952857">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1785088429">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -76,6 +76,7 @@
           <button class="nav-button" data-tab="trigger" data-i18n="nav-trigger">Verbindung</button>
           <button class="nav-button" data-tab="channelpoints" data-i18n="nav-channelpoints">Kanalpunkte</button>
           <button class="nav-button" data-tab="chatcommands" data-i18n="nav-chatcommands">Chat Befehle</button>
+          <button class="nav-button" data-tab="texts" data-i18n="nav-texts">Texte</button>
           <button class="nav-button" data-tab="design" data-i18n="nav-design">Einstellungen</button>
           <button class="nav-button" data-tab="animations" data-i18n="nav-animations">Animationen</button>
           <button class="nav-button" data-tab="themes" data-i18n="nav-themes">Themes</button>
@@ -417,23 +418,10 @@
                 <span data-i18n="label-reward-post-enabled">Chat-Nachricht nach dem Ziehen senden</span>
               </label>
               <p class="hint" data-i18n="hint-reward-post-all-sources">Gilt für JEDE Ziehung, die nicht über den Chat-Befehl !pack ausgelöst wurde - Kanalpunkte, Bits, Community-Ziel, Turnier, Team-Kampf, Sub/Resub/Geschenkter Sub. Mit [Quelle] lässt sich im Text erkennen, wodurch eine bestimmte Ziehung ausgelöst wurde.</p>
-              <div class="message-field">
-                <div class="message-field-head">
-                  <span class="message-field-label" data-i18n="label-reward-post-message">Nachricht nach der Animation</span>
-                  <div class="var-chips" data-target="reward-post-message">
-                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                    <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
-                    <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
-                    <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
-                    <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
-                    <button class="var-chip" type="button" data-insert="[Quelle]">[Quelle]</button>
-                  </div>
-                </div>
-                <textarea id="reward-post-message" rows="2"></textarea>
-              </div>
+              
               <div class="button-row">
                 <button class="primary-button" id="sync-reward" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
-                <button class="danger-button" id="delete-reward" type="button" data-i18n="btn-delete-reward">Löschen</button>
+                <button class="danger-button icon-button" id="delete-reward" type="button" data-i18n-title="btn-delete-reward">🗑</button>
               </div>
               <div class="status-line" id="reward-status" hidden></div>
             </article>
@@ -467,7 +455,7 @@
               </div>
               <div class="button-row">
                 <button class="primary-button" id="showcase-sync-reward" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
-                <button class="danger-button" id="showcase-delete-reward" type="button" data-i18n="btn-delete-reward">Löschen</button>
+                <button class="danger-button icon-button" id="showcase-delete-reward" type="button" data-i18n-title="btn-delete-reward">🗑</button>
               </div>
               <div class="status-line" id="showcase-status" hidden></div>
             </article>
@@ -499,7 +487,7 @@
               </div>
               <div class="button-row">
                 <button class="primary-button" id="tournament-reward-sync" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
-                <button class="danger-button" id="tournament-reward-delete" type="button" data-i18n="btn-delete-reward">Löschen</button>
+                <button class="danger-button icon-button" id="tournament-reward-delete" type="button" data-i18n-title="btn-delete-reward">🗑</button>
               </div>
               <div class="status-line" id="tournament-reward-status" hidden></div>
             </article>
@@ -531,7 +519,7 @@
               </div>
               <div class="button-row">
                 <button class="primary-button" id="teamkampf-reward-sync" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
-                <button class="danger-button" id="teamkampf-reward-delete" type="button" data-i18n="btn-delete-reward">Löschen</button>
+                <button class="danger-button icon-button" id="teamkampf-reward-delete" type="button" data-i18n-title="btn-delete-reward">🗑</button>
               </div>
               <div class="status-line" id="teamkampf-reward-status" hidden></div>
             </article>
@@ -561,19 +549,10 @@
                 <label data-i18n="label-showcase-bg-color">Hintergrundfarbe<input id="specificpack-reward-bg-color" type="color"></label>
                 <label class="full-row" data-i18n="label-reward-prompt">Beschreibung (wird als Eingabe-Aufforderung angezeigt)<input id="specificpack-reward-prompt" type="text"></label>
               </div>
-              <div class="message-field">
-                <div class="message-field-head">
-                  <span class="message-field-label" data-i18n="label-specificpack-notfound-message">Nachricht, wenn das Pack nicht gefunden wird (Erstattung)</span>
-                  <div class="var-chips" data-target="specificpack-notfound-message">
-                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                    <button class="var-chip" type="button" data-insert="[Eingabe]">[Eingabe]</button>
-                  </div>
-                </div>
-                <textarea id="specificpack-notfound-message" rows="2"></textarea>
-              </div>
+              
               <div class="button-row">
                 <button class="primary-button" id="specificpack-reward-sync" type="button" data-i18n="btn-sync-reward">Speichern / aktualisieren</button>
-                <button class="danger-button" id="specificpack-reward-delete" type="button" data-i18n="btn-delete-reward">Löschen</button>
+                <button class="danger-button icon-button" id="specificpack-reward-delete" type="button" data-i18n-title="btn-delete-reward">🗑</button>
               </div>
               <div class="status-line" id="specificpack-reward-status" hidden></div>
             </article>
@@ -646,15 +625,7 @@
                 <label data-i18n="label-autohelp-minutes">Nach X Minuten<input id="autohelp-minutes" type="number" min="0" step="1"></label>
                 <label data-i18n="label-autohelp-messages">Nach X Chat-Nachrichten<input id="autohelp-messages" type="number" min="0" step="1"></label>
               </div>
-              <div class="message-field">
-                <div class="message-field-head">
-                  <span class="message-field-label" data-i18n="label-autohelp-message">Nachrichtentext</span>
-                  <div class="var-chips" data-target="autohelp-message">
-                    <button class="var-chip" type="button" data-insert="[Befehle]">[Befehle]</button>
-                  </div>
-                </div>
-                <textarea id="autohelp-message" rows="2"></textarea>
-              </div>
+              
               <p class="hint" data-i18n="cc-autohelp-list-hint">[Befehle] wird automatisch durch die Liste aller aktivierten Befehle mit ihrer Kurzbeschreibung ersetzt (z.B. "!pack - zieht ein zufälliges Kartenpack | !collection - zeigt deine Kartensammlung").</p>
             </article>
 
@@ -695,45 +666,7 @@
                 </div>
               </div>
 
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-success-message">Nachricht bei Einlösung</span>
-                    <div class="var-chips" data-target="cc-pack-success-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
-                      <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
-                      <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
-                      <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-pack-success-message" rows="2"></textarea>
-                </div>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-limit-message">Nachricht bei erreichtem Limit</span>
-                    <div class="var-chips" data-target="cc-pack-limit-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                      <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-pack-limit-message" rows="2"></textarea>
-                </div>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
-                    <div class="var-chips" data-target="cc-pack-cooldown-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-pack-cooldown-message" rows="2"></textarea>
-                </div>
-              </div>
+              
             </article>
 
             <article class="reward-entry command-card" id="jn-cc-specificpack">
@@ -765,42 +698,7 @@
                 </div>
               </div>
 
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-specificpack-usage">Nachricht bei fehlender Angabe</span>
-                    <div class="var-chips" data-target="cc-specificpack-usage-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                      <button class="var-chip" type="button" data-insert="[Befehl]">[Befehl]</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-specificpack-usage-message" rows="2"></textarea>
-                </div>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-specificpack-notfound">Nachricht, wenn das Pack nicht gefunden wird</span>
-                    <div class="var-chips" data-target="cc-specificpack-notfound-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                      <button class="var-chip" type="button" data-insert="[Eingabe]">[Eingabe]</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-specificpack-notfound-message" rows="2"></textarea>
-                </div>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
-                    <div class="var-chips" data-target="cc-specificpack-cooldown-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-specificpack-cooldown-message" rows="2"></textarea>
-                </div>
-              </div>
+              
             </article>
 
             <article class="reward-entry command-card" id="jn-cc-packs">
@@ -825,36 +723,7 @@
                 <p class="hint" data-i18n="cc-packs-hint">Listet alle aktuell verfügbaren Booster im Chat auf, jeweils als "Titel Untertitel" mit tatsächlicher Ziehchance dahinter (identisch berechnet wie beim echten Ziehen). Sub-exklusive Booster werden ebenfalls aufgeführt, aber mit dem Hinweis "Sub Only" statt einer Prozentzahl, da sie nicht über !pack/Kanalpunkte erreichbar sind.</p>
               </div>
 
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-packs-header">Einleitung vor der Liste</span>
-                    <div class="var-chips" data-target="cc-packs-header-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-packs-header-message" rows="2"></textarea>
-                </div>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-packs-empty">Nachricht ohne verfügbaren Booster</span>
-                    <div class="var-chips" data-target="cc-packs-empty-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-packs-empty-message" rows="2"></textarea>
-                </div>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-packs-subonly">Hinweistext für Sub-exklusive Booster</span>
-                  </div>
-                  <input id="cc-packs-subonly-label" type="text">
-                </div>
-              </div>
+              
             </article>
 
             <article class="reward-entry command-card" id="cc-section-collection">
@@ -913,29 +782,7 @@
                 </div>
               </div>
 
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-cards-header">Einleitung vor der Kartenliste</span>
-                    <div class="var-chips" data-target="cc-collection-header-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-collection-header-message" rows="2"></textarea>
-                </div>
-
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-cards-empty">Nachricht ohne eigene Karten</span>
-                    <div class="var-chips" data-target="cc-collection-empty-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-collection-empty-message" rows="2"></textarea>
-                </div>
-              </div>
+              
             </article>
 
             <article class="reward-entry command-card" id="cc-section-showpack">
@@ -975,7 +822,835 @@
                 <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
               </div>
 
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-dust">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
+                  <h3 data-i18n="cc-dust-title">Dust-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-dust-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
               <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-dust-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dust-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dust-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-dust-hint">Verwandelt doppelt besessene Karten in Garantie-Punkte: "!dust Kartenname Anzahl". Wie viele Punkte eine Karte je nach Seltenheit bringt, legst du unter Einstellungen → Garantie-System fest. Mindestens 1 Exemplar bleibt dem Viewer immer erhalten.</p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-dustset">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
+                  <h3 data-i18n="cc-dustset-title">Dust-Auswahl-Befehl</h3>
+                </div>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dustset-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dustset-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-dustset-hint">Nutzt immer das Präfix von !dust (siehe oben) - nur das Befehlswort ist eigenständig. Legt fest, bis zu welcher Seltenheit "!dustall" automatisch Duplikate opfert, z.B. "!dustset legendär". Die Seltenheit kann in jeder unterstützten Sprache eingegeben werden (de/en/fr/es/th). Standard: Ungewöhnlich (also praktisch deaktiviert, bis der Viewer aktiv eine höhere Seltenheit setzt).</p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-dustall">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
+                  <h3 data-i18n="cc-dustall-title">Dust-Alle-Befehl</h3>
+                </div>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dustall-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dustall-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-dustall-hint">Nutzt immer das Präfix von !dust (siehe oben) - nur das Befehlswort ist eigenständig. Opfert automatisch ALLE doppelt besessenen Karten bis zur mit "!dustset" gewählten Seltenheit (Standard: Ungewöhnlich) auf einmal - mindestens 1 Exemplar bleibt je Karte immer erhalten.</p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-gift">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-gift-eyebrow">Geschenk</p>
+                  <h3 data-i18n="cc-gift-title">Geschenk-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-gift-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-gift-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-gift-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-gift-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-gift-hint">Verschenkt eine Karte einseitig an einen anderen Zuschauer: "!gift @Empfänger Kartenname". Die Karte wird direkt aus der eigenen Sammlung entfernt, keine Bestätigung durch den Empfänger nötig.</p>
+                <label class="switch-row compact-switch">
+                  <input id="cc-gift-chatoutput-enabled" type="checkbox">
+                  <span data-i18n="label-cc-gift-chatoutput-enabled">Erfolgsmeldung im Chat senden</span>
+                </label>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-compare">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-compare-eyebrow">Vergleich</p>
+                  <h3 data-i18n="cc-compare-title">Vergleichs-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-compare-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-compare-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-compare-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-compare-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-compare-hint">Vergleicht die eigene Sammlung mit der eines anderen Zuschauers: "!vergleich @Name". Zeigt im Chat, wie viele Kartenarten beide besitzen, gemeinsam haben und jeweils exklusiv besitzen.</p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-trade">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-trade-eyebrow">Tausch</p>
+                  <h3 data-i18n="cc-trade-title">Tausch-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-trade-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-trade-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-trade-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-trade-helptext" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!trade [Username] [Kartenname]</code></p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit, Cooldown &amp; Dauer</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-trade-maxuses" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-trade-cooldown" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-trade-reset-value" type="number" min="1" step="1"></label>
+                  <label data-i18n="label-cc-reset-unit">Einheit
+                    <select id="cc-trade-reset-unit">
+                      <option value="minutes" data-i18n="opt-minutes">Minuten</option>
+                      <option value="hours" data-i18n="opt-hours">Stunden</option>
+                      <option value="days" data-i18n="opt-days">Tage</option>
+                    </select>
+                  </label>
+                  <label data-i18n="label-cc-trade-timeout">Anfrage offen für (Sek.)<input id="cc-trade-timeout" type="number" min="10" step="1"></label>
+                </div>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-tradeyes">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-tradeyes-eyebrow">Tausch annehmen</p>
+                  <h3 data-i18n="cc-tradeyes-title">Tausch-Annahme-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-tradeyes-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tradeyes-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tradeyes-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!tradeyes [Kartenname]</code></p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-tradeno">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-tradeno-eyebrow">Tausch ablehnen</p>
+                  <h3 data-i18n="cc-tradeno-title">Tausch-Ablehnungs-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-tradeno-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tradeno-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tradeno-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!tradeno</code></p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-battle">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-battle-eyebrow">Kampf</p>
+                  <h3 data-i18n="cc-battle-title">Kampf-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-battle-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battle-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battle-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-battle-helptext" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!battle [Username]</code></p>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit, Cooldown &amp; Dauer</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-battle-lineupsize">Karten pro Seite (N)<input id="cc-battle-lineupsize" type="number" min="1" step="1"></label>
+                  <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-battle-maxuses" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-battle-cooldown" type="number" min="0" step="1"></label>
+                  <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-battle-reset-value" type="number" min="1" step="1"></label>
+                  <label data-i18n="label-cc-reset-unit">Einheit
+                    <select id="cc-battle-reset-unit">
+                      <option value="minutes" data-i18n="opt-minutes">Minuten</option>
+                      <option value="hours" data-i18n="opt-hours">Stunden</option>
+                      <option value="days" data-i18n="opt-days">Tage</option>
+                    </select>
+                  </label>
+                  <label data-i18n="label-cc-battle-timeout">Anfrage offen für (Sek.)<input id="cc-battle-timeout" type="number" min="10" step="1"></label>
+                </div>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-battleyes">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-battleyes-eyebrow">Kampf annehmen</p>
+                  <h3 data-i18n="cc-battleyes-title">Kampf-Annahme-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-battleyes-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battleyes-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battleyes-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!battleyes</code></p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-battleno">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-battleno-eyebrow">Kampf ablehnen</p>
+                  <h3 data-i18n="cc-battleno-title">Kampf-Ablehnungs-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-battleno-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battleno-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battleno-command" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!battleno</code></p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="cc-section-ranking">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-ranking-eyebrow">Ranking</p>
+                  <h3 data-i18n="cc-ranking-title">Ranking-Befehl</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-ranking-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-ranking-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-ranking-command" type="text"></label>
+                  <label data-i18n="label-cc-ranking-seconds">Anzeigedauer (Sek.)<input id="cc-ranking-seconds" type="number" min="2" step="1"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-ranking-helptext" type="text"></label>
+                </div>
+                <p class="hint">Nutzung im Chat: <code>!ranking [Kartenname]</code>, <code>!ranking battle</code>, <code>!ranking turnier</code> oder <code>!ranking tausch</code></p>
+                <p class="hint" data-i18n="cc-ranking-hint">Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle" wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „turnier" wechselt die Anzeige durch: meiste Turniersiege → meiste Turnierteilnahmen (je Top 5). Bei „teamkampf" wechselt die Anzeige durch: meiste Team-Kampf-Teilnahmen → meiste Siege → meiste Niederlagen (je Top 5). Bei „tausch" erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.</p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-tournamentjoin">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-tournamentjoin-eyebrow">Turnier</p>
+                  <h3 data-i18n="cc-tournamentjoin-title">Turnier-Beitritt</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-tournamentjoin-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tournamentjoin-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tournamentjoin-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-tournamentjoin-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-tournamentjoin-hint">Mit diesem Befehl treten Zuschauer während einer laufenden Anmeldephase dem Turnier bei. Wer nicht genug verschiedene Karten besitzt (siehe Einstellungen → Turnier-Modus), bekommt eine Hinweis-Nachricht statt beizutreten.</p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-teamkampfjoin">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-teamkampfjoin-eyebrow">Team-Kampf</p>
+                  <h3 data-i18n="cc-teamkampfjoin-title">Team-Kampf-Beitritt</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-teamkampfjoin-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-teamkampfjoin-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-teamkampfjoin-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-teamkampfjoin-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-teamkampfjoin-hint">Mit diesem Befehl treten Zuschauer während der Anmeldezeit eines laufenden Team-Kampfes bei. Jeder Teilnehmer bekommt automatisch eine zufällige Karte aus der eigenen Sammlung zugeteilt (siehe Einstellungen → Team-Kampf).</p>
+              </div>
+
+              
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-tournamentstart">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-tournamentstart-eyebrow">Turnier</p>
+                  <h3 data-i18n="cc-tournamentstart-title">Turnier-Start (Chat)</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-tournamentstart-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tournamentstart-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tournamentstart-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-tournamentstart-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-tournamentstart-hint">Optionaler Chat-Befehl, um die Turnier-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel. Nützlich für Nicht-Affiliates/Partner ohne Kanalpunkte.</p>
+              </div>
+
+              
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit &amp; Cooldown</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-global-cooldown">Globaler Cooldown (Sek.)<input id="cc-tournamentstart-cooldown" type="number" min="0" step="1"></label>
+                </div>
+                <p class="hint" data-i18n="hint-cc-global-cooldown">Gilt für den Chat-Befehl insgesamt (nicht pro Viewer) - verhindert, dass direkt nach Ende eines Turniers sofort das nächste gestartet wird. 0 = kein Cooldown.</p>
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-tournamentstart-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-tournamentstart-cooldown-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-teambattlestart">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-teambattlestart-eyebrow">Team-Kampf</p>
+                  <h3 data-i18n="cc-teambattlestart-title">Team-Kampf-Start (Chat)</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-teambattlestart-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-teambattlestart-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-teambattlestart-command" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-teambattlestart-helptext" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-teambattlestart-hint">Optionaler Chat-Befehl, um die Team-Kampf-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel. Nützlich für Nicht-Affiliates/Partner ohne Kanalpunkte.</p>
+              </div>
+
+              
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-limits">Limit &amp; Cooldown</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-global-cooldown">Globaler Cooldown (Sek.)<input id="cc-teambattlestart-cooldown" type="number" min="0" step="1"></label>
+                </div>
+                <p class="hint" data-i18n="hint-cc-global-cooldown">Gilt für den Chat-Befehl insgesamt (nicht pro Viewer) - verhindert, dass direkt nach Ende eines Team-Kampfes sofort der nächste gestartet wird. 0 = kein Cooldown.</p>
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-teambattlestart-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-teambattlestart-cooldown-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-panel="texts">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="texts-eyebrow">Texte</p>
+              <h2 data-i18n="texts-title">Alle Texte &amp; Nachrichten</h2>
+            </div>
+          </div>
+          <p class="hint" data-i18n="texts-hint">Sämtliche anpassbaren Chat-/Overlay-Texte an einer Stelle - Befehlswörter, Limits und sonstige Einstellungen bleiben in ihren jeweiligen Bereichen (Chat Befehle, Kanalpunkte, Animationen).</p>
+          <nav class="cc-jump-nav" id="texts-jump-nav">
+              <a href="#jn-text-misc">Sonstige Texte</a>
+              <a href="#jn-text-pack">Pack-Befehl</a>
+              <a href="#jn-text-specificpack">Pack-Auswahl-Befehl</a>
+              <a href="#jn-text-packs">Booster-Übersicht-Befehl</a>
+              <a href="#jn-text-collection">Sammlung-Befehl</a>
+              <a href="#jn-text-showpack">Pack-Anzeige-Befehl</a>
+              <a href="#jn-text-dust">Dust-Befehl</a>
+              <a href="#jn-text-dustset">Dust-Auswahl-Befehl</a>
+              <a href="#jn-text-dustall">Dust-Alle-Befehl</a>
+              <a href="#jn-text-gift">Geschenk-Befehl</a>
+              <a href="#jn-text-compare">Vergleichs-Befehl</a>
+              <a href="#jn-text-trade">Tausch-Befehl</a>
+              <a href="#jn-text-tradeyes">Tausch-Annahme-Befehl</a>
+              <a href="#jn-text-tradeno">Tausch-Ablehnungs-Befehl</a>
+              <a href="#jn-text-battle">Kampf-Befehl</a>
+              <a href="#jn-text-battleyes">Kampf-Annahme-Befehl</a>
+              <a href="#jn-text-battleno">Kampf-Ablehnungs-Befehl</a>
+              <a href="#jn-text-ranking">Ranking-Befehl</a>
+              <a href="#jn-text-tournamentjoin">Turnier-Beitritt</a>
+              <a href="#jn-text-teamkampfjoin">Team-Kampf-Beitritt</a>
+              <a href="#jn-text-tournamentstart">Turnier-Start (Chat)</a>
+              <a href="#jn-text-teambattlestart">Team-Kampf-Start (Chat)</a>
+          </nav>
+            <article class="reward-entry command-card" id="jn-text-misc">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow">Sonstige</p>
+                  <h3>Sonstige Texte (Kanalpunkte, Team-Kampf, Live-Ticker, Auto-Hilfe)</h3>
+                </div>
+              </header>
+              <div class="field-group">
+                <p class="field-group-title">Hilfe</p>
+                <p class="hint">Automatische Hilfe-Nachricht</p>
+<div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-autohelp-message">Nachrichtentext</span>
+                  <div class="var-chips" data-target="autohelp-message">
+                    <button class="var-chip" type="button" data-insert="[Befehle]">[Befehle]</button>
+                  </div>
+                </div>
+                <textarea id="autohelp-message" rows="2"></textarea>
+              </div>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title">Kanalpunkte</p>
+                <p class="hint">Kartenpack-Belohnung: Nachricht nach der Animation</p>
+<div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-reward-post-message">Nachricht nach der Animation</span>
+                  <div class="var-chips" data-target="reward-post-message">
+                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                    <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
+                    <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
+                    <button class="var-chip" type="button" data-insert="[Quelle]">[Quelle]</button>
+                  </div>
+                </div>
+                <textarea id="reward-post-message" rows="2"></textarea>
+              </div>
+                <p class="hint">Pack-Auswahl-Belohnung: Pack nicht gefunden (Erstattung)</p>
+<div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-specificpack-notfound-message">Nachricht, wenn das Pack nicht gefunden wird (Erstattung)</span>
+                  <div class="var-chips" data-target="specificpack-notfound-message">
+                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    <button class="var-chip" type="button" data-insert="[Eingabe]">[Eingabe]</button>
+                  </div>
+                </div>
+                <textarea id="specificpack-notfound-message" rows="2"></textarea>
+              </div>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title">Team-Kampf</p>
+                <p class="hint">Team-Kampf: Nachricht bei besiegten Karten</p>
+<div class="message-field">
+              <div class="message-field-head">
+                <span class="message-field-label" data-i18n="label-teamkampf-per-defeat-message">Nachricht bei besiegten Karten</span>
+                <div class="var-chips" data-target="teamkampf-per-defeat-message">
+                  <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                  <button class="var-chip" type="button" data-insert="[AnzahlBesiegt]">[AnzahlBesiegt]</button>
+                  <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
+                </div>
+              </div>
+              <textarea id="teamkampf-per-defeat-message" rows="2"></textarea>
+            </div>
+                <p class="hint">Team-Kampf: Nachricht bei besiegten Karten (gesamt)</p>
+<div class="message-field">
+              <div class="message-field-head">
+                <span class="message-field-label" data-i18n="label-teamkampf-per-defeat-all-message">Nachricht bei besiegten Karten (gesamt)</span>
+                <div class="var-chips" data-target="teamkampf-per-defeat-all-message">
+                  <button class="var-chip" type="button" data-insert="[AnzahlBesiegt]">[AnzahlBesiegt]</button>
+                  <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
+                </div>
+              </div>
+              <textarea id="teamkampf-per-defeat-all-message" rows="2"></textarea>
+            </div>
+                <p class="hint">Team-Kampf: Nachricht bei Kartenverlust</p>
+<div class="message-field">
+              <div class="message-field-head">
+                <span class="message-field-label" data-i18n="label-teamkampf-lost-card-message">Nachricht bei Kartenverlust</span>
+                <div class="var-chips" data-target="teamkampf-lost-card-message">
+                  <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                  <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                  <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                </div>
+              </div>
+              <textarea id="teamkampf-lost-card-message" rows="2"></textarea>
+            </div>
+              </div>
+
+              <div class="field-group">
+                <p class="field-group-title">Live-Ticker</p>
+                <p class="hint">Live-Ticker: Text bei Kartenziehung</p>
+<div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-liveticker-draw-message">Text bei Kartenziehung</span>
+                  <div class="var-chips" data-target="liveticker-draw-message">
+                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                  </div>
+                </div>
+                <textarea id="liveticker-draw-message" rows="2"></textarea>
+              </div>
+                <p class="hint">Live-Ticker: Text bei Kartenduell</p>
+<div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-liveticker-battle-message">Text bei Kartenduell</span>
+                  <div class="var-chips" data-target="liveticker-battle-message">
+                    <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
+                    <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
+                  </div>
+                </div>
+                <textarea id="liveticker-battle-message" rows="2"></textarea>
+              </div>
+                <p class="hint">Live-Ticker: Text bei Turniersieg</p>
+<div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-liveticker-tournament-message">Text bei Turniersieg</span>
+                  <div class="var-chips" data-target="liveticker-tournament-message">
+                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    <button class="var-chip" type="button" data-insert="[Teilnehmerzahl]">[Teilnehmerzahl]</button>
+                  </div>
+                </div>
+                <textarea id="liveticker-tournament-message" rows="2"></textarea>
+              </div>
+                <p class="hint">Live-Ticker: Text bei Team-Kampf-Ergebnis</p>
+<div class="message-field">
+                <div class="message-field-head">
+                  <span class="message-field-label" data-i18n="label-liveticker-teambattle-message">Text bei Team-Kampf-Ergebnis</span>
+                  <div class="var-chips" data-target="liveticker-teambattle-message">
+                    <button class="var-chip" type="button" data-insert="[Sieger]">[Sieger]</button>
+                    <button class="var-chip" type="button" data-insert="@streamerName">@streamerName</button>
+                  </div>
+                </div>
+                <textarea id="liveticker-teambattle-message" rows="2"></textarea>
+              </div>
+              </div>
+            </article>
+
+
+
+            <article class="reward-entry command-card" id="jn-text-pack">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow">Kartenpack</p>
+                  <h3 data-i18n="cc-pack-title">Pack-Befehl</h3>
+                </div>
+              </header>
+<div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-pack-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-success-message">Nachricht bei Einlösung</span>
+                    <div class="var-chips" data-target="cc-pack-success-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                      <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
+                      <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
+                      <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-pack-success-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-limit-message">Nachricht bei erreichtem Limit</span>
+                    <div class="var-chips" data-target="cc-pack-limit-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Uhrzeit]">[Uhrzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-pack-limit-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-pack-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-pack-cooldown-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-text-specificpack">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow">Kartenpack</p>
+                  <h3 data-i18n="cc-specificpack-title">Pack-Auswahl-Befehl</h3>
+                </div>
+              </header>
+<div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-specificpack-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-specificpack-usage">Nachricht bei fehlender Angabe</span>
+                    <div class="var-chips" data-target="cc-specificpack-usage-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Befehl]">[Befehl]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-specificpack-usage-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-specificpack-notfound">Nachricht, wenn das Pack nicht gefunden wird</span>
+                    <div class="var-chips" data-target="cc-specificpack-notfound-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Eingabe]">[Eingabe]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-specificpack-notfound-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
+                    <div class="var-chips" data-target="cc-specificpack-cooldown-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-specificpack-cooldown-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-text-packs">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow">Kartenpack</p>
+                  <h3 data-i18n="cc-packs-title">Booster-Übersicht-Befehl</h3>
+                </div>
+              </header>
+<div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-packs-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-packs-header">Einleitung vor der Liste</span>
+                    <div class="var-chips" data-target="cc-packs-header-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-packs-header-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-packs-empty">Nachricht ohne verfügbaren Booster</span>
+                    <div class="var-chips" data-target="cc-packs-empty-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-packs-empty-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-packs-subonly">Hinweistext für Sub-exklusive Booster</span>
+                  </div>
+                  <input id="cc-packs-subonly-label" type="text">
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-text-collection">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow">Sammlung</p>
+                  <h3 data-i18n="cc-collection-title">Sammlung-Befehl</h3>
+                </div>
+              </header>
+<div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cards-header">Einleitung vor der Kartenliste</span>
+                    <div class="var-chips" data-target="cc-collection-header-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-collection-header-message" rows="2"></textarea>
+                </div>
+
+                <div class="message-field">
+                  <div class="message-field-head">
+                    <span class="message-field-label" data-i18n="label-cc-cards-empty">Nachricht ohne eigene Karten</span>
+                    <div class="var-chips" data-target="cc-collection-empty-message">
+                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
+                    </div>
+                  </div>
+                  <textarea id="cc-collection-empty-message" rows="2"></textarea>
+                </div>
+              </div>
+            </article>
+
+            <article class="reward-entry command-card" id="jn-text-showpack">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow">Pack anzeigen</p>
+                  <h3 data-i18n="cc-showpack-title">Pack-Anzeige-Befehl</h3>
+                </div>
+              </header>
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
 
                 <div class="message-field">
@@ -1038,30 +1713,20 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-dust">
+            <article class="reward-entry command-card" id="jn-text-dust">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
+                  <p class="eyebrow">Garantie</p>
                   <h3 data-i18n="cc-dust-title">Dust-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-dust-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-dust-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dust-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dust-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-dust-hint">Verwandelt doppelt besessene Karten in Garantie-Punkte: "!dust Kartenname Anzahl". Wie viele Punkte eine Karte je nach Seltenheit bringt, legst du unter Einstellungen → Garantie-System fest. Mindestens 1 Exemplar bleibt dem Viewer immer erhalten.</p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-dust-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
 
                 <div class="message-field">
                   <div class="message-field-head">
@@ -1115,24 +1780,14 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="jn-cc-dustset">
+            <article class="reward-entry command-card" id="jn-text-dustset">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
+                  <p class="eyebrow">Garantie</p>
                   <h3 data-i18n="cc-dustset-title">Dust-Auswahl-Befehl</h3>
                 </div>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dustset-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dustset-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-dustset-hint">Nutzt immer das Präfix von !dust (siehe oben) - nur das Befehlswort ist eigenständig. Legt fest, bis zu welcher Seltenheit "!dustall" automatisch Duplikate opfert, z.B. "!dustset legendär". Die Seltenheit kann in jeder unterstützten Sprache eingegeben werden (de/en/fr/es/th). Standard: Ungewöhnlich (also praktisch deaktiviert, bis der Viewer aktiv eine höhere Seltenheit setzt).</p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
 
                 <div class="message-field">
@@ -1172,25 +1827,20 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="jn-cc-dustall">
+            <article class="reward-entry command-card" id="jn-text-dustall">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-dust-eyebrow">Garantie</p>
+                  <p class="eyebrow">Garantie</p>
                   <h3 data-i18n="cc-dustall-title">Dust-Alle-Befehl</h3>
                 </div>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-dustall-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-dustall-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-dustall-hint">Nutzt immer das Präfix von !dust (siehe oben) - nur das Befehlswort ist eigenständig. Opfert automatisch ALLE doppelt besessenen Karten bis zur mit "!dustset" gewählten Seltenheit (Standard: Ungewöhnlich) auf einmal - mindestens 1 Exemplar bleibt je Karte immer erhalten.</p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-dustall-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
 
                 <div class="message-field">
                   <div class="message-field-head">
@@ -1220,33 +1870,14 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-gift">
+            <article class="reward-entry command-card" id="jn-text-gift">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-gift-eyebrow">Geschenk</p>
+                  <p class="eyebrow">Geschenk</p>
                   <h3 data-i18n="cc-gift-title">Geschenk-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-gift-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-gift-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-gift-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-gift-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-gift-hint">Verschenkt eine Karte einseitig an einen anderen Zuschauer: "!gift @Empfänger Kartenname". Die Karte wird direkt aus der eigenen Sammlung entfernt, keine Bestätigung durch den Empfänger nötig.</p>
-                <label class="switch-row compact-switch">
-                  <input id="cc-gift-chatoutput-enabled" type="checkbox">
-                  <span data-i18n="label-cc-gift-chatoutput-enabled">Erfolgsmeldung im Chat senden</span>
-                </label>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
 
                 <div class="message-field">
@@ -1317,30 +1948,20 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-compare">
+            <article class="reward-entry command-card" id="jn-text-compare">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-compare-eyebrow">Vergleich</p>
+                  <p class="eyebrow">Vergleich</p>
                   <h3 data-i18n="cc-compare-title">Vergleichs-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-compare-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-compare-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-compare-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-compare-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-compare-hint">Vergleicht die eigene Sammlung mit der eines anderen Zuschauers: "!vergleich @Name". Zeigt im Chat, wie viele Kartenarten beide besitzen, gemeinsam haben und jeweils exklusiv besitzen.</p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-compare-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
 
                 <div class="message-field">
                   <div class="message-field-head">
@@ -1391,46 +2012,14 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-trade">
+            <article class="reward-entry command-card" id="jn-text-trade">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-trade-eyebrow">Tausch</p>
+                  <p class="eyebrow">Tausch</p>
                   <h3 data-i18n="cc-trade-title">Tausch-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-trade-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-trade-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-trade-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-trade-helptext" type="text"></label>
-                </div>
-                <p class="hint">Nutzung im Chat: <code>!trade [Username] [Kartenname]</code></p>
-              </div>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-limits">Limit, Cooldown &amp; Dauer</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-trade-maxuses" type="number" min="0" step="1"></label>
-                  <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-trade-cooldown" type="number" min="0" step="1"></label>
-                  <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-trade-reset-value" type="number" min="1" step="1"></label>
-                  <label data-i18n="label-cc-reset-unit">Einheit
-                    <select id="cc-trade-reset-unit">
-                      <option value="minutes" data-i18n="opt-minutes">Minuten</option>
-                      <option value="hours" data-i18n="opt-hours">Stunden</option>
-                      <option value="days" data-i18n="opt-days">Tage</option>
-                    </select>
-                  </label>
-                  <label data-i18n="label-cc-trade-timeout">Anfrage offen für (Sek.)<input id="cc-trade-timeout" type="number" min="10" step="1"></label>
-                </div>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
 
                 <div class="message-field">
@@ -1530,28 +2119,14 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-tradeyes">
+            <article class="reward-entry command-card" id="jn-text-tradeyes">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-tradeyes-eyebrow">Tausch annehmen</p>
+                  <p class="eyebrow">Tausch annehmen</p>
                   <h3 data-i18n="cc-tradeyes-title">Tausch-Annahme-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-tradeyes-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tradeyes-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tradeyes-command" type="text"></label>
-                </div>
-                <p class="hint">Nutzung im Chat: <code>!tradeyes [Kartenname]</code></p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
 
                 <div class="message-field">
@@ -1583,28 +2158,14 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-tradeno">
+            <article class="reward-entry command-card" id="jn-text-tradeno">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-tradeno-eyebrow">Tausch ablehnen</p>
+                  <p class="eyebrow">Tausch ablehnen</p>
                   <h3 data-i18n="cc-tradeno-title">Tausch-Ablehnungs-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-tradeno-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tradeno-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tradeno-command" type="text"></label>
-                </div>
-                <p class="hint">Nutzung im Chat: <code>!tradeno</code></p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
                 <div class="message-field">
                   <div class="message-field-head">
@@ -1621,47 +2182,14 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-battle">
+            <article class="reward-entry command-card" id="jn-text-battle">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-battle-eyebrow">Kampf</p>
+                  <p class="eyebrow">Kampf</p>
                   <h3 data-i18n="cc-battle-title">Kampf-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-battle-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battle-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battle-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-battle-helptext" type="text"></label>
-                </div>
-                <p class="hint">Nutzung im Chat: <code>!battle [Username]</code></p>
-              </div>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-limits">Limit, Cooldown &amp; Dauer</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-battle-lineupsize">Karten pro Seite (N)<input id="cc-battle-lineupsize" type="number" min="1" step="1"></label>
-                  <label data-i18n="label-cc-maxuses">Max. Nutzungen pro Viewer<input id="cc-battle-maxuses" type="number" min="0" step="1"></label>
-                  <label data-i18n="label-cc-cooldown">Cooldown pro Viewer (Sek.)<input id="cc-battle-cooldown" type="number" min="0" step="1"></label>
-                  <label data-i18n="label-cc-reset-value">Auto-Reset alle<input id="cc-battle-reset-value" type="number" min="1" step="1"></label>
-                  <label data-i18n="label-cc-reset-unit">Einheit
-                    <select id="cc-battle-reset-unit">
-                      <option value="minutes" data-i18n="opt-minutes">Minuten</option>
-                      <option value="hours" data-i18n="opt-hours">Stunden</option>
-                      <option value="days" data-i18n="opt-days">Tage</option>
-                    </select>
-                  </label>
-                  <label data-i18n="label-cc-battle-timeout">Anfrage offen für (Sek.)<input id="cc-battle-timeout" type="number" min="10" step="1"></label>
-                </div>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
 
                 <div class="message-field">
@@ -1767,28 +2295,14 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-battleyes">
+            <article class="reward-entry command-card" id="jn-text-battleyes">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-battleyes-eyebrow">Kampf annehmen</p>
+                  <p class="eyebrow">Kampf annehmen</p>
                   <h3 data-i18n="cc-battleyes-title">Kampf-Annahme-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-battleyes-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battleyes-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battleyes-command" type="text"></label>
-                </div>
-                <p class="hint">Nutzung im Chat: <code>!battleyes</code></p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
                 <div class="message-field">
                   <div class="message-field-head">
@@ -1807,28 +2321,14 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-battleno">
+            <article class="reward-entry command-card" id="jn-text-battleno">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-battleno-eyebrow">Kampf ablehnen</p>
+                  <p class="eyebrow">Kampf ablehnen</p>
                   <h3 data-i18n="cc-battleno-title">Kampf-Ablehnungs-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-battleno-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-battleno-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-battleno-command" type="text"></label>
-                </div>
-                <p class="hint">Nutzung im Chat: <code>!battleno</code></p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
                 <div class="message-field">
                   <div class="message-field-head">
@@ -1843,33 +2343,21 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="cc-section-ranking">
+            <article class="reward-entry command-card" id="jn-text-ranking">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-ranking-eyebrow">Ranking</p>
+                  <p class="eyebrow">Ranking</p>
                   <h3 data-i18n="cc-ranking-title">Ranking-Befehl</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-ranking-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-ranking-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-ranking-command" type="text"></label>
-                  <label data-i18n="label-cc-ranking-seconds">Anzeigedauer (Sek.)<input id="cc-ranking-seconds" type="number" min="2" step="1"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-ranking-helptext" type="text"></label>
-                </div>
-                <p class="hint">Nutzung im Chat: <code>!ranking [Kartenname]</code>, <code>!ranking battle</code>, <code>!ranking turnier</code> oder <code>!ranking tausch</code></p>
-                <p class="hint" data-i18n="cc-ranking-hint">Zeigt das Ranking ausschließlich in der eigenen OBS-Quelle (Verbindung → Quellenname Ranking) – es erfolgt bewusst keine Chat-Ausgabe. Bei „battle" wechselt die Anzeige nacheinander durch: meiste Kämpfe → meiste Siege → meiste Niederlagen → beste Siegquote (je Top 5). Bei „turnier" wechselt die Anzeige durch: meiste Turniersiege → meiste Turnierteilnahmen (je Top 5). Bei „teamkampf" wechselt die Anzeige durch: meiste Team-Kampf-Teilnahmen → meiste Siege → meiste Niederlagen (je Top 5). Bei „tausch" erscheinen die 5 User mit den meisten abgeschlossenen Tauschen. Die Anzeigedauer gilt pro Ansicht.</p>
-              </div>
-
-              <div class="field-group">
+<div class="field-group">
                 <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
                 <p class="hint" data-i18n="cc-ranking-messages-hint">Nur diese beiden Fehlerfälle bei <code>!ranking [Kartenname]</code> senden eine Chat-Nachricht (bei Erfolg bleibt der Befehl bewusst still, siehe oben).</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-ranking-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
 
                 <div class="message-field">
                   <div class="message-field-head">
@@ -1896,257 +2384,86 @@
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="jn-cc-tournamentjoin">
+            <article class="reward-entry command-card" id="jn-text-tournamentjoin">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-tournamentjoin-eyebrow">Turnier</p>
+                  <p class="eyebrow">Turnier</p>
                   <h3 data-i18n="cc-tournamentjoin-title">Turnier-Beitritt</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-tournamentjoin-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tournamentjoin-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tournamentjoin-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-tournamentjoin-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-tournamentjoin-hint">Mit diesem Befehl treten Zuschauer während einer laufenden Anmeldephase dem Turnier bei. Wer nicht genug verschiedene Karten besitzt (siehe Einstellungen → Turnier-Modus), bekommt eine Hinweis-Nachricht statt beizutreten.</p>
+<div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-tournamentjoin-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="jn-cc-teamkampfjoin">
+            <article class="reward-entry command-card" id="jn-text-teamkampfjoin">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-teamkampfjoin-eyebrow">Team-Kampf</p>
+                  <p class="eyebrow">Team-Kampf</p>
                   <h3 data-i18n="cc-teamkampfjoin-title">Team-Kampf-Beitritt</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-teamkampfjoin-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-teamkampfjoin-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-teamkampfjoin-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-teamkampfjoin-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-teamkampfjoin-hint">Mit diesem Befehl treten Zuschauer während der Anmeldezeit eines laufenden Team-Kampfes bei. Jeder Teilnehmer bekommt automatisch eine zufällige Karte aus der eigenen Sammlung zugeteilt (siehe Einstellungen → Team-Kampf).</p>
+<div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-teamkampfjoin-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="jn-cc-tournamentstart">
+            <article class="reward-entry command-card" id="jn-text-tournamentstart">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-tournamentstart-eyebrow">Turnier</p>
+                  <p class="eyebrow">Turnier</p>
                   <h3 data-i18n="cc-tournamentstart-title">Turnier-Start (Chat)</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-tournamentstart-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-tournamentstart-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-tournamentstart-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-tournamentstart-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-tournamentstart-hint">Optionaler Chat-Befehl, um die Turnier-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel. Nützlich für Nicht-Affiliates/Partner ohne Kanalpunkte.</p>
-              </div>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-limits">Limit &amp; Cooldown</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-global-cooldown">Globaler Cooldown (Sek.)<input id="cc-tournamentstart-cooldown" type="number" min="0" step="1"></label>
-                </div>
-                <p class="hint" data-i18n="hint-cc-global-cooldown">Gilt für den Chat-Befehl insgesamt (nicht pro Viewer) - verhindert, dass direkt nach Ende eines Turniers sofort das nächste gestartet wird. 0 = kein Cooldown.</p>
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
-                    <div class="var-chips" data-target="cc-tournamentstart-cooldown-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-tournamentstart-cooldown-message" rows="2"></textarea>
-                </div>
+<div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-tournamentstart-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
               </div>
             </article>
 
-            <article class="reward-entry command-card" id="jn-cc-teambattlestart">
+            <article class="reward-entry command-card" id="jn-text-teambattlestart">
               <header class="command-card-head">
                 <div>
-                  <p class="eyebrow" data-i18n="cc-teambattlestart-eyebrow">Team-Kampf</p>
+                  <p class="eyebrow">Team-Kampf</p>
                   <h3 data-i18n="cc-teambattlestart-title">Team-Kampf-Start (Chat)</h3>
                 </div>
-                <label class="switch-row compact-switch">
-                  <input id="cc-teambattlestart-enabled" type="checkbox">
-                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
-                </label>
               </header>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-teambattlestart-prefix" type="text" maxlength="1"></label>
-                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-teambattlestart-command" type="text"></label>
-                  <label class="full-row" data-i18n="label-cc-helptext">Kurzbeschreibung (für Auto-Hilfe-Nachricht)<input id="cc-teambattlestart-helptext" type="text"></label>
-                </div>
-                <p class="hint" data-i18n="cc-teambattlestart-hint">Optionaler Chat-Befehl, um die Team-Kampf-Anmeldephase zu starten - zusätzlich zur Kanalpunkte-Belohnung und dem Start-Button im Admin-Panel. Nützlich für Nicht-Affiliates/Partner ohne Kanalpunkte.</p>
-              </div>
-
-              <div class="field-group">
-                <p class="field-group-title" data-i18n="cc-group-limits">Limit &amp; Cooldown</p>
-                <div class="form-grid">
-                  <label data-i18n="label-cc-global-cooldown">Globaler Cooldown (Sek.)<input id="cc-teambattlestart-cooldown" type="number" min="0" step="1"></label>
-                </div>
-                <p class="hint" data-i18n="hint-cc-global-cooldown">Gilt für den Chat-Befehl insgesamt (nicht pro Viewer) - verhindert, dass direkt nach Ende eines Team-Kampfes sofort der nächste gestartet wird. 0 = kein Cooldown.</p>
-                <div class="message-field">
-                  <div class="message-field-head">
-                    <span class="message-field-label" data-i18n="label-cc-cooldown-message">Nachricht bei aktivem Cooldown</span>
-                    <div class="var-chips" data-target="cc-teambattlestart-cooldown-message">
-                      <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                      <button class="var-chip" type="button" data-insert="[Restzeit]">[Restzeit]</button>
-                    </div>
-                  </div>
-                  <textarea id="cc-teambattlestart-cooldown-message" rows="2"></textarea>
-                </div>
+<div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-messages">Chat-Nachrichten</p>
+                <label data-i18n="label-cc-outputmode">Versandart<select id="cc-teambattlestart-outputmode">
+                  <option value="chat" data-i18n="option-cc-outputmode-chat">Öffentlich im Chat</option>
+                  <option value="whisper" data-i18n="option-cc-outputmode-whisper">Als Flüster-Nachricht (privat)</option>
+                </select></label>
+                <p class="hint" data-i18n="hint-cc-collection-outputmode">Flüster-Nachrichten benötigen die Berechtigung "user:manage:whispers" – falls die App von einer älteren Version aktualisiert wurde, den Haupt- bzw. Bot-Account einmal neu unter Verbindung anmelden. Twitch erlaubt Flüster-Nachrichten außerdem nur an Accounts, die welche zulassen (z. B. keine komplett Fremden je nach Twitch-Einstellung des Empfängers).</p>
               </div>
             </article>
-          </section>
+
+
         </section>
 
         <section class="tab-panel" data-panel="design">
           <nav class="cc-jump-nav">
-              <a href="#jn-farben-und-anzeige-design">Farben und Anzeige</a>
-              <a href="#jn-sounds-design">Sounds</a>
-              <a href="#jn-rahmenfarben-je-raritaet-design">Rahmenfarben je Rarität</a>
               <a href="#jn-gewichtung-je-raritaet-design">Gewichtung je Rarität</a>
               <a href="#jn-pity-system-design" data-i18n="pity-title">Garantie-System</a>
               <a href="#jn-sub-belohnungen-design" data-i18n="subrewards-title">Sub-Belohnungen</a>
               <a href="#jn-bits-belohnung-design" data-i18n="bits-title">Bits-Belohnung</a>
-              <a href="#jn-kampfstaerke-je-seltenheit-design">Kampfstärke je Seltenheit</a>
               <a href="#jn-treue-bonus-design" data-i18n="loyaltybonus-title">Treue-Bonus</a>
             </nav>
-            <section class="tool-panel" id="jn-farben-und-anzeige-design">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Look</p>
-                <h2 data-i18n="design-look-title">Farben und Anzeige</h2>
-              </div>
-            </div>
-            <div class="form-grid">
-              <label data-i18n="label-font">Schrift<select id="font-family"></select></label>
-              <label data-i18n="label-accent">Akzent<input id="style-accent" type="color"></label>
-            </div>
-            <p class="hint" data-i18n="hint-accent">Wird als Standard-Schriftfarbe für den Kartennamen neuer Karten und Booster übernommen. Bei bereits vorhandenen Karten/Boostern lässt sich die Akzentfarbe weiterhin einzeln überschreiben.</p>
-            <div class="settings-preview">
-              <p class="eyebrow" data-i18n="label-preview-eyebrow">Vorschau</p>
-              <label class="preview-card-picker" data-i18n="label-preview-card">Vorschaukarte<select id="preview-card-select"></select></label>
-              <div id="settings-preview-card"></div>
-              <p id="font-preview">Pack Preview 123 ÄÖÜ</p>
-            </div>
-            <label class="switch-row">
-              <input id="show-collection" type="checkbox">
-              <span data-i18n="label-show-collection">Sammlungsleiste anzeigen</span>
-            </label>
-            <label class="switch-row">
-              <input id="card-borders" type="checkbox">
-              <span data-i18n="label-card-borders">Kartenrahmen anzeigen</span>
-            </label>
-            <div class="form-grid">
-              <label data-i18n="label-name-position">Position Einlöser-Name<select id="name-position">
-                <option value="bottom" data-i18n="option-name-bottom">Unten</option>
-                <option value="top" data-i18n="option-name-top">Oben</option>
-              </select></label>
-            </div>
-          </section>
-
-          <section class="tool-panel sound-panel" id="jn-sounds-design">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Audio</p>
-                <h2>Sounds</h2>
-              </div>
-            </div>
-            <div class="form-grid">
-              <label data-i18n="label-volume">Lautstärke<input id="volume" type="range" min="0" max="100"></label>
-            </div>
-            <div class="sound-row" data-sound="open">
-              <div class="sound-row-info">
-                <strong data-i18n="label-sound-open">Öffnen-Sound</strong>
-                <span class="sound-row-status" id="sound-open-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
-              </div>
-              <div class="sound-row-actions">
-                <button class="secondary-button" id="play-open-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
-                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-open" type="file" accept="audio/*"></label>
-                <button class="danger-button" id="remove-open-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
-              </div>
-            </div>
-            <div class="sound-row" data-sound="reveal">
-              <div class="sound-row-info">
-                <strong data-i18n="label-sound-reveal">Reveal-Sound</strong>
-                <span class="sound-row-status" id="sound-reveal-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
-              </div>
-              <div class="sound-row-actions">
-                <button class="secondary-button" id="play-reveal-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
-                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-reveal" type="file" accept="audio/*"></label>
-                <button class="danger-button" id="remove-reveal-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
-              </div>
-            </div>
-            <div class="sound-row" data-sound="trade">
-              <div class="sound-row-info">
-                <strong data-i18n="label-sound-trade">Tausch-Sound</strong>
-                <span class="sound-row-status" id="sound-trade-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
-              </div>
-              <div class="sound-row-actions">
-                <button class="secondary-button" id="play-trade-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
-                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-trade" type="file" accept="audio/*"></label>
-                <button class="danger-button" id="remove-trade-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
-              </div>
-            </div>
-            <div class="sound-row" data-sound="battle">
-              <div class="sound-row-info">
-                <strong data-i18n="label-sound-battle">Kampf-Sound</strong>
-                <span class="sound-row-status" id="sound-battle-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
-              </div>
-              <div class="sound-row-actions">
-                <button class="secondary-button" id="play-battle-sound" type="button" disabled data-i18n="btn-play">▶ Abspielen</button>
-                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-battle" type="file" accept="audio/*"></label>
-                <button class="danger-button" id="remove-battle-sound" type="button" disabled data-i18n="btn-remove">Entfernen</button>
-              </div>
-            </div>
-          </section>
-
-          <section class="tool-panel" id="jn-rahmenfarben-je-raritaet-design">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow" data-i18n="rarity-colors-eyebrow">Karten</p>
-                <h2 data-i18n="rarity-colors-title">Rahmenfarben je Rarität</h2>
-              </div>
-              <button class="danger-button" id="reset-rarity-colors" type="button" data-i18n="btn-reset-rarity-colors">Auf Standard zurücksetzen</button>
-            </div>
-            <div class="form-grid">
-              <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-color-common" type="color" data-rarity-color="common"></label>
-              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="rarity-color-uncommon" type="color" data-rarity-color="uncommon"></label>
-              <label data-i18n="rarity-rare">Selten<input id="rarity-color-rare" type="color" data-rarity-color="rare"></label>
-              <label data-i18n="rarity-epic">Episch<input id="rarity-color-epic" type="color" data-rarity-color="epic"></label>
-              <label data-i18n="rarity-legendary">Legendär<input id="rarity-color-legendary" type="color" data-rarity-color="legendary"></label>
-              <label data-i18n="rarity-holo">Holo<input id="rarity-color-holo" type="color" data-rarity-color="holo"></label>
-            </div>
-          </section>
-
-          <section class="tool-panel" id="jn-gewichtung-je-raritaet-design">
+            <section class="tool-panel" id="jn-gewichtung-je-raritaet-design">
             <div class="section-heading">
               <div>
                 <p class="eyebrow" data-i18n="rarity-weights-eyebrow">Karten</p>
@@ -2243,26 +2560,6 @@
             <p class="hint" data-i18n="bits-scope-hint">Benötigt die Berechtigung "bits:read" - falls die App von einer älteren Version aktualisiert wurde, den Hauptaccount einmal neu unter Verbindung anmelden, damit diese Berechtigung erteilt wird.</p>
           </section>
 
-          <section class="tool-panel battle-strength-panel" id="jn-kampfstaerke-je-seltenheit-design">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow" data-i18n="battle-strength-eyebrow">Kampf</p>
-                <h2 data-i18n="battle-strength-title">Kampfstärke je Seltenheit</h2>
-              </div>
-            </div>
-            <p class="hint" data-i18n="battle-strength-hint">Bestimmt, wie stark eine Karte im Kartenduell ist (unabhängig von den Ziehungs-Gewichten). Höherer Wert = stärker.</p>
-            <div class="form-grid" id="battle-strength-grid">
-              <label data-i18n="label-battle-strength-common">Gewöhnlich<input id="battle-strength-common" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-uncommon">Ungewöhnlich<input id="battle-strength-uncommon" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-rare">Selten<input id="battle-strength-rare" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-epic">Episch<input id="battle-strength-epic" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-legendary">Legendär<input id="battle-strength-legendary" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-holo">Holo<input id="battle-strength-holo" type="number" min="0.1" step="0.1"></label>
-              <label data-i18n="label-battle-strength-variance">Zufalls-Varianz<input id="battle-strength-variance" type="number" min="0" step="0.05"></label>
-              <label data-i18n="label-battle-strength-hpfactor">HP-Faktor (nur HP-Leisten-Duell)<input id="battle-strength-hpfactor" type="number" min="1" step="1"></label>
-            </div>
-          </section>
-
           <section class="tool-panel" id="jn-treue-bonus-design">
             <div class="section-heading">
               <div>
@@ -2308,10 +2605,12 @@
               <a href="#jn-community-ziel-design" data-i18n="communitygoal-title">Community-Ziel</a>
               <a href="#jn-ranking-anzeige-design" data-i18n="ranking-anim-title">Ranking-Anzeige</a>
               <a href="#jn-kampf-animation-design">Kampf-Animation</a>
+              <a href="#jn-kampfstaerke-je-seltenheit-design">Kampfstärke je Seltenheit</a>
               <a href="#jn-turnier-modus-design" data-i18n="tournament-title">Turnier-Modus</a>
               <a href="#jn-team-kampf-design" data-i18n="teamkampf-title">Team-Kampf</a>
               <a href="#jn-live-ticker-design" data-i18n="liveticker-title">Live-Ticker</a>
               <a href="#jn-commandshelp-design" data-i18n="commandshelp-title">Befehls-Übersicht</a>
+              <a href="#jn-sounds-design">Sounds</a>
             </nav>
             <section class="tool-panel timing-panel" id="jn-pack-animation-design">
             <div class="section-heading">
@@ -2330,6 +2629,11 @@
               <span data-i18n="label-holo-alarm-enabled">Holo-Alarm aktiviert</span>
             </label>
             <p class="hint" data-i18n="holo-alarm-hint">Bei einer Holo-Ziehung ersetzt eine deutlich längere, dramatische Enthüllung (Karte startet komplett schwarz, Rahmen mit Holo-Schimmer, Umriss, Bild löst sich langsam auf, Name/Sterne zuletzt) die normale sofortige Aufdeckung. Gilt nur für Holo-Karten - alle anderen Seltenheiten sind unverändert.</p>
+            <label class="switch-row">
+              <input id="show-collection" type="checkbox">
+              <span data-i18n="label-show-collection">Sammlungsleiste anzeigen</span>
+            </label>
+            <p class="hint" data-i18n="show-collection-hint">Zeigt neben der gezogenen Karte die Seltenheiten-Übersicht (Besitz-Fortschritt je Seltenheitsstufe) an.</p>
             <div id="overlay-layout-draw"></div>
           </section>
 
@@ -2512,6 +2816,26 @@
             <div id="overlay-layout-battle"></div>
           </section>
 
+          <section class="tool-panel battle-strength-panel" id="jn-kampfstaerke-je-seltenheit-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="battle-strength-eyebrow">Kampf</p>
+                <h2 data-i18n="battle-strength-title">Kampfstärke je Seltenheit</h2>
+              </div>
+            </div>
+            <p class="hint" data-i18n="battle-strength-hint">Bestimmt, wie stark eine Karte im Kartenduell ist (unabhängig von den Ziehungs-Gewichten). Höherer Wert = stärker.</p>
+            <div class="form-grid" id="battle-strength-grid">
+              <label data-i18n="label-battle-strength-common">Gewöhnlich<input id="battle-strength-common" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-uncommon">Ungewöhnlich<input id="battle-strength-uncommon" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-rare">Selten<input id="battle-strength-rare" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-epic">Episch<input id="battle-strength-epic" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-legendary">Legendär<input id="battle-strength-legendary" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-holo">Holo<input id="battle-strength-holo" type="number" min="0.1" step="0.1"></label>
+              <label data-i18n="label-battle-strength-variance">Zufalls-Varianz<input id="battle-strength-variance" type="number" min="0" step="0.05"></label>
+              <label data-i18n="label-battle-strength-hpfactor">HP-Faktor (nur HP-Leisten-Duell)<input id="battle-strength-hpfactor" type="number" min="1" step="1"></label>
+            </div>
+          </section>
+
           <section class="tool-panel" id="jn-turnier-modus-design">
             <div class="section-heading">
               <div>
@@ -2603,17 +2927,7 @@
               <input id="teamkampf-per-defeat-announce-enabled" type="checkbox">
               <span data-i18n="label-teamkampf-per-defeat-announce-enabled">Chat-Nachricht bei besiegten Karten</span>
             </label>
-            <div class="message-field">
-              <div class="message-field-head">
-                <span class="message-field-label" data-i18n="label-teamkampf-per-defeat-message">Nachricht bei besiegten Karten</span>
-                <div class="var-chips" data-target="teamkampf-per-defeat-message">
-                  <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                  <button class="var-chip" type="button" data-insert="[AnzahlBesiegt]">[AnzahlBesiegt]</button>
-                  <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
-                </div>
-              </div>
-              <textarea id="teamkampf-per-defeat-message" rows="2"></textarea>
-            </div>
+            
             <label class="switch-row compact-switch">
               <input id="teamkampf-per-defeat-all-enabled" type="checkbox">
               <span data-i18n="label-teamkampf-per-defeat-all-enabled">Teilnehmer erhalten zusätzlich Karten pro besiegter Streamer-Karte (alle, nicht nur persönlich besiegte)</span>
@@ -2626,16 +2940,7 @@
               <input id="teamkampf-per-defeat-all-announce-enabled" type="checkbox">
               <span data-i18n="label-teamkampf-per-defeat-all-announce-enabled">Chat-Nachricht bei besiegten Karten (gesamt)</span>
             </label>
-            <div class="message-field">
-              <div class="message-field-head">
-                <span class="message-field-label" data-i18n="label-teamkampf-per-defeat-all-message">Nachricht bei besiegten Karten (gesamt)</span>
-                <div class="var-chips" data-target="teamkampf-per-defeat-all-message">
-                  <button class="var-chip" type="button" data-insert="[AnzahlBesiegt]">[AnzahlBesiegt]</button>
-                  <button class="var-chip" type="button" data-insert="[Anzahl]">[Anzahl]</button>
-                </div>
-              </div>
-              <textarea id="teamkampf-per-defeat-all-message" rows="2"></textarea>
-            </div>
+            
             <label class="switch-row compact-switch">
               <input id="teamkampf-lose-card-enabled" type="checkbox">
               <span data-i18n="label-teamkampf-lose-card-enabled">Bei Niederlage verliert jeder Teilnehmer die eingesetzte Karte</span>
@@ -2644,17 +2949,7 @@
               <input id="teamkampf-lost-card-announce-enabled" type="checkbox">
               <span data-i18n="label-teamkampf-lost-card-announce-enabled">Chat-Nachricht bei Kartenverlust</span>
             </label>
-            <div class="message-field">
-              <div class="message-field-head">
-                <span class="message-field-label" data-i18n="label-teamkampf-lost-card-message">Nachricht bei Kartenverlust</span>
-                <div class="var-chips" data-target="teamkampf-lost-card-message">
-                  <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                  <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
-                  <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
-                </div>
-              </div>
-              <textarea id="teamkampf-lost-card-message" rows="2"></textarea>
-            </div>
+            
             <div class="status-line" id="teamkampf-status-line"></div>
             <div class="button-row">
               <button class="primary-button" id="teamkampf-start-now" type="button" data-i18n="btn-teamkampf-start-now">Team-Kampf jetzt starten</button>
@@ -2685,50 +2980,13 @@
             <div class="field-group">
               <p class="field-group-title" data-i18n="liveticker-group-messages">Texte</p>
 
-              <div class="message-field">
-                <div class="message-field-head">
-                  <span class="message-field-label" data-i18n="label-liveticker-draw-message">Text bei Kartenziehung</span>
-                  <div class="var-chips" data-target="liveticker-draw-message">
-                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                    <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
-                    <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
-                  </div>
-                </div>
-                <textarea id="liveticker-draw-message" rows="2"></textarea>
-              </div>
+              
 
-              <div class="message-field">
-                <div class="message-field-head">
-                  <span class="message-field-label" data-i18n="label-liveticker-battle-message">Text bei Kartenduell</span>
-                  <div class="var-chips" data-target="liveticker-battle-message">
-                    <button class="var-chip" type="button" data-insert="@userNameA">@userNameA</button>
-                    <button class="var-chip" type="button" data-insert="@userNameB">@userNameB</button>
-                  </div>
-                </div>
-                <textarea id="liveticker-battle-message" rows="2"></textarea>
-              </div>
+              
 
-              <div class="message-field">
-                <div class="message-field-head">
-                  <span class="message-field-label" data-i18n="label-liveticker-tournament-message">Text bei Turniersieg</span>
-                  <div class="var-chips" data-target="liveticker-tournament-message">
-                    <button class="var-chip" type="button" data-insert="@userName">@userName</button>
-                    <button class="var-chip" type="button" data-insert="[Teilnehmerzahl]">[Teilnehmerzahl]</button>
-                  </div>
-                </div>
-                <textarea id="liveticker-tournament-message" rows="2"></textarea>
-              </div>
+              
 
-              <div class="message-field">
-                <div class="message-field-head">
-                  <span class="message-field-label" data-i18n="label-liveticker-teambattle-message">Text bei Team-Kampf-Ergebnis</span>
-                  <div class="var-chips" data-target="liveticker-teambattle-message">
-                    <button class="var-chip" type="button" data-insert="[Sieger]">[Sieger]</button>
-                    <button class="var-chip" type="button" data-insert="@streamerName">@streamerName</button>
-                  </div>
-                </div>
-                <textarea id="liveticker-teambattle-message" rows="2"></textarea>
-              </div>
+              
             </div>
           </section>
 
@@ -2749,6 +3007,62 @@
             </div>
             <div id="overlay-layout-commandsHelp"></div>
           </section>
+
+          <section class="tool-panel sound-panel" id="jn-sounds-design">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Audio</p>
+                <h2>Sounds</h2>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label data-i18n="label-volume">Lautstärke<input id="volume" type="range" min="0" max="100"></label>
+            </div>
+            <div class="sound-row" data-sound="open">
+              <div class="sound-row-info">
+                <strong data-i18n="label-sound-open">Öffnen-Sound</strong>
+                <span class="sound-row-status" id="sound-open-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
+              </div>
+              <div class="sound-row-actions">
+                <button class="secondary-button icon-button" id="play-open-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-open" type="file" accept="audio/*"></label>
+                <button class="danger-button icon-button" id="remove-open-sound" type="button" disabled data-i18n-title="btn-remove">🗑</button>
+              </div>
+            </div>
+            <div class="sound-row" data-sound="reveal">
+              <div class="sound-row-info">
+                <strong data-i18n="label-sound-reveal">Reveal-Sound</strong>
+                <span class="sound-row-status" id="sound-reveal-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
+              </div>
+              <div class="sound-row-actions">
+                <button class="secondary-button icon-button" id="play-reveal-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-reveal" type="file" accept="audio/*"></label>
+                <button class="danger-button icon-button" id="remove-reveal-sound" type="button" disabled data-i18n-title="btn-remove">🗑</button>
+              </div>
+            </div>
+            <div class="sound-row" data-sound="trade">
+              <div class="sound-row-info">
+                <strong data-i18n="label-sound-trade">Tausch-Sound</strong>
+                <span class="sound-row-status" id="sound-trade-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
+              </div>
+              <div class="sound-row-actions">
+                <button class="secondary-button icon-button" id="play-trade-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-trade" type="file" accept="audio/*"></label>
+                <button class="danger-button icon-button" id="remove-trade-sound" type="button" disabled data-i18n-title="btn-remove">🗑</button>
+              </div>
+            </div>
+            <div class="sound-row" data-sound="battle">
+              <div class="sound-row-info">
+                <strong data-i18n="label-sound-battle">Kampf-Sound</strong>
+                <span class="sound-row-status" id="sound-battle-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
+              </div>
+              <div class="sound-row-actions">
+                <button class="secondary-button icon-button" id="play-battle-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-battle" type="file" accept="audio/*"></label>
+                <button class="danger-button icon-button" id="remove-battle-sound" type="button" disabled data-i18n-title="btn-remove">🗑</button>
+              </div>
+            </div>
+          </section>
         </section>
 
         <section class="tab-panel" data-panel="themes">
@@ -2760,10 +3074,62 @@
           </div>
           <p class="hint" data-i18n="themes-hint">Wähle das Aussehen aller Karten per Klick. Die Auswahl gilt sofort für Overlay, Sammlung und Vorschauen.</p>
           <nav class="cc-jump-nav">
+              <a href="#jn-farben-und-anzeige-themes">Farben und Anzeige</a>
+              <a href="#jn-rahmenfarben-je-raritaet-themes">Rahmenfarben je Rarität</a>
               <a href="#jn-eigene-muster-themes">Eigene Muster</a>
               <a href="#jn-bild-anpassung-themes">Bild-Anpassung</a>
+              <a href="#jn-karten-themes-themes">Karten-Themes</a>
+              <a href="#jn-booster-themes-themes" data-i18n="boosterthemes-title">Booster-Themes</a>
             </nav>
-            <section class="tool-panel" id="jn-eigene-muster-themes">
+            <section class="tool-panel" id="jn-farben-und-anzeige-themes">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Look</p>
+                <h2 data-i18n="design-look-title">Farben und Anzeige</h2>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label data-i18n="label-font">Schrift<select id="font-family"></select></label>
+              <label data-i18n="label-accent">Akzent<input id="style-accent" type="color"></label>
+            </div>
+            <p class="hint" data-i18n="hint-accent">Wird als Standard-Schriftfarbe für den Kartennamen neuer Karten und Booster übernommen. Bei bereits vorhandenen Karten/Boostern lässt sich die Akzentfarbe weiterhin einzeln überschreiben.</p>
+            <div class="settings-preview">
+              <p class="eyebrow" data-i18n="label-preview-eyebrow">Vorschau</p>
+              <label class="preview-card-picker" data-i18n="label-preview-card">Vorschaukarte<select id="preview-card-select"></select></label>
+              <div id="settings-preview-card"></div>
+              <p id="font-preview">Pack Preview 123 ÄÖÜ</p>
+            </div>
+            <label class="switch-row">
+              <input id="card-borders" type="checkbox">
+              <span data-i18n="label-card-borders">Kartenrahmen anzeigen</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-name-position">Position Einlöser-Name<select id="name-position">
+                <option value="bottom" data-i18n="option-name-bottom">Unten</option>
+                <option value="top" data-i18n="option-name-top">Oben</option>
+              </select></label>
+            </div>
+          </section>
+
+          <section class="tool-panel" id="jn-rahmenfarben-je-raritaet-themes">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="rarity-colors-eyebrow">Karten</p>
+                <h2 data-i18n="rarity-colors-title">Rahmenfarben je Rarität</h2>
+              </div>
+              <button class="danger-button" id="reset-rarity-colors" type="button" data-i18n="btn-reset-rarity-colors">Auf Standard zurücksetzen</button>
+            </div>
+            <div class="form-grid">
+              <label data-i18n="rarity-common">Gewöhnlich<input id="rarity-color-common" type="color" data-rarity-color="common"></label>
+              <label data-i18n="rarity-uncommon">Ungewöhnlich<input id="rarity-color-uncommon" type="color" data-rarity-color="uncommon"></label>
+              <label data-i18n="rarity-rare">Selten<input id="rarity-color-rare" type="color" data-rarity-color="rare"></label>
+              <label data-i18n="rarity-epic">Episch<input id="rarity-color-epic" type="color" data-rarity-color="epic"></label>
+              <label data-i18n="rarity-legendary">Legendär<input id="rarity-color-legendary" type="color" data-rarity-color="legendary"></label>
+              <label data-i18n="rarity-holo">Holo<input id="rarity-color-holo" type="color" data-rarity-color="holo"></label>
+            </div>
+          </section>
+
+          <section class="tool-panel" id="jn-eigene-muster-themes">
             <div class="section-heading">
               <div>
                 <p class="eyebrow" data-i18n="pattern-eyebrow">Muster</p>
@@ -2832,6 +3198,7 @@
             </div>
           </section>
 
+          <section class="tool-panel" id="jn-karten-themes-themes">
           <label class="theme-preview-picker" data-i18n="label-theme-preview-card">Vorschaukarte<select id="theme-preview-card"></select></label>
           <div class="themes-grid" id="themes-grid"></div>
 
@@ -2868,6 +3235,71 @@
                 <div class="theme-card-preview" id="ct-preview"></div>
               </div>
             </div>
+          </section>
+          </section>
+
+          <section class="tool-panel" id="jn-booster-themes-themes">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="boosterthemes-eyebrow">Boosterdesign</p>
+              <h2 data-i18n="boosterthemes-title">Booster-Themes</h2>
+            </div>
+          </div>
+          <p class="hint" data-i18n="boosterthemes-hint">Wähle das Aussehen aller Booster-Packs per Klick - unabhängig vom Karten-Theme. Die Auswahl gilt sofort für Overlay und Vorschauen.</p>
+          <div class="theme-editor-layout">
+            <div class="theme-editor-controls">
+              <div class="form-grid">
+                <label class="theme-preview-picker" data-i18n="label-boostertheme-preview">Vorschau-Booster<select id="boostertheme-preview-select"></select></label>
+                <label data-i18n="label-boostertheme-preview-accent">Akzentfarbe (dieser Booster)<input id="boostertheme-preview-accent" type="color"></label>
+              </div>
+              <p class="hint" data-i18n="hint-boostertheme-preview-accent">Nur relevant beim Theme "Klassik" - dient dort als Grundton für Verlauf und Titel-Hintergrund. Andere Themes haben ihre eigenen festen Farben.</p>
+            </div>
+            <div class="theme-editor-preview">
+              <p class="eyebrow" data-i18n="label-boostertheme-live-preview">Live-Vorschau</p>
+              <div class="theme-card-preview" id="boostertheme-live-preview"></div>
+            </div>
+          </div>
+          <div class="themes-grid" id="booster-themes-grid"></div>
+          <div class="chip-row" id="booster-themes-hidden-row" hidden></div>
+
+          <section class="tool-panel theme-editor" id="booster-theme-editor" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="theme-editor-eyebrow">Eigenes Theme</p>
+                <h3 data-i18n="boosterthemeeditor-title">Booster-Theme-Editor</h3>
+              </div>
+            </div>
+            <p class="hint" data-i18n="boosterthemeeditor-hint">Stelle dein eigenes Booster-Theme zusammen. Die Einstellungen wirken sich nur auf die Booster-Packs aus.</p>
+            <div class="theme-editor-layout">
+              <div class="theme-editor-controls">
+                <div class="form-grid">
+                  <label class="full-row" data-i18n="label-bt-name">Name<input id="bt-name" type="text" maxlength="40"></label>
+                  <label data-i18n="label-ct-color1">Farbe 1<input id="bt-color1" type="color"></label>
+                  <label data-i18n="label-ct-color2">Farbe 2<input id="bt-color2" type="color"></label>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="bt-use-color3" type="checkbox">
+                  <span data-i18n="label-ct-use-color3">Dritte Farbe verwenden</span>
+                </label>
+                <label class="switch-row compact-switch">
+                  <input id="bt-gradient-enabled" type="checkbox">
+                  <span data-i18n="label-bt-gradient-enabled">Farbverlauf aktiviert (sonst einfarbig Farbe 1)</span>
+                </label>
+                <div class="form-grid">
+                  <label id="bt-color3-field" data-i18n="label-ct-color3" hidden>Farbe 3<input id="bt-color3" type="color"></label>
+                  <label data-i18n="label-ct-angle">Verlaufswinkel<input id="bt-angle" type="range" min="0" max="360" step="5"></label>
+                  <label data-i18n="label-bt-sheen">Glanz / Muster<input id="bt-sheen" type="range" min="0" max="70" step="1"></label>
+                  <label class="full-row" data-i18n="label-bt-title-bg">Titelhintergrund-Farbe<input id="bt-title-bg" type="color"></label>
+                </div>
+                <div class="button-row">
+                  <button class="danger-button" id="bt-delete" type="button" data-i18n="btn-bt-delete">Dieses Theme löschen</button>
+                </div>
+              </div>
+              <div class="theme-editor-preview">
+                <div class="theme-card-preview" id="bt-preview"></div>
+              </div>
+            </div>
+          </section>
           </section>
         </section>
 
@@ -2921,7 +3353,7 @@
           </div>
           <div class="booster-layout">
             <div class="booster-list" id="booster-list"></div>
-            <section class="tool-panel">
+            <section class="tool-panel sticky-editor">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow" data-i18n="booster-pack-eyebrow">Pack</p>
@@ -2941,13 +3373,13 @@
                 <label data-i18n="label-booster-title">Titel<input id="booster-title" type="text"></label>
                 <label data-i18n="label-booster-subtitle">Untertitel<input id="booster-subtitle" type="text"></label>
                 <label data-i18n="label-booster-score">Booster-Score<input id="booster-score" type="number" min="1" step="1"></label>
-                <label data-i18n="label-booster-accent">Akzentfarbe<input id="booster-accent" type="color"></label>
+                <label data-i18n="label-booster-theme">Theme<select id="booster-theme-select"></select></label>
                 <label class="upload-button file-label" data-i18n="label-booster-image">Booster-Bild<input id="booster-image" type="file" accept="image/*"></label>
               </div>
               <div class="button-row">
-                <button class="danger-button" id="remove-booster-image" type="button" data-i18n="btn-remove-booster-image">Booster-Bild entfernen</button>
-                <button class="secondary-button" id="export-booster" type="button" data-i18n="btn-export-booster">Booster exportieren</button>
-                <button class="danger-button" id="delete-booster" type="button" data-i18n="btn-delete-booster">Booster löschen</button>
+                <button class="danger-button icon-button" id="remove-booster-image" type="button" data-i18n-title="btn-remove-booster-image">🖼×</button>
+                <button class="secondary-button icon-button" id="export-booster" type="button" data-i18n-title="btn-export-booster">⭳</button>
+                <button class="danger-button icon-button" id="delete-booster" type="button" data-i18n-title="btn-delete-booster">🗑</button>
               </div>
               <div class="assigned-heading">
                 <strong data-i18n="label-assigned-cards">Zugewiesene Karten</strong>
@@ -3059,7 +3491,7 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1784952857"></script>
-    <script type="module" src="/assets/js/admin.js?v=1784952857"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785088429"></script>
+    <script type="module" src="/assets/js/admin.js?v=1785088429"></script>
   </body>
 </html>

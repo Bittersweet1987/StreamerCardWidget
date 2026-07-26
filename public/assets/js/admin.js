@@ -41,11 +41,12 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1784952857";
+} from "./api.js?v=1785088429";
 import {
   applyTheme,
   autoImagePosition,
   BOOSTER_ART_RATIO,
+  BOOSTER_THEMES,
   boosterMarkup,
   CARD_ART_RATIO,
   CARD_THEMES,
@@ -54,6 +55,7 @@ import {
   cardsForBooster,
   compressImageDataUrl,
   createId,
+  customBoosterThemeCss,
   customThemeCss,
   DEFAULT_RARITY_COLORS,
   DEFAULT_RARITY_WEIGHTS,
@@ -70,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1784952857";
+} from "./render.js?v=1785088429";
 
 let settings;
 let selectedCardId;
@@ -489,6 +491,115 @@ const I18N = {
     fr: "Thème personnalisé activé.",
     es: "Tema personalizado activado.",
     th: "เปิดใช้ธีมกำหนดเองแล้ว"
+  },
+  "boosterthemes-eyebrow": { de: "Boosterdesign", en: "Booster design",
+    fr: "Design du booster",
+    es: "Diseño del sobre",
+    th: "ดีไซน์บูสเตอร์"
+  },
+  "boosterthemes-title": { de: "Booster-Themes", en: "Booster themes",
+    fr: "Thèmes de booster",
+    es: "Temas de sobres",
+    th: "ธีมบูสเตอร์"
+  },
+  "boosterthemes-hint": {
+    de: "Wähle das Aussehen aller Booster-Packs per Klick - unabhängig vom Karten-Theme. Die Auswahl gilt sofort für Overlay und Vorschauen.",
+    en: "Pick the look of every booster pack with one click - independent of the card theme. The selection applies immediately to the overlay and previews.",
+    fr: "Choisis l'apparence de tous les boosters en un clic - indépendamment du thème de carte. La sélection s'applique immédiatement à l'overlay et aux aperçus.",
+    es: "Elige el aspecto de todos los sobres con un clic - independientemente del tema de las cartas. La selección se aplica de inmediato al overlay y a las vistas previas.",
+    th: "เลือกรูปลักษณ์ของบูสเตอร์แพ็กทั้งหมดด้วยคลิกเดียว - แยกจากธีมการ์ด การเลือกจะมีผลทันทีกับโอเวอร์เลย์และตัวอย่าง"
+  },
+  "label-boostertheme-preview": { de: "Vorschau-Booster", en: "Preview booster",
+    fr: "Booster d'aperçu",
+    es: "Sobre de vista previa",
+    th: "บูสเตอร์ตัวอย่าง"
+  },
+  "boosterthemeeditor-title": { de: "Booster-Theme-Editor", en: "Booster theme editor",
+    fr: "Éditeur de thème de booster",
+    es: "Editor de tema de sobres",
+    th: "ตัวแก้ไขธีมบูสเตอร์"
+  },
+  "boosterthemeeditor-hint": {
+    de: "Stelle dein eigenes Booster-Theme zusammen. Die Einstellungen wirken sich nur auf die Booster-Packs aus.",
+    en: "Put together your own booster theme. These settings only affect the booster packs.",
+    fr: "Compose ton propre thème de booster. Ces réglages n'affectent que les boosters.",
+    es: "Crea tu propio tema de sobres. Estos ajustes solo afectan a los sobres.",
+    th: "สร้างธีมบูสเตอร์ของคุณเอง การตั้งค่าเหล่านี้มีผลเฉพาะกับบูสเตอร์แพ็กเท่านั้น"
+  },
+  "label-bt-gradient-enabled": { de: "Farbverlauf aktiviert (sonst einfarbig Farbe 1)", en: "Gradient enabled (otherwise flat Color 1)",
+    fr: "Dégradé activé (sinon couleur unie n° 1)",
+    es: "Degradado activado (si no, color plano 1)",
+    th: "เปิดใช้ไล่สี (ถ้าไม่ ใช้สีพื้นที่ 1)"
+  },
+  "label-bt-sheen": { de: "Glanz / Muster", en: "Sheen / pattern",
+    fr: "Brillance / motif",
+    es: "Brillo / patrón",
+    th: "ความมันวาว/ลวดลาย"
+  },
+  "label-bt-title-bg": { de: "Titelhintergrund-Farbe", en: "Title background color",
+    fr: "Couleur de fond du titre",
+    es: "Color de fondo del título",
+    th: "สีพื้นหลังชื่อเรื่อง"
+  },
+  "btn-bt-activate": { de: "Eigenes Booster-Theme aktivieren", en: "Activate custom booster theme",
+    fr: "Activer le thème de booster personnalisé",
+    es: "Activar tema de sobres personalizado",
+    th: "เปิดใช้ธีมบูสเตอร์กำหนดเอง"
+  },
+  "notice-boostertheme-custom-active": { de: "Eigenes Booster-Theme aktiviert.", en: "Custom booster theme activated.",
+    fr: "Thème de booster personnalisé activé.",
+    es: "Tema de sobres personalizado activado.",
+    th: "เปิดใช้ธีมบูสเตอร์กำหนดเองแล้ว"
+  },
+  "label-bt-name": { de: "Name", en: "Name",
+    fr: "Nom",
+    es: "Nombre",
+    th: "ชื่อ"
+  },
+  "btn-bt-delete": { de: "Dieses Theme löschen", en: "Delete this theme",
+    fr: "Supprimer ce thème",
+    es: "Eliminar este tema",
+    th: "ลบธีมนี้"
+  },
+  "btn-bt-hide": { de: "Dieses Theme ausblenden", en: "Hide this theme",
+    fr: "Masquer ce thème",
+    es: "Ocultar este tema",
+    th: "ซ่อนธีมนี้"
+  },
+  "label-boostertheme-hidden-list": { de: "Ausgeblendet:", en: "Hidden:",
+    fr: "Masqués :",
+    es: "Ocultos:",
+    th: "ซ่อนอยู่:"
+  },
+  "btn-bt-add-theme": { de: "+ Neues Theme", en: "+ New theme",
+    fr: "+ Nouveau thème",
+    es: "+ Nuevo tema",
+    th: "+ ธีมใหม่"
+  },
+  "confirm-boostertheme-delete": { de: "Dieses Booster-Theme wirklich löschen? Boosters, die es verwenden, springen dann auf den Standard zurück.", en: "Really delete this booster theme? Boosters using it will fall back to the default.",
+    fr: "Vraiment supprimer ce thème de booster ? Les boosters qui l'utilisent reviendront au thème par défaut.",
+    es: "¿Eliminar realmente este tema de sobres? Los sobres que lo usen volverán al predeterminado.",
+    th: "ต้องการลบธีมบูสเตอร์นี้จริงหรือไม่? บูสเตอร์ที่ใช้ธีมนี้จะกลับไปใช้ค่าเริ่มต้น"
+  },
+  "label-boostertheme-untitled": { de: "Eigenes Theme", en: "Custom theme",
+    fr: "Thème personnalisé",
+    es: "Tema personalizado",
+    th: "ธีมกำหนดเอง"
+  },
+  "label-boostertheme-new-name": { de: "Neues Theme [Nummer]", en: "New theme [Nummer]",
+    fr: "Nouveau thème [Nummer]",
+    es: "Nuevo tema [Nummer]",
+    th: "ธีมใหม่ [Nummer]"
+  },
+  "option-boostertheme-inherit": { de: "— Globaler Standard —", en: "— Shop default —",
+    fr: "— Thème global —",
+    es: "— Predeterminado global —",
+    th: "— ค่าเริ่มต้นร้าน —"
+  },
+  "label-booster-theme": { de: "Theme", en: "Theme",
+    fr: "Thème",
+    es: "Tema",
+    th: "ธีม"
   },
   "nav-commandusage": { de: "Nutzung Befehle", en: "Command usage",
     fr: "Utilisation des commandes",
@@ -2091,11 +2202,11 @@ const I18N = {
     th: "แถบความคืบหน้าที่ใช้ร่วมกันของผู้ชมทุกคน - แต่ละครั้งที่สุ่ม (แชนแนลพอยท์, คำสั่งแชท หรือบิต) นับ +1 เมื่อบรรลุแต่ละขั้น บอทจะโพสต์ข้อความฉลองของขั้นนั้นในแชท ซอร์ส OBS จะเล่นเป็นแอนิเมชันฉลอง และทุกคนที่เข้าร่วมจะได้รับจำนวนบูสเตอร์โบนัสตามที่กำหนดไว้สำหรับขั้นนั้นโดยอัตโนมัติ"
   },
   "communitygoal-stages-hint": {
-    de: "Bis zu 5 Zielstufen – jede Stufe hat ein eigenes Ziel, eine eigene Bonus-Kartenzahl je Teilnehmer und eine eigene Feier-Nachricht (Chat & Overlay). [Ziel] und [Karten] werden automatisch ersetzt.",
-    en: "Up to 5 goal stages - each has its own target, its own bonus-card count per participant and its own celebration message (chat & overlay). [Ziel] and [Karten] are replaced automatically.",
-    fr: "Jusqu'à 5 étapes - chacune a son propre objectif, son propre nombre de cartes bonus par participant et son propre message de célébration (chat et overlay). [Ziel] et [Karten] sont remplacés automatiquement.",
-    es: "Hasta 5 etapas - cada una con su propia meta, su propia cantidad de cartas bonus por participante y su propio mensaje de celebración (chat y overlay). [Ziel] y [Karten] se reemplazan automáticamente.",
-    th: "สูงสุด 5 ขั้น - แต่ละขั้นมีเป้าหมาย จำนวนการ์ดโบนัสต่อผู้เข้าร่วม และข้อความฉลอง (แชทและโอเวอร์เลย์) ของตัวเอง [Ziel] และ [Karten] จะถูกแทนที่โดยอัตโนมัติ"
+    de: "Beliebig viele Zielstufen – jede Stufe hat ein eigenes Ziel, eine eigene Bonus-Kartenzahl je Teilnehmer und eine eigene Feier-Nachricht (Chat & Overlay). [Ziel] und [Karten] werden automatisch ersetzt.",
+    en: "Any number of goal stages - each has its own target, its own bonus-card count per participant and its own celebration message (chat & overlay). [Ziel] and [Karten] are replaced automatically.",
+    fr: "Autant d'étapes que voulu - chacune a son propre objectif, son propre nombre de cartes bonus par participant et son propre message de célébration (chat et overlay). [Ziel] et [Karten] sont remplacés automatiquement.",
+    es: "Tantas etapas como quieras - cada una con su propia meta, su propia cantidad de cartas bonus por participante y su propio mensaje de celebración (chat y overlay). [Ziel] y [Karten] se reemplazan automáticamente.",
+    th: "จำนวนขั้นได้ไม่จำกัด - แต่ละขั้นมีเป้าหมาย จำนวนการ์ดโบนัสต่อผู้เข้าร่วม และข้อความฉลอง (แชทและโอเวอร์เลย์) ของตัวเอง [Ziel] และ [Karten] จะถูกแทนที่โดยอัตโนมัติ"
   },
   "label-communitygoal-enabled": { de: "Community-Ziel aktiviert", en: "Community goal enabled",
     fr: "Objectif communautaire activé",
@@ -2623,6 +2734,23 @@ const I18N = {
     fr: "Couleur d'accent",
     es: "Color de acento",
     th: "สีเน้น"
+  },
+  "label-boostertheme-live-preview": { de: "Live-Vorschau", en: "Live preview",
+    fr: "Aperçu en direct",
+    es: "Vista previa en vivo",
+    th: "ตัวอย่างสด"
+  },
+  "label-boostertheme-preview-accent": { de: "Akzentfarbe (dieser Booster)", en: "Accent color (this booster)",
+    fr: "Couleur d'accent (ce booster)",
+    es: "Color de acento (este sobre)",
+    th: "สีเน้น (บูสเตอร์นี้)"
+  },
+  "hint-boostertheme-preview-accent": {
+    de: "Nur relevant beim Theme \"Klassik\" - dient dort als Grundton für Verlauf und Titel-Hintergrund. Andere Themes haben ihre eigenen festen Farben.",
+    en: "Only relevant for the \"Classic\" theme - used there as the base tone for the gradient and title background. Other themes have their own fixed colors.",
+    fr: "Pertinent uniquement pour le thème « Classique » - sert de teinte de base pour le dégradé et le fond du titre. Les autres thèmes ont leurs propres couleurs fixes.",
+    es: "Solo relevante para el tema \"Clásico\" - se usa allí como tono base para el degradado y el fondo del título. Los demás temas tienen sus propios colores fijos.",
+    th: "เกี่ยวข้องเฉพาะธีม \"คลาสสิก\" เท่านั้น - ใช้เป็นโทนสีพื้นฐานสำหรับไล่สีและพื้นหลังชื่อเรื่อง ธีมอื่น ๆ มีสีคงที่ของตัวเอง"
   },
   "label-booster-image": { de: "Booster-Bild", en: "Booster image",
     fr: "Image du booster",
@@ -3167,10 +3295,44 @@ const I18N = {
     es: "Vista previa",
     th: "ตัวอย่าง"
   },
+  "nav-texts": { de: "Texte", en: "Texts",
+    fr: "Textes",
+    es: "Textos",
+    th: "ข้อความ"
+  },
+  "texts-eyebrow": { de: "Texte", en: "Texts",
+    fr: "Textes",
+    es: "Textos",
+    th: "ข้อความ"
+  },
+  "texts-title": { de: "Alle Texte & Nachrichten", en: "All texts & messages",
+    fr: "Tous les textes et messages",
+    es: "Todos los textos y mensajes",
+    th: "ข้อความและข้อความแจ้งเตือนทั้งหมด"
+  },
+  "texts-hint": {
+    de: "Sämtliche anpassbaren Chat-/Overlay-Texte an einer Stelle - Befehlswörter, Limits und sonstige Einstellungen bleiben in ihren jeweiligen Bereichen (Chat Befehle, Kanalpunkte, Animationen).",
+    en: "Every customizable chat/overlay text in one place - command words, limits and other settings stay in their own areas (Chat Commands, Channel Points, Animations).",
+    fr: "Tous les textes de chat/overlay personnalisables au même endroit - les mots de commande, limites et autres réglages restent dans leurs sections respectives (Commandes de chat, Points de chaîne, Animations).",
+    es: "Todos los textos de chat/overlay personalizables en un solo lugar - las palabras de comando, límites y demás ajustes permanecen en sus propias secciones (Comandos de chat, Puntos de canal, Animaciones).",
+    th: "ข้อความแชท/โอเวอร์เลย์ที่ปรับแต่งได้ทั้งหมดอยู่ในที่เดียว - คำสั่ง ขีดจำกัด และการตั้งค่าอื่น ๆ ยังคงอยู่ในส่วนของตัวเอง (คำสั่งแชท แต้มช่อง แอนิเมชัน)"
+  },
+  "label-cc-outputmode": { de: "Versandart", en: "Delivery",
+    fr: "Mode d'envoi",
+    es: "Modo de envío",
+    th: "วิธีการส่ง"
+  },
   "label-show-collection": { de: "Sammlungsleiste anzeigen", en: "Show collection bar",
     fr: "Afficher la barre de collection",
     es: "Mostrar barra de colección",
     th: "แสดงแถบคอลเลกชัน"
+  },
+  "show-collection-hint": {
+    de: "Zeigt neben der gezogenen Karte die Seltenheiten-Übersicht (Besitz-Fortschritt je Seltenheitsstufe) an.",
+    en: "Shows the rarity overview (ownership progress per rarity tier) next to the drawn card.",
+    fr: "Affiche l'aperçu des raretés (progression de possession par niveau de rareté) à côté de la carte tirée.",
+    es: "Muestra el resumen de rarezas (progreso de posesión por nivel de rareza) junto a la carta obtenida.",
+    th: "แสดงภาพรวมความหายาก (ความคืบหน้าการครอบครองตามระดับความหายาก) ข้างการ์ดที่จับได้"
   },
   "label-card-borders": { de: "Kartenrahmen anzeigen", en: "Show card borders",
     fr: "Afficher les bordures de carte",
@@ -3925,6 +4087,14 @@ function applyTranslations() {
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
     el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  // Icon-only buttons (see .icon-button) keep their full translated label as a hover tooltip and
+  // screen-reader name instead of visible text, via the SAME i18n key that used to be the
+  // button's text - reusing it means no new translations were needed just to shrink these buttons.
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    const label = t(el.dataset.i18nTitle);
+    el.title = label;
+    el.setAttribute("aria-label", label);
   });
 }
 
@@ -5180,7 +5350,8 @@ async function testDiscordConnection() {
         login: "",
         displayName: testUsername,
         cardTitle: card.title || card.id,
-        boosterTitle: boosterTitle(boosterId),
+        // Same "<title> <subtitle>" pack naming the real draw's Discord post uses (overlay.js).
+        boosterTitle: discordBoosterTitle(boosterId),
         rarity: card.rarity || "common",
         image,
         isTest: true,
@@ -5499,10 +5670,10 @@ function cardEditorMarkup(card, index) {
         <div class="card-actions">
           <label class="switch-row compact-switch"><input data-field="enabled" type="checkbox" ${card.enabled !== false ? "checked" : ""}><span>${t("label-card-enabled")}</span></label>
           <label class="upload-button file-label">${t("label-card-image")}<input data-action="image" type="file" accept="image/*"></label>
-            <button class="ghost-button" data-action="duplicate" type="button">${t("btn-duplicate")}</button>
-            <button class="ghost-button" data-action="export" type="button">${t("btn-export-card")}</button>
-            <button class="danger-button" data-action="clear-image" type="button">${t("btn-remove-image")}</button>
-            <button class="danger-button" data-action="delete" type="button" ${settings.deck.cards.length <= 1 ? "disabled" : ""}>${t("btn-delete")}</button>
+            <button class="ghost-button icon-button" data-action="duplicate" type="button" title="${t("btn-duplicate")}" aria-label="${t("btn-duplicate")}">⧉</button>
+            <button class="ghost-button icon-button" data-action="export" type="button" title="${t("btn-export-card")}" aria-label="${t("btn-export-card")}">⭳</button>
+            <button class="danger-button icon-button" data-action="clear-image" type="button" title="${t("btn-remove-image")}" aria-label="${t("btn-remove-image")}">🖼×</button>
+            <button class="danger-button icon-button" data-action="delete" type="button" title="${t("btn-delete")}" aria-label="${t("btn-delete")}" ${settings.deck.cards.length <= 1 ? "disabled" : ""}>🗑</button>
         </div>
       </div>
       <span class="order-badge">${index + 1}</span>
@@ -5769,8 +5940,12 @@ function hydrateBooster() {
   $("#booster-title").value = booster.title || "";
   $("#booster-subtitle").value = booster.subtitle || "";
   $("#booster-score").value = booster.score ?? 100;
-  $("#booster-accent").value = booster.accent || "#ff78bb";
-  $("#booster-preview").innerHTML = boosterMarkup(booster);
+  const themeSelect = $("#booster-theme-select");
+  if (themeSelect) {
+    themeSelect.innerHTML = boosterThemeOptionsHtml();
+    themeSelect.value = booster.themeId || "";
+  }
+  $("#booster-preview").innerHTML = boosterMarkup(booster, settings);
   renderBoosters();
   hydrateTrigger();
 }
@@ -5867,9 +6042,10 @@ function bindBooster() {
     selectedBooster().score = Number(event.target.value || 1);
     renderBoosterList();
   });
-  $("#booster-accent").addEventListener("input", (event) => {
-    selectedBooster().accent = event.target.value;
+  $("#booster-theme-select").addEventListener("change", (event) => {
+    selectedBooster().themeId = event.target.value;
     hydrateBooster();
+    scheduleAutoSave();
   });
   $("#booster-image").addEventListener("change", async (event) => {
     if (!event.target.files?.[0]) return;
@@ -5904,6 +6080,14 @@ function boosterGroupLabel(boosterId) {
 
 function boosterTitle(boosterId) {
   return settings.boosters?.find((booster) => booster.id === boosterId)?.title || boosterId;
+}
+
+// Discord posts name the pack by "<title> <subtitle>" (matching the real-draw path in overlay.js),
+// unlike everywhere else in the admin where the bare title is enough.
+function discordBoosterTitle(boosterId) {
+  const booster = settings.boosters?.find((item) => item.id === boosterId);
+  if (!booster) return boosterId;
+  return [booster.title, booster.subtitle].filter(Boolean).join(" ").trim() || boosterId;
 }
 
 function buildUserIndex() {
@@ -6334,6 +6518,7 @@ function hydrateChatCommands() {
   $("#cc-pack-limit-message").value = cc.pack.limitMessage || "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
   $("#cc-pack-cooldown-message").value = cc.pack.cooldownMessage || "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
   $("#cc-pack-helptext").value = cc.pack.helpText || "";
+  $("#cc-pack-outputmode").value = cc.pack.outputMode === "whisper" ? "whisper" : "chat";
   cc.specificPackDraw ||= {};
   $("#cc-specificpack-enabled").checked = cc.specificPackDraw.enabled === true;
   $("#cc-specificpack-prefix").value = cc.specificPackDraw.prefix || "!";
@@ -6343,6 +6528,7 @@ function hydrateChatCommands() {
   $("#cc-specificpack-usage-message").value = cc.specificPackDraw.usageMessage || "";
   $("#cc-specificpack-notfound-message").value = cc.specificPackDraw.notFoundMessage || "";
   $("#cc-specificpack-cooldown-message").value = cc.specificPackDraw.cooldownMessage || "";
+  $("#cc-specificpack-outputmode").value = cc.specificPackDraw.outputMode === "whisper" ? "whisper" : "chat";
   cc.packs ||= {};
   $("#cc-packs-enabled").checked = cc.packs.enabled !== false;
   $("#cc-packs-prefix").value = cc.packs.prefix || "!";
@@ -6351,6 +6537,7 @@ function hydrateChatCommands() {
   $("#cc-packs-header-message").value = cc.packs.headerMessage || "";
   $("#cc-packs-empty-message").value = cc.packs.emptyMessage || "";
   $("#cc-packs-subonly-label").value = cc.packs.subOnlyLabel || "Sub Only";
+  $("#cc-packs-outputmode").value = cc.packs.outputMode === "whisper" ? "whisper" : "chat";
   $("#cc-collection-prefix").value = cc.collection.prefix || "!";
   $("#cc-collection-command").value = cc.collection.command || "collection";
   $("#cc-collection-chatoutput-enabled").checked = cc.collection.chatOutputEnabled !== false;
@@ -6382,6 +6569,7 @@ function hydrateChatCommands() {
   $("#cc-dust-notenough-message").value = cc.dust.notEnoughMessage || "";
   $("#cc-dust-success-message").value = cc.dust.successMessage || "";
   $("#cc-dust-helptext").value = cc.dust.helpText || "";
+  $("#cc-dust-outputmode").value = cc.dust.outputMode === "whisper" ? "whisper" : "chat";
   cc.dustSet ||= {};
   $("#cc-dustset-command").value = cc.dustSet.command || "dustset";
   $("#cc-dustset-helptext").value = cc.dustSet.helpText || "";
@@ -6393,6 +6581,7 @@ function hydrateChatCommands() {
   $("#cc-dustall-helptext").value = cc.dustAll.helpText || "";
   $("#cc-dustall-nothing-message").value = cc.dustAll.nothingMessage || "";
   $("#cc-dustall-success-message").value = cc.dustAll.successMessage || "";
+  $("#cc-dustall-outputmode").value = cc.dustAll.outputMode === "whisper" ? "whisper" : "chat";
   cc.gift ||= {};
   $("#cc-gift-enabled").checked = cc.gift.enabled === true;
   $("#cc-gift-prefix").value = cc.gift.prefix || "!";
@@ -6414,6 +6603,7 @@ function hydrateChatCommands() {
   $("#cc-compare-usernotfound-message").value = cc.compare.userNotFoundMessage || "";
   $("#cc-compare-self-message").value = cc.compare.selfMessage || "";
   $("#cc-compare-result-message").value = cc.compare.resultMessage || "";
+  $("#cc-compare-outputmode").value = cc.compare.outputMode === "whisper" ? "whisper" : "chat";
   // Same underlying value as "#showcase-seconds" in Kanalpunkte (settings.showcase.secondsPerBooster)
   // - the showcase overlay's page-flip timing is one setting regardless of which trigger (channel
   // point reward or chat command) started it, so both fields must always show/write the same number.
@@ -6493,18 +6683,21 @@ function hydrateChatCommands() {
   $("#cc-ranking-helptext").value = ranking.helpText || "";
   $("#cc-ranking-notfound-message").value = ranking.cardNotFoundMessage || "";
   $("#cc-ranking-noowners-message").value = ranking.noOwnersMessage || "";
+  $("#cc-ranking-outputmode").value = ranking.outputMode === "whisper" ? "whisper" : "chat";
 
   const tournamentJoin = cc.tournamentJoin || {};
   $("#cc-tournamentjoin-enabled").checked = tournamentJoin.enabled !== false;
   $("#cc-tournamentjoin-prefix").value = tournamentJoin.prefix || "!";
   $("#cc-tournamentjoin-command").value = tournamentJoin.command || "turnier";
   $("#cc-tournamentjoin-helptext").value = tournamentJoin.helpText || "";
+  $("#cc-tournamentjoin-outputmode").value = tournamentJoin.outputMode === "whisper" ? "whisper" : "chat";
 
   const teamBattleJoin = cc.teamBattleJoin || {};
   $("#cc-teamkampfjoin-enabled").checked = teamBattleJoin.enabled !== false;
   $("#cc-teamkampfjoin-prefix").value = teamBattleJoin.prefix || "!";
   $("#cc-teamkampfjoin-command").value = teamBattleJoin.command || "teamkampf";
   $("#cc-teamkampfjoin-helptext").value = teamBattleJoin.helpText || "";
+  $("#cc-teamkampfjoin-outputmode").value = teamBattleJoin.outputMode === "whisper" ? "whisper" : "chat";
 
   const tournamentStart = cc.tournamentStart || {};
   $("#cc-tournamentstart-enabled").checked = tournamentStart.enabled !== false;
@@ -6513,6 +6706,7 @@ function hydrateChatCommands() {
   $("#cc-tournamentstart-helptext").value = tournamentStart.helpText || "";
   $("#cc-tournamentstart-cooldown").value = tournamentStart.cooldownSeconds ?? 0;
   $("#cc-tournamentstart-cooldown-message").value = tournamentStart.cooldownMessage || "";
+  $("#cc-tournamentstart-outputmode").value = tournamentStart.outputMode === "whisper" ? "whisper" : "chat";
 
   const teamBattleStart = cc.teamBattleStart || {};
   $("#cc-teambattlestart-enabled").checked = teamBattleStart.enabled !== false;
@@ -6521,6 +6715,7 @@ function hydrateChatCommands() {
   $("#cc-teambattlestart-helptext").value = teamBattleStart.helpText || "";
   $("#cc-teambattlestart-cooldown").value = teamBattleStart.cooldownSeconds ?? 0;
   $("#cc-teambattlestart-cooldown-message").value = teamBattleStart.cooldownMessage || "";
+  $("#cc-teambattlestart-outputmode").value = teamBattleStart.outputMode === "whisper" ? "whisper" : "chat";
 
   const autoHelp = settings.autoHelp || {};
   $("#autohelp-enabled").checked = autoHelp.enabled === true;
@@ -6548,6 +6743,7 @@ function readChatCommandsFromForm() {
   cc.pack.limitMessage = $("#cc-pack-limit-message").value;
   cc.pack.cooldownMessage = $("#cc-pack-cooldown-message").value;
   cc.pack.helpText = $("#cc-pack-helptext").value;
+  cc.pack.outputMode = $("#cc-pack-outputmode").value === "whisper" ? "whisper" : "chat";
   cc.specificPackDraw ||= {};
   cc.specificPackDraw.enabled = $("#cc-specificpack-enabled").checked;
   cc.specificPackDraw.prefix = $("#cc-specificpack-prefix").value || "!";
@@ -6557,6 +6753,7 @@ function readChatCommandsFromForm() {
   cc.specificPackDraw.usageMessage = $("#cc-specificpack-usage-message").value;
   cc.specificPackDraw.notFoundMessage = $("#cc-specificpack-notfound-message").value;
   cc.specificPackDraw.cooldownMessage = $("#cc-specificpack-cooldown-message").value;
+  cc.specificPackDraw.outputMode = $("#cc-specificpack-outputmode").value === "whisper" ? "whisper" : "chat";
   cc.packs ||= {};
   cc.packs.enabled = $("#cc-packs-enabled").checked;
   cc.packs.prefix = $("#cc-packs-prefix").value || "!";
@@ -6565,6 +6762,7 @@ function readChatCommandsFromForm() {
   cc.packs.headerMessage = $("#cc-packs-header-message").value;
   cc.packs.emptyMessage = $("#cc-packs-empty-message").value;
   cc.packs.subOnlyLabel = $("#cc-packs-subonly-label").value || "Sub Only";
+  cc.packs.outputMode = $("#cc-packs-outputmode").value === "whisper" ? "whisper" : "chat";
   cc.collection.prefix = $("#cc-collection-prefix").value || "!";
   cc.collection.command = $("#cc-collection-command").value.trim() || "collection";
   cc.collection.chatOutputEnabled = $("#cc-collection-chatoutput-enabled").checked;
@@ -6599,6 +6797,7 @@ function readChatCommandsFromForm() {
   cc.dust.notEnoughMessage = $("#cc-dust-notenough-message").value;
   cc.dust.successMessage = $("#cc-dust-success-message").value;
   cc.dust.helpText = $("#cc-dust-helptext").value;
+  cc.dust.outputMode = $("#cc-dust-outputmode").value === "whisper" ? "whisper" : "chat";
 
   cc.dustSet ||= {};
   cc.dustSet.command = $("#cc-dustset-command").value.trim() || "dustset";
@@ -6612,6 +6811,7 @@ function readChatCommandsFromForm() {
   cc.dustAll.helpText = $("#cc-dustall-helptext").value;
   cc.dustAll.nothingMessage = $("#cc-dustall-nothing-message").value;
   cc.dustAll.successMessage = $("#cc-dustall-success-message").value;
+  cc.dustAll.outputMode = $("#cc-dustall-outputmode").value === "whisper" ? "whisper" : "chat";
 
   cc.gift ||= {};
   cc.gift.enabled = $("#cc-gift-enabled").checked;
@@ -6634,6 +6834,7 @@ function readChatCommandsFromForm() {
   cc.compare.userNotFoundMessage = $("#cc-compare-usernotfound-message").value;
   cc.compare.selfMessage = $("#cc-compare-self-message").value;
   cc.compare.resultMessage = $("#cc-compare-result-message").value;
+  cc.compare.outputMode = $("#cc-compare-outputmode").value === "whisper" ? "whisper" : "chat";
 
   cc.trade ||= {};
   cc.trade.enabled = $("#cc-trade-enabled").checked;
@@ -6708,18 +6909,21 @@ function readChatCommandsFromForm() {
   cc.ranking.helpText = $("#cc-ranking-helptext").value;
   cc.ranking.cardNotFoundMessage = $("#cc-ranking-notfound-message").value;
   cc.ranking.noOwnersMessage = $("#cc-ranking-noowners-message").value;
+  cc.ranking.outputMode = $("#cc-ranking-outputmode").value === "whisper" ? "whisper" : "chat";
 
   cc.tournamentJoin ||= {};
   cc.tournamentJoin.enabled = $("#cc-tournamentjoin-enabled").checked;
   cc.tournamentJoin.prefix = $("#cc-tournamentjoin-prefix").value || "!";
   cc.tournamentJoin.command = $("#cc-tournamentjoin-command").value.trim() || "turnier";
   cc.tournamentJoin.helpText = $("#cc-tournamentjoin-helptext").value;
+  cc.tournamentJoin.outputMode = $("#cc-tournamentjoin-outputmode").value === "whisper" ? "whisper" : "chat";
 
   cc.teamBattleJoin ||= {};
   cc.teamBattleJoin.enabled = $("#cc-teamkampfjoin-enabled").checked;
   cc.teamBattleJoin.prefix = $("#cc-teamkampfjoin-prefix").value || "!";
   cc.teamBattleJoin.command = $("#cc-teamkampfjoin-command").value.trim() || "teamkampf";
   cc.teamBattleJoin.helpText = $("#cc-teamkampfjoin-helptext").value;
+  cc.teamBattleJoin.outputMode = $("#cc-teamkampfjoin-outputmode").value === "whisper" ? "whisper" : "chat";
 
   cc.tournamentStart ||= {};
   cc.tournamentStart.enabled = $("#cc-tournamentstart-enabled").checked;
@@ -6728,6 +6932,7 @@ function readChatCommandsFromForm() {
   cc.tournamentStart.helpText = $("#cc-tournamentstart-helptext").value;
   cc.tournamentStart.cooldownSeconds = Number($("#cc-tournamentstart-cooldown").value || 0);
   cc.tournamentStart.cooldownMessage = $("#cc-tournamentstart-cooldown-message").value;
+  cc.tournamentStart.outputMode = $("#cc-tournamentstart-outputmode").value === "whisper" ? "whisper" : "chat";
 
   cc.teamBattleStart ||= {};
   cc.teamBattleStart.enabled = $("#cc-teambattlestart-enabled").checked;
@@ -6736,6 +6941,7 @@ function readChatCommandsFromForm() {
   cc.teamBattleStart.helpText = $("#cc-teambattlestart-helptext").value;
   cc.teamBattleStart.cooldownSeconds = Number($("#cc-teambattlestart-cooldown").value || 0);
   cc.teamBattleStart.cooldownMessage = $("#cc-teambattlestart-cooldown-message").value;
+  cc.teamBattleStart.outputMode = $("#cc-teambattlestart-outputmode").value === "whisper" ? "whisper" : "chat";
 
   settings.autoHelp ||= {};
   settings.autoHelp.enabled = $("#autohelp-enabled").checked;
@@ -7235,8 +7441,6 @@ function renderCommunityGoalStages() {
       scheduleAutoSave();
     });
   });
-  const addButton = $("#communitygoal-add-stage");
-  if (addButton) addButton.disabled = stages.length >= 5;
 }
 
 const LOYALTY_TIER_RARITIES = ["uncommon", "rare", "epic", "legendary", "holo"];
@@ -7695,7 +7899,6 @@ function bindDesign() {
   $("#communitygoal-add-stage").addEventListener("click", () => {
     settings.communityGoal ||= {};
     settings.communityGoal.stages ||= [];
-    if (settings.communityGoal.stages.length >= 5) return;
     const lastTarget = settings.communityGoal.stages[settings.communityGoal.stages.length - 1]?.target || 0;
     settings.communityGoal.stages.push({
       target: lastTarget + 500,
@@ -8563,6 +8766,279 @@ function bindThemes() {
   }
 }
 
+// ---- Booster-Themes: same preset-grid + editor pattern as the card themes above, but boosters
+// support an arbitrary NAMED LIST of custom themes (settings.style.customBoosterThemes) instead
+// of one fixed "custom" slot - each booster can independently pick any preset or any saved custom
+// theme via its own booster.themeId (see the Booster tab's "#booster-theme-select"), falling back
+// to the shop-wide settings.style.boosterTheme default when unset. ----
+let themePreviewBoosterId;
+// Which custom theme (by id) the editor below is currently showing/editing - null while a preset
+// is selected in the grid (the editor is only meaningful for custom themes).
+let editingBoosterThemeId = null;
+
+function themeSampleBooster() {
+  const boosters = settings.boosters || [];
+  const base = boosters.find((booster) => booster.id === themePreviewBoosterId) || boosters[0];
+  return base ? { ...base } : { title: "Sample", subtitle: "Pack" };
+}
+
+function renderBoosterThemePreviewPicker() {
+  const select = $("#boostertheme-preview-select");
+  if (!select) return;
+  const boosters = settings.boosters || [];
+  if (!boosters.some((booster) => booster.id === themePreviewBoosterId)) themePreviewBoosterId = boosters[0]?.id;
+  select.innerHTML = boosters.map((booster) => `<option value="${escapeHtml(booster.id)}">${escapeHtml(booster.title || booster.id)}</option>`).join("");
+  if (themePreviewBoosterId) select.value = themePreviewBoosterId;
+  select.disabled = boosters.length === 0;
+  const accentInput = $("#boostertheme-preview-accent");
+  const booster = boosters.find((b) => b.id === themePreviewBoosterId);
+  if (accentInput) {
+    accentInput.value = booster?.accent || "#ff78bb";
+    accentInput.disabled = !booster;
+  }
+  // Shows this exact booster's OWN effective look (its own themeId if set, otherwise whatever
+  // it inherits) - not just whichever preset/custom tile was last clicked - so the picker+accent
+  // controls above always have a real result to look at, even for boosters using "Globaler
+  // Standard" or a theme other than the one currently selected in the grid.
+  const livePreview = $("#boostertheme-live-preview");
+  if (livePreview) livePreview.innerHTML = booster ? boosterMarkup(booster, settings) : "";
+}
+
+// Every selectable theme id + display name, in display order: presets first (built-in i18n
+// labels, hidden ones excluded), then the user's saved custom themes by their own name. Shared
+// by the grid, the Booster tab's per-booster select, and boosterThemeOptionsHtml below.
+function boosterThemeChoices() {
+  const hidden = settings.style?.hiddenBoosterThemes || [];
+  const presets = BOOSTER_THEMES.filter((id) => !hidden.includes(id)).map((id) => ({ id, name: t(`theme-${id}`) }));
+  const custom = (settings.style?.customBoosterThemes || []).map((theme) => ({ id: theme.id, name: theme.name || t("label-boostertheme-untitled") }));
+  return [...presets, ...custom];
+}
+
+// Populates the Booster tab's per-booster theme <select> - "" means "inherit the shop-wide
+// default" (settings.style.boosterTheme), shown first.
+function boosterThemeOptionsHtml() {
+  const inherited = `<option value="">${t("option-boostertheme-inherit")}</option>`;
+  const rest = boosterThemeChoices().map((choice) => `<option value="${escapeHtml(choice.id)}">${escapeHtml(choice.name)}</option>`).join("");
+  return inherited + rest;
+}
+
+function renderBoosterThemes() {
+  const grid = $("#booster-themes-grid");
+  if (!grid) return;
+  renderBoosterThemePreviewPicker();
+  const current = settings.style?.boosterTheme || "default";
+  const sample = themeSampleBooster();
+  const customThemes = settings.style?.customBoosterThemes || [];
+  const hidden = settings.style?.hiddenBoosterThemes || [];
+  // "default" is never hideable (see normalizeSettings) - it stays the one guaranteed fallback
+  // look, so it never gets its own hide button.
+  const presetTiles = BOOSTER_THEMES.filter((id) => !hidden.includes(id)).map((id) => `
+    <div class="theme-tile${id === current ? " is-selected" : ""}" data-boostertheme="${escapeHtml(id)}" role="button" tabindex="0" aria-pressed="${id === current}" title="${t(`theme-${id}`)}">
+      <span class="theme-check" aria-label="${t("theme-selected")}">✓</span>
+      ${id !== "default" ? `<button type="button" class="theme-tile-delete" data-boostertheme-hide="${escapeHtml(id)}" title="${t("btn-bt-hide")}" aria-label="${t("btn-bt-hide")}">&times;</button>` : ""}
+      <div class="theme-card-preview">${boosterMarkup({ ...sample, themeId: id }, settings)}</div>
+      <span class="theme-name">${t(`theme-${id}`)}</span>
+    </div>`);
+  // A <div role="button"> here, not a real <button> like the other tiles - it needs to contain
+  // its own delete <button>, and real buttons cannot nest inside each other in valid HTML.
+  const customTiles = customThemes.map((theme) => `
+    <div class="theme-tile${theme.id === current ? " is-selected" : ""}" data-boostertheme="${escapeHtml(theme.id)}" role="button" tabindex="0" aria-pressed="${theme.id === current}" title="${escapeHtml(theme.name)}">
+      <span class="theme-check" aria-label="${t("theme-selected")}">✓</span>
+      <button type="button" class="theme-tile-delete" data-boostertheme-delete="${escapeHtml(theme.id)}" title="${t("btn-bt-delete")}" aria-label="${t("btn-bt-delete")}">&times;</button>
+      <div class="theme-card-preview">${boosterMarkup({ ...sample, themeId: theme.id }, settings)}</div>
+      <span class="theme-name">${escapeHtml(theme.name)}</span>
+    </div>`);
+  const addTile = `
+    <button type="button" class="theme-tile theme-tile-add" id="bt-add-theme" title="${t("btn-bt-add-theme")}">
+      <span class="theme-add-icon" aria-hidden="true">+</span>
+      <span class="theme-name">${t("btn-bt-add-theme")}</span>
+    </button>`;
+  grid.innerHTML = presetTiles.join("") + customTiles.join("") + addTile;
+  renderBoosterThemeEditorVisibility();
+  renderHiddenBoosterThemesRow();
+}
+
+// Small chip list below the grid for any presets the user hid - each chip re-shows that theme
+// with one click. Hidden entirely when nothing is hidden, so it doesn't clutter the common case.
+function renderHiddenBoosterThemesRow() {
+  const row = $("#booster-themes-hidden-row");
+  if (!row) return;
+  const hidden = settings.style?.hiddenBoosterThemes || [];
+  if (hidden.length === 0) { row.hidden = true; row.innerHTML = ""; return; }
+  row.hidden = false;
+  row.innerHTML = `<span class="hint">${t("label-boostertheme-hidden-list")}</span>` +
+    hidden.map((id) => `<button type="button" class="chip-button" data-boostertheme-unhide="${escapeHtml(id)}">${escapeHtml(t(`theme-${id}`))} ↺</button>`).join("");
+}
+
+function renderBoosterThemeEditorVisibility() {
+  const editorSection = $("#booster-theme-editor");
+  if (!editorSection) return;
+  const editing = (settings.style?.customBoosterThemes || []).find((theme) => theme.id === editingBoosterThemeId);
+  editorSection.hidden = !editing;
+  if (editing) hydrateBoosterThemeEditor(editing);
+}
+
+function hydrateBoosterThemeEditor(bt) {
+  if (!bt || !$("#bt-color1")) return;
+  $("#bt-name").value = bt.name || "";
+  $("#bt-color1").value = bt.color1 || "#6a5cff";
+  $("#bt-color2").value = bt.color2 || "#22d3ee";
+  $("#bt-color3").value = bt.color3 || "#ff7ad9";
+  $("#bt-use-color3").checked = bt.useColor3 === true;
+  $("#bt-gradient-enabled").checked = bt.gradientEnabled !== false;
+  $("#bt-angle").value = bt.angle ?? 155;
+  $("#bt-sheen").value = bt.sheen ?? 30;
+  $("#bt-title-bg").value = bt.titleBgColor || "#3a2a80";
+  const color3Field = $("#bt-color3-field");
+  if (color3Field) color3Field.hidden = bt.useColor3 !== true;
+  updateBoosterThemeEditorPreview(bt);
+}
+
+function updateBoosterThemeEditorPreview(bt) {
+  const preview = $("#bt-preview");
+  if (!preview) return;
+  preview.removeAttribute("style");
+  preview.innerHTML = boosterMarkup({ ...themeSampleBooster(), themeId: bt.id }, settings);
+}
+
+function readBoosterThemeEditor() {
+  const theme = (settings.style?.customBoosterThemes || []).find((t2) => t2.id === editingBoosterThemeId);
+  if (!theme) return;
+  theme.name = $("#bt-name").value.trim() || t("label-boostertheme-untitled");
+  theme.color1 = $("#bt-color1").value;
+  theme.color2 = $("#bt-color2").value;
+  theme.color3 = $("#bt-color3").value;
+  theme.useColor3 = $("#bt-use-color3").checked;
+  theme.gradientEnabled = $("#bt-gradient-enabled").checked;
+  theme.angle = Number($("#bt-angle").value);
+  theme.sheen = Number($("#bt-sheen").value);
+  theme.titleBgColor = $("#bt-title-bg").value;
+  const color3Field = $("#bt-color3-field");
+  if (color3Field) color3Field.hidden = theme.useColor3 !== true;
+  updateBoosterThemeEditorPreview(theme);
+  renderBoosterThemes();
+  applyTheme(settings);
+  scheduleAutoSave();
+}
+
+function bindBoosterThemes() {
+  const grid = $("#booster-themes-grid");
+  if (grid) {
+    grid.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest("[data-boostertheme-delete]");
+      if (deleteButton) {
+        deleteBoosterTheme(deleteButton.dataset.boosterthemeDelete);
+        return;
+      }
+      const hideButton = event.target.closest("[data-boostertheme-hide]");
+      if (hideButton) {
+        hideBoosterTheme(hideButton.dataset.boosterthemeHide);
+        return;
+      }
+      if (event.target.closest("#bt-add-theme")) {
+        settings.style ||= {};
+        settings.style.customBoosterThemes ||= [];
+        const newTheme = {
+          id: createId("boostertheme"),
+          name: t("label-boostertheme-new-name").replace("[Nummer]", String(settings.style.customBoosterThemes.length + 1)),
+          color1: "#6a5cff", color2: "#22d3ee", color3: "#ff7ad9",
+          useColor3: false, gradientEnabled: true, angle: 155, sheen: 30, titleBgColor: "#3a2a80"
+        };
+        settings.style.customBoosterThemes.push(newTheme);
+        settings.style.boosterTheme = newTheme.id;
+        editingBoosterThemeId = newTheme.id;
+        applyTheme(settings);
+        renderBoosterThemes();
+        scheduleAutoSave();
+        return;
+      }
+      const tile = event.target.closest(".theme-tile");
+      if (!tile || !tile.dataset.boostertheme) return;
+      settings.style ||= {};
+      settings.style.boosterTheme = tile.dataset.boostertheme;
+      const isCustom = (settings.style.customBoosterThemes || []).some((theme) => theme.id === tile.dataset.boostertheme);
+      editingBoosterThemeId = isCustom ? tile.dataset.boostertheme : null;
+      applyTheme(settings);
+      renderBoosterThemes();
+      scheduleAutoSave();
+    });
+  }
+  const picker = $("#boostertheme-preview-select");
+  if (picker) {
+    picker.addEventListener("change", (event) => {
+      themePreviewBoosterId = event.target.value;
+      renderBoosterThemes();
+    });
+  }
+  const accentInput = $("#boostertheme-preview-accent");
+  if (accentInput) {
+    accentInput.addEventListener("input", (event) => {
+      const booster = (settings.boosters || []).find((b) => b.id === themePreviewBoosterId);
+      if (!booster) return;
+      booster.accent = event.target.value;
+      renderBoosterThemes();
+      scheduleAutoSave();
+    });
+  }
+  const hiddenRow = $("#booster-themes-hidden-row");
+  if (hiddenRow) {
+    hiddenRow.addEventListener("click", (event) => {
+      const chip = event.target.closest("[data-boostertheme-unhide]");
+      if (chip) unhideBoosterTheme(chip.dataset.boosterthemeUnhide);
+    });
+  }
+  const editor = $("#booster-theme-editor");
+  if (editor) {
+    editor.addEventListener("input", readBoosterThemeEditor);
+    editor.addEventListener("change", readBoosterThemeEditor);
+  }
+  const deleteBtn = $("#bt-delete");
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", () => {
+      if (!editingBoosterThemeId) return;
+      deleteBoosterTheme(editingBoosterThemeId);
+    });
+  }
+}
+
+// Shared by the editor's "Löschen" button and each custom tile's own inline delete (×) icon.
+function deleteBoosterTheme(themeId) {
+  if (!window.confirm(t("confirm-boostertheme-delete"))) return;
+  settings.style.customBoosterThemes = (settings.style.customBoosterThemes || []).filter((theme) => theme.id !== themeId);
+  // Any booster (or the shop default) that referenced the deleted theme falls back to "default".
+  if (settings.style.boosterTheme === themeId) settings.style.boosterTheme = "default";
+  for (const booster of settings.boosters || []) {
+    if (booster.themeId === themeId) booster.themeId = "";
+  }
+  if (editingBoosterThemeId === themeId) editingBoosterThemeId = null;
+  applyTheme(settings);
+  renderBoosterThemes();
+  hydrateBooster();
+  scheduleAutoSave();
+}
+
+// Built-in presets can't be deleted (see BOOSTER_THEMES), only hidden from the picker/grid -
+// same fallback handling as deleteBoosterTheme for anything currently using the hidden preset.
+function hideBoosterTheme(themeId) {
+  settings.style ||= {};
+  settings.style.hiddenBoosterThemes ||= [];
+  if (!settings.style.hiddenBoosterThemes.includes(themeId)) settings.style.hiddenBoosterThemes.push(themeId);
+  if (settings.style.boosterTheme === themeId) settings.style.boosterTheme = "default";
+  for (const booster of settings.boosters || []) {
+    if (booster.themeId === themeId) booster.themeId = "";
+  }
+  applyTheme(settings);
+  renderBoosterThemes();
+  hydrateBooster();
+  scheduleAutoSave();
+}
+
+function unhideBoosterTheme(themeId) {
+  settings.style.hiddenBoosterThemes = (settings.style.hiddenBoosterThemes || []).filter((id) => id !== themeId);
+  renderBoosterThemes();
+  scheduleAutoSave();
+}
+
 function updateRangeFill(input) {
   const min = Number(input.min) || 0;
   const max = Number(input.max) || 100;
@@ -8588,6 +9064,7 @@ function renderAll() {
     ["hydrateChatCommands", hydrateChatCommands],
     ["renderThemes", renderThemes],
     ["hydrateThemeEditor", hydrateThemeEditor],
+    ["renderBoosterThemes", renderBoosterThemes],
     ["renderOverview", renderOverview],
     ["renderUsers", renderUsers],
     ["refreshRangeFills", refreshRangeFills]
@@ -8671,6 +9148,7 @@ async function init() {
     bindVariableChips();
     bindCommandUsage();
     bindThemes();
+    bindBoosterThemes();
     bindQueue();
     bindUpdateTab();
     bindLogTab();

@@ -351,22 +351,40 @@ select {
   overflow: hidden;
   border: 8px solid #fff;
   border-radius: 24px;
-  /* No pattern by default - a booster only shows one once a pattern image is uploaded (see
-     .has-booster-pattern-image below). */
-  background: linear-gradient(145deg, #e7fbff, var(--pack-accent, var(--accent)) 48%, #9a8cff);
+  /* --booster-bg lets the Booster-Themes presets/custom editor restyle the pack surface; the
+     fallback is the classic accent-color gradient (the "default" booster theme). */
+  background: var(--booster-bg, linear-gradient(145deg, #e7fbff, var(--pack-accent, var(--accent)) 48%, #9a8cff));
+}
+
+/* The theme's own built-in sheen/pattern (--booster-theme-pattern, set per [data-booster-theme])
+   - a translucent overlay above the pack image, independent of the user-uploaded pattern image
+   below so both can be combined. "Booster-Muster anzeigen" hides this too (see
+   .hide-booster-pattern below), same on/off switch as the uploaded image. */
+.pack-body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--booster-theme-pattern, none);
+  opacity: var(--booster-theme-pattern-opacity, .38);
+  pointer-events: none;
+}
+
+.hide-booster-pattern .pack-body::after {
+  opacity: 0;
 }
 
 /* User-uploaded booster pattern image, tiled under the accent-color gradient so the pack still
    reads as belonging to its booster. The "Booster-Muster anzeigen" toggle can still hide it
    (see the combined selector below) without deleting the uploaded file. */
 .has-booster-pattern-image .pack-body {
-  background-image: var(--booster-pattern-image), linear-gradient(145deg, #e7fbff, var(--pack-accent, var(--accent)) 48%, #9a8cff);
+  background-image: var(--booster-pattern-image), var(--booster-bg, linear-gradient(145deg, #e7fbff, var(--pack-accent, var(--accent)) 48%, #9a8cff));
   background-repeat: repeat, no-repeat;
   background-size: var(--booster-pattern-size, 40px) var(--booster-pattern-size, 40px), auto;
 }
 
 .hide-booster-pattern.has-booster-pattern-image .pack-body {
-  background: linear-gradient(145deg, #e7fbff, var(--pack-accent, var(--accent)) 48%, #9a8cff);
+  background: var(--booster-bg, linear-gradient(145deg, #e7fbff, var(--pack-accent, var(--accent)) 48%, #9a8cff));
 }
 
 .pack-body img {
@@ -426,7 +444,7 @@ select {
   border: 3px solid rgba(255, 255, 255, .72);
   border-radius: 16px;
   color: #fff;
-  background: linear-gradient(135deg, var(--pack-accent, var(--accent)), #563cff);
+  background: var(--booster-title-bg, linear-gradient(135deg, var(--pack-accent, var(--accent)), #563cff));
   box-shadow: 0 12px 24px rgba(75, 32, 129, .22);
   text-align: center;
 }
@@ -548,4 +566,103 @@ select {
   --card-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .35) 64%);
   --card-pattern-opacity: 1;
   --card-art-bg: rgba(255, 255, 255, .4);
+}
+
+/* ---- Booster themes (presets) ----
+   Same idea as card themes above, applied to the pack surface (--booster-bg / --booster-theme-
+   pattern) and the title label (--booster-title-bg). Built-in presets reuse the card themes'
+   surface gradients for a consistent look, with a simple translucent-dark title background
+   (readable against any of them) - a fully custom title color is available via the "custom"
+   theme/editor for anyone who wants to match it exactly. */
+[data-booster-theme="default"] {
+  --booster-bg: initial;
+  --booster-theme-pattern: initial;
+  --booster-theme-pattern-opacity: initial;
+  --booster-title-bg: initial;
+}
+
+[data-booster-theme="onyx"] {
+  --booster-bg:
+    radial-gradient(circle at 26% 14%, rgba(255, 255, 255, .12), transparent 32%),
+    linear-gradient(155deg, #322c4a, #15121f 74%);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .07) 64%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(0, 0, 0, .5), rgba(0, 0, 0, .28));
+}
+
+[data-booster-theme="carbon"] {
+  --booster-bg: linear-gradient(135deg, #262a31, #0e0f13);
+  --booster-theme-pattern:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 5px, transparent 5px 10px);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(0, 0, 0, .5), rgba(0, 0, 0, .28));
+}
+
+[data-booster-theme="midnight"] {
+  --booster-bg:
+    radial-gradient(circle at 28% 16%, rgba(120, 130, 255, .14), transparent 34%),
+    linear-gradient(160deg, #15161c, #050507 78%);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 66%, rgba(255, 255, 255, .05) 66%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(0, 0, 0, .5), rgba(0, 0, 0, .28));
+}
+
+[data-booster-theme="slate"] {
+  --booster-bg:
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, .7), transparent 30%),
+    linear-gradient(155deg, #eef0f5, #c7cdd9 70%, #a9b1c2);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 66%, rgba(255, 255, 255, .45) 66%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(30, 34, 46, .55), rgba(30, 34, 46, .32));
+}
+
+[data-booster-theme="prism"] {
+  --booster-bg: linear-gradient(135deg, #ffd9ec, #d6e6ff 35%, #d4fff0 68%, #fff3c4);
+  --booster-theme-pattern: linear-gradient(135deg, rgba(255, 255, 255, .4) 0 20%, transparent 40%, rgba(255, 255, 255, .35) 60%, transparent 80%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(70, 40, 90, .5), rgba(70, 40, 90, .28));
+}
+
+[data-booster-theme="gold"] {
+  --booster-bg:
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, .85), transparent 32%),
+    linear-gradient(150deg, #fff7e2, #f1d995 68%, #e3bb63);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 62%, rgba(255, 255, 255, .55) 62%, rgba(255, 255, 255, .2) 74%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(110, 76, 12, .55), rgba(110, 76, 12, .3));
+}
+
+[data-booster-theme="sunset"] {
+  --booster-bg: linear-gradient(160deg, #ffce5e, #ff7eb3 56%, #9d63ff);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .35) 64%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(0, 0, 0, .45), rgba(0, 0, 0, .22));
+}
+
+[data-booster-theme="mint"] {
+  --booster-bg: linear-gradient(155deg, #d9fff5, #82e6d3 58%, #45c1da);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .4) 64%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(10, 60, 60, .5), rgba(10, 60, 60, .28));
+}
+
+[data-booster-theme="ocean"] {
+  --booster-bg: linear-gradient(160deg, #3b86ff, #1450c8 62%, #0a2570);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .12) 64%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(0, 0, 0, .45), rgba(0, 0, 0, .22));
+}
+
+[data-booster-theme="rose"] {
+  --booster-bg: linear-gradient(155deg, #ffe6f0, #ffb3cd 62%, #ff7ba6);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .45) 64%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(120, 30, 70, .5), rgba(120, 30, 70, .28));
+}
+
+[data-booster-theme="forest"] {
+  --booster-bg: linear-gradient(155deg, #dcf6df, #8fd99f 56%, #2f8f55);
+  --booster-theme-pattern: linear-gradient(145deg, transparent 0 64%, rgba(255, 255, 255, .35) 64%);
+  --booster-theme-pattern-opacity: 1;
+  --booster-title-bg: linear-gradient(135deg, rgba(15, 60, 30, .5), rgba(15, 60, 30, .28));
 }
