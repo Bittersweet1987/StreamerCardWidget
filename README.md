@@ -726,6 +726,12 @@ Updates ersetzen nur `public\` und die exe – `data\` bleibt unberührt, neue S
 Funktionen überschreiben angelegte Karten/Booster also nie. Updates lassen sich im Tab **Update**
 direkt aus der App installieren.
 
+> Mitten in einer Aktion beendet, aktualisiert oder abgestürzt? Seit 2.13.13 wird der Zustand der
+> Ziehungs-Warteschlange sowie offener `!tausch`-/`!battle`-Anfragen und laufender `!turnier`-/
+> `!teamkampf`-Anmeldungen laufend gesichert und beim nächsten Start automatisch wiederhergestellt –
+> eine noch offene Anmeldung zählt mit ihrer Restzeit weiter, eine Anfrage, deren Frist in der
+> Zwischenzeit abgelaufen ist, wird sofort aufgelöst statt hängen zu bleiben.
+
 ---
 
 ## Aus dem Quellcode bauen
@@ -1424,6 +1430,12 @@ Everything lives update-safe in the `data\` folder:
 Updates only replace `public\` and the exe - `data\` stays untouched, so new rarities or features
 never overwrite cards/boosters you've created. Updates can be installed directly from the app in
 the **Update** tab.
+
+> Closed, updated, or crashed mid-action? Since 2.13.13, the state of the draw queue as well as
+> open `!tausch`/`!battle` requests and running `!turnier`/`!teamkampf` signups is saved
+> continuously and restored automatically on the next start - a still-open signup keeps counting
+> down with its remaining time, and a request whose deadline already passed in the meantime is
+> resolved immediately instead of staying stuck.
 
 <a id="en-building-from-source"></a>
 ### Building from source
@@ -2174,6 +2186,12 @@ Les mises à jour ne remplacent que `public\` et l'exe – `data\` reste intact,
 nouvelles raretés ou fonctionnalités n'écrasent jamais les cartes/boosters que vous avez créés.
 Les mises à jour peuvent être installées directement depuis l'app dans l'onglet **Mise à jour**.
 
+> Fermée, mise à jour ou plantée en pleine action ? Depuis la 2.13.13, l'état de la file de tirage
+> ainsi que les demandes `!tausch`/`!battle` ouvertes et les inscriptions `!turnier`/`!teamkampf`
+> en cours sont sauvegardés en continu et restaurés automatiquement au démarrage suivant – une
+> inscription encore ouverte continue son compte à rebours avec son temps restant, et une demande
+> dont l'échéance est déjà passée entre-temps est résolue immédiatement au lieu de rester bloquée.
+
 <a id="fr-compiler-depuis-les-sources"></a>
 ### Compiler depuis les sources
 
@@ -2914,6 +2932,13 @@ Las actualizaciones solo reemplazan `public\` y el exe – `data\` permanece int
 nuevas rarezas o funciones nunca sobrescriben las cartas/sobres que hayas creado. Las
 actualizaciones se pueden instalar directamente desde la app en la pestaña **Actualización**.
 
+> ¿Se cerró, actualizó o se bloqueó a mitad de una acción? Desde la 2.13.13, el estado de la cola
+> de tiradas, así como las solicitudes abiertas de `!tausch`/`!battle` y las inscripciones en
+> curso de `!turnier`/`!teamkampf`, se guardan continuamente y se restauran automáticamente en el
+> siguiente inicio – una inscripción aún abierta sigue su cuenta regresiva con el tiempo restante,
+> y una solicitud cuyo plazo ya venció mientras tanto se resuelve de inmediato en lugar de quedar
+> atascada.
+
 <a id="es-compilar-desde-el-código-fuente"></a>
 ### Compilar desde el código fuente
 
@@ -3569,6 +3594,12 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 การอัปเดตจะแทนที่เฉพาะ `public\` และ exe เท่านั้น – `data\` จะไม่ถูกแตะต้อง ดังนั้นความหายาก
 หรือฟีเจอร์ใหม่จะไม่เขียนทับการ์ด/บูสเตอร์ที่คุณสร้างไว้เลย สามารถติดตั้งการอัปเดตได้โดยตรงจากแอป
 ในแท็บ **อัปเดต**
+
+> ปิดแอป อัปเดต หรือแอปขัดข้องระหว่างทำรายการอยู่? ตั้งแต่เวอร์ชัน 2.13.13 สถานะของคิวการสุ่มการ์ด
+> รวมถึงคำขอ `!tausch`/`!battle` ที่ยังเปิดอยู่ และการลงทะเบียน `!turnier`/`!teamkampf` ที่กำลัง
+> ดำเนินอยู่ จะถูกบันทึกอย่างต่อเนื่องและกู้คืนอัตโนมัติเมื่อเริ่มแอปครั้งถัดไป – การลงทะเบียนที่ยัง
+> เปิดอยู่จะนับเวลาที่เหลือต่อไป ส่วนคำขอที่ครบกำหนดไปแล้วระหว่างที่แอปปิดอยู่จะถูกจัดการทันทีแทนที่
+> จะค้างอยู่
 
 <a id="th-สร้างจากซอร์สโค้ด"></a>
 ### สร้างจากซอร์สโค้ด
