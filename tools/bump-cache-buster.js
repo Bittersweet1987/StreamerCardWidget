@@ -10,7 +10,7 @@
 // Usage:  node tools/bump-cache-buster.js <new-value>
 // Example: node tools/bump-cache-buster.js 20260717-fix1
 //
-// After running, still: sync public/ into CardPackWidget-TestApp/ and dist/CardPackWidgetApp/,
+// After running, still: sync public/ into ../TestApp/ and dist/CardPackWidgetApp/,
 // and tell the user to "Cache aktualisieren" on each OBS/Meld source once (a changed source URL
 // alone doesn't retroactively refresh a browser source that's already open).
 

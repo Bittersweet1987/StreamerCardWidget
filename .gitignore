@@ -9,13 +9,13 @@ data/app-log.json
 logs/
 node_modules/
 
-# Local test sandbox and build output - both contain live data/tokens and are
-# regenerated from src/+public/, not meant to be version controlled.
-CardPackWidget-TestApp/
+# Local test sandboxes now live outside this repo (C:\Users\marco\Documents\CardPackWidget-TestApp
+# and CardPackWidget-Windows, since 2026-07-27), so they no longer need entries here. Build output
+# below still lives inside the repo and contains live data/tokens - not meant to be version controlled.
 dist/
+bin/
 CardPackWidget-Windows.zip
 CardPackWidget-v*.zip
-CardPackWidget-Windows/
 UpdateTest-v1.0.0/
 UpdateTest-*/
 InstallTest-*/

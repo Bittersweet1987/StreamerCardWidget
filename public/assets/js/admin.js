@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1785088429";
+} from "./api.js?v=1785143848";
 import {
   applyTheme,
   autoImagePosition,
@@ -72,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1785088429";
+} from "./render.js?v=1785143848";
 
 let settings;
 let selectedCardId;
@@ -1906,6 +1906,40 @@ const I18N = {
     fr: "Le fichier n'est pas un export de booster de cette application.",
     es: "El archivo no es una exportación de sobre de esta aplicación.",
     th: "ไฟล์นี้ไม่ใช่การส่งออกบูสเตอร์จากแอปนี้"
+  },
+  "warning-duplicate-card-title": {
+    de: "Achtung: Es gibt bereits eine andere Karte mit dem Titel \"[Titel]\" - Kartentitel sollten eindeutig sein, sonst funktioniert der Titel-Abgleich beim erneuten Importieren nicht zuverlässig.",
+    en: "Warning: another card already has the title \"[Titel]\" - card titles should be unique, otherwise title matching on re-import won't work reliably.",
+    fr: "Attention : une autre carte porte déjà le titre « [Titel] » - les titres de cartes doivent être uniques, sinon la correspondance par titre lors d'une réimportation ne fonctionnera pas de manière fiable.",
+    es: "Atención: ya existe otra carta con el título \"[Titel]\" - los títulos de las cartas deben ser únicos, de lo contrario la coincidencia por título al reimportar no funcionará de forma fiable.",
+    th: "คำเตือน: มีการ์ดใบอื่นที่ใช้ชื่อ \"[Titel]\" อยู่แล้ว - ชื่อการ์ดควรไม่ซ้ำกัน มิฉะนั้นการจับคู่ตามชื่อตอนนำเข้าใหม่จะไม่แม่นยำ"
+  },
+  "duplicate-gate-title": { de: "Doppelte Kartentitel gefunden", en: "Duplicate card titles found",
+    fr: "Titres de cartes en double détectés",
+    es: "Se encontraron títulos de carta duplicados",
+    th: "พบชื่อการ์ดที่ซ้ำกัน"
+  },
+  "duplicate-gate-hint": {
+    de: "Zwei oder mehr Karten haben denselben Titel. Das kann Booster-Zuordnungen durcheinanderbringen (z. B. bei einem erneuten Booster-Import) - bitte löse jede Gruppe auf, bevor du weitermachst: entweder umbenennen (wenn es zwei wirklich unterschiedliche Karten sind) oder eine der Karten löschen (wenn es ein liegengebliebenes Duplikat ist).",
+    en: "Two or more cards share the same title. This can scramble booster assignments (e.g. on a repeated booster import) - please resolve every group below before continuing: either rename one (if they're genuinely two different cards) or delete one (if it's a leftover duplicate).",
+    fr: "Deux cartes ou plus portent le même titre. Cela peut brouiller les affectations de boosters (par ex. lors d'une réimportation de booster) - veuillez résoudre chaque groupe ci-dessous avant de continuer : soit renommer l'une des cartes (s'il s'agit réellement de deux cartes différentes), soit en supprimer une (s'il s'agit d'un doublon oublié).",
+    es: "Dos o más cartas comparten el mismo título. Esto puede desordenar las asignaciones de sobres (p. ej. al reimportar un sobre) - por favor resuelve cada grupo antes de continuar: renombra una (si realmente son dos cartas distintas) o elimina una (si es un duplicado sobrante).",
+    th: "การ์ดตั้งแต่สองใบขึ้นไปใช้ชื่อเดียวกัน ซึ่งอาจทำให้การกำหนดบูสเตอร์สับสน (เช่น ตอนนำเข้าบูสเตอร์ซ้ำ) - โปรดแก้ไขทุกกลุ่มด้านล่างก่อนดำเนินการต่อ: เปลี่ยนชื่อ (ถ้าเป็นการ์ดคนละใบจริงๆ) หรือ ลบ (ถ้าเป็นสำเนาที่หลงเหลืออยู่)"
+  },
+  "duplicate-gate-count-label": { de: "Gruppe(n) noch offen", en: "group(s) still open",
+    fr: "groupe(s) encore ouvert(s)",
+    es: "grupo(s) aún pendiente(s)",
+    th: "กลุ่มที่ยังไม่แก้ไข"
+  },
+  "label-duplicate-unassigned": { de: "Keinem Booster zugewiesen", en: "Not assigned to any booster",
+    fr: "Non attribuée à un booster",
+    es: "No asignada a ningún sobre",
+    th: "ยังไม่ได้กำหนดให้บูสเตอร์ใด"
+  },
+  "confirm-duplicate-delete": { de: "Diese Karte wirklich löschen?", en: "Really delete this card?",
+    fr: "Supprimer vraiment cette carte ?",
+    es: "¿Eliminar realmente esta carta?",
+    th: "ต้องการลบการ์ดใบนี้จริงหรือไม่?"
   },
   "cards-live-preview": { de: "Live Vorschau", en: "Live preview",
     fr: "Aperçu en direct",
@@ -3797,6 +3831,18 @@ const I18N = {
     es: "Después de X mensajes de chat",
     th: "หลังจาก X ข้อความแชท"
   },
+  "label-autohelp-onlywhenlive": { de: "Nur senden, wenn der Stream live ist", en: "Only send while the stream is live",
+    fr: "N'envoyer que si le stream est en direct",
+    es: "Enviar solo si la transmisión está en directo",
+    th: "ส่งเฉพาะเมื่อสตรีมกำลังไลฟ์เท่านั้น"
+  },
+  "cc-autohelp-onlywhenlive-hint": {
+    de: "Wenn deaktiviert (Standard), läuft die automatische Hilfe-Nachricht auch, während der Stream offline ist. Bei Aktivierung pausieren beide Intervalle komplett, solange der Kanal nicht live ist.",
+    en: "When off (default), the automatic help message also runs while the stream is offline. When on, both intervals pause completely as long as the channel isn't live.",
+    fr: "Si désactivé (par défaut), le message d'aide automatique fonctionne aussi hors ligne. Si activé, les deux intervalles se mettent complètement en pause tant que la chaîne n'est pas en direct.",
+    es: "Si está desactivado (por defecto), el mensaje de ayuda automático también funciona mientras la transmisión está fuera de línea. Si está activado, ambos intervalos se pausan por completo mientras el canal no esté en directo.",
+    th: "หากปิดใช้งาน (ค่าเริ่มต้น) ข้อความช่วยเหลืออัตโนมัติจะทำงานแม้สตรีมจะออฟไลน์ หากเปิดใช้งาน ทั้งสองช่วงเวลาจะหยุดชั่วคราวทั้งหมดตราบใดที่ช่องยังไม่ไลฟ์"
+  },
   "label-autohelp-message": { de: "Nachrichtentext", en: "Message text",
     fr: "Texte du message",
     es: "Texto del mensaje",
@@ -4325,9 +4371,19 @@ async function importCardFromFile(file) {
     showNotice(t("error-import-not-card"), "error");
     return;
   }
-  const imported = importedCardFromData(data.card);
-  settings.deck.cards.push(imported);
-  selectedCardId = imported.id;
+  // Re-importing a card whose title already exists updates that existing card in place instead
+  // of creating a fresh duplicate with a new id - keeps its existing booster assignment intact
+  // (which a brand-new id would otherwise orphan it from) and its existing boosterIds, since a
+  // re-import is meant to refresh a card's data, not have it be treated as an unrelated new card.
+  const existing = findCardByTitle(data.card.title);
+  if (existing) {
+    Object.assign(existing, importedCardFromData(data.card), { id: existing.id, boosterIds: existing.boosterIds });
+    selectedCardId = existing.id;
+  } else {
+    const imported = importedCardFromData(data.card);
+    settings.deck.cards.push(imported);
+    selectedCardId = imported.id;
+  }
   renderCards();
   scheduleAutoSave();
   showNotice(t("notice-card-imported"));
@@ -4355,27 +4411,57 @@ async function importBoosterFromFile(file) {
     showNotice(t("error-import-not-booster"), "error");
     return;
   }
+  // Same title-matching re-import logic as importCardFromFile: a card whose title already exists
+  // gets updated in place (idMap points at its existing id) instead of spawning a duplicate -
+  // this is what makes re-importing the same booster export idempotent rather than piling up
+  // fresh copies of every card on each re-import (see the community-reported bug this fixed).
   const idMap = new Map();
   for (const card of Array.isArray(data.cards) ? data.cards : []) {
     if (!card || typeof card !== "object") continue;
-    const imported = importedCardFromData(card);
-    idMap.set(card.id, imported.id);
-    settings.deck.cards.push(imported);
+    const existing = findCardByTitle(card.title);
+    if (existing) {
+      Object.assign(existing, importedCardFromData(card), { id: existing.id, boosterIds: existing.boosterIds });
+      idMap.set(card.id, existing.id);
+    } else {
+      const imported = importedCardFromData(card);
+      idMap.set(card.id, imported.id);
+      settings.deck.cards.push(imported);
+    }
   }
   const source = data.booster;
-  const booster = {
-    id: createId("booster"),
-    title: typeof source.title === "string" && source.title.trim() ? source.title : "Importierter Booster",
-    subtitle: typeof source.subtitle === "string" ? source.subtitle : "Pack",
-    image: safeImportImage(source.image),
-    accent: typeof source.accent === "string" ? source.accent : "#ff78bb",
-    score: Number(source.score) > 0 ? Number(source.score) : 100,
-    rewardNames: Array.isArray(source.rewardNames) ? source.rewardNames.filter((name) => typeof name === "string") : [],
-    rewardIds: [],
-    customEvents: [],
-    cardIds: (Array.isArray(source.cardIds) ? source.cardIds : []).map((id) => idMap.get(id)).filter(Boolean).slice(0, MAX_BOOSTER_CARDS)
-  };
-  settings.boosters.push(booster);
+  const title = typeof source.title === "string" && source.title.trim() ? source.title : "Importierter Booster";
+  const importedCardIds = (Array.isArray(source.cardIds) ? source.cardIds : []).map((id) => idMap.get(id)).filter(Boolean);
+  // Re-importing a booster with the same title updates the EXISTING booster (merging its card
+  // list) instead of creating a second "Bleach"/"Anime"/etc. booster entry every time - repeated
+  // booster re-imports used to pile up duplicate boosters (and, via the card-title matching
+  // above, duplicate card assignments inside them), which is exactly the bug this fixes.
+  const existingBooster = settings.boosters.find(
+    (b) => String(b.title || "").trim().toLowerCase() === title.trim().toLowerCase()
+  );
+  let booster;
+  if (existingBooster) {
+    existingBooster.subtitle = typeof source.subtitle === "string" ? source.subtitle : existingBooster.subtitle;
+    existingBooster.image = safeImportImage(source.image) || existingBooster.image;
+    existingBooster.accent = typeof source.accent === "string" ? source.accent : existingBooster.accent;
+    existingBooster.score = Number(source.score) > 0 ? Number(source.score) : existingBooster.score;
+    existingBooster.rewardNames = Array.isArray(source.rewardNames) ? source.rewardNames.filter((name) => typeof name === "string") : existingBooster.rewardNames;
+    existingBooster.cardIds = [...new Set([...(existingBooster.cardIds || []), ...importedCardIds])].slice(0, MAX_BOOSTER_CARDS);
+    booster = existingBooster;
+  } else {
+    booster = {
+      id: createId("booster"),
+      title,
+      subtitle: typeof source.subtitle === "string" ? source.subtitle : "Pack",
+      image: safeImportImage(source.image),
+      accent: typeof source.accent === "string" ? source.accent : "#ff78bb",
+      score: Number(source.score) > 0 ? Number(source.score) : 100,
+      rewardNames: Array.isArray(source.rewardNames) ? source.rewardNames.filter((name) => typeof name === "string") : [],
+      rewardIds: [],
+      customEvents: [],
+      cardIds: importedCardIds.slice(0, MAX_BOOSTER_CARDS)
+    };
+    settings.boosters.push(booster);
+  }
   selectedBoosterId = booster.id;
   hydrateBooster();
   renderCards();
@@ -5788,11 +5874,111 @@ function refreshPreviewsDebounced() {
   refreshPreviewsTimer = setTimeout(refreshPreviews, 300);
 }
 
+// Normalized (trim + lowercase) title lookup - used both for the duplicate-title warning below
+// and to make booster/card re-import idempotent by title (see importBoosterFromFile/
+// importCardFromFile). Titles are meant to be unique going forward so re-importing an already-
+// known card can be matched reliably without depending on ids surviving a round trip.
+function findCardByTitle(title, excludeId = null) {
+  const key = String(title || "").trim().toLowerCase();
+  if (!key) return null;
+  return settings.deck.cards.find((card) => card.id !== excludeId && String(card.title || "").trim().toLowerCase() === key) || null;
+}
+
+// Blocking migration gate: existing installs updating to a version with title-based re-import
+// matching can carry leftover duplicate-titled cards from before that fix existed (see the
+// booster-card-assignment bug this was built to prevent from recurring). Every group must be
+// resolved - by renaming one side (if they're genuinely two different cards) or deleting one (if
+// it's a leftover duplicate) - before the app is usable again, since an unresolved duplicate title
+// breaks re-import matching and the "hide cards already assigned elsewhere" picker logic.
+function findDuplicateCardTitleGroups() {
+  const groups = new Map();
+  for (const card of settings.deck.cards) {
+    const key = String(card.title || "").trim().toLowerCase();
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(card);
+  }
+  return [...groups.values()].filter((group) => group.length > 1);
+}
+
+function boosterTitlesForCard(cardId) {
+  return settings.boosters.filter((booster) => (booster.cardIds || []).includes(cardId)).map((booster) => booster.title);
+}
+
+function renderDuplicateGate() {
+  const gate = $("#duplicate-gate");
+  const groups = findDuplicateCardTitleGroups();
+  if (!groups.length) {
+    gate.hidden = true;
+    document.body.classList.remove("duplicate-gate-active");
+    return;
+  }
+  gate.hidden = false;
+  document.body.classList.add("duplicate-gate-active");
+  $("#duplicate-gate-count").textContent = String(groups.length);
+  $("#duplicate-gate-groups").innerHTML = groups.map((cards) => `
+    <div class="duplicate-gate-group">
+      <h3>"${escapeHtml(cards[0].title)}" (${cards.length}x)</h3>
+      <div class="duplicate-gate-cards">
+        ${cards.map((card) => {
+          const boosterTitles = boosterTitlesForCard(card.id);
+          const ownerText = boosterTitles.length ? escapeHtml(boosterTitles.join(", ")) : t("label-duplicate-unassigned");
+          return `
+          <div class="duplicate-gate-card" data-card-id="${card.id}">
+            ${cardMarkup(card, { compact: true })}
+            <label>${t("label-card-title")}<input type="text" data-duplicate-title="${card.id}" value="${escapeHtml(card.title)}"></label>
+            <p class="hint">${ownerText}</p>
+            <button type="button" class="danger-button" data-duplicate-delete="${card.id}">${t("btn-delete")}</button>
+          </div>
+        `;
+        }).join("")}
+      </div>
+    </div>
+  `).join("");
+}
+
+async function resolveDuplicateGateIfClear() {
+  if (findDuplicateCardTitleGroups().length) return;
+  renderDuplicateGate();
+  await runAutoSave();
+  renderAll();
+}
+
+function bindDuplicateGate() {
+  $("#duplicate-gate-groups").addEventListener("change", (event) => {
+    const input = event.target.closest("[data-duplicate-title]");
+    if (!input) return;
+    const card = settings.deck.cards.find((item) => item.id === input.dataset.duplicateTitle);
+    if (!card) return;
+    card.title = input.value;
+    scheduleAutoSave();
+    renderDuplicateGate();
+    resolveDuplicateGateIfClear();
+  });
+  $("#duplicate-gate-groups").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-duplicate-delete]");
+    if (!button) return;
+    if (settings.deck.cards.length <= 1) return;
+    if (!window.confirm(t("confirm-duplicate-delete"))) return;
+    const cardId = button.dataset.duplicateDelete;
+    settings.deck.cards = settings.deck.cards.filter((card) => card.id !== cardId);
+    settings.boosters.forEach((booster) => {
+      booster.cardIds = (booster.cardIds || []).filter((id) => id !== cardId);
+    });
+    scheduleAutoSave();
+    renderDuplicateGate();
+    resolveDuplicateGateIfClear();
+  });
+}
+
 function updateCard(cardId, field, value, inputType) {
   const card = settings.deck.cards.find((item) => item.id === cardId);
   if (!card) return;
   if (inputType === "checkbox") card[field] = Boolean(value);
   else card[field] = value;
+  if (field === "title" && findCardByTitle(value, cardId)) {
+    showNotice(t("warning-duplicate-card-title").replace("[Titel]", value), "warn");
+  }
   const editor = $(`.card-editor[data-card-id="${cardId}"]`);
   if (editor) editor.querySelector(".select-card").innerHTML = cardMarkup(card, { compact: true });
   refreshPreviewsDebounced();
@@ -5899,12 +6085,33 @@ function ownerBoosterByCardId() {
   return owner;
 }
 
+// Card titles are meant to be unique (see findCardByTitle/the duplicate-title warning), but old
+// data can still have leftover orphaned duplicates - a second, never-cleaned-up card sharing the
+// title of one that's genuinely assigned elsewhere. Those orphans have no direct id-based owner,
+// so they'd otherwise show up as "still free to assign" in every other booster even though the
+// same character conceptually already has a home. Map by normalized title too, so an orphan whose
+// title matches an assigned card counts as "taken" for assignment-picker purposes, same as if it
+// were the exact same card.
+function ownerBoosterByTitle() {
+  const owner = new Map();
+  for (const booster of settings.boosters) {
+    for (const cardId of booster.cardIds || []) {
+      const card = settings.deck.cards.find((item) => item.id === cardId);
+      if (!card) continue;
+      const key = String(card.title || "").trim().toLowerCase();
+      if (key && !owner.has(key)) owner.set(key, booster);
+    }
+  }
+  return owner;
+}
+
 let boosterCardSearchQuery = "";
 
 function renderBoosterCards() {
   const booster = selectedBooster();
   const assigned = new Set(booster.cardIds || []);
   const owner = ownerBoosterByCardId();
+  const ownerByTitle = ownerBoosterByTitle();
   $("#assigned-count").textContent = `${assigned.size}/${MAX_BOOSTER_CARDS}`;
   // Cards already assigned to a different booster are hidden entirely rather than shown
   // disabled - keeps the list short and focused on cards that could actually be picked here.
@@ -5914,8 +6121,8 @@ function renderBoosterCards() {
   // impression that it got unassigned).
   $("#assigned-cards").innerHTML = settings.deck.cards
     .filter((card) => {
-      const takenBy = owner.get(card.id);
-      return !takenBy || takenBy.id === booster.id;
+      const takenBy = owner.get(card.id) || ownerByTitle.get(String(card.title || "").trim().toLowerCase());
+      return !takenBy || takenBy.id === booster.id || assigned.has(card.id);
     })
     .filter((card) => assigned.has(card.id) || titleMatchesQuery(card.title, boosterCardSearchQuery))
     .map((card) => `
@@ -6719,6 +6926,7 @@ function hydrateChatCommands() {
 
   const autoHelp = settings.autoHelp || {};
   $("#autohelp-enabled").checked = autoHelp.enabled === true;
+  $("#autohelp-onlywhenlive").checked = autoHelp.onlyWhenLive === true;
   $("#autohelp-minutes").value = autoHelp.intervalMinutes ?? 30;
   $("#autohelp-messages").value = autoHelp.intervalMessages ?? 0;
   $("#autohelp-message").value = autoHelp.message || "";
@@ -6945,6 +7153,7 @@ function readChatCommandsFromForm() {
 
   settings.autoHelp ||= {};
   settings.autoHelp.enabled = $("#autohelp-enabled").checked;
+  settings.autoHelp.onlyWhenLive = $("#autohelp-onlywhenlive").checked;
   settings.autoHelp.intervalMinutes = Math.max(0, Math.round(Number($("#autohelp-minutes").value) || 0));
   settings.autoHelp.intervalMessages = Math.max(0, Math.round(Number($("#autohelp-messages").value) || 0));
   settings.autoHelp.message = $("#autohelp-message").value;
@@ -9152,6 +9361,7 @@ async function init() {
     bindQueue();
     bindUpdateTab();
     bindLogTab();
+    bindDuplicateGate();
   } catch (error) {
     console.error("Bind-Fehler:", error);
   }
@@ -9162,6 +9372,7 @@ async function init() {
     selectedCardId = settings.deck.cards[0]?.id;
     selectedBoosterId = settings.boosters[0]?.id;
     renderAll();
+    renderDuplicateGate();
     migrateImageSizes();
     await loadUsers();
     renderUsers();

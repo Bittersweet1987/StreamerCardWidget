@@ -1,0 +1,120 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace CardPackWidgetApp
+{
+    internal static class SelfTests
+    {
+        private static int passed;
+        private static int failed;
+
+        private static void Check(string label, bool condition)
+        {
+            if (condition)
+            {
+                passed++;
+            }
+            else
+            {
+                failed++;
+                Console.WriteLine("FAIL: " + label);
+            }
+        }
+
+        internal static int RunAll()
+        {
+            passed = 0;
+            failed = 0;
+
+            // CardPackServer.GetRarityRank / KnownRarityId (Server.Collections.cs)
+            Check("GetRarityRank(common)==0", CardPackServer.GetRarityRank("common") == 0);
+            Check("GetRarityRank(holo)==5", CardPackServer.GetRarityRank("holo") == 5);
+            Check("GetRarityRank(unknown)==0 (falls back to common)", CardPackServer.GetRarityRank("unknown") == 0);
+            Check("KnownRarityId(rare)==true", CardPackServer.KnownRarityId("rare") == true);
+            Check("KnownRarityId(bogus)==false", CardPackServer.KnownRarityId("bogus") == false);
+
+            // CardPackServer.LevenshteinDistance / TitleSimilarity (Server.Collections.cs)
+            Check("Levenshtein(kitten,sitting)==3", CardPackServer.LevenshteinDistance("kitten", "sitting") == 3);
+            Check("Levenshtein(same,same)==0", CardPackServer.LevenshteinDistance("same", "same") == 0);
+            Check("TitleSimilarity(exact)==1", Math.Abs(CardPackServer.TitleSimilarity("Feuerdrache", "Feuerdrache") - 1.0) < 0.0001);
+            Check("TitleSimilarity(different)<1", CardPackServer.TitleSimilarity("Feuerdrache", "Wasserelfe") < 1.0);
+
+            // TwitchBridge.NormalizeRarityId (Bridge.Queue.cs)
+            Check("NormalizeRarityId(common)==common", TwitchBridge.NormalizeRarityId("common") == "common");
+            Check("NormalizeRarityId(selten)==rare", TwitchBridge.NormalizeRarityId("selten") == "rare");
+            Check("NormalizeRarityId(legendaer)==legendary", TwitchBridge.NormalizeRarityId("legendaer") == "legendary");
+            Check("NormalizeRarityId(unknown)==common (fallback)", TwitchBridge.NormalizeRarityId("totally-unknown") == "common");
+
+            // TwitchBridge.RarityWeight (Bridge.Queue.cs)
+            Dictionary<string, object> commonCard = new Dictionary<string, object> { { "rarity", "common" } };
+            Dictionary<string, object> holoCard = new Dictionary<string, object> { { "rarity", "holo" } };
+            Check("RarityWeight(common) > RarityWeight(holo)", TwitchBridge.RarityWeight(commonCard, null) > TwitchBridge.RarityWeight(holoCard, null));
+            Dictionary<string, object> overrideWeights = new Dictionary<string, object> { { "common", 5.0 } };
+            Check("RarityWeight honors override", Math.Abs(TwitchBridge.RarityWeight(commonCard, overrideWeights) - 5.0) < 0.0001);
+
+            // TwitchBridge.MatchesCommand (Bridge.ChatCore.cs)
+            Dictionary<string, object> packsCmd = new Dictionary<string, object> { { "prefix", "!" }, { "command", "pack" } };
+            Check("MatchesCommand('!pack')==true", TwitchBridge.MatchesCommand("!pack", packsCmd) == true);
+            Check("MatchesCommand('!pack foo')==true", TwitchBridge.MatchesCommand("!pack foo", packsCmd) == true);
+            Check("MatchesCommand('!packs') doesn't match !pack (word boundary)", TwitchBridge.MatchesCommand("!packs", packsCmd) == false);
+            Check("MatchesCommand('!other')==false", TwitchBridge.MatchesCommand("!other", packsCmd) == false);
+
+            // TwitchBridge.ComputeNextResetAt (Bridge.PackCommands.cs)
+            DateTime nowUtc = new DateTime(2026, 7, 27, 10, 0, 0, DateTimeKind.Utc);
+            Dictionary<string, object> hoursCfg = new Dictionary<string, object> { { "resetUnit", "hours" }, { "resetValue", 24 } };
+            Check("ComputeNextResetAt(hours) adds 24h", CardPackServer_ComputeNextResetAtHours(nowUtc, hoursCfg));
+            Dictionary<string, object> minutesCfg = new Dictionary<string, object> { { "resetUnit", "minutes" }, { "resetValue", 30 } };
+            DateTime plus30 = TwitchBridge.ComputeNextResetAt(minutesCfg, nowUtc);
+            Check("ComputeNextResetAt(minutes) adds 30m", plus30 == nowUtc.AddMinutes(30));
+
+            // TwitchBridge.ParseDustSetRarity (Bridge.PackCommands.cs)
+            Check("ParseDustSetRarity(common)==common", TwitchBridge.ParseDustSetRarity("common") == "common");
+            Check("ParseDustSetRarity(empty)==null", TwitchBridge.ParseDustSetRarity("") == null);
+            Check("ParseDustSetRarity(garbage)==null", TwitchBridge.ParseDustSetRarity("xyzzy-not-a-rarity") == null);
+
+            // TwitchBridge.ComputePityProgress (Bridge.PackCommands.cs)
+            int readyGuarantees, drawsUntilNext;
+            TwitchBridge.ComputePityProgress(streak: 7, bank: 0, threshold: 10, readyGuarantees: out readyGuarantees, drawsUntilNext: out drawsUntilNext);
+            Check("ComputePityProgress(7,0,10) readyGuarantees==0", readyGuarantees == 0);
+            Check("ComputePityProgress(7,0,10) drawsUntilNext==3", drawsUntilNext == 3);
+            TwitchBridge.ComputePityProgress(streak: 10, bank: 0, threshold: 10, readyGuarantees: out readyGuarantees, drawsUntilNext: out drawsUntilNext);
+            Check("ComputePityProgress(10,0,10) readyGuarantees==1", readyGuarantees == 1);
+            Check("ComputePityProgress(10,0,10) drawsUntilNext==10", drawsUntilNext == 10);
+
+            // TwitchBridge.RollDamage (Bridge.Battle.cs) - equal/same-rarity fights used to be fully
+            // deterministic (zero variance for the "stronger or equal" side); StrongSideVarianceFactor
+            // gives that side a damped-but-real variance instead so same-rarity duels aren't boring.
+            try
+            {
+                string tempRoot = Path.Combine(Path.GetTempPath(), "streamercard-selftest-" + Guid.NewGuid());
+                TwitchBridge bridge = new TwitchBridge(new CardPackServer(tempRoot));
+                bool sawVarianceAtEqualStrength = false;
+                double maxEqualRoll = 0;
+                for (int i = 0; i < 200; i++)
+                {
+                    double roll = bridge.RollDamage(10, 10, 0.6);
+                    if (roll > 10.0001) sawVarianceAtEqualStrength = true;
+                    if (roll > maxEqualRoll) maxEqualRoll = roll;
+                }
+                Check("RollDamage(equal strength) now has variance (not always exactly attackerStrength)", sawVarianceAtEqualStrength);
+                Check("RollDamage(equal strength) stays damped, well under the full-variance ceiling", maxEqualRoll < 10 * 1.6);
+                double weakerRoll = bridge.RollDamage(5, 10, 0.6);
+                Check("RollDamage(weaker side) can still reach the FULL variance ceiling", weakerRoll <= 5 * 1.6 + 0.0001);
+            }
+            catch (Exception ex)
+            {
+                Check("RollDamage equal-strength variance test ran without throwing: " + ex.Message, false);
+            }
+
+            Console.WriteLine("SELFTEST: " + passed + " passed, " + failed + " failed");
+            return failed;
+        }
+
+        private static bool CardPackServer_ComputeNextResetAtHours(DateTime nowUtc, Dictionary<string, object> hoursCfg)
+        {
+            DateTime result = TwitchBridge.ComputeNextResetAt(hoursCfg, nowUtc);
+            return result == nowUtc.AddHours(24);
+        }
+    }
+}

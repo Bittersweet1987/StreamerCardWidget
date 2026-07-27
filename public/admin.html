@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1785088429">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1785143848">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -625,7 +625,12 @@
                 <label data-i18n="label-autohelp-minutes">Nach X Minuten<input id="autohelp-minutes" type="number" min="0" step="1"></label>
                 <label data-i18n="label-autohelp-messages">Nach X Chat-Nachrichten<input id="autohelp-messages" type="number" min="0" step="1"></label>
               </div>
-              
+              <label class="switch-row compact-switch">
+                <input id="autohelp-onlywhenlive" type="checkbox">
+                <span data-i18n="label-autohelp-onlywhenlive">Nur senden, wenn der Stream live ist</span>
+              </label>
+              <p class="hint" data-i18n="cc-autohelp-onlywhenlive-hint">Wenn deaktiviert (Standard), läuft die automatische Hilfe-Nachricht auch, während der Stream offline ist. Bei Aktivierung pausieren beide Intervalle komplett, solange der Kanal nicht live ist.</p>
+
               <p class="hint" data-i18n="cc-autohelp-list-hint">[Befehle] wird automatisch durch die Liste aller aktivierten Befehle mit ihrer Kurzbeschreibung ersetzt (z.B. "!pack - zieht ein zufälliges Kartenpack | !collection - zeigt deine Kartensammlung").</p>
             </article>
 
@@ -3491,7 +3496,21 @@
       </main>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785088429"></script>
-    <script type="module" src="/assets/js/admin.js?v=1785088429"></script>
+    <div id="duplicate-gate" class="duplicate-gate" hidden>
+      <div class="duplicate-gate-box">
+        <h2 data-i18n="duplicate-gate-title">Doppelte Kartentitel gefunden</h2>
+        <p class="hint" data-i18n="duplicate-gate-hint">
+          Zwei oder mehr Karten haben denselben Titel. Das kann Booster-Zuordnungen durcheinanderbringen
+          (z. B. bei einem erneuten Booster-Import) - bitte löse jede Gruppe auf, bevor du weitermachst:
+          entweder umbenennen (wenn es zwei wirklich unterschiedliche Karten sind) oder eine der Karten
+          löschen (wenn es ein liegengebliebenes Duplikat ist).
+        </p>
+        <p class="hint"><span id="duplicate-gate-count">0</span> <span data-i18n="duplicate-gate-count-label">Gruppe(n) noch offen</span></p>
+        <div id="duplicate-gate-groups"></div>
+      </div>
+    </div>
+
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785143848"></script>
+    <script type="module" src="/assets/js/admin.js?v=1785143848"></script>
   </body>
 </html>

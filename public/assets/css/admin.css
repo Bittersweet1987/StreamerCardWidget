@@ -2027,3 +2027,96 @@ body[data-theme="dark"] #font-preview {
     position: static;
   }
 }
+
+/* Blocking gate shown when duplicate card titles are detected - covers the whole app so the user
+   resolves every group before doing anything else (see renderDuplicateGate/bindDuplicateGate). */
+.duplicate-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: rgba(20, 16, 32, .78);
+  backdrop-filter: blur(3px);
+}
+
+/* An author-stylesheet display value always wins over the UA stylesheet's [hidden] rule, so
+   without this the gate would ignore its `hidden` attribute and show permanently regardless of
+   whether any duplicate groups actually exist. */
+.duplicate-gate[hidden] {
+  display: none;
+}
+
+.duplicate-gate-box {
+  width: min(920px, 100%);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: 28px 32px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(20, 16, 32, .45);
+}
+
+.duplicate-gate-box h2 {
+  margin-top: 0;
+  color: #241f33;
+}
+
+.duplicate-gate-group {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid rgba(43, 33, 79, .14);
+  border-radius: 14px;
+  background: rgba(255, 120, 187, .06);
+}
+
+.duplicate-gate-group h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #241f33;
+}
+
+.duplicate-gate-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.duplicate-gate-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(43, 33, 79, .12);
+}
+
+.duplicate-gate-card .tcg-card {
+  width: 100%;
+  justify-self: center;
+}
+
+.duplicate-gate-card label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: #5b5470;
+}
+
+.duplicate-gate-card input[type="text"] {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(43, 33, 79, .2);
+  font-size: 13px;
+}
+
+.duplicate-gate-card .hint {
+  margin: 0;
+  font-size: 12px;
+}
+
+body.duplicate-gate-active .admin-shell {
+  filter: blur(2px);
+  pointer-events: none;
+}
