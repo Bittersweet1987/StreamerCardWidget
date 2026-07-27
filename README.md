@@ -181,7 +181,10 @@ JSON-Datei gespeichert – **inklusive aller zugeordneten Karten samt Bildern**.
 auf einem anderen PC über **Booster importieren** eingelesen werden: Booster und Karten werden
 dort neu angelegt und die **Zuordnung der Karten zum Booster bleibt erhalten**.
 Twitch-spezifische Verknüpfungen (Belohnungs-IDs) werden beim Import bewusst nicht übernommen,
-da sie nur im Kanal des Exportierenden gültig sind.
+da sie nur im Kanal des Exportierenden gültig sind. Der Import erfolgt **titel-basiert**: existiert
+bereits ein Booster mit demselben Titel (bzw. eine Karte mit demselben Titel), wird dieser
+aktualisiert statt dupliziert – ein und dieselbe Export-Datei kann also gefahrlos mehrfach
+importiert werden.
 
 ---
 
@@ -199,7 +202,10 @@ als Abo-Bonus reservieren, ohne dass sie im normalen Ziehungspool auftauchen.
 
 1. Tab **Karten** öffnen → **Karte hinzufügen**.
 2. Felder ausfüllen:
-   - **Titel** – Name der Karte (z. B. ein Spielername).
+   - **Titel** – Name der Karte (z. B. ein Spielername). Sollte **eindeutig** sein: Titel werden
+     beim Import/Re-Import zum Abgleich verwendet (siehe unten) und beim App-Start geprüft – gibt
+     es zwei Karten mit demselben Titel, blockiert eine Sperrmaske den Start, bis eine der Karten
+     umbenannt oder gelöscht wurde.
    - **Seltenheit** – siehe [unten](#seltenheiten--gewichtung). Bestimmt Sternzahl, Rahmenfarbe und Effekt.
    - **Akzentfarbe** – Grundfarbe der Karte.
    - **Bild** – das Kartenmotiv (wird passend zugeschnitten).
@@ -215,7 +221,8 @@ Jede Karte hat einen **Exportieren**-Button: die Karte wird als JSON-Datei gespe
 **inklusive Bild**, sodass sie z. B. auf einem anderen PC von einem anderen Nutzer über
 **Karte importieren** (oben im Tab) eingelesen werden kann. Eine Booster-Zuordnung wird dabei
 bewusst **nicht** übernommen – die importierte Karte muss wie eine neue Karte einem Booster
-zugeordnet werden.
+zugeordnet werden. Auch hier gilt der **titel-basierte** Abgleich: eine Karte mit bereits
+vorhandenem Titel wird beim erneuten Import aktualisiert statt ein zweites Mal angelegt.
 
 ---
 
@@ -321,6 +328,11 @@ eigenen **Aktiviert**-Schalter – es gibt keinen globalen Hauptschalter mehr.
 Alle Nachrichten lassen sich frei bearbeiten. Die verfügbaren **Variablen** (z. B. `@userName`,
 `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) stehen als anklickbare Chips über dem
 jeweiligen Textfeld und werden per Klick eingefügt.
+
+Zusätzlich gibt es eine **automatische Hilfe-Nachricht**: sie postet in wählbaren Abständen
+(nach X Minuten und/oder nach X Chat-Nachrichten) eine Übersicht aller aktivierten Befehle im
+Chat. Mit der Option **„Nur senden, wenn der Stream live ist"** lässt sie sich – wie beide
+Intervalle – komplett pausieren, solange der Kanal offline ist (Standard: läuft auch offline weiter).
 
 ---
 
@@ -911,7 +923,9 @@ A **booster** is a card pack with its own channel-points reward.
 all assigned cards and their images**. The file can be loaded on another PC via **Import
 booster**: booster and cards are recreated there, and the **card-to-booster assignment is kept**.
 Twitch-specific links (reward IDs) are deliberately not carried over on import, since they're
-only valid in the exporting channel.
+only valid in the exporting channel. Import matches by **title**: if a booster (or a card) with the
+same title already exists, it gets updated in place instead of duplicated - so re-importing the
+same export file repeatedly is safe.
 
 <a id="en-sub-exclusive-boosters"></a>
 ### Sub-exclusive boosters
@@ -928,7 +942,9 @@ which can never resolve to a sub-exclusive booster either, even if a viewer know
 
 1. Open the **Cards** tab → **Add card**.
 2. Fill in the fields:
-   - **Title** - the card's name (e.g. a player name).
+   - **Title** - the card's name (e.g. a player name). Should be **unique**: titles are used for
+     matching on import/re-import (see below) and are checked at app startup - if two cards share
+     the same title, a blocking screen stops you from continuing until one is renamed or deleted.
    - **Rarity** - see [below](#en-rarities--weighting). Determines star count, border color and effect.
    - **Accent color** - the card's base color.
    - **Image** - the card artwork (cropped to fit).
@@ -943,7 +959,8 @@ which can never resolve to a sub-exclusive booster either, even if a viewer know
 Every card has an **Export** button: the card is saved as a JSON file - **including its image** -
 so it can be loaded e.g. on another PC by another user via **Import card** (top of the tab). A
 booster assignment is deliberately **not** carried over - the imported card needs to be assigned
-to a booster like any new card.
+to a booster like any new card. The same **title-based matching** applies here: a card whose title
+already exists gets updated on re-import instead of being created a second time.
 
 <a id="en-rarities--weighting"></a>
 ### Rarities & weighting
@@ -1045,6 +1062,11 @@ is no global master switch anymore.
 All messages can be freely edited. The available **variables** (e.g. `@userName`, `[Kartenname]`,
 `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) appear as clickable chips above each text field and
 get inserted with a click.
+
+There's also an **automatic help message**: at configurable intervals (after X minutes and/or
+after X chat messages) it posts an overview of all enabled commands to chat. The **"Only send
+while the stream is live"** option lets you - like both intervals - pause it entirely while the
+channel is offline (default: keeps running offline too).
 
 <a id="en-pick-your-own-pack"></a>
 ### Pick your own pack
@@ -1599,7 +1621,9 @@ fichier JSON – **y compris toutes les cartes associées et leurs images**. Le 
 chargé sur un autre PC via **Importer un booster** : le booster et les cartes y sont recréés, et
 **l'association des cartes au booster est conservée**. Les liens spécifiques à Twitch (IDs de
 récompense) ne sont volontairement pas repris à l'import, car ils ne sont valides que dans la
-chaîne d'origine.
+chaîne d'origine. L'import se fait par **correspondance de titre** : si un booster (ou une carte)
+portant déjà ce titre existe, il est mis à jour sur place plutôt que dupliqué – réimporter
+plusieurs fois le même fichier d'export est donc sans risque.
 
 <a id="fr-boosters-réservés-aux-abonnés"></a>
 ### Boosters réservés aux abonnés
@@ -1618,7 +1642,10 @@ un spectateur en connaît le nom exact.
 
 1. Ouvrez l'onglet **Cartes** → **Ajouter une carte**.
 2. Remplissez les champs :
-   - **Titre** – nom de la carte (par ex. un nom de joueur).
+   - **Titre** – nom de la carte (par ex. un nom de joueur). Doit être **unique** : les titres
+     servent à la correspondance lors de l'import/réimport (voir plus bas) et sont vérifiés au
+     démarrage de l'app – si deux cartes partagent le même titre, un écran bloquant vous empêche
+     de continuer tant que l'une d'elles n'est pas renommée ou supprimée.
    - **Rareté** – voir [plus bas](#fr-raretés-et-pondération). Détermine le nombre d'étoiles, la
      couleur de bordure et l'effet.
    - **Couleur d'accent** – couleur de base de la carte.
@@ -1635,7 +1662,8 @@ Chaque carte a un bouton **Exporter** : la carte est enregistrée sous forme de 
 **image incluse** – afin de pouvoir être chargée par ex. sur un autre PC par un autre utilisateur
 via **Importer une carte** (en haut de l'onglet). Une association à un booster n'est
 volontairement **pas** reprise – la carte importée doit être associée à un booster comme une
-nouvelle carte.
+nouvelle carte. La même **correspondance par titre** s'applique ici : une carte dont le titre
+existe déjà est mise à jour lors du réimport plutôt que créée une seconde fois.
 
 <a id="fr-raretés-et-pondération"></a>
 ### Raretés et pondération
@@ -1743,6 +1771,11 @@ global.
 Tous les messages peuvent être librement modifiés. Les **variables** disponibles (par ex.
 `@userName`, `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) apparaissent sous forme
 de puces cliquables au-dessus de chaque champ de texte et s'insèrent d'un clic.
+
+Il existe aussi un **message d'aide automatique** : à intervalles configurables (après X minutes
+et/ou après X messages de chat), il poste dans le chat un aperçu de toutes les commandes activées.
+L'option **« N'envoyer que si le stream est en direct »** permet, comme les deux intervalles, de le
+mettre entièrement en pause tant que la chaîne est hors ligne (par défaut : continue aussi hors ligne).
 
 <a id="fr-choisir-son-propre-pack"></a>
 ### Choisir son propre pack
@@ -2337,7 +2370,10 @@ Un **sobre** es un pack de cartas con su propia recompensa de puntos de canal.
 **incluyendo todas las cartas asignadas y sus imágenes**. El archivo puede cargarse en otro PC
 mediante **Importar sobre**: el sobre y las cartas se recrean allí, y **se conserva la asignación
 de cartas al sobre**. Los enlaces específicos de Twitch (IDs de recompensa) no se conservan
-deliberadamente al importar, ya que solo son válidos en el canal de origen.
+deliberadamente al importar, ya que solo son válidos en el canal de origen. La importación
+coincide por **título**: si ya existe un sobre (o una carta) con el mismo título, se actualiza en
+su lugar en vez de duplicarse – así que reimportar el mismo archivo de exportación varias veces
+es seguro.
 
 <a id="es-sobres-exclusivos-para-suscriptores"></a>
 ### Sobres exclusivos para suscriptores
@@ -2356,7 +2392,10 @@ un espectador conozca su nombre exacto.
 
 1. Abre la pestaña **Cartas** → **Añadir carta**.
 2. Rellena los campos:
-   - **Título** – nombre de la carta (p. ej. el nombre de un jugador).
+   - **Título** – nombre de la carta (p. ej. el nombre de un jugador). Debería ser **único**: los
+     títulos se usan para la coincidencia al importar/reimportar (ver más abajo) y se comprueban al
+     iniciar la app – si dos cartas comparten el mismo título, una pantalla bloqueante impide
+     continuar hasta que una de ellas se renombre o se elimine.
    - **Rareza** – ver [más abajo](#es-rarezas-y-ponderación). Determina el número de estrellas, el
      color del borde y el efecto.
    - **Color de acento** – color base de la carta.
@@ -2372,7 +2411,9 @@ un espectador conozca su nombre exacto.
 Cada carta tiene un botón **Exportar**: la carta se guarda como archivo JSON – **incluyendo su
 imagen** – para poder cargarla p. ej. en otro PC por otro usuario mediante **Importar carta**
 (arriba en la pestaña). Deliberadamente **no** se conserva una asignación de sobre – la carta
-importada debe asignarse a un sobre como cualquier carta nueva.
+importada debe asignarse a un sobre como cualquier carta nueva. La misma **coincidencia por
+título** aplica aquí: una carta cuyo título ya existe se actualiza al reimportar en vez de crearse
+por segunda vez.
 
 <a id="es-rarezas-y-ponderación"></a>
 ### Rarezas y ponderación
@@ -2479,6 +2520,11 @@ global.
 Todos los mensajes se pueden editar libremente. Las **variables** disponibles (p. ej. `@userName`,
 `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) aparecen como chips clicables encima
 de cada campo de texto y se insertan con un clic.
+
+También existe un **mensaje de ayuda automático**: a intervalos configurables (tras X minutos y/o
+tras X mensajes de chat), publica en el chat un resumen de todos los comandos activados. La opción
+**"Enviar solo si la transmisión está en directo"** permite, como ambos intervalos, pausarlo por
+completo mientras el canal esté fuera de línea (por defecto: sigue funcionando también sin conexión).
 
 <a id="es-elige-tu-propio-sobre"></a>
 ### Elige tu propio sobre
@@ -3046,7 +3092,9 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 **ส่งออกบูสเตอร์** (ในหน้าบูสเตอร์) จะบันทึกบูสเตอร์ที่เลือกเป็นไฟล์ JSON – **รวมการ์ดที่กำหนด
 ทั้งหมดพร้อมรูปภาพ** ไฟล์นี้สามารถโหลดเข้าเครื่องอื่นผ่าน **นำเข้าบูสเตอร์**: บูสเตอร์และการ์ด
 จะถูกสร้างใหม่ที่นั่น และ**การกำหนดการ์ดให้บูสเตอร์จะคงอยู่** ลิงก์เฉพาะของ Twitch (ID รางวัล)
-จะไม่ถูกนำเข้ามาโดยตั้งใจ เนื่องจากใช้ได้เฉพาะในช่องที่ส่งออกเท่านั้น
+จะไม่ถูกนำเข้ามาโดยตั้งใจ เนื่องจากใช้ได้เฉพาะในช่องที่ส่งออกเท่านั้น การนำเข้าจะจับคู่กันด้วย
+**ชื่อ**: หากมีบูสเตอร์ (หรือการ์ด) ที่ใช้ชื่อเดียวกันอยู่แล้ว ระบบจะอัปเดตของเดิมแทนการสร้าง
+ซ้ำ – จึงนำเข้าไฟล์ส่งออกเดิมซ้ำได้อย่างปลอดภัย
 
 <a id="th-บูสเตอร์เฉพาะผู้สมัครสมาชิก"></a>
 ### บูสเตอร์เฉพาะผู้สมัครสมาชิก
@@ -3064,7 +3112,9 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 
 1. เปิดแท็บ **การ์ด** → **เพิ่มการ์ด**
 2. กรอกข้อมูล:
-   - **ชื่อ** – ชื่อการ์ด (เช่น ชื่อผู้เล่น)
+   - **ชื่อ** – ชื่อการ์ด (เช่น ชื่อผู้เล่น) ควรตั้งให้**ไม่ซ้ำกัน**: ชื่อจะถูกใช้จับคู่ตอน
+     นำเข้า/นำเข้าซ้ำ (ดูด้านล่าง) และจะถูกตรวจสอบตอนแอปเริ่มทำงาน – หากมีการ์ดสองใบใช้ชื่อเดียวกัน
+     หน้าจอบล็อกจะปรากฏขึ้นและกันไม่ให้ดำเนินการต่อจนกว่าจะเปลี่ยนชื่อหรือลบใบใดใบหนึ่ง
    - **ความหายาก** – ดู[ด้านล่าง](#th-ความหายากและการถ่วงน้ำหนัก) กำหนดจำนวนดาว สีขอบ และเอฟเฟกต์
    - **สีเน้น** – สีพื้นฐานของการ์ด
    - **รูปภาพ** – ภาพประกอบการ์ด (จะถูกครอปให้พอดี)
@@ -3078,7 +3128,9 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 
 การ์ดทุกใบมีปุ่ม **ส่งออก**: การ์ดจะถูกบันทึกเป็นไฟล์ JSON – **รวมรูปภาพ** – เพื่อให้โหลดเข้า
 เครื่องอื่นโดยผู้ใช้อื่นผ่าน **นำเข้าการ์ด** (ด้านบนของแท็บ) การกำหนดบูสเตอร์จะ**ไม่**ถูกนำเข้า
-มาโดยตั้งใจ – การ์ดที่นำเข้าต้องกำหนดให้บูสเตอร์เหมือนการ์ดใหม่
+มาโดยตั้งใจ – การ์ดที่นำเข้าต้องกำหนดให้บูสเตอร์เหมือนการ์ดใหม่ การจับคู่ด้วย**ชื่อ**แบบเดียวกัน
+นี้ใช้ได้ที่นี่ด้วย: การ์ดที่มีชื่อซ้ำกับที่มีอยู่แล้วจะถูกอัปเดตเมื่อนำเข้าซ้ำ แทนที่จะสร้างใหม่
+เป็นใบที่สอง
 
 <a id="th-ความหายากและการถ่วงน้ำหนัก"></a>
 ### ความหายากและการถ่วงน้ำหนัก
@@ -3175,6 +3227,11 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 ข้อความทั้งหมดแก้ไขได้อย่างอิสระ **ตัวแปร** ที่ใช้ได้ (เช่น `@userName`, `[Kartenname]`,
 `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) จะแสดงเป็นชิปที่คลิกได้เหนือช่องข้อความแต่ละช่อง
 และแทรกได้ด้วยการคลิก
+
+นอกจากนี้ยังมี**ข้อความช่วยเหลืออัตโนมัติ**: ที่ช่วงเวลาที่ตั้งค่าได้ (หลังจาก X นาที และ/หรือ
+หลังจาก X ข้อความแชท) ระบบจะโพสต์สรุปคำสั่งที่เปิดใช้งานทั้งหมดลงในแชท ตัวเลือก
+**"ส่งเฉพาะเมื่อสตรีมกำลังไลฟ์เท่านั้น"** ช่วยให้หยุดพักได้ทั้งหมดเหมือนสองช่วงเวลานั้น
+ตราบใดที่ช่องออฟไลน์อยู่ (ค่าเริ่มต้น: ยังทำงานต่อแม้ออฟไลน์)
 
 <a id="th-เลือกแพ็กเอง"></a>
 ### เลือกแพ็กเอง
