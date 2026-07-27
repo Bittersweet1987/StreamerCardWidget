@@ -107,6 +107,36 @@ namespace CardPackWidgetApp
                 Check("RollDamage equal-strength variance test ran without throwing: " + ex.Message, false);
             }
 
+            // TwitchBridge.SavePendingState / LoadPendingState (Bridge.Connection.cs) - a pending
+            // queue item must survive a "restart" (new TwitchBridge instance reading the same data
+            // dir), so app close/update/crash never silently drops a not-yet-fulfilled action.
+            try
+            {
+                string tempRoot = Path.Combine(Path.GetTempPath(), "streamercard-selftest-" + Guid.NewGuid());
+                Directory.CreateDirectory(Path.Combine(tempRoot, "data"));
+                TwitchBridge bridgeA = new TwitchBridge(new CardPackServer(tempRoot));
+                bridgeA.Enqueue("draw", "testuser", "TestUser", "chat");
+                object[] beforeRestart = bridgeA.GetQueueItems();
+                Check("Enqueue put exactly 1 item in the live queue", beforeRestart.Length == 1);
+
+                // Simulate a restart: a brand-new instance pointed at the same data directory should
+                // pick up the item SavePendingState wrote to disk, with nothing else running yet.
+                TwitchBridge bridgeB = new TwitchBridge(new CardPackServer(tempRoot));
+                bridgeB.LoadPendingState();
+                object[] afterRestart = bridgeB.GetQueueItems();
+                Check("LoadPendingState restores the queued item after a simulated restart", afterRestart.Length == 1);
+                if (afterRestart.Length == 1)
+                {
+                    Dictionary<string, object> restoredItem = afterRestart[0] as Dictionary<string, object>;
+                    Check("Restored item kept its kind (draw)", restoredItem != null && Convert.ToString(restoredItem["kind"]) == "draw");
+                    Check("Restored item kept its user (testuser)", restoredItem != null && Convert.ToString(restoredItem["userLogin"]) == "testuser");
+                }
+            }
+            catch (Exception ex)
+            {
+                Check("Pending-state save/load round-trip ran without throwing: " + ex.Message, false);
+            }
+
             Console.WriteLine("SELFTEST: " + passed + " passed, " + failed + " failed");
             return failed;
         }

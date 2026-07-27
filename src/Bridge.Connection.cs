@@ -363,6 +363,7 @@ public TwitchBridge(CardPackServer server)
 public void Start()
         {
             StartQueueWorkerOnce();
+            LoadPendingState();
             StartResetTimerOnce();
             StartAutoHelpTimerOnce();
             Dictionary<string, object> twitch = TwitchSettings();
@@ -390,6 +391,135 @@ public void Stop()
                 eventSubConnected = false;
             }
             StopChat();
+        }
+
+// ---- Pending-state persistence: snapshots every not-yet-fulfilled action (see
+        // Server.Settings.cs's PendingStatePath) so closing/updating/crashing the app mid-Team-Kampf-
+        // signup, mid-trade-offer, or with draws still queued for OBS doesn't silently lose them.
+        // Called after every meaningful mutation of the fields below (see call sites in
+        // Bridge.Queue.cs, Bridge.Trade.cs, Bridge.Battle.cs, Bridge.Tournament.cs) - cheap enough
+        // (a handful of small dictionaries/lists, no card images) to just re-write the whole file
+        // each time rather than diffing.
+        internal void SavePendingState()
+        {
+            try
+            {
+                var snapshot = new Dictionary<string, object>();
+                lock (queueLock)
+                {
+                    snapshot["actionQueue"] = actionQueue.ToArray();
+                    snapshot["deferredQueue"] = deferredQueue.ToArray();
+                }
+                lock (tradeLock) { snapshot["activeTrade"] = activeTrade; }
+                lock (battleLock) { snapshot["activeBattle"] = activeBattle; }
+                lock (tournamentLock) { snapshot["activeTournament"] = activeTournament; }
+                lock (teamBattleLock) { snapshot["activeTeamBattle"] = activeTeamBattle; }
+                File.WriteAllText(server.PendingStatePath(), server.Serializer.Serialize(snapshot), Encoding.UTF8);
+            }
+            catch (Exception ex) { server.Log("queue", "warn", "Ausstehender Zustand konnte nicht gespeichert werden: " + ex.Message); }
+        }
+
+        // Called once from Start(), after StartQueueWorkerOnce() so a restored non-empty queue has
+        // a worker loop ready to drain it. Signup states (trade/battle/tournament/team battle) whose
+        // deadline already passed while the app was down are resolved immediately (as if their timer
+        // had just fired) instead of being silently dropped or left stuck forever; still-open ones
+        // get their timer re-armed for the REMAINING duration. Tournament/team-battle bracket matches
+        // that were already mid-playback need no special handling beyond restoring the queue itself -
+        // the active-tournament/team-battle object is just bookkeeping the queue completion callbacks
+        // consult, not something that drives its own animation.
+        internal void LoadPendingState()
+        {
+            string path = server.PendingStatePath();
+            if (!File.Exists(path)) return;
+            try
+            {
+                Dictionary<string, object> snapshot = ParseObject(server.ReadFileText(path, "{}"));
+                int restoredQueueItems = 0;
+
+                object queueObj;
+                if (snapshot.TryGetValue("actionQueue", out queueObj) && queueObj is object[])
+                {
+                    lock (queueLock)
+                    {
+                        foreach (object item in (object[])queueObj)
+                        {
+                            Dictionary<string, object> dict = item as Dictionary<string, object>;
+                            if (dict != null) { actionQueue.Add(dict); restoredQueueItems++; }
+                        }
+                    }
+                }
+                object deferredObj;
+                if (snapshot.TryGetValue("deferredQueue", out deferredObj) && deferredObj is object[])
+                {
+                    lock (queueLock)
+                    {
+                        foreach (object item in (object[])deferredObj)
+                        {
+                            Dictionary<string, object> dict = item as Dictionary<string, object>;
+                            if (dict != null) { deferredQueue.Add(dict); restoredQueueItems++; }
+                        }
+                    }
+                }
+                if (restoredQueueItems > 0) queueSignal.Set();
+
+                bool restoredTrade = RestoreExpiringState(snapshot, "activeTrade", "expiresAt",
+                    dict => { activeTrade = dict; },
+                    (dict, remainingMs) => { tradeTimeoutTimer = new System.Threading.Timer(delegate { TradeTimedOut(); }, null, remainingMs, Timeout.Infinite); },
+                    () => TradeTimedOut());
+                bool restoredBattle = RestoreExpiringState(snapshot, "activeBattle", "expiresAt",
+                    dict => { activeBattle = dict; },
+                    (dict, remainingMs) => { battleTimeoutTimer = new System.Threading.Timer(delegate { BattleTimedOut(); }, null, remainingMs, Timeout.Infinite); },
+                    () => BattleTimedOut());
+                bool restoredTournament = RestoreExpiringState(snapshot, "activeTournament", "deadlineUtc",
+                    dict => { activeTournament = dict; },
+                    (dict, remainingMs) => { if (GetString(dict, "state", "") == "signup") tournamentSignupTimer = new System.Threading.Timer(delegate { ResolveTournamentSignup(); }, null, remainingMs, System.Threading.Timeout.Infinite); },
+                    () => ResolveTournamentSignup());
+                bool restoredTeamBattle = RestoreExpiringState(snapshot, "activeTeamBattle", "deadlineUtc",
+                    dict => { activeTeamBattle = dict; },
+                    (dict, remainingMs) => { teamBattleSignupTimer = new System.Threading.Timer(delegate { ResolveTeamBattleSignup(); }, null, remainingMs, System.Threading.Timeout.Infinite); },
+                    () => ResolveTeamBattleSignup());
+
+                if (restoredQueueItems > 0 || restoredTrade || restoredBattle || restoredTournament || restoredTeamBattle)
+                {
+                    server.Log("queue", "info", "Ausstehender Zustand aus vorherigem Lauf wiederhergestellt (" + restoredQueueItems +
+                        " Warteschlangen-Eintrag/e" + (restoredTrade ? ", Tausch" : "") + (restoredBattle ? ", Kampf" : "") +
+                        (restoredTournament ? ", Turnier" : "") + (restoredTeamBattle ? ", Team-Kampf" : "") + ").");
+                }
+            }
+            catch (Exception ex) { server.Log("queue", "warn", "Ausstehender Zustand konnte nicht wiederhergestellt werden: " + ex.Message); }
+        }
+
+        // Shared restore logic for the four "signup/offer with a deadline" states: restores the
+        // dictionary if present, then either re-arms its timer for the remaining time (deadline still
+        // ahead) or immediately runs the same resolution the timer would have (deadline already
+        // passed while the app was down) - either way the state never gets silently stuck or dropped.
+        private bool RestoreExpiringState(Dictionary<string, object> snapshot, string key, string deadlineField,
+            Action<Dictionary<string, object>> assign, Action<Dictionary<string, object>, int> rearmTimer, Action resolveNow)
+        {
+            object stateObj;
+            if (!snapshot.TryGetValue(key, out stateObj) || !(stateObj is Dictionary<string, object>)) return false;
+            Dictionary<string, object> dict = (Dictionary<string, object>)stateObj;
+            assign(dict);
+
+            DateTime deadline;
+            string deadlineText = GetString(dict, deadlineField, "");
+            if (!DateTime.TryParse(deadlineText, null, System.Globalization.DateTimeStyles.RoundtripKind, out deadline))
+            {
+                return true; // restored, but no deadline to act on (e.g. a "running" tournament bracket)
+            }
+            double remainingMs = (deadline - DateTime.UtcNow).TotalMilliseconds;
+            if (remainingMs > 0)
+            {
+                rearmTimer(dict, (int)Math.Min(remainingMs, Int32.MaxValue));
+            }
+            else
+            {
+                // Deadline already passed while the app was down - resolve synchronously right now
+                // instead of leaving the viewer(s)/signup stuck waiting for a timer that will never
+                // fire again for this (already-restored) object.
+                resolveNow();
+            }
+            return true;
         }
 
 public Dictionary<string, object> Status()
@@ -1173,6 +1303,18 @@ public void RefreshChatCommands()
             if (String.IsNullOrWhiteSpace(token))
             {
                 server.Log("twitch", "warn", "Chat-Befehle sind aktiv, aber es ist kein Twitch-Account verbunden. Bitte unter \"Verbindung\" anmelden.");
+                return;
+            }
+
+            // channel.chat.message's condition ALWAYS needs the broadcaster's user id (see
+            // CreateChatEventSubSubscription), even when a bot account does the actual reading -
+            // it's still that bot listening to the BROADCASTER's channel, not its own. A bot-only
+            // setup where the main/broadcaster account was never connected under "Verbindung" left
+            // this empty, so Twitch rejected the subscription with a raw, unhelpful field-validation
+            // error ("broadcaster_user_id ... required") instead of the actionable message below.
+            if (String.IsNullOrWhiteSpace(GetString(Obj(settings, "twitch"), "broadcasterId", "")))
+            {
+                server.Log("twitch", "warn", "Chat-Befehle sind aktiv, aber der Haupt-Account (Streamer-Kanal) ist nicht verbunden. Bitte unter \"Verbindung\" den Haupt-Account anmelden - der Bot-Account allein reicht dafuer nicht aus.");
                 return;
             }
 

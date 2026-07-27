@@ -6,6 +6,7 @@ data/collections.json
 data/cards.json
 data/boosters.json
 data/app-log.json
+data/pending-state.json
 logs/
 node_modules/
 

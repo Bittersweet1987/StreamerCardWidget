@@ -144,6 +144,7 @@ private static bool IsBracketSource(string source)
 
                     if (tournamentSignupTimer != null) tournamentSignupTimer.Dispose();
                     tournamentSignupTimer = new System.Threading.Timer(delegate { ResolveTournamentSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
+                    SavePendingState();
                 }
             }
 
@@ -219,6 +220,7 @@ private static bool IsBracketSource(string source)
                     deadlineUtc = GetString(activeTournament, "deadlineUtc", "");
                     minParticipantsForBroadcast = GetInt(activeTournament, "minParticipants", 3);
                     joinCommandText = GetString(activeTournament, "joinCommand", "");
+                    SavePendingState();
                 }
             }
 
@@ -517,6 +519,7 @@ public Dictionary<string, object> GetTournamentState()
 
                         if (teamBattleSignupTimer != null) teamBattleSignupTimer.Dispose();
                         teamBattleSignupTimer = new System.Threading.Timer(delegate { ResolveTeamBattleSignup(); }, null, signupSeconds * 1000, System.Threading.Timeout.Infinite);
+                        SavePendingState();
                     }
                 }
             }
@@ -653,6 +656,7 @@ public Dictionary<string, object> GetTournamentState()
                             participantsSnapshot = new List<object>(participants);
                             deadlineUtc = GetString(activeTeamBattle, "deadlineUtc", "");
                             joinCommandText = GetString(activeTeamBattle, "joinCommand", "");
+                            SavePendingState();
                         }
                     }
                 }
@@ -681,6 +685,7 @@ public Dictionary<string, object> GetTournamentState()
                 streamerLineup = (List<Dictionary<string, string>>)activeTeamBattle["streamerLineup"];
                 activeTeamBattle = null;
             }
+            SavePendingState();
 
             server.Broadcast("teamkampfsignup", server.Serializer.Serialize(new Dictionary<string, object> { { "active", false } }));
 
@@ -828,11 +833,13 @@ public Dictionary<string, object> GetTournamentState()
                         .Replace("[Mindestteilnehmer]", minParticipants.ToString()));
                     activeTournament = null;
                     server.Broadcast("tournamentsignup", "{\"active\":false}");
+                    SavePendingState();
                     return;
                 }
 
                 activeTournament["state"] = "running";
                 server.Broadcast("tournamentsignup", "{\"active\":false}");
+                SavePendingState();
             }
 
             foreach (Dictionary<string, object> participant in participants)
@@ -962,6 +969,7 @@ public Dictionary<string, object> GetTournamentState()
             }
 
             lock (tournamentLock) { activeTournament = null; }
+            SavePendingState();
             if (round.Count == 0) { EnqueueBatchAtFront(priorityItems); return; }
 
             Dictionary<string, object> championEntry = round[0];

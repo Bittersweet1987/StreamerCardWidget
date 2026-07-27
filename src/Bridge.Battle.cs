@@ -124,6 +124,7 @@ namespace CardPackWidgetApp
                     .Replace("@userNameA", "@" + displayName)
                     .Replace("[BefehlAnnehmen]", befehlAnnehmen)
                     .Replace("[BefehlAblehnen]", befehlAblehnen));
+                SavePendingState();
             }
         }
 
@@ -519,6 +520,10 @@ private void ClearActiveBattle()
         {
             activeBattle = null;
             if (battleTimeoutTimer != null) { battleTimeoutTimer.Dispose(); battleTimeoutTimer = null; }
+            // Safe while already holding battleLock (every call site does) - lock/Monitor is
+            // re-entrant for the owning thread, and SavePendingState only takes OTHER locks plus
+            // re-entering this same one.
+            SavePendingState();
         }
 
 // Deliberately silent in chat for the SUCCESS case (by design): the result is shown

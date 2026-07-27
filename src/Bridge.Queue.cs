@@ -283,6 +283,7 @@ private static double GetDouble(Dictionary<string, object> data, string key, dou
             }
             BroadcastQueue();
             queueSignal.Set();
+            SavePendingState();
         }
 
 // Moves every held-back item (see Enqueue) back into the live queue, in the same order
@@ -303,6 +304,7 @@ private static double GetDouble(Dictionary<string, object> data, string key, dou
             server.Log("queue", "info", toFlush.Count + " zurueckgehaltene Aktion(en) nach Turnier/Team-Kampf-Ende in die Warteschlange eingereiht.");
             BroadcastQueue();
             queueSignal.Set();
+            SavePendingState();
         }
 
 // Auto-starts a Team-Kampf that got queued (see StartTeamBattleSignup) because a tournament
@@ -360,6 +362,7 @@ private static Dictionary<string, object> BuildQueueItem(string kind, string log
             lock (queueLock) { actionQueue.InsertRange(0, items); }
             BroadcastQueue();
             queueSignal.Set();
+            SavePendingState();
         }
 
 public object[] GetQueueItems()
@@ -564,12 +567,14 @@ public void RemoveQueueItem(string id)
                 deferredQueue.RemoveAll(delegate(Dictionary<string, object> item) { return GetString(item, "id", "") == id; });
             }
             BroadcastQueue();
+            SavePendingState();
         }
 
 public void ClearQueue()
         {
             lock (queueLock) { actionQueue.Clear(); deferredQueue.Clear(); }
             BroadcastQueue();
+            SavePendingState();
         }
 
 // Safety upper bound for how long to wait on the overlay's completion ack. Generously
@@ -812,6 +817,12 @@ private void QueueLoop()
                 Thread.Sleep(500);
                 lock (queueLock) { currentQueueItem = null; }
                 BroadcastQueue();
+                // Deliberately NOT saved at dequeue time (only here, once truly finished) - the
+                // on-disk snapshot up to now still lists this item as pending, so if the app closes/
+                // crashes mid-processing it gets replayed from the top on next start (see
+                // LoadPendingState) instead of being half-lost with no way to resume an animation
+                // whose overlay session no longer exists anyway.
+                SavePendingState();
             }
         }
 

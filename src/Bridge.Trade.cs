@@ -142,6 +142,7 @@ private void HandleTradeCommand(string login, string displayName, string args, D
                     .Replace("[Boostername]", boosterTitle));
             }
             BroadcastQueue();
+            SavePendingState();
         }
 
 private void HandleTradeYes(string login, string displayName, string args, Dictionary<string, object> cc)
@@ -317,6 +318,10 @@ private void ClearActiveTrade()
         {
             activeTrade = null;
             if (tradeTimeoutTimer != null) { tradeTimeoutTimer.Dispose(); tradeTimeoutTimer = null; }
+            // Safe to call while already holding tradeLock (all 3 call sites do) - C#'s lock/Monitor
+            // is re-entrant for the owning thread, and SavePendingState only takes OTHER locks
+            // (queueLock/battleLock/tournamentLock/teamBattleLock) plus re-entering this same one.
+            SavePendingState();
         }
 
 // ---- Trade usage tracking (separate namespace inside command-usage.json) ----

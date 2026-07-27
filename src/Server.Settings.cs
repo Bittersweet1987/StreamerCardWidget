@@ -91,6 +91,16 @@ internal string CommunityGoalStatePath()
             return Path.Combine(dataDir, "community-goal.json");
         }
 
+        // Snapshot of every in-flight, not-yet-fulfilled action (draw/trade/battle/tournament/team
+        // battle queue + signup state) - written on every meaningful change and re-read once at
+        // startup so an app close/update/crash doesn't silently drop a pending Team-Kampf signup,
+        // an open trade offer, or draws still waiting to play in OBS. See
+        // TwitchBridge.SavePendingState/LoadPendingState.
+        internal string PendingStatePath()
+        {
+            return Path.Combine(dataDir, "pending-state.json");
+        }
+
 internal string ReadFileText(string path, string fallback)
         {
             return ReadFile(path, fallback);
