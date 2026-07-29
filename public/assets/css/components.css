@@ -142,6 +142,20 @@ select {
 }
 
 .card-art img {
+  /* Absolutely positioned (not just width/height:100% as a grid item) so its box always matches
+     .card-art's own size exactly, regardless of the image's intrinsic aspect ratio. With
+     `display:grid; place-items:center` on the parent, a plain 100%/100%-sized grid item resolves
+     ambiguously for portrait-aspect images (percentage height against an auto-sized grid row) -
+     the browser falls back to the image's OWN intrinsic aspect ratio, rendering it taller than the
+     frame instead of the intended object-fit:cover crop. That mismatch is invisible on a normal
+     instant reveal (just a wrong crop anchor) but becomes an obvious visual misalignment during the
+     Holo-Alarm dissolve reveal, whose canvas overlay (.holo-art-cover, overlay.css) IS sized to the
+     real .card-art box - see the "Jeanne" Holo card report this was fixed for. Removing the item
+     from grid flow via absolute positioning makes its percentage width/height resolve against
+     .card-art's own (definite) box instead, matching the canvas exactly.
+     */
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
