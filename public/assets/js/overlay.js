@@ -341,37 +341,30 @@ function prepareHoloAlarm(cardEl) {
   return { cardEl, realImg, innerCover, canvas, footerEl, cornerEls, holoGlitter, targetBorderColor };
 }
 
-// Replicates the CSS object-fit/object-position box-to-image mapping actually applied to the real
-// <img> - card art can be "cover" (default) or "contain" (data-position="contain"), and its anchor
-// can be off-center (top/bottom/left/right, or an auto-picked one via autoImagePosition), see
-// components.css's ".card-art img" rules. Reading getComputedStyle gives the FINAL resolved
-// fit/position regardless of which CSS rule/specificity actually won, so this stays correct
-// without having to reimplement the cascade - the box formula (gap/overflow * position%) is the
-// same one the browser itself uses for both cover (negative "gap" = overflow, cropped) and contain
-// (positive gap = letterboxing).
-function objectFitDrawRect(img, boxW, boxH) {
-  const computed = getComputedStyle(img);
-  const fit = computed.objectFit || "cover";
-  const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
-  if (fit === "fill") return { dx: 0, dy: 0, dw: boxW, dh: boxH };
-  const scale = fit === "contain" ? Math.min(boxW / iw, boxH / ih) : Math.max(boxW / iw, boxH / ih);
-  const dw = iw * scale, dh = ih * scale;
-  const [posXRaw, posYRaw] = (computed.objectPosition || "50% 50%").split(/\s+/);
-  const parsePercent = (value) => (value && value.endsWith("%") ? parseFloat(value) / 100 : 0.5);
-  const posX = parsePercent(posXRaw), posY = parsePercent(posYRaw);
-  return { dx: (boxW - dw) * posX, dy: (boxH - dh) * posY, dw, dh };
-}
-
+// Draws the real <img> into the canvas at its OWN actual on-screen box (relative to the canvas),
+// read straight from getBoundingClientRect - rather than recomputing a theoretical object-fit/
+// object-position mapping from scratch. ".card-art img" is a `display:grid; place-items:center`
+// item sized via plain width/height:100%, not position:absolute - for a portrait-aspect image that
+// resolves the grid's auto-sized row against the image's own intrinsic aspect ratio (a real CSS
+// grid quirk, not a bug to "fix" here - see the "Jeanne" report this was restored for after an
+// earlier attempt tried to change the image's own scaling instead of just matching the canvas to
+// it). Reimplementing that resolution algorithm in JS would be fragile; reading the actual rendered
+// box instead guarantees the canvas is pixel-identical to whatever the browser really did, for any
+// image aspect ratio, fit mode, or future CSS change to ".card-art img" - it just always matches.
 function buildHoloDissolveState(ctl) {
-  const rect = ctl.canvas.getBoundingClientRect();
+  const canvasRect = ctl.canvas.getBoundingClientRect();
+  const imgRect = ctl.realImg.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const w = Math.max(1, Math.round(rect.width * dpr));
-  const h = Math.max(1, Math.round(rect.height * dpr));
+  const w = Math.max(1, Math.round(canvasRect.width * dpr));
+  const h = Math.max(1, Math.round(canvasRect.height * dpr));
   ctl.canvas.width = w;
   ctl.canvas.height = h;
   const ctx = ctl.canvas.getContext("2d");
   ctx.clearRect(0, 0, w, h);
-  const { dx, dy, dw, dh } = objectFitDrawRect(ctl.realImg, w, h);
+  const dx = (imgRect.left - canvasRect.left) * dpr;
+  const dy = (imgRect.top - canvasRect.top) * dpr;
+  const dw = imgRect.width * dpr;
+  const dh = imgRect.height * dpr;
   ctx.drawImage(ctl.realImg, dx, dy, dw, dh);
   const shot = ctx.getImageData(0, 0, w, h);
   const px = shot.data;
