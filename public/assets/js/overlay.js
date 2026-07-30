@@ -212,22 +212,48 @@ async function notifyDiscordDraw(cardEl, login, displayName, cardTitle, boosterT
   }
 }
 
+// Swaps the .card-wrap's content to the NEXT card in a multi-card pack (see "Karten pro Pack" /
+// cardsPerDraw) - a quick out/in transition on the same spot rather than re-running the whole
+// pack-tear mechanic, like taking cards off the front of a stack (Pokemon-pack-style). Arms
+// Holo-Alarm on the new card BEFORE it's shown, same reasoning as the very first card: no flash
+// of the fully-colored card ahead of the dramatic reveal.
+async function revealNextCard(cardWrap, card, countBefore) {
+  cardWrap.classList.add("is-swapping", "is-swap-out");
+  await delay(260);
+  cardWrap.innerHTML = `
+    ${cardMarkup(card)}
+    <div class="draw-count-bubble"><span class="draw-count-value">${countBefore}</span></div>
+  `;
+  const cardEl = cardWrap.querySelector(".tcg-card");
+  const isHoloAlarm = Boolean(cardEl) && (card.rarity || "common") === "holo" && settings.holoAlarm?.enabled !== false;
+  const holoCtl = isHoloAlarm ? prepareHoloAlarm(cardEl) : null;
+  cardWrap.classList.remove("is-swap-out");
+  cardWrap.classList.add("is-swap-in");
+  void cardWrap.offsetWidth; // force reflow so the swap-in transition actually animates from this state
+  cardWrap.classList.remove("is-swap-in");
+  await delay(260);
+  cardWrap.classList.remove("is-swapping");
+  if (holoCtl) await playHoloAlarmSequence(holoCtl);
+}
+
 async function runOpening(request = {}) {
   const booster = pickBooster(request.boosterId);
-  const card = booster ? pickCard(booster, request) : null;
-  if (!booster || !card) return;
-  request.drawnCardTitle = card.title || card.id || "";
+  // Multiple cards per pack (see "Karten pro Pack"): the server always sends "cardIds" now (an
+  // array, one entry even for the unchanged default of a single card) - "cardId" alone is only a
+  // fallback for an older cached overlay reading a pre-multi-card server's broadcast.
+  const cardIds = Array.isArray(request.cardIds) && request.cardIds.length ? request.cardIds : (request.cardId ? [request.cardId] : []);
+  const cards = booster ? cardIds.map((cardId) => pickCard(booster, { cardId })).filter(Boolean) : [];
+  if (!booster || !cards.length) return;
+  request.drawnCardTitle = cards.map((c) => c.title || c.id || "").join(", ");
   request.drawnBoosterTitle = booster.title || booster.id || "";
 
   const user = request.user || request.displayName || "Viewer";
   const login = request.userLogin || request.login || user;
   const collection = await readCollection(booster);
-  const countBefore = Number(collectionCounts(collection, user, login)[card.id] || 0);
-  incrementCollection(collection, user, login, card.id);
+  const firstCard = cards[0];
+  const countBefore = Number(collectionCounts(collection, user, login)[firstCard.id] || 0);
+  incrementCollection(collection, user, login, firstCard.id);
   const countAfter = countBefore + 1;
-  if (settings.behavior?.persistCollections !== false) {
-    await persistCollectionSnapshot(collection, booster.id, "");
-  }
   // The server now logs the draw (it picks the card), so no duplicate log entry from here.
 
   const scene = document.createElement("section");
@@ -238,7 +264,7 @@ async function runOpening(request = {}) {
     <div class="opening-rig" style="--pack-accent:${booster.accent || "#ff78bb"}">
       <div class="pack-shadow" aria-hidden="true"></div>
       <div class="card-wrap">
-        ${cardMarkup(card)}
+        ${cardMarkup(firstCard)}
         <div class="draw-count-bubble"><span class="draw-count-value">${countBefore}</span></div>
       </div>
       <div class="pack-bottom">${packFace(booster)}</div>
@@ -250,7 +276,7 @@ async function runOpening(request = {}) {
   // Holo-Alarm: arm the card as a solid black silhouette BEFORE it's ever appended to the stage
   // (i.e. before the first paint), so there's no flash of the fully-colored card during the
   // pack-tear/slide mechanics that follow - it stays hidden until playHoloAlarmSequence runs.
-  const isHoloAlarm = (card.rarity || "common") === "holo" && settings.holoAlarm?.enabled !== false;
+  const isHoloAlarm = (firstCard.rarity || "common") === "holo" && settings.holoAlarm?.enabled !== false;
   let holoCtl = null;
   if (isHoloAlarm) {
     const cardEl = scene.querySelector(".tcg-card");
@@ -284,8 +310,9 @@ async function runOpening(request = {}) {
   }
   scene.classList.add("phase-reveal");
   // The card (and its collection panel to the right) is now fully visible - this is the moment
-  // the post-draw chat message and live-ticker entry should go out, not several seconds later
-  // once the whole animation finishes.
+  // the live-ticker entry goes out (deduped server-side to once per pack, regardless of how many
+  // cards it holds - see AnnounceDraw). The post-draw CHAT message still only fires once the
+  // WHOLE pack (every card in it) has finished, right before the exit below.
   announceDraw(request.eventId, request.drawnCardTitle, request.drawnBoosterTitle);
   // Fire-and-forget: never await this, and never let a capture/upload failure affect the
   // on-screen animation - Discord notification is a best-effort side effect.
@@ -294,10 +321,11 @@ async function runOpening(request = {}) {
     // Discord names the pack by "<title> <subtitle>" (e.g. "Jeanne, die Kamikaze Diebin"),
     // unlike the chat message's [Boostername], which stays title-only.
     const discordBoosterTitle = [booster.title, booster.subtitle].filter(Boolean).join(" ").trim() || request.drawnBoosterTitle;
-    notifyDiscordDraw(cardElForDiscord, login, user, request.drawnCardTitle, discordBoosterTitle, card.rarity || "common");
+    notifyDiscordDraw(cardElForDiscord, login, user, firstCard.title, discordBoosterTitle, firstCard.rarity || "common");
   }
   // A beat after the card is fully visible, count up from the pre-draw total to the new one.
   await delay(350);
+  const cardWrap = scene.querySelector(".card-wrap");
   const bubble = scene.querySelector(".draw-count-bubble");
   const bubbleValue = scene.querySelector(".draw-count-value");
   if (bubble && bubbleValue && countAfter !== countBefore) {
@@ -306,6 +334,47 @@ async function runOpening(request = {}) {
     await delay(420);
     bubble.classList.remove("is-counting");
   }
+
+  // Every ADDITIONAL card in this pack (see "Karten pro Pack") swaps in on top of the same spot,
+  // one at a time - the same "flip through the stack" beat as opening a real trading-card pack.
+  for (let i = 1; i < cards.length; i++) {
+    const card = cards[i];
+    const cardCountBefore = Number(collectionCounts(collection, user, login)[card.id] || 0);
+    incrementCollection(collection, user, login, card.id);
+    const cardCountAfter = cardCountBefore + 1;
+
+    await delay(Math.max(600, Number(settings.behavior?.revealSeconds || 3.2) * 1000 * 0.55));
+    await revealNextCard(cardWrap, card, cardCountBefore);
+
+    // Refresh the collection/rarity summary panel so it reflects this card too.
+    const summaryHost = scene.querySelector(".rarity-summary");
+    if (summaryHost) summaryHost.outerHTML = createRaritySummary(booster, collection, user, login);
+
+    const cardElForThisDiscord = cardWrap.querySelector(".tcg-card");
+    if (cardElForThisDiscord) {
+      const discordBoosterTitle = [booster.title, booster.subtitle].filter(Boolean).join(" ").trim() || request.drawnBoosterTitle;
+      notifyDiscordDraw(cardElForThisDiscord, login, user, card.title, discordBoosterTitle, card.rarity || "common");
+    }
+
+    await delay(300);
+    const nextBubble = cardWrap.querySelector(".draw-count-bubble");
+    const nextBubbleValue = cardWrap.querySelector(".draw-count-value");
+    if (nextBubble && nextBubbleValue && cardCountAfter !== cardCountBefore) {
+      nextBubble.classList.add("is-counting");
+      nextBubbleValue.textContent = cardCountAfter;
+      await delay(420);
+      nextBubble.classList.remove("is-counting");
+    }
+  }
+
+  // Persisted once, after every card in the pack has been counted - not per card - so a
+  // multi-card pack writes its final collection state in a single request. The server-side chat
+  // message (fired once runOpening/completeQueueItem resolve, well after this) always reads the
+  // fully up-to-date, already-persisted count.
+  if (settings.behavior?.persistCollections !== false) {
+    await persistCollectionSnapshot(collection, booster.id, "");
+  }
+
   await delay(Math.max(0, Number(settings.behavior?.revealSeconds || 3.2) * 1000 - 350 - 420));
   scene.classList.add("phase-exit");
   await delay(700);

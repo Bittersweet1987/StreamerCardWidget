@@ -96,6 +96,24 @@ body {
   width: 238px;
 }
 
+/* Multi-card pack ("Karten pro Pack" > 1, see cardsPerDraw): after the first card's normal
+   tear/slide/reveal, each NEXT card swaps in on top of the same spot instead of re-running the
+   whole pack-tear mechanic - like taking cards off the front of a stack, Pokemon-pack-style. See
+   cycleToNextCard in overlay.js. */
+.card-wrap.is-swapping {
+  transition: transform .26s cubic-bezier(.4, 0, .2, 1), opacity .26s ease;
+}
+
+.card-wrap.is-swapping.is-swap-out {
+  transform: translateX(-50%) translateY(-22px) scale(.9) rotate(-5deg);
+  opacity: 0;
+}
+
+.card-wrap.is-swapping.is-swap-in {
+  transform: translateX(-50%) translateY(18px) scale(.9) rotate(5deg);
+  opacity: 0;
+}
+
 /* Shows how many copies of this card the viewer had before the draw, then pops to the new
    total once the card is revealed - top-right corner of the card, like a notification badge. */
 .draw-count-bubble {

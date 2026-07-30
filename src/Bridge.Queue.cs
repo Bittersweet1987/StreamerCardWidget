@@ -539,9 +539,36 @@ private void SendDrawPostMessage(Dictionary<string, object> item, string cardTit
             string rarityLang = GetString(Obj(settings, "chatCommands"), "rarityLanguage", "de");
             string rarityLabel = String.IsNullOrEmpty(cardId) ? "" : RarityLabel(server.CardRarity(cardId), rarityLang);
             string sourceLabel = SourceLabel(source, rarityLang);
+            // [Kartenliste]: every card from a multi-card pack (see "Karten pro Pack"), comma-
+            // separated, each with its own owned-count in parentheses (e.g. "Karte A (x2), Karte B
+            // (x1)") - read the SAME way [Besitz] is for a single card, just once per card here.
+            // Falls back to the single card name if this item predates cardTitles/cardIds (older
+            // cached queue state) or only ever held one card.
+            string cardList = cardT;
+            object cardTitlesObj, cardIdsForListObj;
+            if (item.TryGetValue("cardTitles", out cardTitlesObj) && cardTitlesObj is object[] && ((object[])cardTitlesObj).Length > 0)
+            {
+                object[] titlesArr = (object[])cardTitlesObj;
+                object[] idsArr = item.TryGetValue("cardIds", out cardIdsForListObj) && cardIdsForListObj is object[] ? (object[])cardIdsForListObj : new object[0];
+                var listParts = new List<string>();
+                for (int i = 0; i < titlesArr.Length; i++)
+                {
+                    string title = Convert.ToString(titlesArr[i]);
+                    if (String.IsNullOrEmpty(title)) continue;
+                    string idForThis = i < idsArr.Length ? Convert.ToString(idsArr[i]) : "";
+                    string ownedForThis = "";
+                    if (!String.IsNullOrEmpty(login) && !String.IsNullOrEmpty(idForThis) && !String.IsNullOrEmpty(boosterId))
+                    {
+                        ownedForThis = server.GetCardCount(login, boosterId, idForThis).ToString();
+                    }
+                    listParts.Add(String.IsNullOrEmpty(ownedForThis) ? title : title + " (x" + ownedForThis + ")");
+                }
+                if (listParts.Count > 0) cardList = String.Join(", ", listParts.ToArray());
+            }
             string msg = template
                 .Replace("@userName", "@" + user)
                 .Replace("[Kartenname]", cardT)
+                .Replace("[Kartenliste]", cardList)
                 .Replace("[Boostername]", boosterT)
                 .Replace("[Besitz]", count)
                 .Replace("[Seltenheit]", rarityLabel)
@@ -1294,80 +1321,111 @@ private void ProcessQueueItem(Dictionary<string, object> item)
                 string pityMinRarity = GetString(pityCfg, "minRarity", "rare");
                 int pityThreshold = Math.Max(1, GetInt(pityCfg, "threshold", 10));
 
-                // The whole read-modify-write below must hold pityLock for its entire duration
-                // (not just inside GetPityEntry/SavePityEntry individually) - a draw is processed
-                // on the queue-loop thread while "!dust"/"!dustall" run immediately on the chat
-                // dispatch thread, so without a single lock spanning the snapshot-to-save window a
-                // concurrent dust command's just-credited points could get silently overwritten by
-                // this draw saving back its own (by-then stale) snapshot of the entry - exactly the
-                // "wrong amount deducted/credited" symptom reported by users.
-                int pityStreak = 0, pityBank = 0, pityTotal = 0;
-                bool forcePity = false;
-                Dictionary<string, object> card = null;
-                lock (pityLock)
+                // Multiple cards per pack: only for an actual pack-opening trigger (the normal
+                // random-pool pack or a specific named pack), never for the many OTHER single-card
+                // "draw" sources (bits, community-goal/tournament/team-kampf/loyalty bonus draws,
+                // sub/resub/giftsub rewards) - those already have their own independent multiplier
+                // mechanics and enqueue one "draw" item per card themselves (see the Enqueue("draw",
+                // ...) call sites across this file). Resolved from the FINAL booster (random pick or
+                // forced), so both "!pack" and "pick your own pack" automatically get the same
+                // per-booster override.
+                bool isPackSource = source == "chat" || source == "channelpoints" || source == "specificpack";
+                int cardsPerDraw = isPackSource ? ResolveCardsPerDraw(settings, booster) : 1;
+
+                var drawnCardIds = new List<object>();
+                var drawnCardTitles = new List<object>();
+
+                for (int cardIndex = 0; cardIndex < cardsPerDraw; cardIndex++)
                 {
-                    Dictionary<string, object> pityEntry = pityEnabled ? GetPityEntry(login) : null;
-                    pityStreak = pityEntry != null ? GetInt(pityEntry, "streak", 0) : 0;
-                    pityBank = pityEntry != null ? GetInt(pityEntry, "bank", 0) : 0;
-                    // streak and bank are the SAME currency (both count "!dust"/"!dustall" points and
-                    // natural non-hit draws in the same units - see HandleDustCommand/
-                    // HandleDustAllCommand) so they're combined into one pool here rather than checked
-                    // separately: a leftover bank remainder below one full threshold used to just sit
-                    // there forever instead of counting toward the streak's own progress. A forced
-                    // guarantee costs exactly one pityThreshold out of the combined total - if the bank
-                    // alone already holds several multiples of the threshold, each subsequent eligible
-                    // draw keeps forcing (and draining threshold worth of pool) until it drops below it.
-                    pityTotal = pityStreak + pityBank;
-                    forcePity = pityEnabled && pityTotal >= pityThreshold;
-
-                    // A loyalty-bonus draw (see RegisterLoyaltyDraw/"loyaltybonusreached") carries
-                    // its own guaranteed floor rarity independent of the pity system - if both are
-                    // in play at once (unlikely, but not impossible), the higher of the two wins.
-                    string loyaltyFloorRarity = GetString(item, "forceMinRarity", "");
-                    string floorRarity = forcePity ? pityMinRarity : null;
-                    if (!String.IsNullOrEmpty(loyaltyFloorRarity) &&
-                        (floorRarity == null || CardPackServer.GetRarityRank(loyaltyFloorRarity) > CardPackServer.GetRarityRank(floorRarity)))
+                    // The whole read-modify-write below must hold pityLock for its entire duration
+                    // (not just inside GetPityEntry/SavePityEntry individually) - a draw is processed
+                    // on the queue-loop thread while "!dust"/"!dustall" run immediately on the chat
+                    // dispatch thread, so without a single lock spanning the snapshot-to-save window a
+                    // concurrent dust command's just-credited points could get silently overwritten by
+                    // this draw saving back its own (by-then stale) snapshot of the entry - exactly the
+                    // "wrong amount deducted/credited" symptom reported by users. Each card in a
+                    // multi-card pack re-reads/re-saves the entry on its own iteration, so pity
+                    // progresses exactly as if these were N separate single-card draws.
+                    int pityStreak = 0, pityBank = 0, pityTotal = 0;
+                    bool forcePity = false;
+                    Dictionary<string, object> card = null;
+                    lock (pityLock)
                     {
-                        floorRarity = loyaltyFloorRarity;
+                        Dictionary<string, object> pityEntry = pityEnabled ? GetPityEntry(login) : null;
+                        pityStreak = pityEntry != null ? GetInt(pityEntry, "streak", 0) : 0;
+                        pityBank = pityEntry != null ? GetInt(pityEntry, "bank", 0) : 0;
+                        // streak and bank are the SAME currency (both count "!dust"/"!dustall" points and
+                        // natural non-hit draws in the same units - see HandleDustCommand/
+                        // HandleDustAllCommand) so they're combined into one pool here rather than checked
+                        // separately: a leftover bank remainder below one full threshold used to just sit
+                        // there forever instead of counting toward the streak's own progress. A forced
+                        // guarantee costs exactly one pityThreshold out of the combined total - if the bank
+                        // alone already holds several multiples of the threshold, each subsequent eligible
+                        // draw keeps forcing (and draining threshold worth of pool) until it drops below it.
+                        pityTotal = pityStreak + pityBank;
+                        forcePity = pityEnabled && pityTotal >= pityThreshold;
+
+                        // A loyalty-bonus draw (see RegisterLoyaltyDraw/"loyaltybonusreached") carries
+                        // its own guaranteed floor rarity independent of the pity system - if both are
+                        // in play at once (unlikely, but not impossible), the higher of the two wins.
+                        string loyaltyFloorRarity = GetString(item, "forceMinRarity", "");
+                        string floorRarity = forcePity ? pityMinRarity : null;
+                        if (!String.IsNullOrEmpty(loyaltyFloorRarity) &&
+                            (floorRarity == null || CardPackServer.GetRarityRank(loyaltyFloorRarity) > CardPackServer.GetRarityRank(floorRarity)))
+                        {
+                            floorRarity = loyaltyFloorRarity;
+                        }
+
+                        card = PickCardFromBooster(settings, boosterId, floorRarity);
+
+                        if (pityEnabled)
+                        {
+                            bool metPity = card != null && CardPackServer.GetRarityRank(GetString(card, "rarity", "common")) >= CardPackServer.GetRarityRank(pityMinRarity);
+                            if (metPity)
+                            {
+                                pityEntry["streak"] = 0;
+                                // Only actually drain the pool if THIS draw was the one forcing it - a
+                                // naturally lucky hit (rarity RNG landed on pityMinRarity+ on its own,
+                                // without needing to be forced) must not eat into banked credit.
+                                if (forcePity) pityEntry["bank"] = pityTotal - pityThreshold;
+                            }
+                            else
+                            {
+                                pityEntry["streak"] = pityStreak + 1;
+                            }
+                            SavePityEntry(login, pityEntry);
+                        }
                     }
 
-                    card = PickCardFromBooster(settings, boosterId, floorRarity);
+                    // Community goal: every draw (any trigger, including this method's own bonus
+                    // draws once the goal is reached - RegisterCommunityGoalDraw no-ops while frozen)
+                    // counts toward the shared progress bar - and, in a multi-card pack, so does
+                    // every card inside it, exactly as if it had been drawn on its own.
+                    RegisterCommunityGoalDraw(login, user);
+                    if (!GetBool(item, "loyaltyBonus", false)) RegisterLoyaltyDraw(login, user, boosterId, settings);
 
-                    if (pityEnabled)
-                    {
-                        bool metPity = card != null && CardPackServer.GetRarityRank(GetString(card, "rarity", "common")) >= CardPackServer.GetRarityRank(pityMinRarity);
-                        if (metPity)
-                        {
-                            pityEntry["streak"] = 0;
-                            // Only actually drain the pool if THIS draw was the one forcing it - a
-                            // naturally lucky hit (rarity RNG landed on pityMinRarity+ on its own,
-                            // without needing to be forced) must not eat into banked credit.
-                            if (forcePity) pityEntry["bank"] = pityTotal - pityThreshold;
-                        }
-                        else
-                        {
-                            pityEntry["streak"] = pityStreak + 1;
-                        }
-                        SavePityEntry(login, pityEntry);
-                    }
+                    drawnCardIds.Add(card != null ? GetString(card, "id", "") : "");
+                    drawnCardTitles.Add(card != null ? GetString(card, "title", "") : "");
                 }
 
-                // Community goal: every draw (any trigger, including this method's own bonus
-                // draws once the goal is reached - RegisterCommunityGoalDraw no-ops while frozen)
-                // counts toward the shared progress bar.
-                RegisterCommunityGoalDraw(login, user);
-                if (!GetBool(item, "loyaltyBonus", false)) RegisterLoyaltyDraw(login, user, boosterId, settings);
-
-                string cardId = card != null ? GetString(card, "id", "") : "";
-                string cardTitle = card != null ? GetString(card, "title", "") : "";
+                string cardId = drawnCardIds.Count > 0 ? Convert.ToString(drawnCardIds[0]) : "";
+                string cardTitle = drawnCardTitles.Count > 0 ? Convert.ToString(drawnCardTitles[0]) : "";
                 string boosterTitle = booster != null ? GetString(booster, "title", "") : "";
                 string boosterSubtitle = booster != null ? GetString(booster, "subtitle", "") : "";
+                // "cardTitle"/"cardId" stay the FIRST card, for [Kartenname]/collection-count lookups
+                // etc. that pre-date multi-card packs (see SendDrawPostMessage); "cardTitles"/
+                // "cardIds" (parallel arrays, same order) carry every drawn card for the new
+                // [Kartenliste] placeholder, including its per-card owned-count.
                 item["cardTitle"] = cardTitle;
+                item["cardTitles"] = drawnCardTitles.ToArray();
+                item["cardIds"] = drawnCardIds.ToArray();
                 item["boosterTitle"] = boosterTitle;
                 item["boosterSubtitle"] = boosterSubtitle;
                 item["cardId"] = cardId;
                 item["boosterId"] = boosterId;
-                server.Log("draw", "info", user + " hat \"" + cardTitle + "\" aus \"" + boosterTitle + "\" gezogen.");
+                var cardTitleParts = new List<string>();
+                foreach (object t in drawnCardTitles) cardTitleParts.Add(Convert.ToString(t));
+                server.Log("draw", "info", user + " hat \"" + String.Join(", ", cardTitleParts.ToArray()) + "\" aus \"" + boosterTitle + "\" gezogen.");
                 var drawEvent = new Dictionary<string, object>
                 {
                     { "eventId", GetString(item, "id", DateTime.UtcNow.Ticks.ToString()) },
@@ -1375,10 +1433,30 @@ private void ProcessQueueItem(Dictionary<string, object> item)
                     { "userLogin", login },
                     { "boosterId", boosterId },
                     { "cardId", cardId },
+                    { "cardIds", drawnCardIds.ToArray() },
                     { "source", source }
                 };
                 server.Broadcast("draw", server.Serializer.Serialize(drawEvent));
             }
+        }
+
+        // Sane upper bound on "Karten pro Pack" so a mistyped huge number can't produce a
+        // multi-minute single pack-opening animation or an absurdly long queue-processing timeout.
+        private const int MaxCardsPerDraw = 10;
+
+        // Per-booster "cardsPerDraw" (0/absent = inherit the global default) wins over the global
+        // settings.pack.cardsPerDraw (itself defaulting to 1, the unchanged default behavior).
+        // Called with the FINAL resolved booster, so both the random-pool "!pack" and a "pick your
+        // own pack" draw automatically respect that specific booster's own override.
+        internal static int ResolveCardsPerDraw(Dictionary<string, object> settings, Dictionary<string, object> booster)
+        {
+            if (booster != null)
+            {
+                int boosterOverride = GetInt(booster, "cardsPerDraw", 0);
+                if (boosterOverride > 0) return Math.Min(boosterOverride, MaxCardsPerDraw);
+            }
+            int globalDefault = Math.Max(1, GetInt(Obj(settings, "pack"), "cardsPerDraw", 1));
+            return Math.Min(globalDefault, MaxCardsPerDraw);
         }
 
 // ---- Discord webhook: posts a card draw as if the viewer themselves posted it (their

@@ -21,8 +21,8 @@ namespace CardPackWidgetApp
 {
     internal static class AppInfo
     {
-        public const string Version = "2.13.15";
-        public const string ReleaseDate = "2026-07-27";
+        public const string Version = "2.13.16";
+        public const string ReleaseDate = "2026-07-30";
         public const string GitHubRepo = "Bittersweet1987/StreamerCardWidget";
 
         // Changes on every app start. The overlay pages use this as the cache-buster for ALL

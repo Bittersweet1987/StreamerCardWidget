@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1785336020">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1785428883">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -1357,6 +1357,7 @@
                   <div class="var-chips" data-target="reward-post-message">
                     <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                     <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                    <button class="var-chip" type="button" data-insert="[Kartenliste]">[Kartenliste]</button>
                     <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
                     <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
                     <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
@@ -1490,6 +1491,7 @@
                     <div class="var-chips" data-target="cc-pack-success-message">
                       <button class="var-chip" type="button" data-insert="@userName">@userName</button>
                       <button class="var-chip" type="button" data-insert="[Kartenname]">[Kartenname]</button>
+                      <button class="var-chip" type="button" data-insert="[Kartenliste]">[Kartenliste]</button>
                       <button class="var-chip" type="button" data-insert="[Boostername]">[Boostername]</button>
                       <button class="var-chip" type="button" data-insert="[Besitz]">[Besitz]</button>
                       <button class="var-chip" type="button" data-insert="[Seltenheit]">[Seltenheit]</button>
@@ -2625,10 +2627,12 @@
               </div>
             </div>
             <div class="form-grid">
+              <label data-i18n="label-cards-per-draw">Karten pro Pack<input id="cards-per-draw" type="number" min="1" max="10" step="1"></label>
               <label data-i18n="label-reveal-seconds">Karte sichtbar in Sekunden<input id="reveal-seconds" type="number" min="1" step="0.1"></label>
               <label data-i18n="label-cooldown-seconds">Cooldown in Sekunden<input id="cooldown-seconds" type="number" min="0" step="0.1"></label>
               <label data-i18n="label-backs-before-reveal">Verdeckte Karten vor Reveal<input id="backs-before-reveal" type="number" min="0" max="8" step="1"></label>
             </div>
+            <p class="hint" data-i18n="hint-cards-per-draw">Wie viele Karten ein Pack standardmäßig enthält (Standard: 1) - gilt für den normalen "!pack"-Zufallspool genauso wie für ein gezielt geöffnetes Pack. Jeder Booster kann diesen Wert in seinen eigenen Einstellungen individuell überschreiben.</p>
             <label class="switch-row">
               <input id="holo-alarm-enabled" type="checkbox">
               <span data-i18n="label-holo-alarm-enabled">Holo-Alarm aktiviert</span>
@@ -3378,6 +3382,7 @@
                 <label data-i18n="label-booster-title">Titel<input id="booster-title" type="text"></label>
                 <label data-i18n="label-booster-subtitle">Untertitel<input id="booster-subtitle" type="text"></label>
                 <label data-i18n="label-booster-score">Booster-Score<input id="booster-score" type="number" min="1" step="1"></label>
+                <label data-i18n="label-booster-cards-per-draw">Karten pro Pack (0 = Standard)<input id="booster-cards-per-draw" type="number" min="0" max="10" step="1"></label>
                 <label data-i18n="label-booster-theme">Theme<select id="booster-theme-select"></select></label>
                 <label class="upload-button file-label" data-i18n="label-booster-image">Booster-Bild<input id="booster-image" type="file" accept="image/*"></label>
               </div>
@@ -3510,7 +3515,7 @@
       </div>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785336020"></script>
-    <script type="module" src="/assets/js/admin.js?v=1785336020"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785428883"></script>
+    <script type="module" src="/assets/js/admin.js?v=1785428883"></script>
   </body>
 </html>

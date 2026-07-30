@@ -926,6 +926,13 @@ export function normalizeSettings(settings) {
     settings.rarityWeights[rarity.id] = Number.isFinite(value) && value > 0 ? value : DEFAULT_RARITY_WEIGHTS[rarity.id];
   }
   setRarityWeights(settings.rarityWeights);
+  // "Karten pro Pack" - how many cards a single pack opening reveals (normal random-pool "!pack"
+  // AND a specific named pack, both funnel through the same server-side draw resolution). Default
+  // of 1 keeps the existing single-card behavior unless the streamer explicitly raises it. A
+  // booster can override this individually (see booster.cardsPerDraw above, 0 = inherit this).
+  settings.pack ||= {};
+  settings.pack.cardsPerDraw = Math.max(1, Math.min(10, Math.round(Number(settings.pack.cardsPerDraw) || 1)));
+
   settings.pity ||= {};
   settings.pity.enabled = settings.pity.enabled === true;
   settings.pity.threshold = Number(settings.pity.threshold) > 0 ? Math.round(Number(settings.pity.threshold)) : 10;
@@ -1563,6 +1570,9 @@ export function normalizeSettings(settings) {
     booster.rewardCost = Number(booster.rewardCost || 1);
     booster.rewardPrompt ||= "";
     booster.score = Number(booster.score ?? 100);
+    // 0 = inherit settings.pack.cardsPerDraw (the global default); a positive number overrides it
+    // for this booster specifically (see ResolveCardsPerDraw server-side).
+    booster.cardsPerDraw = Math.max(0, Math.min(10, Math.round(Number(booster.cardsPerDraw) || 0)));
     if (Array.isArray(booster.cardIds) && booster.cardIds.length > MAX_BOOSTER_CARDS) {
       console.warn(`Booster "${booster.title}" hatte mehr als ${MAX_BOOSTER_CARDS} Karten zugewiesen — wurde beim Laden gekuerzt.`);
     }

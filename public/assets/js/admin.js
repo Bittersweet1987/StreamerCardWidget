@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1785336020";
+} from "./api.js?v=1785428883";
 import {
   applyTheme,
   autoImagePosition,
@@ -72,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1785336020";
+} from "./render.js?v=1785428883";
 
 let settings;
 let selectedCardId;
@@ -3465,6 +3465,23 @@ const I18N = {
     es: "Cartas boca abajo antes de revelar",
     th: "การ์ดคว่ำก่อนเปิดเผย"
   },
+  "label-cards-per-draw": { de: "Karten pro Pack", en: "Cards per pack",
+    fr: "Cartes par booster",
+    es: "Cartas por sobre",
+    th: "จำนวนการ์ดต่อแพ็ก"
+  },
+  "hint-cards-per-draw": {
+    de: "Wie viele Karten ein Pack standardmäßig enthält (Standard: 1) - gilt für den normalen \"!pack\"-Zufallspool genauso wie für ein gezielt geöffnetes Pack. Jeder Booster kann diesen Wert in seinen eigenen Einstellungen individuell überschreiben.",
+    en: "How many cards a pack contains by default (default: 1) - applies to the normal \"!pack\" random pool just as much as to a specifically opened pack. Any booster can override this individually in its own settings.",
+    fr: "Combien de cartes un booster contient par défaut (par défaut : 1) - s'applique au pool aléatoire normal « !pack » tout comme à un booster ouvert spécifiquement. Chaque booster peut individuellement remplacer cette valeur dans ses propres réglages.",
+    es: "Cuántas cartas contiene un sobre por defecto (por defecto: 1) - se aplica tanto al grupo aleatorio normal \"!pack\" como a un sobre abierto específicamente. Cada sobre puede anular este valor individualmente en su propia configuración.",
+    th: "แพ็กหนึ่งใบมีการ์ดกี่ใบโดยค่าเริ่มต้น (ค่าเริ่มต้น: 1) - มีผลกับกลุ่มสุ่ม \"!pack\" ปกติเช่นเดียวกับแพ็กที่เปิดแบบเจาะจง แต่ละบูสเตอร์สามารถกำหนดค่านี้แยกต่างหากในการตั้งค่าของตัวเองได้"
+  },
+  "label-booster-cards-per-draw": { de: "Karten pro Pack (0 = Standard)", en: "Cards per pack (0 = default)",
+    fr: "Cartes par booster (0 = valeur par défaut)",
+    es: "Cartas por sobre (0 = valor por defecto)",
+    th: "จำนวนการ์ดต่อแพ็ก (0 = ค่าเริ่มต้น)"
+  },
   "label-holo-alarm-enabled": { de: "Holo-Alarm aktiviert", en: "Holo alarm enabled",
     fr: "Alarme Holo activée",
     es: "Alarma Holo activada",
@@ -6147,6 +6164,7 @@ function hydrateBooster() {
   $("#booster-title").value = booster.title || "";
   $("#booster-subtitle").value = booster.subtitle || "";
   $("#booster-score").value = booster.score ?? 100;
+  $("#booster-cards-per-draw").value = booster.cardsPerDraw || 0;
   const themeSelect = $("#booster-theme-select");
   if (themeSelect) {
     themeSelect.innerHTML = boosterThemeOptionsHtml();
@@ -6248,6 +6266,9 @@ function bindBooster() {
   $("#booster-score").addEventListener("input", (event) => {
     selectedBooster().score = Number(event.target.value || 1);
     renderBoosterList();
+  });
+  $("#booster-cards-per-draw").addEventListener("input", (event) => {
+    selectedBooster().cardsPerDraw = Math.max(0, Math.min(10, Math.round(Number(event.target.value) || 0)));
   });
   $("#booster-theme-select").addEventListener("change", (event) => {
     selectedBooster().themeId = event.target.value;
@@ -7457,6 +7478,7 @@ function hydrateDesign() {
   $("#liveticker-teambattle-message").value = settings.liveTicker?.teamBattleMessage ?? "Team-Kampf: [Sieger] hat gewonnen.";
   $("#commandshelp-enabled").checked = settings.commandsHelp?.enabled === true;
   $("#commandshelp-seconds").value = settings.commandsHelp?.secondsPerItem ?? 6;
+  $("#cards-per-draw").value = settings.pack?.cardsPerDraw ?? 1;
   $("#reveal-seconds").value = settings.behavior.revealSeconds ?? 3.2;
   $("#cooldown-seconds").value = settings.behavior.cooldownSeconds ?? 0.8;
   $("#backs-before-reveal").value = settings.behavior.cardBacksBeforeReveal ?? 2;
@@ -8375,6 +8397,10 @@ function bindDesign() {
       settings.behavior[field] = Number(event.target.value);
     });
   }
+  $("#cards-per-draw").addEventListener("input", (event) => {
+    settings.pack ||= {};
+    settings.pack.cardsPerDraw = Math.max(1, Math.min(10, Math.round(Number(event.target.value) || 1)));
+  });
   $("#holo-alarm-enabled").addEventListener("change", (event) => {
     settings.holoAlarm ||= {};
     settings.holoAlarm.enabled = event.target.checked;

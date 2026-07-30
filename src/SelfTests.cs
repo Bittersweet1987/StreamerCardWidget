@@ -137,6 +137,20 @@ namespace CardPackWidgetApp
                 Check("Pending-state save/load round-trip ran without throwing: " + ex.Message, false);
             }
 
+            // TwitchBridge.ResolveCardsPerDraw (Bridge.Queue.cs) - "Karten pro Pack": a booster's own
+            // override wins over the global default; 0/absent on the booster means "inherit global";
+            // both are clamped into [1, MaxCardsPerDraw].
+            Dictionary<string, object> settingsNoOverride = new Dictionary<string, object> { { "pack", new Dictionary<string, object> { { "cardsPerDraw", 3 } } } };
+            Dictionary<string, object> boosterNoOverride = new Dictionary<string, object> { { "cardsPerDraw", 0 } };
+            Check("ResolveCardsPerDraw falls back to the global default when booster override is 0", TwitchBridge.ResolveCardsPerDraw(settingsNoOverride, boosterNoOverride) == 3);
+            Dictionary<string, object> boosterWithOverride = new Dictionary<string, object> { { "cardsPerDraw", 5 } };
+            Check("ResolveCardsPerDraw prefers the booster's own override over the global default", TwitchBridge.ResolveCardsPerDraw(settingsNoOverride, boosterWithOverride) == 5);
+            Check("ResolveCardsPerDraw handles a null booster (falls back to global default)", TwitchBridge.ResolveCardsPerDraw(settingsNoOverride, null) == 3);
+            Dictionary<string, object> settingsNoPackSection = new Dictionary<string, object>();
+            Check("ResolveCardsPerDraw defaults to 1 when settings.pack is entirely absent", TwitchBridge.ResolveCardsPerDraw(settingsNoPackSection, null) == 1);
+            Dictionary<string, object> boosterHugeOverride = new Dictionary<string, object> { { "cardsPerDraw", 999 } };
+            Check("ResolveCardsPerDraw clamps an absurd booster override to the sane upper bound", TwitchBridge.ResolveCardsPerDraw(settingsNoOverride, boosterHugeOverride) == 10);
+
             Console.WriteLine("SELFTEST: " + passed + " passed, " + failed + " failed");
             return failed;
         }
