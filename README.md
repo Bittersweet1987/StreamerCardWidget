@@ -351,7 +351,8 @@ jeweiligen Textfeld und werden per Klick eingefügt.
 Für den `!pack`-Befehl und die allgemeine Nachricht nach dem Ziehen (die von Kanalpunkten, Bits,
 Turnier usw. gemeinsam genutzte Erfolgsnachricht) gibt es zusätzlich die Variable
 `[Kartenliste]`: sie listet **alle** in diesem Pack gezogenen Karten auf, jede mit ihrer eigenen
-„wie viele besitzt du jetzt"-Anzahl in Klammern, z. B. „Karte A (x2), Karte B (x1), Karte C (x3)".
+Seltenheit und „wie viele besitzt du jetzt"-Anzahl in Klammern, z. B. „Karte A (Legendär, x2),
+Karte B (Selten, x1), Karte C (Episch, x3)".
 `[Kartenname]` funktioniert weiterhin und bezieht sich dabei immer auf die **erste** Karte im Pack.
 
 Zusätzlich gibt es eine **automatische Hilfe-Nachricht**: sie postet in wählbaren Abständen
@@ -1115,8 +1116,8 @@ get inserted with a click.
 
 For the `!pack` command and the general post-draw message (the success message shared by channel
 points, bits, tournament, etc. triggers), there's also the `[Kartenliste]` variable: it lists
-**every** card drawn in the pack, each with its own "how many do you now own" count in
-parentheses, e.g. "Card A (x2), Card B (x1), Card C (x3)". `[Kartenname]` still works and always
+**every** card drawn in the pack, each with its own rarity and "how many do you now own" count in
+parentheses, e.g. "Card A (Legendary, x2), Card B (Rare, x1), Card C (Epic, x3)". `[Kartenname]` still works and always
 refers to the **first** card in the pack.
 
 There's also an **automatic help message**: at configurable intervals (after X minutes and/or
@@ -1857,9 +1858,10 @@ de puces cliquables au-dessus de chaque champ de texte et s'insèrent d'un clic.
 
 Pour la commande `!pack` et le message général après tirage (le message de succès partagé par les
 déclencheurs points de chaîne/bits/tournoi/etc.), il existe aussi la variable `[Kartenliste]` :
-elle liste **toutes** les cartes tirées dans le pack, chacune avec son propre décompte « combien
-en possédez-vous maintenant » entre parenthèses, par ex. « Carte A (x2), Carte B (x1), Carte C
-(x3) ». `[Kartenname]` fonctionne toujours et désigne toujours la **première** carte du pack.
+elle liste **toutes** les cartes tirées dans le pack, chacune avec sa propre rareté et son décompte
+« combien en possédez-vous maintenant » entre parenthèses, par ex. « Carte A (Légendaire, x2),
+Carte B (Rare, x1), Carte C (Épique, x3) ». `[Kartenname]` fonctionne toujours et désigne toujours
+la **première** carte du pack.
 
 Il existe aussi un **message d'aide automatique** : à intervalles configurables (après X minutes
 et/ou après X messages de chat), il poste dans le chat un aperçu de toutes les commandes activées.
@@ -2639,9 +2641,10 @@ de cada campo de texto y se insertan con un clic.
 
 Para el comando `!pack` y el mensaje general tras la tirada (el mensaje de éxito compartido por
 los disparadores de puntos de canal/bits/torneo/etc.), también existe la variable
-`[Kartenliste]`: lista **todas** las cartas obtenidas en el sobre, cada una con su propio contador
-de "cuántas tienes ahora" entre paréntesis, p. ej. "Carta A (x2), Carta B (x1), Carta C (x3)".
-`[Kartenname]` sigue funcionando y siempre se refiere a la **primera** carta del sobre.
+`[Kartenliste]`: lista **todas** las cartas obtenidas en el sobre, cada una con su propia rareza y
+contador de "cuántas tienes ahora" entre paréntesis, p. ej. "Carta A (Legendaria, x2), Carta B
+(Rara, x1), Carta C (Épica, x3)". `[Kartenname]` sigue funcionando y siempre se refiere a la
+**primera** carta del sobre.
 
 También existe un **mensaje de ayuda automático**: a intervalos configurables (tras X minutos y/o
 tras X mensajes de chat), publica en el chat un resumen de todos los comandos activados. La opción
@@ -3377,8 +3380,9 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 
 สำหรับคำสั่ง `!pack` และข้อความหลังจับการ์ดทั่วไป (ข้อความสำเร็จที่ใช้ร่วมกันโดยตัวกระตุ้นแชนแนล
 พอยท์/บิต/ทัวร์นาเมนต์ ฯลฯ) ยังมีตัวแปร `[Kartenliste]` เพิ่มเติม: จะแสดงรายชื่อการ์ด**ทุกใบ**
-ที่จับได้ในแพ็กนั้น พร้อมจำนวน "ตอนนี้มีกี่ใบแล้ว" ในวงเล็บของแต่ละใบ เช่น "การ์ด A (x2), การ์ด B
-(x1), การ์ด C (x3)" ส่วน `[Kartenname]` ยังใช้งานได้เหมือนเดิม และหมายถึงการ์ด**ใบแรก**ในแพ็กเสมอ
+ที่จับได้ในแพ็กนั้น พร้อมระดับความหายากและจำนวน "ตอนนี้มีกี่ใบแล้ว" ในวงเล็บของแต่ละใบ เช่น
+"การ์ด A (ตำนาน, x2), การ์ด B (หายาก, x1), การ์ด C (พิเศษ, x3)" ส่วน `[Kartenname]` ยังใช้งานได้
+เหมือนเดิม และหมายถึงการ์ด**ใบแรก**ในแพ็กเสมอ
 
 นอกจากนี้ยังมี**ข้อความช่วยเหลืออัตโนมัติ**: ที่ช่วงเวลาที่ตั้งค่าได้ (หลังจาก X นาที และ/หรือ
 หลังจาก X ข้อความแชท) ระบบจะโพสต์สรุปคำสั่งที่เปิดใช้งานทั้งหมดลงในแชท ตัวเลือก
