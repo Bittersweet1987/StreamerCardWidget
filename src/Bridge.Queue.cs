@@ -540,10 +540,11 @@ private void SendDrawPostMessage(Dictionary<string, object> item, string cardTit
             string rarityLabel = String.IsNullOrEmpty(cardId) ? "" : RarityLabel(server.CardRarity(cardId), rarityLang);
             string sourceLabel = SourceLabel(source, rarityLang);
             // [Kartenliste]: every card from a multi-card pack (see "Karten pro Pack"), comma-
-            // separated, each with its own owned-count in parentheses (e.g. "Karte A (x2), Karte B
-            // (x1)") - read the SAME way [Besitz] is for a single card, just once per card here.
-            // Falls back to the single card name if this item predates cardTitles/cardIds (older
-            // cached queue state) or only ever held one card.
+            // separated, each with its own rarity and owned-count in parentheses (e.g. "Karte A
+            // (Legendaer, x2), Karte B (Selten, x1)") - read the SAME way [Seltenheit]/[Besitz] are
+            // for a single card, just once per card here. Falls back to the single card name if
+            // this item predates cardTitles/cardIds (older cached queue state) or only ever held
+            // one card.
             string cardList = cardT;
             object cardTitlesObj, cardIdsForListObj;
             if (item.TryGetValue("cardTitles", out cardTitlesObj) && cardTitlesObj is object[] && ((object[])cardTitlesObj).Length > 0)
@@ -556,12 +557,16 @@ private void SendDrawPostMessage(Dictionary<string, object> item, string cardTit
                     string title = Convert.ToString(titlesArr[i]);
                     if (String.IsNullOrEmpty(title)) continue;
                     string idForThis = i < idsArr.Length ? Convert.ToString(idsArr[i]) : "";
+                    string rarityForThis = String.IsNullOrEmpty(idForThis) ? "" : RarityLabel(server.CardRarity(idForThis), rarityLang);
                     string ownedForThis = "";
                     if (!String.IsNullOrEmpty(login) && !String.IsNullOrEmpty(idForThis) && !String.IsNullOrEmpty(boosterId))
                     {
                         ownedForThis = server.GetCardCount(login, boosterId, idForThis).ToString();
                     }
-                    listParts.Add(String.IsNullOrEmpty(ownedForThis) ? title : title + " (x" + ownedForThis + ")");
+                    var detailParts = new List<string>();
+                    if (!String.IsNullOrEmpty(rarityForThis)) detailParts.Add(rarityForThis);
+                    if (!String.IsNullOrEmpty(ownedForThis)) detailParts.Add("x" + ownedForThis);
+                    listParts.Add(detailParts.Count > 0 ? title + " (" + String.Join(", ", detailParts.ToArray()) + ")" : title);
                 }
                 if (listParts.Count > 0) cardList = String.Join(", ", listParts.ToArray());
             }
