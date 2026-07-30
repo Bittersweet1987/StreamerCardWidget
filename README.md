@@ -170,6 +170,10 @@ Ein **Booster** ist ein Karten-Pack mit einer eigenen Kanalpunkte-Belohnung.
      wählt zufällig unter **allen aktivierten Boostern** einen aus, gewichtet nach diesem Wert
      (höher = häufiger). Gilt unabhängig davon, welche Belohnung oder welcher Befehl die Ziehung
      ausgelöst hat.
+   - **Karten pro Pack** – überschreibt für diesen Booster, wie viele Karten ein Pack aufdeckt.
+     **0** übernimmt den globalen Standardwert (Einstellungen → Darstellung & Sounds, siehe
+     [dort](#darstellung--sounds)), ein Wert **≥ 1** gilt nur für diesen Booster – egal ob er über
+     Kanalpunkte, `!pack` oder ein gezielt genanntes Pack gezogen wird.
 3. **Karten zuordnen**: In der Booster-Ansicht die gewünschten Karten anhaken (max. **100** pro Booster).
    Bereits einem anderen Booster zugeordnete Karten werden ausgeblendet – jede Karte gehört zu genau einem Booster.
 4. Speichern nicht vergessen (Button **Speichern** oben rechts).
@@ -263,16 +267,29 @@ Pro Booster wird eine Twitch-Kanalpunkte-Belohnung verwaltet (Tab **Verbindung**
   ordnet sie dem aktuell gewählten Booster zu.
 
 Löst ein Zuschauer die Belohnung ein, zieht die App serverseitig genau **einen** zufälligen
-Booster (gewichtet nach Score) und **eine** Karte (gewichtet nach Seltenheit) und spielt die
-Pack-Animation im Overlay ab.
+Booster (gewichtet nach Score) und – je nach **Karten pro Pack** (Einstellungen →
+Darstellung & Sounds, pro Booster überschreibbar, siehe [Booster anlegen](#booster-anlegen)) –
+eine oder mehrere Karten (jeweils gewichtet nach Seltenheit) und spielt die Pack-Animation im
+Overlay ab.
 
 <p align="center"><img src="docs/media/pack-open.gif" alt="Pack-Animation Vorschau" width="480"></p>
+
+Deckt ein Pack **mehrere Karten** auf, reißt es wie gewohnt **einmal** auf, danach werden die
+Karten **nacheinander** enthüllt – zuerst die vorderste, dann die dahinterliegende, wie beim
+Öffnen eines echten physischen Kartenpacks. Jede Karte bekommt dabei ihren **eigenen** Holo-Alarm
+(falls sie Holo ist), ihre eigene Sammlungszähler-Blase und ihre eigene Discord-Benachrichtigung.
+**Pity-System, Community-Ziel und Booster-Treue-Bonus** zählen jede Karte im Pack **einzeln**, so
+als wäre sie für sich allein gezogen worden – nicht das Pack als Ganzes. Das gilt gleichermaßen,
+egal ob das Pack über Kanalpunkte, `!pack` oder ein gezielt gewähltes Pack gezogen wurde.
 
 Optional kannst du (unter der Beschreibung) per Checkbox eine **Chat-Nachricht nach dem Ziehen**
 aktivieren – sie wird gesendet, sobald die Animation fertig ist, und kann die gezogene Karte
 benennen. Standard: `@userName hat [Kartenname] aus [Boostername] gezogen.` Die Variablen
 `@userName`, `[Kartenname]` und `[Boostername]` fügst du per Klick ein. Hat ein Booster einen
 **Untertitel** gesetzt (Booster-Ansicht), wird er automatisch mit angezeigt (z. B. „Anime Staffel 2").
+Bei einem Pack mit **mehreren Karten** bezieht sich `[Kartenname]` weiterhin nur auf die **erste**
+gezogene Karte – für alle Karten des Packs gibt es die Variable `[Kartenliste]` (siehe
+[Chat-Befehle](#chat-befehle)).
 
 ---
 
@@ -312,7 +329,9 @@ eigenen **Aktiviert**-Schalter – es gibt keinen globalen Hauptschalter mehr.
   - **Cooldown pro Viewer** (Sekunden, gilt strikt pro Nutzer).
   - Anpassbare Chat-Nachrichten für **Einlösung**, **erreichtes Limit** und **aktiven Cooldown**.
     Die Einlösungs-Nachricht kommt **nach der Animation** und kann die Karte benennen
-    (Standard `@userName hat [Kartenname] aus [Boostername] gezogen.`).
+    (Standard `@userName hat [Kartenname] aus [Boostername] gezogen.`) – bei mehreren Karten pro
+    Pack lässt sich mit `[Kartenliste]` (siehe unten) statt bzw. zusätzlich zu `[Kartenname]` jede
+    gezogene Karte einzeln auflisten.
 - **Sammlung-Befehl** (Standard `!collection`) – entspricht dem Sammlungs-Showcase.
   Ohne Limit, ohne Cooldown, ohne Zählung. Zusätzlich (per Schalter „Kartennamen zusätzlich im
   Chat auflisten", standardmäßig an) listet der Befehl alle eigenen Kartennamen direkt im Chat
@@ -328,6 +347,12 @@ eigenen **Aktiviert**-Schalter – es gibt keinen globalen Hauptschalter mehr.
 Alle Nachrichten lassen sich frei bearbeiten. Die verfügbaren **Variablen** (z. B. `@userName`,
 `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) stehen als anklickbare Chips über dem
 jeweiligen Textfeld und werden per Klick eingefügt.
+
+Für den `!pack`-Befehl und die allgemeine Nachricht nach dem Ziehen (die von Kanalpunkten, Bits,
+Turnier usw. gemeinsam genutzte Erfolgsnachricht) gibt es zusätzlich die Variable
+`[Kartenliste]`: sie listet **alle** in diesem Pack gezogenen Karten auf, jede mit ihrer eigenen
+„wie viele besitzt du jetzt"-Anzahl in Klammern, z. B. „Karte A (x2), Karte B (x1), Karte C (x3)".
+`[Kartenname]` funktioniert weiterhin und bezieht sich dabei immer auf die **erste** Karte im Pack.
 
 Zusätzlich gibt es eine **automatische Hilfe-Nachricht**: sie postet in wählbaren Abständen
 (nach X Minuten und/oder nach X Chat-Nachrichten) eine Übersicht aller aktivierten Befehle im
@@ -685,6 +710,9 @@ Im Tab **Einstellungen**:
 - **Position Einlöser-Name** im Overlay: Unten / Oben.
 - **Sounds** für Öffnen, Reveal, Tausch und Kampf + **Lautstärke**.
 - **Timing**: Karte sichtbar (Sek.), Cooldown, verdeckte Karten vor dem Reveal.
+- **Karten pro Pack** (Bereich Pack-Animation) – globaler Standardwert, wie viele Karten ein Pack
+  aufdeckt (Standard: **1**, bisheriges Verhalten bleibt also unverändert, solange du hier nichts
+  änderst). Einzelne Booster können diesen Wert überschreiben (siehe [Booster anlegen](#booster-anlegen)).
 
 Sprache (**DE / EN / FR / ES / TH**) und Modus (**Hell ☀ / Dunkel 🌙**) schaltest du jederzeit über
 die beiden Schalter unten links in der Navigation um.
@@ -918,6 +946,10 @@ A **booster** is a card pack with its own channel-points reward.
    - **Score (weighting)** - every draw (channel points, `!pack`, tournament/team-battle bonus …)
      picks a random booster among **all enabled boosters**, weighted by this value (higher = more
      frequent). Applies regardless of which reward or command triggered the draw.
+   - **Cards per pack** - overrides how many cards a pack from this booster reveals. **0** inherits
+     the global default (Settings → Appearance & sounds, see [there](#en-appearance--sounds)); a
+     value **≥ 1** applies only to this booster - whether it's drawn via channel points, `!pack`, or
+     a specifically-named pack.
 3. **Assign cards**: in the booster view, check the desired cards (max **100** per booster).
    Cards already assigned to another booster are hidden - each card belongs to exactly one
    booster.
@@ -1006,16 +1038,27 @@ section):
   currently selected booster.
 
 When a viewer redeems the reward, the app draws exactly **one** random booster (weighted by
-score) and **one** card (weighted by rarity) server-side, and plays the pack animation in the
-overlay.
+score) server-side and, depending on **Cards per pack** (Settings → Appearance & sounds,
+overridable per booster, see [Create boosters](#en-create-boosters)), one or more cards (each
+weighted by rarity), then plays the pack animation in the overlay.
 
 <p align="center"><img src="docs/media/pack-open.gif" alt="Pack animation preview" width="480"></p>
+
+When a pack reveals **more than one card**, it still tears open just **once**, then the cards are
+revealed **one at a time** - the front card first, then the one behind it, just like opening a
+real physical trading-card pack. Each card gets its own Holo Alarm (if it happens to be Holo), its
+own collection counter bubble, and its own Discord notification. **The pity system, community
+goal and booster loyalty streak** all count every card in the pack **individually**, as if each
+had been drawn on its own - not the pack as a whole. This applies the same way whether the pack
+was drawn via channel points, `!pack`, or a specifically-named pack.
 
 Optionally (under the description) you can enable a **chat message after drawing** via a
 checkbox - it's sent once the animation is finished and can name the drawn card. Default:
 `@userName hat [Kartenname] aus [Boostername] gezogen.` (the bracketed tokens stay in German and
 are replaced literally). Insert `@userName`, `[Kartenname]` and `[Boostername]` with a click. If a
 booster has a **subtitle** set (booster view), it's shown automatically too (e.g. "Anime Season 2").
+For a pack with **multiple cards**, `[Kartenname]` still refers only to the **first** card drawn -
+use `[Kartenliste]` to list every card in the pack (see [Chat commands](#en-chat-commands)).
 
 <a id="en-collection-showcase"></a>
 ### Collection showcase
@@ -1053,7 +1096,8 @@ is no global master switch anymore.
   - **Cooldown per viewer** (seconds, strictly per user).
   - Customizable chat messages for **redemption**, **limit reached** and **active cooldown**. The
     redemption message is sent **after the animation** and can name the card (default `@userName
-    hat [Kartenname] aus [Boostername] gezogen.`).
+    hat [Kartenname] aus [Boostername] gezogen.`) - for packs with multiple cards, use
+    `[Kartenliste]` (see below) instead of or alongside `[Kartenname]` to list every card drawn.
 - **Collection command** (default `!collection`) - matches the collection showcase. No limit, no
   cooldown, no tracking. Additionally (toggle "also list card names in chat", on by default) the
   command lists all of the caller's own card names directly in chat (with a count for duplicates,
@@ -1068,6 +1112,12 @@ is no global master switch anymore.
 All messages can be freely edited. The available **variables** (e.g. `@userName`, `[Kartenname]`,
 `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) appear as clickable chips above each text field and
 get inserted with a click.
+
+For the `!pack` command and the general post-draw message (the success message shared by channel
+points, bits, tournament, etc. triggers), there's also the `[Kartenliste]` variable: it lists
+**every** card drawn in the pack, each with its own "how many do you now own" count in
+parentheses, e.g. "Card A (x2), Card B (x1), Card C (x3)". `[Kartenname]` still works and always
+refers to the **first** card in the pack.
 
 There's also an **automatic help message**: at configurable intervals (after X minutes and/or
 after X chat messages) it posts an overview of all enabled commands to chat. The **"Only send
@@ -1393,6 +1443,9 @@ In the **Settings** tab:
 - **Redeemer name position** in the overlay: bottom/top.
 - **Sounds** for open, reveal, trade and battle + **volume**.
 - **Timing**: card visible (sec.), cooldown, face-down cards before the reveal.
+- **Cards per pack** (Pack animation section) - global default for how many cards a pack reveals
+  (default: **1**, so existing behavior stays unchanged unless you opt in). Individual boosters can
+  override this value (see [Create boosters](#en-create-boosters)).
 
 Language (**DE/EN/FR/ES/TH**) and mode (**light ☀/dark 🌙**) can be switched anytime via the two
 toggles at the bottom left of the navigation.
@@ -1621,6 +1674,10 @@ Un **booster** est un pack de cartes avec sa propre récompense à points de cha
      d'équipe …) choisit aléatoirement un booster parmi **tous les boosters activés**, pondéré
      selon cette valeur (plus élevé = plus fréquent). S'applique quelle que soit la récompense ou
      la commande ayant déclenché le tirage.
+   - **Cartes par pack** – remplace, pour ce booster, le nombre de cartes révélées par un pack.
+     **0** reprend la valeur par défaut globale (Paramètres → Apparence et sons, voir
+     [ci-dessous](#fr-apparence-et-sons)) ; une valeur **≥ 1** ne s'applique qu'à ce booster – que
+     le pack soit tiré via les points de chaîne, `!pack` ou un pack nommé spécifiquement.
 3. **Associer des cartes** : dans la vue booster, cochez les cartes souhaitées (max **100** par
    booster). Les cartes déjà associées à un autre booster sont masquées – chaque carte appartient
    à exactement un booster.
@@ -1716,17 +1773,29 @@ Une récompense à points de chaîne Twitch est gérée par booster (onglet **Co
   l'associe au booster actuellement sélectionné.
 
 Lorsqu'un spectateur échange la récompense, l'app tire côté serveur exactement **un** booster
-aléatoire (pondéré par le score) et **une** carte (pondérée par la rareté), puis joue l'animation
-de pack dans l'overlay.
+aléatoire (pondéré par le score) puis, selon **Cartes par pack** (Paramètres → Apparence et sons,
+remplaçable par booster, voir [Créer des boosters](#fr-créer-des-boosters)), une ou plusieurs
+cartes (chacune pondérée par la rareté), puis joue l'animation de pack dans l'overlay.
 
 <p align="center"><img src="docs/media/pack-open.gif" alt="Aperçu de l'animation de pack" width="480"></p>
+
+Quand un pack révèle **plusieurs cartes**, il ne s'ouvre qu'**une seule fois** comme d'habitude,
+puis les cartes sont révélées **une par une** – d'abord celle du dessus, puis celle en dessous,
+comme à l'ouverture d'un vrai paquet de cartes physique. Chaque carte a droit à sa propre Holo
+Alarm (si elle est Holo), sa propre bulle de compteur de collection et sa propre notification
+Discord. Le **système de pitié, l'objectif communautaire et le bonus de fidélité de booster**
+comptent chaque carte du pack **individuellement**, comme si elle avait été tirée seule – pas le
+pack dans son ensemble. Cela s'applique de la même façon, que le pack soit tiré via les points de
+chaîne, `!pack` ou un pack nommé spécifiquement.
 
 Vous pouvez optionnellement (sous la description) activer via une case à cocher un **message de
 chat après le tirage** – il est envoyé une fois l'animation terminée et peut nommer la carte
 tirée. Par défaut : `@userName hat [Kartenname] aus [Boostername] gezogen.` (les jetons entre
 crochets restent en allemand et sont remplacés littéralement). Insérez `@userName`, `[Kartenname]`
 et `[Boostername]` d'un clic. Si un booster a un **sous-titre** défini (vue booster), il est
-affiché automatiquement aussi (par ex. « Anime Saison 2 »).
+affiché automatiquement aussi (par ex. « Anime Saison 2 »). Pour un pack à **plusieurs cartes**,
+`[Kartenname]` continue de désigner uniquement la **première** carte tirée – utilisez
+`[Kartenliste]` pour lister toutes les cartes du pack (voir [Commandes de chat](#fr-commandes-de-chat)).
 
 <a id="fr-vitrine-de-collection"></a>
 ### Vitrine de collection
@@ -1766,7 +1835,9 @@ global.
   - **Temps de recharge par spectateur** (secondes, strictement par utilisateur).
   - Messages de chat personnalisables pour **l'échange**, **la limite atteinte** et **le temps de
     recharge actif**. Le message d'échange arrive **après l'animation** et peut nommer la carte
-    (par défaut `@userName hat [Kartenname] aus [Boostername] gezogen.`).
+    (par défaut `@userName hat [Kartenname] aus [Boostername] gezogen.`) – pour les packs à
+    plusieurs cartes, utilisez `[Kartenliste]` (voir ci-dessous) à la place ou en complément de
+    `[Kartenname]` pour lister chaque carte tirée.
 - **Commande de collection** (par défaut `!collection`) – correspond à la vitrine de collection.
   Sans limite, sans temps de recharge, sans comptage. De plus (via l'interrupteur « lister aussi
   les noms de cartes dans le chat », activé par défaut), la commande liste tous les noms de
@@ -1783,6 +1854,12 @@ global.
 Tous les messages peuvent être librement modifiés. Les **variables** disponibles (par ex.
 `@userName`, `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) apparaissent sous forme
 de puces cliquables au-dessus de chaque champ de texte et s'insèrent d'un clic.
+
+Pour la commande `!pack` et le message général après tirage (le message de succès partagé par les
+déclencheurs points de chaîne/bits/tournoi/etc.), il existe aussi la variable `[Kartenliste]` :
+elle liste **toutes** les cartes tirées dans le pack, chacune avec son propre décompte « combien
+en possédez-vous maintenant » entre parenthèses, par ex. « Carte A (x2), Carte B (x1), Carte C
+(x3) ». `[Kartenname]` fonctionne toujours et désigne toujours la **première** carte du pack.
 
 Il existe aussi un **message d'aide automatique** : à intervalles configurables (après X minutes
 et/ou après X messages de chat), il poste dans le chat un aperçu de toutes les commandes activées.
@@ -2144,6 +2221,9 @@ Dans l'onglet **Paramètres** :
 - **Position du nom du bénéficiaire** dans l'overlay : bas/haut.
 - **Sons** pour l'ouverture, la révélation, l'échange et le combat + **volume**.
 - **Timing** : carte visible (sec.), temps de recharge, cartes face cachée avant la révélation.
+- **Cartes par pack** (section Animation de pack) – valeur par défaut globale du nombre de cartes
+  révélées par un pack (par défaut : **1**, donc le comportement existant reste inchangé tant que
+  vous ne modifiez rien ici). Chaque booster peut la remplacer (voir [Créer des boosters](#fr-créer-des-boosters)).
 
 La langue (**DE/EN/FR/ES/TH**) et le mode (**clair ☀/sombre 🌙**) se changent à tout moment via
 les deux interrupteurs en bas à gauche de la navigation.
@@ -2378,6 +2458,10 @@ Un **sobre** es un pack de cartas con su propia recompensa de puntos de canal.
      de equipo …) elige aleatoriamente un sobre entre **todos los sobres activados**, ponderado
      según este valor (más alto = más frecuente). Se aplica independientemente de qué recompensa o
      comando haya activado la tirada.
+   - **Cartas por sobre** – sobrescribe, para este sobre, cuántas cartas revela un pack. **0**
+     hereda el valor por defecto global (Ajustes → Apariencia y sonidos, ver [más abajo](#es-apariencia-y-sonidos));
+     un valor **≥ 1** se aplica solo a este sobre – ya sea que se tire mediante puntos de canal,
+     `!pack` o un sobre nombrado específicamente.
 3. **Asignar cartas**: en la vista del sobre, marca las cartas deseadas (máx. **100** por sobre).
    Las cartas ya asignadas a otro sobre se ocultan – cada carta pertenece a exactamente un sobre.
 4. No olvides guardar (botón **Guardar** arriba a la derecha).
@@ -2471,17 +2555,29 @@ Se gestiona una recompensa de puntos de canal de Twitch por sobre (pestaña **Co
   sobre actualmente seleccionado.
 
 Cuando un espectador canjea la recompensa, la app saca en el servidor exactamente **un** sobre
-aleatorio (ponderado por puntuación) y **una** carta (ponderada por rareza), y reproduce la
-animación de sobre en el overlay.
+aleatorio (ponderado por puntuación) y, según **Cartas por sobre** (Ajustes → Apariencia y
+sonidos, sobrescribible por sobre, ver [Crear sobres](#es-crear-sobres)), una o varias cartas
+(cada una ponderada por rareza), y reproduce la animación de sobre en el overlay.
 
 <p align="center"><img src="docs/media/pack-open.gif" alt="Vista previa de la animación de sobre" width="480"></p>
+
+Cuando un sobre revela **más de una carta**, se abre **una sola vez** como de costumbre, y luego
+las cartas se revelan **una por una** – primero la de delante, luego la que está detrás, como al
+abrir un paquete de cartas físico real. Cada carta recibe su propia Alarma Holo (si resulta ser
+Holo), su propia burbuja de contador de colección y su propia notificación de Discord. **El
+sistema de compasión, el objetivo comunitario y la racha de fidelidad del sobre** cuentan cada
+carta del sobre **individualmente**, como si se hubiera sacado por separado – no el sobre en
+conjunto. Esto se aplica igual sin importar si el sobre se sacó mediante puntos de canal, `!pack`
+o un sobre nombrado específicamente.
 
 Opcionalmente (bajo la descripción) puedes activar mediante una casilla un **mensaje de chat tras
 la tirada** – se envía en cuanto termina la animación y puede nombrar la carta obtenida. Por
 defecto: `@userName hat [Kartenname] aus [Boostername] gezogen.` (los tokens entre corchetes
 permanecen en alemán y se sustituyen literalmente). Inserta `@userName`, `[Kartenname]` y
 `[Boostername]` con un clic. Si un sobre tiene un **subtítulo** configurado (vista del sobre),
-también se muestra automáticamente (p. ej. "Anime Temporada 2").
+también se muestra automáticamente (p. ej. "Anime Temporada 2"). Para un sobre con **varias
+cartas**, `[Kartenname]` sigue refiriéndose solo a la **primera** carta sacada – usa
+`[Kartenliste]` para listar todas las cartas del sobre (ver [Comandos de chat](#es-comandos-de-chat)).
 
 <a id="es-vitrina-de-colección"></a>
 ### Vitrina de colección
@@ -2521,7 +2617,9 @@ global.
   - **Tiempo de espera por espectador** (segundos, estrictamente por usuario).
   - Mensajes de chat personalizables para **canje**, **límite alcanzado** y **tiempo de espera
     activo**. El mensaje de canje llega **después de la animación** y puede nombrar la carta (por
-    defecto `@userName hat [Kartenname] aus [Boostername] gezogen.`).
+    defecto `@userName hat [Kartenname] aus [Boostername] gezogen.`) – para sobres con varias
+    cartas, usa `[Kartenliste]` (ver más abajo) en lugar de o junto con `[Kartenname]` para listar
+    cada carta obtenida.
 - **Comando de colección** (por defecto `!collection`) – corresponde a la vitrina de colección.
   Sin límite, sin tiempo de espera, sin conteo. Además (mediante el interruptor "listar también
   los nombres de cartas en el chat", activado por defecto), el comando lista todos los nombres de
@@ -2538,6 +2636,12 @@ global.
 Todos los mensajes se pueden editar libremente. Las **variables** disponibles (p. ej. `@userName`,
 `[Kartenname]`, `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) aparecen como chips clicables encima
 de cada campo de texto y se insertan con un clic.
+
+Para el comando `!pack` y el mensaje general tras la tirada (el mensaje de éxito compartido por
+los disparadores de puntos de canal/bits/torneo/etc.), también existe la variable
+`[Kartenliste]`: lista **todas** las cartas obtenidas en el sobre, cada una con su propio contador
+de "cuántas tienes ahora" entre paréntesis, p. ej. "Carta A (x2), Carta B (x1), Carta C (x3)".
+`[Kartenname]` sigue funcionando y siempre se refiere a la **primera** carta del sobre.
 
 También existe un **mensaje de ayuda automático**: a intervalos configurables (tras X minutos y/o
 tras X mensajes de chat), publica en el chat un resumen de todos los comandos activados. La opción
@@ -2890,6 +2994,9 @@ En la pestaña **Ajustes**:
 - **Posición del nombre del canjeador** en el overlay: abajo/arriba.
 - **Sonidos** para abrir, revelar, intercambiar y combatir + **volumen**.
 - **Tiempos**: carta visible (seg.), tiempo de espera, cartas boca abajo antes de la revelación.
+- **Cartas por sobre** (sección Animación de sobre) – valor por defecto global de cuántas cartas
+  revela un sobre (por defecto: **1**, así que el comportamiento existente no cambia salvo que lo
+  actives aquí). Cada sobre individual puede sobrescribirlo (ver [Crear sobres](#es-crear-sobres)).
 
 El idioma (**DE/EN/FR/ES/TH**) y el modo (**claro ☀/oscuro 🌙**) se cambian en cualquier momento
 mediante los dos interruptores abajo a la izquierda de la navegación.
@@ -3108,6 +3215,9 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
    - **คะแนน (การถ่วงน้ำหนัก)** – การจับทุกครั้ง (แชนแนลพอยท์, `!pack`, โบนัสทัวร์นาเมนต์/
      การต่อสู้ทีม ...) จะสุ่มเลือกบูสเตอร์หนึ่งจาก**บูสเตอร์ที่เปิดใช้งานทั้งหมด** ถ่วงน้ำหนัก
      ตามค่านี้ (ค่าสูง = บ่อยกว่า) มีผลไม่ว่ารางวัลหรือคำสั่งใดจะเป็นตัวเริ่มการจับ
+   - **จำนวนการ์ดต่อแพ็ก** – กำหนดเฉพาะบูสเตอร์นี้ว่าแพ็กจะเปิดการ์ดกี่ใบ **0** จะใช้ค่าเริ่มต้น
+     ส่วนกลาง (ตั้งค่า → รูปลักษณ์และเสียง ดู[ด้านล่าง](#th-รูปลักษณ์และเสียง)) ส่วนค่า **≥ 1**
+     จะมีผลเฉพาะบูสเตอร์นี้เท่านั้น – ไม่ว่าจะจับผ่านแชนแนลพอยท์, `!pack` หรือแพ็กที่เจาะจงชื่อ
 3. **กำหนดการ์ด**: ในหน้าบูสเตอร์ ให้ติ๊กเลือกการ์ดที่ต้องการ (สูงสุด **100** ใบต่อบูสเตอร์)
    การ์ดที่กำหนดให้บูสเตอร์อื่นแล้วจะถูกซ่อน – การ์ดแต่ละใบเป็นของบูสเตอร์เดียวเท่านั้น
 4. อย่าลืมบันทึก (ปุ่ม **บันทึก** ด้านขวาบน)
@@ -3191,16 +3301,27 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
   คูลดาวน์รวม หยุดชั่วคราว เปิดใช้งาน**
 - **บันทึก/อัปเดต** จะสร้างหรืออัปเดตรางวัลโดยตรงบน Twitch และกำหนดให้กับบูสเตอร์ที่เลือกอยู่
 
-เมื่อผู้ชมแลกรางวัล แอปจะสุ่มจับบูสเตอร์หนึ่งอัน (ถ่วงน้ำหนักตามคะแนน) และการ์ดหนึ่งใบ
-(ถ่วงน้ำหนักตามความหายาก) ที่ฝั่งเซิร์ฟเวอร์ แล้วเล่นแอนิเมชันแพ็กในโอเวอร์เลย์
+เมื่อผู้ชมแลกรางวัล แอปจะสุ่มจับบูสเตอร์หนึ่งอัน (ถ่วงน้ำหนักตามคะแนน) ที่ฝั่งเซิร์ฟเวอร์ แล้วตาม
+**จำนวนการ์ดต่อแพ็ก** (การตั้งค่า → รูปลักษณ์และเสียง ตั้งค่าแยกต่อบูสเตอร์ได้ ดู
+[สร้างบูสเตอร์](#th-สร้างบูสเตอร์)) จับการ์ดหนึ่งใบหรือหลายใบ (แต่ละใบถ่วงน้ำหนักตามความหายาก)
+แล้วเล่นแอนิเมชันแพ็กในโอเวอร์เลย์
 
 <p align="center"><img src="docs/media/pack-open.gif" alt="ตัวอย่างแอนิเมชันเปิดแพ็ก" width="480"></p>
+
+หากแพ็กเปิด**การ์ดมากกว่าหนึ่งใบ** แพ็กจะฉีกเปิดเพียง**ครั้งเดียว**ตามปกติ จากนั้นการ์ดจะถูกเปิด
+เผย**ทีละใบ** – ใบหน้าสุดก่อน แล้วตามด้วยใบที่อยู่ด้านหลัง เหมือนการเปิดแพ็กการ์ดจริงในชีวิตจริง
+การ์ดแต่ละใบจะได้รับ**ฮีโล อลาร์ม**ของตัวเอง (หากเป็นการ์ดโฮโล), ฟองตัวนับคอลเลกชันของตัวเอง และ
+การแจ้งเตือน Discord ของตัวเอง **ระบบ Pity, เป้าหมายชุมชน และสตรีคโบนัสความภักดีของบูสเตอร์**
+จะนับการ์ดทุกใบในแพ็ก**แยกกัน** ราวกับว่าถูกจับทีละใบเอง – ไม่ใช่นับทั้งแพ็กเป็นหนึ่งเดียว
+กฎนี้ใช้เหมือนกันไม่ว่าจะจับแพ็กผ่านแชนแนลพอยท์, `!pack` หรือแพ็กที่เจาะจงชื่อ
 
 คุณสามารถเปิดใช้งาน **ข้อความแชทหลังจับการ์ด** ได้ (ใต้คำอธิบาย ผ่านช่องกาเครื่องหมาย) – จะส่ง
 เมื่อแอนิเมชันจบแล้ว และสามารถระบุชื่อการ์ดที่จับได้ ค่าเริ่มต้น: `@userName hat [Kartenname] aus
 [Boostername] gezogen.` (ตัวแปรในวงเล็บจะคงเป็นภาษาเยอรมันและถูกแทนที่ตามตัวอักษร) แทรก
 `@userName`, `[Kartenname]` และ `[Boostername]` ได้ด้วยการคลิก หากบูสเตอร์มี**คำบรรยายรอง**
-ตั้งไว้ (หน้าบูสเตอร์) จะแสดงโดยอัตโนมัติด้วย (เช่น "Anime Season 2")
+ตั้งไว้ (หน้าบูสเตอร์) จะแสดงโดยอัตโนมัติด้วย (เช่น "Anime Season 2") สำหรับแพ็กที่มี**การ์ด
+หลายใบ** `[Kartenname]` ยังคงหมายถึงการ์ด**ใบแรก**เท่านั้น – ใช้ `[Kartenliste]` เพื่อแสดงรายชื่อ
+การ์ดทั้งหมดในแพ็ก (ดู[คำสั่งแชท](#th-คำสั่งแชท))
 
 <a id="th-โชว์เคสคอลเลกชัน"></a>
 ### โชว์เคสคอลเลกชัน
@@ -3237,7 +3358,8 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
   - **คูลดาวน์ต่อผู้ชม** (วินาที นับต่อผู้ใช้อย่างเคร่งครัด)
   - ข้อความแชทที่ปรับแต่งได้สำหรับ**การแลกรางวัล**, **ถึงขีดจำกัด** และ**คูลดาวน์ที่ใช้งานอยู่**
     ข้อความแลกรางวัลจะมา**หลังแอนิเมชัน**และสามารถระบุชื่อการ์ดได้ (ค่าเริ่มต้น `@userName hat
-    [Kartenname] aus [Boostername] gezogen.`)
+    [Kartenname] aus [Boostername] gezogen.`) – สำหรับแพ็กที่มีการ์ดหลายใบ ใช้ `[Kartenliste]`
+    (ดูด้านล่าง) แทนหรือร่วมกับ `[Kartenname]` เพื่อแสดงรายชื่อการ์ดทุกใบที่จับได้
 - **คำสั่งคอลเลกชัน** (ค่าเริ่มต้น `!collection`) – ตรงกับโชว์เคสคอลเลกชัน ไม่มีขีดจำกัด
   ไม่มีคูลดาวน์ ไม่มีการนับ นอกจากนี้ (ผ่านสวิตช์ "แสดงรายชื่อการ์ดในแชทด้วย" เปิดโดยค่าเริ่มต้น)
   คำสั่งจะแสดงรายชื่อการ์ดทั้งหมดของผู้เรียกโดยตรงในแชท (พร้อมจำนวนหากมีมากกว่าหนึ่งใบ เช่น
@@ -3252,6 +3374,11 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 ข้อความทั้งหมดแก้ไขได้อย่างอิสระ **ตัวแปร** ที่ใช้ได้ (เช่น `@userName`, `[Kartenname]`,
 `[Boostername]`, `[Uhrzeit]`, `[Restzeit]`) จะแสดงเป็นชิปที่คลิกได้เหนือช่องข้อความแต่ละช่อง
 และแทรกได้ด้วยการคลิก
+
+สำหรับคำสั่ง `!pack` และข้อความหลังจับการ์ดทั่วไป (ข้อความสำเร็จที่ใช้ร่วมกันโดยตัวกระตุ้นแชนแนล
+พอยท์/บิต/ทัวร์นาเมนต์ ฯลฯ) ยังมีตัวแปร `[Kartenliste]` เพิ่มเติม: จะแสดงรายชื่อการ์ด**ทุกใบ**
+ที่จับได้ในแพ็กนั้น พร้อมจำนวน "ตอนนี้มีกี่ใบแล้ว" ในวงเล็บของแต่ละใบ เช่น "การ์ด A (x2), การ์ด B
+(x1), การ์ด C (x3)" ส่วน `[Kartenname]` ยังใช้งานได้เหมือนเดิม และหมายถึงการ์ด**ใบแรก**ในแพ็กเสมอ
 
 นอกจากนี้ยังมี**ข้อความช่วยเหลืออัตโนมัติ**: ที่ช่วงเวลาที่ตั้งค่าได้ (หลังจาก X นาที และ/หรือ
 หลังจาก X ข้อความแชท) ระบบจะโพสต์สรุปคำสั่งที่เปิดใช้งานทั้งหมดลงในแชท ตัวเลือก
@@ -3558,6 +3685,9 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 - **ตำแหน่งชื่อผู้แลกรางวัล**ในโอเวอร์เลย์: ล่าง/บน
 - **เสียง**สำหรับเปิด เผย แลกเปลี่ยน และต่อสู้ + **ระดับเสียง**
 - **จังหวะเวลา**: การ์ดมองเห็น (วินาที) คูลดาวน์ การ์ดคว่ำก่อนเปิดเผย
+- **จำนวนการ์ดต่อแพ็ก** (ส่วนแอนิเมชันแพ็ก) – ค่าเริ่มต้นส่วนกลางว่าแพ็กจะเปิดการ์ดกี่ใบ
+  (ค่าเริ่มต้น: **1** พฤติกรรมเดิมจึงไม่เปลี่ยนแปลงตราบใดที่คุณไม่ปรับค่านี้) แต่ละบูสเตอร์
+  สามารถกำหนดค่าของตัวเองแทนได้ (ดู[สร้างบูสเตอร์](#th-สร้างบูสเตอร์))
 
 ภาษา (**DE/EN/FR/ES/TH**) และโหมด (**สว่าง ☀/มืด 🌙**) สลับได้ทุกเมื่อผ่านสวิตช์สองอันด้านล่าง
 ซ้ายของเมนูนำทาง
