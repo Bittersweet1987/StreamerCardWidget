@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1785512103";
+} from "./api.js?v=1785519964";
 import {
   applyTheme,
   autoImagePosition,
@@ -72,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1785512103";
+} from "./render.js?v=1785519964";
 
 let settings;
 let selectedCardId;
@@ -4640,17 +4640,22 @@ function extractLanguageBody(body, lang) {
 }
 
 // Pulls "- bullet" lines out of a release's markdown body, grouped under whichever "## Heading"
-// (if any) precedes them - our release notes are always written as short bullet lists under
-// optional section headings, so this stays readable without a full markdown renderer.
+// or "### Heading" (if any) precedes them - our release notes are written as short bullet lists
+// under an optional top-level version heading and New/Fixed sub-headings, so this stays readable
+// without a full markdown renderer. The top-level "## Version X.Y.Z" heading is intentionally
+// skipped as a group label (the version/date is already shown in the entry head above the list).
 function parseReleaseBullets(body) {
   const lines = String(body || "").split(/\r?\n/);
   const groups = [];
   let current = { heading: "", items: [] };
   for (const rawLine of lines) {
     const line = rawLine.trim();
-    if (line.startsWith("## ")) {
+    if (line.startsWith("### ")) {
       if (current.items.length) groups.push(current);
-      current = { heading: line.replace(/^##\s*/, ""), items: [] };
+      current = { heading: line.replace(/^###\s*/, ""), items: [] };
+    } else if (line.startsWith("## ")) {
+      if (current.items.length) groups.push(current);
+      current = { heading: "", items: [] };
     } else if (line.startsWith("- ")) {
       current.items.push(line.slice(2).trim());
     }
