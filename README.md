@@ -278,9 +278,10 @@ Deckt ein Pack **mehrere Karten** auf, reißt es wie gewohnt **einmal** auf, dan
 Karten **nacheinander** enthüllt – zuerst die vorderste, dann die dahinterliegende, wie beim
 Öffnen eines echten physischen Kartenpacks. Jede Karte bekommt dabei ihren **eigenen** Holo-Alarm
 (falls sie Holo ist), ihre eigene Sammlungszähler-Blase und ihre eigene Discord-Benachrichtigung.
-**Pity-System, Community-Ziel und Booster-Treue-Bonus** zählen jede Karte im Pack **einzeln**, so
-als wäre sie für sich allein gezogen worden – nicht das Pack als Ganzes. Das gilt gleichermaßen,
-egal ob das Pack über Kanalpunkte, `!pack` oder ein gezielt gewähltes Pack gezogen wurde.
+**Pity-System und Booster-Treue-Bonus** zählen jede Karte im Pack **einzeln**, so als wäre sie für
+sich allein gezogen worden – nicht das Pack als Ganzes. Das gilt gleichermaßen, egal ob das Pack
+über Kanalpunkte, `!pack` oder ein gezielt gewähltes Pack gezogen wurde. Das **Community-Ziel**
+bildet die Ausnahme: hier zählt ein Pack unabhängig von seiner Kartenzahl nur **einmal**.
 
 Optional kannst du (unter der Beschreibung) per Checkbox eine **Chat-Nachricht nach dem Ziehen**
 aktivieren – sie wird gesendet, sobald die Animation fertig ist, und kann die gezogene Karte
@@ -548,7 +549,7 @@ keine Karte den Besitzer). Der Turniersieger bekommt stattdessen eine konfigurie
 Startbar über **Kanalpunkte-Belohnung** (Tab Verbindung → Channel Points), per **Chat-Befehl**
 („Turnier-Start", Standard `!turnierstart`) oder per Knopf direkt unter **Einstellungen →
 Turnier-Modus**. Dort auch einstellbar: Mindest-Teilnehmerzahl, Anmeldezeit, Kartenanzahl pro
-Aufstellung, sowie ob **auch Runden-Gewinner** (nicht nur der Champion) eine Bonus-Ziehung
+Aufstellung, sowie ob **auch Runden-Gewinner** (nicht nur der Champion) eine Bonus-Pack-Ziehung
 bekommen. Bei ungerader Teilnehmerzahl bekommt einer pro Runde ein **Freilos**.
 
 ---
@@ -574,12 +575,16 @@ Teilnehmer die eingesetzte Karte") verlieren bei einer Niederlage alle Teilnehme
 eingesetzte Karte – dafür gibt es eine eigene, ein-/ausschaltbare Chat-Nachricht pro verlorener
 Karte.
 
-Zusätzlich (unabhängig vom Gesamtsieg) lässt sich eine **Zusatz-Ziehung pro persönlich besiegter
-gegnerischer Karte** aktivieren, mit frei einstellbarer Anzahl und eigener Ankündigungs-Nachricht –
-diese Karten werden erst **am Ende des gesamten Kampfes** vergeben, unabhängig davon, ob die
-Community am Ende gewinnt oder verliert.
+Zusätzlich (unabhängig vom Gesamtsieg) lässt sich eine **Zusatz-Pack-Ziehung pro persönlich
+besiegter gegnerischer Karte** aktivieren, mit frei einstellbarer Anzahl und eigener
+Ankündigungs-Nachricht – diese Zusatz-Packs werden erst **am Ende des gesamten Kampfes** vergeben,
+unabhängig davon, ob die Community am Ende gewinnt oder verliert.
 
 Startbar über **Kanalpunkte-Belohnung** oder per Knopf unter **Einstellungen → Team-Kampf**.
+Alternativ startet der Schalter **„Automatisch startende Team-Kämpfe"** (Tab **Team-Kampf**) im
+Abstand von **„alle X Minuten"** von selbst einen neuen Team-Kampf, ganz ohne Kanalpunkte-Einlösung
+– läuft gerade ein Turnier oder ein anderer Team-Kampf, wird der automatische Start übersprungen
+und beim nächsten Intervall erneut versucht.
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="Team-Kampf HP-Duell Vorschau" width="480"></p>
 
@@ -629,10 +634,12 @@ Umlauf-Anzahl und Scroll-Geschwindigkeit.
 ## Community-Ziel
 
 Ein **gemeinsamer Fortschrittsbalken** über alle Zuschauer hinweg – jede Ziehung (egal ob per
-Kanalpunkte oder Chat-Befehl) zählt +1. Wird das Ziel erreicht, postet der Bot eine
-**Feier-Nachricht** im Chat, die OBS-Quelle zeigt eine **Feier-Animation**, und jeder, der
-mitgezogen hat, bekommt automatisch einen **Bonus-Booster**. Einstellbar unter **Einstellungen →
-Community-Ziel**, inklusive manuellem Zurücksetzen des Fortschritts.
+Kanalpunkte oder Chat-Befehl) zählt +1. Ein Pack mit **mehreren Karten** (siehe **Karten pro
+Pack**) zählt dabei weiterhin nur **einmal** zum Fortschritt, nicht einmal pro enthaltener Karte.
+Wird das Ziel erreicht, postet der Bot eine **Feier-Nachricht** im Chat, die OBS-Quelle zeigt eine
+**Feier-Animation**, und jeder, der mitgezogen hat, bekommt automatisch einen **Bonus-Booster**.
+Einstellbar unter **Einstellungen → Community-Ziel**, inklusive manuellem Zurücksetzen des
+Fortschritts.
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="Community-Ziel Feier-Animation Vorschau" width="480"></p>
 
@@ -1048,10 +1055,11 @@ weighted by rarity), then plays the pack animation in the overlay.
 When a pack reveals **more than one card**, it still tears open just **once**, then the cards are
 revealed **one at a time** - the front card first, then the one behind it, just like opening a
 real physical trading-card pack. Each card gets its own Holo Alarm (if it happens to be Holo), its
-own collection counter bubble, and its own Discord notification. **The pity system, community
-goal and booster loyalty streak** all count every card in the pack **individually**, as if each
-had been drawn on its own - not the pack as a whole. This applies the same way whether the pack
-was drawn via channel points, `!pack`, or a specifically-named pack.
+own collection counter bubble, and its own Discord notification. **The pity system and booster
+loyalty streak** count every card in the pack **individually**, as if each had been drawn on its
+own - not the pack as a whole. This applies the same way whether the pack was drawn via channel
+points, `!pack`, or a specifically-named pack. The **community goal** is the exception: a pack
+counts toward it only **once**, regardless of how many cards it contains.
 
 Optionally (under the description) you can enable a **chat message after drawing** via a
 checkbox - it's sent once the animation is finished and can name the drawn card. Default:
@@ -1299,8 +1307,8 @@ tournament winner instead gets a configurable number of **pack draws**.
 Can be started via a **channel-points reward** (Connection tab → Channel Points), a **chat
 command** ("Tournament start", default `!turnierstart`), or a button directly under **Settings →
 Tournament mode**. Also configurable there: minimum participant count, signup time, cards per
-lineup, and whether **round winners too** (not just the champion) get a bonus draw. With an odd
-number of participants, one gets a **bye** per round.
+lineup, and whether **round winners too** (not just the champion) get a bonus pack draw. With an
+odd number of participants, one gets a **bye** per round.
 
 <a id="en-team-battle"></a>
 ### Team battle
@@ -1321,12 +1329,16 @@ final blow** additionally gets a configurable finisher bonus (its own chat messa
 (toggle "on defeat every participant loses their entered card") everyone loses their entered card
 on a loss - with its own togglable chat message per lost card.
 
-Additionally (independent of the overall win), you can enable an **extra draw per opposing card a
-participant personally defeated**, with a freely configurable count and its own announcement
-message - these cards are only granted **once the whole battle has finished**, regardless of
-whether the community wins or loses overall.
+Additionally (independent of the overall win), you can enable an **extra pack draw per opposing
+card a participant personally defeated**, with a freely configurable count and its own
+announcement message - these bonus packs are only granted **once the whole battle has finished**,
+regardless of whether the community wins or loses overall.
 
 Can be started via a **channel-points reward** or a button under **Settings → Team battle**.
+Alternatively, the **"Automatically start team battles"** toggle (Team battle tab) starts a new
+team battle by itself **every X minutes**, no channel-points redemption needed - if a tournament
+or another team battle is already in progress, the automatic start is skipped and retried at the
+next interval.
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="Team battle HP duel preview" width="480"></p>
 
@@ -1369,10 +1381,11 @@ app start instead of starting empty. Loop count and scroll speed are also config
 ### Community goal
 
 A **shared progress bar** across all viewers - every draw (whether via channel points or chat
-command) counts +1. Once the goal is reached, the bot posts a **celebration message** in chat,
-the OBS source shows a **celebration animation**, and everyone who contributed automatically gets
-a **bonus booster**. Configurable under **Settings → Community goal**, including manually
-resetting progress.
+command) counts +1. A pack with **multiple cards** (see **Cards per pack**) still counts only
+**once** toward progress, not once per card it contains. Once the goal is reached, the bot posts
+a **celebration message** in chat, the OBS source shows a **celebration animation**, and everyone
+who contributed automatically gets a **bonus booster**. Configurable under **Settings → Community
+goal**, including manually resetting progress.
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="Community goal celebration animation preview" width="480"></p>
 
@@ -1784,10 +1797,11 @@ Quand un pack révèle **plusieurs cartes**, il ne s'ouvre qu'**une seule fois**
 puis les cartes sont révélées **une par une** – d'abord celle du dessus, puis celle en dessous,
 comme à l'ouverture d'un vrai paquet de cartes physique. Chaque carte a droit à sa propre Holo
 Alarm (si elle est Holo), sa propre bulle de compteur de collection et sa propre notification
-Discord. Le **système de pitié, l'objectif communautaire et le bonus de fidélité de booster**
-comptent chaque carte du pack **individuellement**, comme si elle avait été tirée seule – pas le
-pack dans son ensemble. Cela s'applique de la même façon, que le pack soit tiré via les points de
-chaîne, `!pack` ou un pack nommé spécifiquement.
+Discord. Le **système de pitié et le bonus de fidélité de booster** comptent chaque carte du pack
+**individuellement**, comme si elle avait été tirée seule – pas le pack dans son ensemble. Cela
+s'applique de la même façon, que le pack soit tiré via les points de chaîne, `!pack` ou un pack
+nommé spécifiquement. L'**objectif communautaire** fait exception : un pack n'y compte qu'**une
+seule fois**, quel que soit le nombre de cartes qu'il contient.
 
 Vous pouvez optionnellement (sous la description) activer via une case à cocher un **message de
 chat après le tirage** – il est envoyé une fois l'animation terminée et peut nommer la carte
@@ -2060,8 +2074,8 @@ Peut être lancé via une **récompense à points de chaîne** (onglet Connexion
 une **commande de chat** (« Démarrage du tournoi », `!turnierstart` par défaut), ou un bouton
 directement sous **Paramètres → Mode tournoi**. Également réglables là : nombre minimum de
 participants, temps d'inscription, nombre de cartes par alignement, et si les **vainqueurs de
-round aussi** (pas seulement le champion) reçoivent un tirage bonus. Avec un nombre impair de
-participants, l'un d'eux reçoit un **bye** par round.
+round aussi** (pas seulement le champion) reçoivent un tirage de pack bonus. Avec un nombre impair
+de participants, l'un d'eux reçoit un **bye** par round.
 
 <a id="fr-combat-déquipe"></a>
 ### Combat d'équipe
@@ -2084,13 +2098,17 @@ finisseur configurable (avec son propre message de chat). En option (interrupteu
 défaite, chaque participant perd la carte engagée »), tout le monde perd sa carte engagée en cas
 de défaite – avec son propre message de chat activable/désactivable par carte perdue.
 
-De plus (indépendamment de la victoire globale), vous pouvez activer un **tirage supplémentaire
-par carte adverse personnellement vaincue** par un participant, avec un nombre librement
-configurable et son propre message d'annonce – ces cartes ne sont attribuées **qu'une fois le
-combat entier terminé**, que la communauté gagne ou perde au final.
+De plus (indépendamment de la victoire globale), vous pouvez activer un **tirage de pack
+supplémentaire par carte adverse personnellement vaincue** par un participant, avec un nombre
+librement configurable et son propre message d'annonce – ces packs bonus ne sont attribués
+**qu'une fois le combat entier terminé**, que la communauté gagne ou perde au final.
 
 Peut être lancé via une **récompense à points de chaîne** ou un bouton sous **Paramètres → Combat
-d'équipe**.
+d'équipe**. Autrement, l'interrupteur **« Combats d'équipe à démarrage automatique »** (onglet
+Combat d'équipe) démarre de lui-même un nouveau combat d'équipe **toutes les X minutes**, sans
+qu'aucune récompense à points de chaîne ne soit échangée – si un tournoi ou un autre combat
+d'équipe est déjà en cours, le démarrage automatique est reporté et retenté à l'intervalle
+suivant.
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="Aperçu du duel à barres de vie du combat d'équipe" width="480"></p>
 
@@ -2139,10 +2157,12 @@ boucles et vitesse de défilement également réglables.
 ### Objectif communautaire
 
 Une **barre de progression partagée** entre tous les spectateurs – chaque tirage (que ce soit via
-points de chaîne ou commande de chat) compte +1. Une fois l'objectif atteint, le bot publie un
-**message de fête** dans le chat, la source OBS affiche une **animation de fête**, et chaque
-participant reçoit automatiquement un **booster bonus**. Réglable sous **Paramètres → Objectif
-communautaire**, y compris la réinitialisation manuelle de la progression.
+points de chaîne ou commande de chat) compte +1. Un pack avec **plusieurs cartes** (voir **Cartes
+par pack**) ne compte toujours qu'**une seule fois** pour la progression, pas une fois par carte
+qu'il contient. Une fois l'objectif atteint, le bot publie un **message de fête** dans le chat, la
+source OBS affiche une **animation de fête**, et chaque participant reçoit automatiquement un
+**booster bonus**. Réglable sous **Paramètres → Objectif communautaire**, y compris la
+réinitialisation manuelle de la progression.
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="Aperçu de l'animation de fête de l'objectif communautaire" width="480"></p>
 
@@ -2567,10 +2587,11 @@ Cuando un sobre revela **más de una carta**, se abre **una sola vez** como de c
 las cartas se revelan **una por una** – primero la de delante, luego la que está detrás, como al
 abrir un paquete de cartas físico real. Cada carta recibe su propia Alarma Holo (si resulta ser
 Holo), su propia burbuja de contador de colección y su propia notificación de Discord. **El
-sistema de compasión, el objetivo comunitario y la racha de fidelidad del sobre** cuentan cada
-carta del sobre **individualmente**, como si se hubiera sacado por separado – no el sobre en
-conjunto. Esto se aplica igual sin importar si el sobre se sacó mediante puntos de canal, `!pack`
-o un sobre nombrado específicamente.
+sistema de compasión y la racha de fidelidad del sobre** cuentan cada carta del sobre
+**individualmente**, como si se hubiera sacado por separado – no el sobre en conjunto. Esto se
+aplica igual sin importar si el sobre se sacó mediante puntos de canal, `!pack` o un sobre
+nombrado específicamente. La **meta comunitaria** es la excepción: un sobre solo cuenta
+**una vez**, sin importar cuántas cartas contenga.
 
 Opcionalmente (bajo la descripción) puedes activar mediante una casilla un **mensaje de chat tras
 la tirada** – se envía en cuanto termina la animación y puede nombrar la carta obtenida. Por
@@ -2840,7 +2861,7 @@ Se puede iniciar mediante una **recompensa de puntos de canal** (pestaña Conexi
 canal), un **comando de chat** ("Inicio de torneo", `!turnierstart` por defecto), o un botón
 directamente en **Ajustes → Modo torneo**. También configurable ahí: número mínimo de
 participantes, tiempo de inscripción, número de cartas por alineación, y si **los ganadores de
-ronda también** (no solo el campeón) reciben una tirada bonus. Con un número impar de
+ronda también** (no solo el campeón) reciben una tirada de sobre bonus. Con un número impar de
 participantes, uno recibe un **pase directo** por ronda.
 
 <a id="es-combate-de-equipo"></a>
@@ -2864,13 +2885,16 @@ configurable (con su propio mensaje de chat). Opcionalmente (interruptor "en cas
 participante pierde la carta usada"), todos pierden la carta que usaron en caso de derrota – con
 su propio mensaje de chat activable/desactivable por carta perdida.
 
-Además (independientemente de la victoria global), puedes activar una **tirada adicional por cada
-carta rival derrotada personalmente** por un participante, con una cantidad libremente
-configurable y su propio mensaje de anuncio – estas cartas solo se otorgan **una vez que todo el
-combate ha terminado**, gane o pierda la comunidad al final.
+Además (independientemente de la victoria global), puedes activar una **tirada de sobre adicional
+por cada carta rival derrotada personalmente** por un participante, con una cantidad libremente
+configurable y su propio mensaje de anuncio – estos sobres bonus solo se otorgan **una vez que
+todo el combate ha terminado**, gane o pierda la comunidad al final.
 
 Se puede iniciar mediante una **recompensa de puntos de canal** o un botón en **Ajustes → Combate
-de equipo**.
+de equipo**. Como alternativa, el interruptor **"Combates de equipo con inicio automático"**
+(pestaña Combate de equipo) inicia por sí solo un nuevo combate de equipo **cada X minutos**, sin
+necesidad de canjear puntos de canal – si ya hay un torneo u otro combate de equipo en curso, el
+inicio automático se omite y se reintenta en el siguiente intervalo.
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="Vista previa del duelo de barras de vida del combate de equipo" width="480"></p>
 
@@ -2919,10 +2943,12 @@ número de repeticiones y la velocidad de desplazamiento.
 ### Meta comunitaria
 
 Una **barra de progreso compartida** entre todos los espectadores – cada tirada (ya sea por
-puntos de canal o comando de chat) suma +1. Al alcanzar la meta, el bot publica un **mensaje de
-celebración** en el chat, la fuente de OBS muestra una **animación de celebración**, y todo el que
-haya contribuido recibe automáticamente un **sobre bonus**. Configurable en **Ajustes → Meta
-comunitaria**, incluido el reinicio manual del progreso.
+puntos de canal o comando de chat) suma +1. Un sobre con **varias cartas** (ver **Cartas por
+sobre**) sigue sumando solo **una vez** al progreso, no una vez por cada carta que contiene. Al
+alcanzar la meta, el bot publica un **mensaje de celebración** en el chat, la fuente de OBS
+muestra una **animación de celebración**, y todo el que haya contribuido recibe automáticamente
+un **sobre bonus**. Configurable en **Ajustes → Meta comunitaria**, incluido el reinicio manual
+del progreso.
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="Vista previa de la animación de celebración de la meta comunitaria" width="480"></p>
 
@@ -3314,9 +3340,10 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 หากแพ็กเปิด**การ์ดมากกว่าหนึ่งใบ** แพ็กจะฉีกเปิดเพียง**ครั้งเดียว**ตามปกติ จากนั้นการ์ดจะถูกเปิด
 เผย**ทีละใบ** – ใบหน้าสุดก่อน แล้วตามด้วยใบที่อยู่ด้านหลัง เหมือนการเปิดแพ็กการ์ดจริงในชีวิตจริง
 การ์ดแต่ละใบจะได้รับ**ฮีโล อลาร์ม**ของตัวเอง (หากเป็นการ์ดโฮโล), ฟองตัวนับคอลเลกชันของตัวเอง และ
-การแจ้งเตือน Discord ของตัวเอง **ระบบ Pity, เป้าหมายชุมชน และสตรีคโบนัสความภักดีของบูสเตอร์**
-จะนับการ์ดทุกใบในแพ็ก**แยกกัน** ราวกับว่าถูกจับทีละใบเอง – ไม่ใช่นับทั้งแพ็กเป็นหนึ่งเดียว
-กฎนี้ใช้เหมือนกันไม่ว่าจะจับแพ็กผ่านแชนแนลพอยท์, `!pack` หรือแพ็กที่เจาะจงชื่อ
+การแจ้งเตือน Discord ของตัวเอง **ระบบ Pity และสตรีคโบนัสความภักดีของบูสเตอร์** จะนับการ์ดทุกใบใน
+แพ็ก**แยกกัน** ราวกับว่าถูกจับทีละใบเอง – ไม่ใช่นับทั้งแพ็กเป็นหนึ่งเดียว กฎนี้ใช้เหมือนกันไม่ว่าจะ
+จับแพ็กผ่านแชนแนลพอยท์, `!pack` หรือแพ็กที่เจาะจงชื่อ **เป้าหมายชุมชน** เป็นข้อยกเว้น: แพ็กหนึ่งนับ
+เพียง**ครั้งเดียว**สำหรับเป้าหมายชุมชน ไม่ว่าจะมีการ์ดกี่ใบอยู่ข้างในก็ตาม
 
 คุณสามารถเปิดใช้งาน **ข้อความแชทหลังจับการ์ด** ได้ (ใต้คำอธิบาย ผ่านช่องกาเครื่องหมาย) – จะส่ง
 เมื่อแอนิเมชันจบแล้ว และสามารถระบุชื่อการ์ดที่จับได้ ค่าเริ่มต้น: `@userName hat [Kartenname] aus
@@ -3553,7 +3580,7 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 เริ่มได้ผ่าน**รางวัลแชนแนลพอยท์** (แท็บการเชื่อมต่อ → แชนแนลพอยท์) **คำสั่งแชท** ("เริ่ม
 ทัวร์นาเมนต์" ค่าเริ่มต้น `!turnierstart`) หรือปุ่มโดยตรงที่ **การตั้งค่า → โหมดทัวร์นาเมนต์**
 ปรับได้ที่นั่นด้วย: จำนวนผู้เข้าร่วมขั้นต่ำ เวลาสมัคร จำนวนการ์ดต่อทัพ และ**ผู้ชนะรอบด้วย**
-(ไม่ใช่แค่แชมป์) จะได้รับการจับโบนัสหรือไม่ หากจำนวนผู้เข้าร่วมเป็นเลขคี่ หนึ่งคนจะได้ **บาย**
+(ไม่ใช่แค่แชมป์) จะได้รับการจับแพ็กโบนัสหรือไม่ หากจำนวนผู้เข้าร่วมเป็นเลขคี่ หนึ่งคนจะได้ **บาย**
 ต่อรอบ
 
 <a id="th-การต่อสู้ทีม"></a>
@@ -3573,11 +3600,14 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 เสียการ์ดที่ใช้") ทุกคนจะเสียการ์ดที่ใช้เมื่อพ่ายแพ้ – พร้อมข้อความแชทที่เปิด/ปิดได้ต่อการ์ดที่
 เสียไปแต่ละใบ
 
-นอกจากนี้ (ไม่ว่าผลชนะโดยรวมจะเป็นอย่างไร) คุณสามารถเปิดใช้งาน**การจับเพิ่มเติมต่อการ์ดฝ่ายตรงข้าม
-ที่ผู้เข้าร่วมเอาชนะได้ด้วยตัวเอง** พร้อมจำนวนที่ปรับได้อิสระและข้อความประกาศของตัวเอง – การ์ด
-เหล่านี้จะมอบให้ก็ต่อเมื่อ**การต่อสู้ทั้งหมดจบลงแล้ว**เท่านั้น ไม่ว่าชุมชนจะชนะหรือแพ้ในที่สุด
+นอกจากนี้ (ไม่ว่าผลชนะโดยรวมจะเป็นอย่างไร) คุณสามารถเปิดใช้งาน**การจับแพ็กเพิ่มเติมต่อการ์ด
+ฝ่ายตรงข้ามที่ผู้เข้าร่วมเอาชนะได้ด้วยตัวเอง** พร้อมจำนวนที่ปรับได้อิสระและข้อความประกาศของตัวเอง –
+แพ็กโบนัสเหล่านี้จะมอบให้ก็ต่อเมื่อ**การต่อสู้ทั้งหมดจบลงแล้ว**เท่านั้น ไม่ว่าชุมชนจะชนะหรือแพ้ในที่สุด
 
-เริ่มได้ผ่าน**รางวัลแชนแนลพอยท์**หรือปุ่มที่ **การตั้งค่า → การต่อสู้ทีม**
+เริ่มได้ผ่าน**รางวัลแชนแนลพอยท์**หรือปุ่มที่ **การตั้งค่า → การต่อสู้ทีม** อีกทางหนึ่งคือสวิตช์
+**"การต่อสู้ทีมเริ่มอัตโนมัติ"** (แท็บการต่อสู้ทีม) จะเริ่มการต่อสู้ทีมใหม่เองทุก **"X นาที"**
+โดยไม่ต้องแลกแชนแนลพอยท์ – หากมีทัวร์นาเมนต์หรือการต่อสู้ทีมอื่นกำลังดำเนินอยู่ การเริ่มอัตโนมัติ
+จะถูกข้ามไปและลองใหม่ในรอบถัดไป
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="ตัวอย่างดวลแถบพลังชีวิตของการต่อสู้ทีม" width="480"></p>
 
@@ -3620,9 +3650,10 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 ### เป้าหมายชุมชน
 
 **แถบความคืบหน้าร่วม**สำหรับผู้ชมทั้งหมด – การจับทุกครั้ง (ไม่ว่าผ่านแชนแนลพอยท์หรือคำสั่งแชท)
-นับ +1 เมื่อถึงเป้าหมาย บอทจะโพสต์**ข้อความฉลอง**ในแชท แหล่ง OBS จะแสดง**แอนิเมชันฉลอง** และ
-ทุกคนที่มีส่วนร่วมจะได้รับ**บูสเตอร์โบนัส**โดยอัตโนมัติ ปรับได้ที่ **การตั้งค่า → เป้าหมายชุมชน**
-รวมถึงการรีเซ็ตความคืบหน้าด้วยตนเอง
+นับ +1 แพ็กที่มี**การ์ดหลายใบ** (ดู **จำนวนการ์ดต่อแพ็ก**) ยังคงนับเพียง**ครั้งเดียว**สำหรับความ
+คืบหน้า ไม่ใช่นับตามจำนวนการ์ดข้างใน เมื่อถึงเป้าหมาย บอทจะโพสต์**ข้อความฉลอง**ในแชท แหล่ง OBS
+จะแสดง**แอนิเมชันฉลอง** และทุกคนที่มีส่วนร่วมจะได้รับ**บูสเตอร์โบนัส**โดยอัตโนมัติ ปรับได้ที่
+**การตั้งค่า → เป้าหมายชุมชน** รวมถึงการรีเซ็ตความคืบหน้าด้วยตนเอง
 
 <p align="center"><img src="docs/media/communitygoal-celebration.gif" alt="ตัวอย่างแอนิเมชันฉลองเป้าหมายชุมชน" width="480"></p>
 
