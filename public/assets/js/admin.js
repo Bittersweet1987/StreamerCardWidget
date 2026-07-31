@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1785501214";
+} from "./api.js?v=1785512103";
 import {
   applyTheme,
   autoImagePosition,
@@ -72,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1785501214";
+} from "./render.js?v=1785512103";
 
 let settings;
 let selectedCardId;
@@ -7879,7 +7879,7 @@ function buildOverlayLayoutEditor(container, key) {
     </div>
     <div class="oly-actions">
       <button type="button" class="update-button" data-oly="center">${t("btn-oly-center")}</button>
-      <div class="oly-field oly-scale"><label>${t("label-oly-scale")}</label><input type="number" min="10" max="100" step="1" data-oly="scale">%</div>
+      <div class="oly-field oly-scale"><label>${t("label-oly-scale")}</label><input type="number" min="10" max="500" step="1" data-oly="scale">%</div>
     </div>
     <p class="hint">${t("hint-oly-drag")}</p>
   `;
@@ -7937,7 +7937,12 @@ function buildOverlayLayoutEditor(container, key) {
     const centerX = layout.marginLeft + before.w / 2;
     const centerY = layout.marginTop + before.h / 2;
     const value = Number(els.scale.value);
-    layout.scale = value > 0 ? Math.min(100, Math.max(10, value)) : 100;
+    // Was capped at 100 (both here and the field's HTML max) - the underlying render (see
+    // applyOverlayLayout's scale(${scale/100}) in render.js) already scales up correctly above
+    // 100%, the cap just silently prevented ever entering a value that would enlarge the
+    // animation. 500 is a generous, clearly-not-limiting-normal-use ceiling, not a real
+    // technical constraint.
+    layout.scale = value > 0 ? Math.min(500, Math.max(10, value)) : 100;
     const after = overlayLayoutBoxSize(key, layout.scale);
     layout.marginLeft = Math.max(0, centerX - after.w / 2);
     layout.marginTop = Math.max(0, centerY - after.h / 2);
