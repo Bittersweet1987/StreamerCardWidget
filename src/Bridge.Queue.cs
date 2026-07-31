@@ -1326,15 +1326,20 @@ private void ProcessQueueItem(Dictionary<string, object> item)
                 string pityMinRarity = GetString(pityCfg, "minRarity", "rare");
                 int pityThreshold = Math.Max(1, GetInt(pityCfg, "threshold", 10));
 
-                // Multiple cards per pack: only for an actual pack-opening trigger (the normal
-                // random-pool pack or a specific named pack), never for the many OTHER single-card
-                // "draw" sources (bits, community-goal/tournament/team-kampf/loyalty bonus draws,
-                // sub/resub/giftsub rewards) - those already have their own independent multiplier
-                // mechanics and enqueue one "draw" item per card themselves (see the Enqueue("draw",
-                // ...) call sites across this file). Resolved from the FINAL booster (random pick or
-                // forced), so both "!pack" and "pick your own pack" automatically get the same
-                // per-booster override.
-                bool isPackSource = source == "chat" || source == "channelpoints" || source == "specificpack";
+                // Multiple cards per pack: for an actual pack-opening trigger (the normal random-
+                // pool pack or a specific named pack) AND for tournament/Team-Kampf reward draws -
+                // each of THOSE is already its own "N draws" loop at the call site (winnerDraws/
+                // drawsPerParticipant/perRoundDraws/perDefeat*, one Enqueue("draw", ...) per unit),
+                // so making them pack-sources too means "N draws" becomes "N packs" (each worth
+                // "Karten pro Pack" cards) instead of "N single cards" - see the community reports
+                // that tournament/Team-Kampf rewards should hand out packs, not raw cards. Bits and
+                // sub/resub/giftsub rewards deliberately stay single-card - they have their own
+                // separate "cards per event" multiplier that already means something different (see
+                // HandleCheerEvent/HandleSubscriptionEvent) and were never asked to change. Resolved
+                // from the FINAL booster (random pick or forced), so "!pack", "pick your own pack",
+                // tournament and Team-Kampf all get the same per-booster override.
+                bool isPackSource = source == "chat" || source == "channelpoints" || source == "specificpack" ||
+                    source == "tournament" || source == "teamkampf";
                 int cardsPerDraw = isPackSource ? ResolveCardsPerDraw(settings, booster) : 1;
 
                 var drawnCardIds = new List<object>();
@@ -1402,16 +1407,23 @@ private void ProcessQueueItem(Dictionary<string, object> item)
                         }
                     }
 
-                    // Community goal: every draw (any trigger, including this method's own bonus
-                    // draws once the goal is reached - RegisterCommunityGoalDraw no-ops while frozen)
-                    // counts toward the shared progress bar - and, in a multi-card pack, so does
-                    // every card inside it, exactly as if it had been drawn on its own.
-                    RegisterCommunityGoalDraw(login, user);
+                    // Loyalty bonus counts every CARD (any trigger, including this method's own
+                    // bonus draws once reached - no-ops appropriately), so a multi-card pack
+                    // progresses it once per card inside it, exactly as if each had been drawn on
+                    // its own. Community goal is different - see the single, once-per-PACK call
+                    // after this loop below.
                     if (!GetBool(item, "loyaltyBonus", false)) RegisterLoyaltyDraw(login, user, boosterId, settings);
 
                     drawnCardIds.Add(card != null ? GetString(card, "id", "") : "");
                     drawnCardTitles.Add(card != null ? GetString(card, "title", "") : "");
                 }
+
+                // Community goal counts PACKS, not individual cards - a multi-card pack ("Karten pro
+                // Pack" > 1) still only advances the shared progress bar by one, same as any other
+                // single-card draw trigger (bits, sub/resub, tournament/team-kampf bonus draws,
+                // etc., which never had more than 1 card here anyway). Called once regardless of
+                // cardsPerDraw - RegisterCommunityGoalDraw no-ops while already frozen.
+                RegisterCommunityGoalDraw(login, user);
 
                 string cardId = drawnCardIds.Count > 0 ? Convert.ToString(drawnCardIds[0]) : "";
                 string cardTitle = drawnCardTitles.Count > 0 ? Convert.ToString(drawnCardTitles[0]) : "";

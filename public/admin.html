@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1785428883">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1785501214">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -2902,6 +2902,14 @@
               <label data-i18n="label-teamkampf-signup-seconds">Anmeldezeit (Sek.)<input id="teamkampf-signup-seconds" type="number" min="10" step="5"></label>
             </div>
             <label class="switch-row compact-switch">
+              <input id="teamkampf-autostart-enabled" type="checkbox">
+              <span data-i18n="label-teamkampf-autostart-enabled">Automatisch startende Team-Kämpfe</span>
+            </label>
+            <div class="form-grid">
+              <label data-i18n="label-teamkampf-autostart-interval">Alle X Minuten<input id="teamkampf-autostart-interval" type="number" min="1" step="1"></label>
+            </div>
+            <p class="hint" data-i18n="teamkampf-autostart-hint">Startet automatisch im eingestellten Abstand einen neuen Team-Kampf, ganz ohne Kanalpunkte-Einlösung - läuft bereits ein Turnier oder Team-Kampf, wird der Versuch übersprungen und beim nächsten Intervall erneut probiert.</p>
+            <label class="switch-row compact-switch">
               <input id="teamkampf-difficulty-enabled" type="checkbox">
               <span data-i18n="label-teamkampf-difficulty-enabled">Streamer-Team wird bei Sieg größer und bei Niederlage kleiner</span>
             </label>
@@ -2912,7 +2920,7 @@
             </div>
             <label class="switch-row compact-switch">
               <input id="teamkampf-rewards-enabled" type="checkbox">
-              <span data-i18n="label-teamkampf-rewards-enabled">Bei Sieg der Community bekommt jeder Teilnehmer Karten</span>
+              <span data-i18n="label-teamkampf-rewards-enabled">Bei Sieg der Community bekommt jeder Teilnehmer Packs</span>
             </label>
             <div class="form-grid">
               <label data-i18n="label-teamkampf-draws-per-participant">Ziehungen je Teilnehmer<input id="teamkampf-draws-per-participant" type="number" min="0" step="1"></label>
@@ -3515,7 +3523,7 @@
       </div>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785428883"></script>
-    <script type="module" src="/assets/js/admin.js?v=1785428883"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785501214"></script>
+    <script type="module" src="/assets/js/admin.js?v=1785501214"></script>
   </body>
 </html>

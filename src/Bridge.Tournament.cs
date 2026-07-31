@@ -61,6 +61,41 @@ private static bool IsBracketSource(string source)
             return source == "tournament" || source == "teamkampf";
         }
 
+// ---- Automatic Team-Kampf start (settings.teamBattle.autoStartEnabled/autoStartIntervalMinutes) ----
+        // A single recurring timer, checked every 30s against the CURRENT settings each time (same
+        // self-adjusting pattern as StartAutoHelpTimerOnce) - so toggling the setting or changing the
+        // interval takes effect on the very next tick, no restart/reconnect needed. If a bracket
+        // event is already busy when the interval elapses, this tick is simply skipped and retried
+        // 30s later rather than queued - unlike a channel-points/chat-triggered request, an
+        // automatic tick has no specific user waiting on it, so there is nothing to lose by trying
+        // again shortly instead of piling up a pending request.
+        private System.Threading.Timer teamBattleAutoStartTimer;
+        private volatile bool teamBattleAutoStartTimerStarted;
+        private DateTime teamBattleAutoStartLastAt = DateTime.UtcNow;
+
+        private void StartTeamBattleAutoStartTimerOnce()
+        {
+            if (teamBattleAutoStartTimerStarted) return;
+            teamBattleAutoStartTimerStarted = true;
+            teamBattleAutoStartTimer = new System.Threading.Timer(delegate
+            {
+                try { CheckTeamBattleAutoStart(); }
+                catch (Exception ex) { server.Log("battle", "error", "Automatischer Team-Kampf-Start fehlgeschlagen: " + ex.Message); }
+            }, null, 30000, 30000);
+        }
+
+        private void CheckTeamBattleAutoStart()
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
+            if (!GetBool(tbCfg, "autoStartEnabled", false)) return;
+            int intervalMinutes = Math.Max(1, GetInt(tbCfg, "autoStartIntervalMinutes", 30));
+            if ((DateTime.UtcNow - teamBattleAutoStartLastAt).TotalMinutes < intervalMinutes) return;
+            if (IsBracketEventBusy()) return; // try again next tick, once whatever's running is done
+            teamBattleAutoStartLastAt = DateTime.UtcNow;
+            StartTeamBattleSignup("", "Streamer", "auto");
+        }
+
 // ---- Tournament Mode ----
         //
         // One bracket at a time, global (like activeBattle). Flow: an admin/channel-point/chat
@@ -94,16 +129,14 @@ private static bool IsBracketSource(string source)
             // StripDeckForRewardSave's rationale: Kanalpunkte only covers reward creation).
             Dictionary<string, object> tournamentStartCfg = source == "chat" ? Obj(Obj(settings, "chatCommands"), "tournamentStart") : null;
 
-            // Only one bracket event (tournament OR Team-Kampf) may run at a time - a Team-Kampf
-            // still playing out its matches would otherwise inject a fight into the middle of this
-            // tournament's animations (and vice versa). See IsBracketEventBusy.
-            if (IsBracketEventBusy())
-            {
-                SendCommandOutput(login, tournamentStartCfg, GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
-                    .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
-                return "already_running";
-            }
-
+            // Tournament SIGNUP no longer waits for a Team-Kampf to finish - only another already-
+            // running tournament blocks a new one (checked just below, under the lock). Signup
+            // itself never touches the shared action queue, so two signup windows (a tournament's
+            // and a Team-Kampf's) can run side by side with no risk of interleaved animations -
+            // only RESOLVING a bracket needs exclusive queue access, which is why
+            // ResolveTournamentSignup (not here) defers itself via IsBracketPlaybackBusy if the
+            // other bracket type is still actually playing out its matches when this one's signup
+            // window closes.
             bool alreadyRunning = false;
             string startMessage = null;
             string deadlineUtc = null;
@@ -679,6 +712,20 @@ public Dictionary<string, object> GetTournamentState()
             lock (teamBattleLock)
             {
                 if (activeTeamBattle == null) return;
+                // Mirrors ResolveTournamentSignup's own deferral - a Team-Kampf's signup can run
+                // alongside a tournament's, but resolving must wait its turn if the OTHER bracket
+                // type's matches are actually mid-playback in the queue right now, so the two
+                // fights' animations never interleave.
+                if (IsBracketPlaybackBusy())
+                {
+                    if (teamBattleSignupTimer != null) teamBattleSignupTimer.Dispose();
+                    teamBattleSignupTimer = new System.Threading.Timer(delegate
+                    {
+                        try { ResolveTeamBattleSignup(); }
+                        catch (Exception ex) { server.Log("battle", "error", "Team-Kampf-Aufloesung (verzoegert) fehlgeschlagen: " + ex.Message); }
+                    }, null, 5000, System.Threading.Timeout.Infinite);
+                    return;
+                }
                 var rawParticipants = (List<object>)activeTeamBattle["participants"];
                 participants = new List<Dictionary<string, object>>();
                 foreach (object p in rawParticipants) if (p is Dictionary<string, object>) participants.Add((Dictionary<string, object>)p);
@@ -811,6 +858,23 @@ public Dictionary<string, object> GetTournamentState()
             lock (tournamentLock)
             {
                 if (activeTournament == null) return;
+                // Tournament SIGNUP can run alongside a Team-Kampf's own signup window (see
+                // StartTournamentSignup), but RESOLVING must never inject this tournament's matches
+                // into the queue while the OTHER bracket type's matches are actually mid-playback
+                // there right now - that would interleave two fights' animations. Defer a few
+                // seconds and retry instead of resolving; participants/deadline are untouched in
+                // the meantime, so nothing is lost, the bracket just starts a little later than the
+                // signup countdown alone would suggest.
+                if (IsBracketPlaybackBusy())
+                {
+                    if (tournamentSignupTimer != null) tournamentSignupTimer.Dispose();
+                    tournamentSignupTimer = new System.Threading.Timer(delegate
+                    {
+                        try { ResolveTournamentSignup(); }
+                        catch (Exception ex) { server.Log("battle", "error", "Turnier-Aufloesung (verzoegert) fehlgeschlagen: " + ex.Message); }
+                    }, null, 5000, System.Threading.Timeout.Infinite);
+                    return;
+                }
                 var rawParticipants = (List<object>)activeTournament["participants"];
                 participants = new List<Dictionary<string, object>>();
                 foreach (object p in rawParticipants)

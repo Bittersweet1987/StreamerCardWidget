@@ -366,6 +366,7 @@ public void Start()
             LoadPendingState();
             StartResetTimerOnce();
             StartAutoHelpTimerOnce();
+            StartTeamBattleAutoStartTimerOnce();
             Dictionary<string, object> twitch = TwitchSettings();
             if (!String.IsNullOrWhiteSpace(GetString(twitch, "accessToken", "")))
             {

@@ -430,10 +430,28 @@ function buildHoloDissolveState(ctl) {
   ctl.canvas.height = h;
   const ctx = ctl.canvas.getContext("2d");
   ctx.clearRect(0, 0, w, h);
-  const dx = (imgRect.left - canvasRect.left) * dpr;
-  const dy = (imgRect.top - canvasRect.top) * dpr;
-  const dw = imgRect.width * dpr;
-  const dh = imgRect.height * dpr;
+  // The real <img>'s own rendered BOX (imgRect) is always right (see the comment above), but for
+  // "contain" the visible CONTENT doesn't fill that box - it's letterboxed/pillarboxed inside it,
+  // anchored by object-position. Stretching the raw bitmap to fill the whole box (as "cover"/"fill"
+  // correctly do, since their content DOES fill the box) drew contain-mode art distorted/misaligned
+  // relative to what's actually on screen - see the "Taro Misaki" (data-position="contain") report
+  // this was fixed for, after the "Jeanne" box-matching fix alone wasn't enough for contain images.
+  const boxLeft = (imgRect.left - canvasRect.left) * dpr;
+  const boxTop = (imgRect.top - canvasRect.top) * dpr;
+  const boxW = imgRect.width * dpr;
+  const boxH = imgRect.height * dpr;
+  const fit = getComputedStyle(ctl.realImg).objectFit || "cover";
+  let dx = boxLeft, dy = boxTop, dw = boxW, dh = boxH;
+  if (fit === "contain") {
+    const iw = ctl.realImg.naturalWidth || 1, ih = ctl.realImg.naturalHeight || 1;
+    const scale = Math.min(boxW / iw, boxH / ih);
+    dw = iw * scale;
+    dh = ih * scale;
+    const [posXRaw, posYRaw] = (getComputedStyle(ctl.realImg).objectPosition || "50% 50%").split(/\s+/);
+    const parsePercent = (value) => (value && value.endsWith("%") ? parseFloat(value) / 100 : 0.5);
+    dx = boxLeft + (boxW - dw) * parsePercent(posXRaw);
+    dy = boxTop + (boxH - dh) * parsePercent(posYRaw);
+  }
   ctx.drawImage(ctl.realImg, dx, dy, dw, dh);
   const shot = ctx.getImageData(0, 0, w, h);
   const px = shot.data;

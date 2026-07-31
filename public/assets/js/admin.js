@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1785428883";
+} from "./api.js?v=1785501214";
 import {
   applyTheme,
   autoImagePosition,
@@ -72,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1785428883";
+} from "./render.js?v=1785501214";
 
 let settings;
 let selectedCardId;
@@ -2482,6 +2482,24 @@ const I18N = {
   "label-teamkampf-enabled": { de: "Team-Kampf aktiviert", en: "Team battle enabled", fr: "Combat d'équipe activé", es: "Combate de equipo activado", th: "เปิดใช้งานการต่อสู้ทีม" },
   "label-teamkampf-card-count": { de: "Kartenanzahl Streamer-Team (zufällig ±4, außer bei aktivierter Schwierigkeit unten - dann exakt)", en: "Streamer team card count (randomized ±4, unless difficulty below is enabled - then exact)", fr: "Nombre de cartes de l'équipe du streamer (aléatoire ±4, sauf si la difficulté ci-dessous est activée - alors exact)", es: "Número de cartas del equipo del streamer (aleatorio ±4, salvo que la dificultad de abajo esté activada - entonces exacto)", th: "จำนวนการ์ดของทีมสตรีมเมอร์ (สุ่ม ±4 เว้นแต่เปิดใช้งานความยากด้านล่าง - แล้วจะเป๊ะ)" },
   "label-teamkampf-signup-seconds": { de: "Anmeldezeit (Sek.)", en: "Signup time (sec.)", fr: "Temps d'inscription (sec.)", es: "Tiempo de inscripción (seg.)", th: "เวลาสมัคร (วินาที)" },
+  "label-teamkampf-autostart-enabled": {
+    de: "Automatisch startende Team-Kämpfe", en: "Automatically started team battles",
+    fr: "Combats d'équipe démarrés automatiquement",
+    es: "Combates de equipo iniciados automáticamente",
+    th: "การต่อสู้ทีมที่เริ่มอัตโนมัติ"
+  },
+  "label-teamkampf-autostart-interval": { de: "Alle X Minuten", en: "Every X minutes",
+    fr: "Toutes les X minutes",
+    es: "Cada X minutos",
+    th: "ทุก X นาที"
+  },
+  "teamkampf-autostart-hint": {
+    de: "Startet automatisch im eingestellten Abstand einen neuen Team-Kampf, ganz ohne Kanalpunkte-Einlösung - läuft bereits ein Turnier oder Team-Kampf, wird der Versuch übersprungen und beim nächsten Intervall erneut probiert.",
+    en: "Automatically starts a new team battle at the configured interval, with no channel-points redemption needed - if a tournament or team battle is already running, this attempt is skipped and retried at the next interval.",
+    fr: "Démarre automatiquement un nouveau combat d'équipe à l'intervalle configuré, sans avoir besoin d'échanger des points de chaîne - si un tournoi ou un combat d'équipe est déjà en cours, cette tentative est ignorée et retentée au prochain intervalle.",
+    es: "Inicia automáticamente un nuevo combate de equipo en el intervalo configurado, sin necesidad de canjear puntos de canal - si ya hay un torneo o combate de equipo en curso, este intento se omite y se reintenta en el siguiente intervalo.",
+    th: "เริ่มการต่อสู้ทีมใหม่โดยอัตโนมัติตามช่วงเวลาที่ตั้งไว้ โดยไม่ต้องแลกแชนแนลพอยท์ - หากมีทัวร์นาเมนต์หรือการต่อสู้ทีมกำลังดำเนินอยู่แล้ว การพยายามครั้งนี้จะถูกข้ามและลองใหม่ในรอบถัดไป"
+  },
   "label-teamkampf-difficulty-enabled": {
     de: "Streamer-Team wird bei Sieg größer und bei Niederlage kleiner",
     en: "The streamer's team grows on a win and shrinks on a loss",
@@ -2508,7 +2526,7 @@ const I18N = {
     es: "Cantidad mínima (al menos 1)",
     th: "จำนวนขั้นต่ำ (อย่างน้อย 1)"
   },
-  "label-teamkampf-rewards-enabled": { de: "Bei Sieg der Community bekommt jeder Teilnehmer Karten", en: "On a community win, every participant gets cards", fr: "En cas de victoire de la communauté, chaque participant reçoit des cartes", es: "Si gana la comunidad, cada participante recibe cartas", th: "เมื่อชุมชนชนะ ผู้เข้าร่วมทุกคนจะได้รับการ์ด" },
+  "label-teamkampf-rewards-enabled": { de: "Bei Sieg der Community bekommt jeder Teilnehmer Packs", en: "On a community win, every participant gets packs", fr: "En cas de victoire de la communauté, chaque participant reçoit des packs", es: "Si gana la comunidad, cada participante recibe sobres", th: "เมื่อชุมชนชนะ ผู้เข้าร่วมทุกคนจะได้รับแพ็ก" },
   "label-teamkampf-draws-per-participant": { de: "Ziehungen je Teilnehmer", en: "Draws per participant", fr: "Tirages par participant", es: "Tiradas por participante", th: "จำนวนการจับสลากต่อผู้เข้าร่วม" },
   "label-teamkampf-finisher-bonus-enabled": { de: "Wer die letzte Streamer-Karte besiegt, bekommt zusätzliche Ziehungen", en: "Whoever defeats the streamer's last card gets extra draws", fr: "Celui qui bat la dernière carte du streamer reçoit des tirages supplémentaires", es: "Quien derrote la última carta del streamer recibe tiradas adicionales", th: "ผู้ที่เอาชนะการ์ดใบสุดท้ายของสตรีมเมอร์จะได้รับการจับสลากเพิ่มเติม" },
   "label-teamkampf-finisher-bonus-draws": { de: "Bonus-Ziehungen für den Finisher", en: "Bonus draws for the finisher", fr: "Tirages bonus pour le finisseur", es: "Tiradas de bonificación para quien remata", th: "การจับสลากโบนัสสำหรับผู้พิชิต" },
@@ -7451,6 +7469,8 @@ function hydrateDesign() {
   $("#teamkampf-enabled").checked = settings.teamBattle?.enabled === true;
   $("#teamkampf-card-count").value = settings.teamBattle?.streamerCardCount ?? 5;
   $("#teamkampf-signup-seconds").value = settings.teamBattle?.signupSeconds ?? 60;
+  $("#teamkampf-autostart-enabled").checked = settings.teamBattle?.autoStartEnabled === true;
+  $("#teamkampf-autostart-interval").value = settings.teamBattle?.autoStartIntervalMinutes ?? 30;
   $("#teamkampf-difficulty-enabled").checked = settings.teamBattle?.difficultyRubberbandEnabled !== false;
   $("#teamkampf-difficulty-step").value = settings.teamBattle?.difficultyStepDown ?? 1;
   $("#teamkampf-difficulty-floor").value = settings.teamBattle?.difficultyMinCardCount ?? 1;
@@ -7623,8 +7643,8 @@ async function refreshCommunityGoalProgress() {
   }
 }
 
-// Rebuilds the up-to-5 stage rows from settings.communityGoal.stages. Each row's inputs write
-// straight back into that array; called on hydrate and after every add/remove.
+// Rebuilds the stage rows from settings.communityGoal.stages (any number of stages). Each row's
+// inputs write straight back into that array; called on hydrate and after every add/remove.
 function renderCommunityGoalStages() {
   const container = $("#communitygoal-stages");
   if (!container) return;
@@ -8232,6 +8252,16 @@ function bindDesign() {
   $("#teamkampf-signup-seconds").addEventListener("input", (event) => {
     settings.teamBattle ||= {};
     settings.teamBattle.signupSeconds = Math.max(10, Math.round(Number(event.target.value) || 10));
+    scheduleAutoSave();
+  });
+  $("#teamkampf-autostart-enabled").addEventListener("change", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.autoStartEnabled = event.target.checked;
+    scheduleAutoSave();
+  });
+  $("#teamkampf-autostart-interval").addEventListener("input", (event) => {
+    settings.teamBattle ||= {};
+    settings.teamBattle.autoStartIntervalMinutes = Math.max(1, Math.round(Number(event.target.value) || 1));
     scheduleAutoSave();
   });
   $("#teamkampf-difficulty-enabled").addEventListener("change", (event) => {

@@ -1301,9 +1301,10 @@ export function normalizeSettings(settings) {
   settings.communityGoal.enabled = settings.communityGoal.enabled === true;
   settings.communityGoal.label ||= "";
   settings.communityGoal.sourceName ||= "Streamer Card Community-Ziel";
-  // Up to 5 goal stages, each with its own target, bonus-card count and celebration text (shown
-  // both in chat and in the overlay). Older settings.json (pre-multi-stage) only had a single
-  // "target"/"celebrationMessage" pair - migrate that into a one-stage array once, then drop it.
+  // Any number of goal stages, each with its own target, bonus-card count and celebration text
+  // (shown both in chat and in the overlay). Older settings.json (pre-multi-stage) only had a
+  // single "target"/"celebrationMessage" pair - migrate that into a one-stage array once, then
+  // drop it.
   if (!Array.isArray(settings.communityGoal.stages) || !settings.communityGoal.stages.length) {
     const legacyTarget = Number(settings.communityGoal.target) > 0 ? Math.round(Number(settings.communityGoal.target)) : 500;
     const legacyMessage = settings.communityGoal.celebrationMessage || pickDefault(settings.language, "communityGoalReached");
@@ -1321,7 +1322,7 @@ export function normalizeSettings(settings) {
     "🎉 ¡Meta comunitaria alcanzada ([Ziel] tiradas)! Todos los participantes reciben automáticamente un sobre extra.",
     "🎉 บรรลุเป้าหมายชุมชนแล้ว ([Ziel] ครั้ง)! ผู้เข้าร่วมทุกคนจะได้รับบูสเตอร์โบนัสอัตโนมัติ"
   ]);
-  settings.communityGoal.stages = settings.communityGoal.stages.slice(0, 5).map((stage) => ({
+  settings.communityGoal.stages = settings.communityGoal.stages.map((stage) => ({
     target: Number(stage?.target) > 0 ? Math.round(Number(stage.target)) : 500,
     bonusCards: Number(stage?.bonusCards) > 0 ? Math.round(Number(stage.bonusCards)) : 1,
     celebrationMessage: stage?.celebrationMessage && !staleCommunityGoalMessages.has(stage.celebrationMessage)
