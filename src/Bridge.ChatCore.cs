@@ -233,6 +233,13 @@ private void SendChatMessage(string message)
 private void SendWhisperMessageSafe(string login, string message)
         {
             if (IsIrlModeActive(server.ReadSettingsObject())) return;
+            SendWhisperMessageSafeForced(login, message);
+        }
+
+// Bypasses the IRL-mode gate above - used for the pack-draw result message, which stays on
+        // (as a whisper, never public chat) even while IRL mode is active. See SendDrawPostMessage.
+        private void SendWhisperMessageSafeForced(string login, string message)
+        {
             DispatchOutboundWork(delegate
             {
                 try { SendWhisperMessage(login, message); }

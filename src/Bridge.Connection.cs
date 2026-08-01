@@ -2226,7 +2226,9 @@ private static Dictionary<string, object> Obj(Dictionary<string, object> parent,
 // IRL mode: while active, only the pack/draw reward+command may do anything - every other
         // channel-point redemption, chat command, chat/whisper output and overlay animation is
         // suppressed (see the call sites in HandleChannelPointRedemption, ProcessChatMessage,
-        // SendChatMessageSafe/SendWhisperMessageSafe and the non-"draw" Broadcast calls).
+        // SendChatMessageSafe/SendWhisperMessageSafe and the non-"draw" Broadcast calls). The one
+        // exception: the pack-draw's own result message still goes out, but forced to a whisper
+        // instead of public chat (see SendDrawPostMessage/SendWhisperMessageSafeForced).
         internal static bool IsIrlModeActive(Dictionary<string, object> settings)
         {
             return GetBool(Obj(settings, "irlMode"), "enabled", false);

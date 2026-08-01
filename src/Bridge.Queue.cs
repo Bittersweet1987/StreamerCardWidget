@@ -579,7 +579,15 @@ private void SendDrawPostMessage(Dictionary<string, object> item, string cardTit
                 .Replace("[Besitz]", count)
                 .Replace("[Seltenheit]", rarityLabel)
                 .Replace("[Quelle]", sourceLabel);
-            if (source == "chat") SendCommandOutput(login, packCfg, msg);
+            // IRL mode suppresses public chat entirely, but the viewer should still learn what
+            // they drew - just privately, as a whisper, regardless of the command's/draw's own
+            // configured "Versandart" (chat/whisper). Falls back to no message at all if there's
+            // no login to whisper to (e.g. an admin test-draw with no real Twitch viewer).
+            if (IsIrlModeActive(settings))
+            {
+                if (!String.IsNullOrEmpty(login)) SendWhisperMessageSafeForced(login, msg);
+            }
+            else if (source == "chat") SendCommandOutput(login, packCfg, msg);
             else SendChatMessageSafe(msg);
         }
 
