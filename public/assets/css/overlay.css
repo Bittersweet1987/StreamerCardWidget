@@ -428,7 +428,8 @@ body {
 .tcg-card[data-rarity="holo"].holo-alarm-armed { border-color: #000; }
 .holo-alarm-armed .holo-glitter,
 .holo-alarm-armed .card-footer,
-.holo-alarm-armed .corner {
+.holo-alarm-armed .corner,
+.holo-alarm-armed .stars {
   opacity: 0;
   transition: opacity .6s ease;
 }

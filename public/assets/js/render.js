@@ -1702,8 +1702,8 @@ export function cardMarkup(card, options = {}) {
       <div class="card-art">${image}</div>
       <footer class="card-footer">
         <span class="card-title" style="--title-len:${title.length}">${escapeHtml(title)}</span>
-        <span class="stars" aria-label="${escapeHtml(rarity)}">${cardStars(rarityAttr)}</span>
       </footer>
+      <span class="stars" aria-label="${escapeHtml(rarity)}">${cardStars(rarityAttr)}</span>
       <div class="corner bottom">${escapeHtml(starCount)}</div>
       ${holoOverlay}
     </article>

@@ -186,6 +186,11 @@ select {
 }
 
 .corner {
+  /* Hidden, not removed (see cardMarkup in render.js - the elements and their star-count text
+     still render, just invisible) - the star count now lives in the top-right .stars badge
+     instead, so this corner number would just be a redundant, distracting duplicate. Kept
+     rather than deleted in case a future theme/layout wants it back. */
+  visibility: hidden;
   position: absolute;
   display: grid;
   z-index: 2;
@@ -213,15 +218,9 @@ select {
 
 .card-footer {
   position: absolute;
-  /* The bottom-right star-count corner badge (.corner.bottom) is a fixed 42px square pinned
-     to the card's own bottom-right corner, painted after (so on top of) this footer - both
-     rows here need to stay clear of it on the right, or the stars row (flush right via
-     align-self:flex-end) ends up completely hidden underneath it. */
-  right: 46px;
-  /* Aligned so the stars row (last item in this column) sits at the same height as the
-     star-count number in the bottom-right corner (.corner.bottom is a 42px square flush to
-     the card's bottom edge, so its content sits vertically centered ~21px above the card's
-     bottom edge). */
+  /* The corner number badges are hidden now (see .corner) so the name no longer needs to
+     leave room clear of the bottom-right one - back to a plain symmetric side margin. */
+  right: 4%;
   bottom: 7px;
   left: 4%;
   z-index: 2;
@@ -230,9 +229,8 @@ select {
   align-items: stretch;
   gap: 2px;
   min-width: 0;
-  /* Name and stars form ONE pill-shaped block with two rows now, instead of two separate
-     stacked pills - the background/shadow/radius that used to live on .card-title and
-     .stars individually moved up here. */
+  /* Was a two-row block (name + stars) - the stars badge moved out to the top-right corner
+     (see .stars below), so this is just the name pill now, kept as its own rounded block. */
   padding: 5px 13px 6px;
   border-radius: 16px;
   background: rgba(255, 255, 255, .92);
@@ -271,8 +269,6 @@ select {
 .is-compact-card .card-footer {
   gap: 1px;
   bottom: 5%;
-  /* Compact mode's corner badge is only 18px (see .is-compact-card .corner), not 42px. */
-  right: 20px;
   padding: 2px 4px;
   border-radius: 8px;
 }
@@ -285,11 +281,13 @@ select {
 }
 
 .stars {
-  /* Own row below the title (see .card-footer), kept right-aligned like it always was
-     when it sat next to the title on one row. Background/padding/radius now live on
-     .card-footer (the shared block), not here. */
-  align-self: flex-end;
-  flex: 0 0 auto;
+  /* Top-right corner, at the same height the (now-hidden) top-left corner number used to sit
+     at - a direct child of .tcg-card now (see cardMarkup in render.js), not nested inside
+     .card-footer anymore, so it positions independently of the name pill at the bottom. */
+  position: absolute;
+  top: 6%;
+  right: 4%;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -297,7 +295,8 @@ select {
 
 .stars span {
   flex: 0 0 auto;
-  width: 11px;
+  /* Sized to roughly match the hidden corner number's visual weight (font-size: 1.3rem). */
+  width: 15px;
   aspect-ratio: 1;
   clip-path: polygon(50% 0, 61% 34%, 98% 34%, 68% 55%, 79% 90%, 50% 68%, 21% 90%, 32% 55%, 2% 34%, 39% 34%);
   background: var(--card-accent, var(--accent));
@@ -314,7 +313,7 @@ select {
      smaller ::after INSET within it (further below) flips this around correctly: any child,
      regardless of z-index, always paints above its parent's own background. */
   position: relative;
-  width: 14px;
+  width: 19px;
   background: #000;
 }
 
