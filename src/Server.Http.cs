@@ -493,6 +493,7 @@ private void HandleApi(HttpRequest request, NetworkStream stream)
                 Dictionary<string, object> incoming = ParseObject(request.Body);
                 WriteSettingsObject(incoming);
                 twitchBridge.RefreshChatCommands();
+                twitchBridge.SyncIrlRewardPauseIfChanged();
                 // Echoing the full settings back (cards/boosters with base64 images, easily
                 // 10MB+) doubled every save's cost for a response no caller actually reads -
                 // every admin.js call site does "await saveSettings(settings)" and discards the

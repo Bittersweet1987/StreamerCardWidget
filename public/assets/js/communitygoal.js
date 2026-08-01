@@ -31,7 +31,7 @@ function goalLabel() {
 // once every stage is reached, the last celebration takes over and the bar has nothing left to
 // show until the next admin reset (which broadcasts reached:false again).
 function renderProgress(current, target, reached) {
-  const enabled = settings?.communityGoal?.enabled === true;
+  const enabled = settings?.communityGoal?.enabled === true && settings?.irlMode?.enabled !== true;
   barWrap.hidden = !enabled || !target || reached;
   if (!enabled || !target || reached) return;
   label.textContent = goalLabel();

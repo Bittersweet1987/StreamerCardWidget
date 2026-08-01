@@ -125,7 +125,7 @@ function resetConveyor() {
 }
 
 function updateVisibility() {
-  const shouldShow = settings?.liveTicker?.enabled !== false && entries.length > 0;
+  const shouldShow = settings?.liveTicker?.enabled !== false && settings?.irlMode?.enabled !== true && entries.length > 0;
   banner.hidden = !shouldShow;
   if (!shouldShow) {
     stopLoop();

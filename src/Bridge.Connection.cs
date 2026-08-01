@@ -371,6 +371,10 @@ public void Start()
             StartResetTimerOnce();
             StartAutoHelpTimerOnce();
             StartTeamBattleAutoStartTimerOnce();
+            // If IRL mode was already on when the app was last closed, make sure the non-pack
+            // rewards actually come back up paused on Twitch's side too - lastKnownIrlModeEnabled
+            // starts unset, so this always runs once on startup regardless of the stored value.
+            SyncIrlRewardPauseIfChanged();
             Dictionary<string, object> twitch = TwitchSettings();
             if (!String.IsNullOrWhiteSpace(GetString(twitch, "accessToken", "")))
             {
@@ -2232,6 +2236,91 @@ private static Dictionary<string, object> Obj(Dictionary<string, object> parent,
         internal static bool IsIrlModeActive(Dictionary<string, object> settings)
         {
             return GetBool(Obj(settings, "irlMode"), "enabled", false);
+        }
+
+private bool? lastKnownIrlModeEnabled;
+
+// Called after every settings save (the HTTP settings-save handler and the "!irl" chat toggle
+// both call this) - detects an ON/OFF transition of IRL mode and pauses/restores every non-pack
+// channel-point reward on Twitch's side accordingly. Ignoring the redemption server-side (see
+// HandleChannelPointRedemption) is not enough on its own - the reward stays redeemable and
+// viewers can still spend real points on something that visibly does nothing, which is exactly
+// the "wasted points" complaint IRL mode is meant to avoid.
+internal void SyncIrlRewardPauseIfChanged()
+        {
+            Dictionary<string, object> settings = server.ReadSettingsObject();
+            bool nowEnabled = IsIrlModeActive(settings);
+            if (lastKnownIrlModeEnabled.HasValue && lastKnownIrlModeEnabled.Value == nowEnabled) return;
+            lastKnownIrlModeEnabled = nowEnabled;
+            try { ApplyIrlRewardPause(settings, nowEnabled); }
+            catch (Exception ex) { server.Log("twitch", "warn", "IRL-Modus: Kanalpunkte-Belohnungen konnten nicht synchronisiert werden: " + ex.Message); }
+        }
+
+private static readonly string[] IrlPausableRewardKeys = { "showcase", "tournament", "teamBattle", "specificPackDraw" };
+
+// Pauses every non-pack reward's rewardIds when IRL mode turns on (remembering whether each was
+// already paused by the streamer beforehand, in settings.irlMode.prePauseState), and restores
+// each one to its own remembered state when IRL mode turns off - so turning IRL off never
+// un-pauses a reward the streamer had deliberately paused for an unrelated reason.
+private void ApplyIrlRewardPause(Dictionary<string, object> settings, bool irlOn)
+        {
+            Dictionary<string, object> twitch = TwitchSettings();
+            if (String.IsNullOrWhiteSpace(GetString(twitch, "clientId", "")) ||
+                String.IsNullOrWhiteSpace(GetString(twitch, "accessToken", "")) ||
+                String.IsNullOrWhiteSpace(GetString(twitch, "broadcasterId", ""))) return;
+
+            Dictionary<string, object> irlMode = EnsureObject(settings, "irlMode");
+            Dictionary<string, object> snapshot = irlMode.ContainsKey("prePauseState") && irlMode["prePauseState"] is Dictionary<string, object>
+                ? (Dictionary<string, object>)irlMode["prePauseState"]
+                : new Dictionary<string, object>();
+
+            bool anyChange = false;
+            foreach (string key in IrlPausableRewardKeys)
+            {
+                Dictionary<string, object> holder = Obj(settings, key);
+                object[] rewardIds = holder.ContainsKey("rewardIds") && holder["rewardIds"] is object[] ? (object[])holder["rewardIds"] : new object[0];
+                if (rewardIds.Length == 0) continue;
+
+                bool targetPaused;
+                if (irlOn)
+                {
+                    snapshot[key] = GetBool(holder, "rewardPaused", false);
+                    targetPaused = true;
+                }
+                else
+                {
+                    targetPaused = GetBool(snapshot, key, false);
+                    snapshot.Remove(key);
+                }
+
+                foreach (object idObj in rewardIds)
+                {
+                    string rewardId = Convert.ToString(idObj);
+                    if (String.IsNullOrWhiteSpace(rewardId)) continue;
+                    try { SetRewardPaused(twitch, rewardId, targetPaused); }
+                    catch (Exception ex)
+                    {
+                        server.Log("twitch", "warn", "IRL-Modus: Belohnung " + rewardId + " (" + key + ") konnte nicht " +
+                            (targetPaused ? "pausiert" : "reaktiviert") + " werden: " + ex.Message);
+                    }
+                }
+                if (!irlOn) holder["rewardPaused"] = targetPaused;
+                anyChange = true;
+            }
+
+            if (anyChange)
+            {
+                irlMode["prePauseState"] = snapshot;
+                server.WriteSettingsObject(settings);
+            }
+        }
+
+private void SetRewardPaused(Dictionary<string, object> twitch, string rewardId, bool paused)
+        {
+            string url = "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" +
+                Uri.EscapeDataString(GetString(twitch, "broadcasterId", "")) + "&id=" + Uri.EscapeDataString(rewardId);
+            var payload = new Dictionary<string, object> { { "is_paused", paused } };
+            TwitchJson("PATCH", url, GetString(twitch, "clientId", ""), GetString(twitch, "accessToken", ""), payload);
         }
 
 private Dictionary<string, object> ParseObject(string text)

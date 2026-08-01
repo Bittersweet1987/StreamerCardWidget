@@ -605,6 +605,7 @@ private void StartAutoHelpTimerOnce()
             // every overlay page listens for to reload its settings - no separate event needed to
             // tell overlays IRL mode just changed.
             server.WriteSettingsObject(settings);
+            SyncIrlRewardPauseIfChanged();
             string message = GetString(cmdCfg, nowEnabled ? "onMessage" : "offMessage", nowEnabled ? DefaultIrlModeOnMessage : DefaultIrlModeOffMessage)
                 .Replace("@userName", "@" + displayName);
             SendChatMessageSafeForced(message);
