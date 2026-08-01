@@ -47,6 +47,7 @@ let battleAudioTemplate;
 let battleAudioTemplateSrc;
 
 function playBattleSound(kind) {
+  if (settings?.irlMode?.enabled) return;
   const volume = Number(settings?.soundVolumes?.battle ?? settings?.style?.volume ?? 0) / 100;
   if (volume <= 0) return;
   const uploaded = settings?.sounds?.battle;
@@ -95,6 +96,7 @@ function playBattleSound(kind) {
 // tone - same "uploaded-or-synthesized" pattern as playBattleSound above, just without its
 // per-hit clone-node caching (these fire at most once per signup window, not every ~220ms).
 function playSignupSound(kind, fallbackFreqs) {
+  if (settings?.irlMode?.enabled) return;
   const volume = Number(settings?.soundVolumes?.[kind] ?? settings?.style?.volume ?? 0) / 100;
   if (volume <= 0) return;
   const uploaded = settings?.sounds?.[kind];

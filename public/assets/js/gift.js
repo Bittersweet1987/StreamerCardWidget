@@ -37,6 +37,7 @@ function findCard(cardId) {
 }
 
 function playGiftSound() {
+  if (settings?.irlMode?.enabled) return;
   const volume = Number(settings?.style?.volume || 0) / 100;
   if (volume <= 0) return;
   const uploaded = settings?.sounds?.gift;
