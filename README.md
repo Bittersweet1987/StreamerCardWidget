@@ -51,6 +51,7 @@ Team-Kämpfen** antreten.
 - [Kartenduell (Kampf)](#kartenduell-kampf)
 - [Turnier-Modus](#turnier-modus)
 - [Team-Kampf](#team-kampf)
+- [IRL-Modus](#irl-modus)
 - [Ranking](#ranking)
 - [Live-Ticker](#live-ticker)
 - [Community-Ziel](#community-ziel)
@@ -590,6 +591,38 @@ und beim nächsten Intervall erneut versucht.
 
 ---
 
+## IRL-Modus
+
+Ein globaler Schalter im Tab **Übersicht** für IRL-/Vor-Ort-Streams: Er reduziert die App auf die
+reine Pack-Ziehung als Engagement-Mechanik und blendet alles andere aus, was in einer IRL-Szene
+nicht passt.
+
+Solange er aktiv ist:
+- **Chat**: Es wird nichts mehr gepostet außer der Erfolgsnachricht des `!pack`-Befehls – die geht
+  dann aber immer als **Flüster-Nachricht** an den Zuschauer, unabhängig von der sonst
+  konfigurierten Versandart.
+- **Kanalpunkte**: Alle Belohnungen werden ignoriert außer der Pack-Belohnung.
+- **Chat-Befehle**: Alle Befehle werden ignoriert außer `!pack` und dem IRL-Umschalt-Befehl selbst.
+- **Overlays**: Alles bleibt ausgeblendet (Live-Ticker, Ranking, Sammlungs-Showcase, Tausch, Kampf,
+  Turnier-/Team-Kampf-Anmeldung, Community-Ziel-Fortschrittsbalken, Befehlsübersicht) – nur die
+  **Pack-Öffnungs-Animation** läuft weiter. Ein automatisch startender Team-Kampf pausiert
+  ebenfalls, solange der IRL-Modus aktiv ist.
+
+Beim Ausschalten wird automatisch wieder alles freigegeben – nichts muss manuell zurückgestellt
+werden.
+
+Für die Pack-Animation lässt sich im Tab **Animationen**, direkt unter der normalen
+Position/Größe, eine **eigene Position/Größe nur für den IRL-Modus** einstellen, ohne die normale
+Einstellung zu überschreiben.
+
+Umschaltbar ist der Modus außerdem per frei umbenennbarem Chat-Befehl (Standard `!irl`,
+Präfix/Befehlswort/Ein- und Aus-Nachricht wie jeder andere Befehl im Tab **Chat Befehle**
+einstellbar) – nur Moderatoren und der Streamer selbst dürfen ihn nutzen, andere Zuschauer werden
+stillschweigend ignoriert. Die Bestätigungsnachricht beim Umschalten wird dabei bewusst immer
+regulär verschickt (Ausnahme von der Chat-Unterdrückung).
+
+---
+
 ## Ranking
 
 Über den **Ranking-Befehl** (Standard `!ranking`, Präfix/Befehlswort im Tab **Chat Befehle**
@@ -846,6 +879,7 @@ cards to each other, and even face off in **card duels, tournaments and team bat
 - [Card duel (battle)](#en-card-duel-battle)
 - [Tournament mode](#en-tournament-mode)
 - [Team battle](#en-team-battle)
+- [IRL mode](#en-irl-mode)
 - [Ranking](#en-ranking)
 - [Live ticker](#en-live-ticker)
 - [Community goal](#en-community-goal)
@@ -1342,6 +1376,35 @@ next interval.
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="Team battle HP duel preview" width="480"></p>
 
+<a id="en-irl-mode"></a>
+### IRL mode
+
+A global toggle in the **Overview** tab for IRL/on-location streams: it reduces the app to pure
+pack draws as an engagement mechanic and hides everything else that doesn't fit an IRL scene.
+
+While it's active:
+- **Chat**: nothing gets posted except the `!pack` command's result message - that one still goes
+  out, but always as a **whisper** to the viewer, regardless of its configured send mode.
+- **Channel points**: all rewards are ignored except the pack reward.
+- **Chat commands**: all commands are ignored except `!pack` and the IRL toggle command itself.
+- **Overlays**: everything stays hidden (live ticker, ranking, collection showcase, trade, battle,
+  tournament/team battle signup, community goal progress bar, commands help) - only the **pack-
+  opening animation** keeps running. An automatically starting team battle also pauses while IRL
+  mode is active.
+
+Turning it off restores everything automatically - nothing needs to be reset manually.
+
+For the pack animation, right below the normal position/size, the **Animations** tab lets you set an
+**independent position/size just for IRL mode**, without overwriting the normal setting.
+
+The mode can also be toggled via a freely renamable chat command (default `!irl`,
+prefix/command word/on and off messages configurable like any other command in **Chat Commands**)
+- restricted to moderators and the broadcaster, other viewers are silently ignored. The
+confirmation message on a successful toggle is deliberately still sent normally (an exception to
+the chat suppression).
+
+---
+
 <a id="en-ranking"></a>
 ### Ranking
 
@@ -1570,6 +1633,7 @@ Application Windows locale pour cartes à collectionner Twitch – avec un **ove
 - [Duel de cartes (combat)](#fr-duel-de-cartes-combat)
 - [Mode tournoi](#fr-mode-tournoi)
 - [Combat d'équipe](#fr-combat-déquipe)
+- [Mode IRL](#fr-mode-irl)
 - [Classement](#fr-classement)
 - [Bandeau défilant](#fr-bandeau-défilant)
 - [Objectif communautaire](#fr-objectif-communautaire)
@@ -2112,6 +2176,40 @@ suivant.
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="Aperçu du duel à barres de vie du combat d'équipe" width="480"></p>
 
+<a id="fr-mode-irl"></a>
+### Mode IRL
+
+Un interrupteur global dans l'onglet **Aperçu** pour les streams IRL/en extérieur : il réduit
+l'application au simple tirage de packs comme mécanique d'engagement et masque tout le reste qui
+ne convient pas à une scène IRL.
+
+Tant qu'il est actif :
+- **Chat** : plus rien n'est posté à l'exception du message de résultat de la commande `!pack` –
+  celui-ci est toujours envoyé, mais désormais toujours en **message privé (whisper)** au
+  spectateur, quel que soit son mode d'envoi configuré.
+- **Points de chaîne** : toutes les récompenses sont ignorées sauf la récompense de pack.
+- **Commandes de chat** : toutes les commandes sont ignorées sauf `!pack` et la commande
+  d'activation/désactivation du mode IRL elle-même.
+- **Overlays** : tout reste masqué (bandeau défilant, classement, vitrine de collection, échange,
+  combat, inscription au tournoi/combat d'équipe, barre de progression de l'objectif
+  communautaire, aide aux commandes) – seule l'**animation d'ouverture de pack** continue de
+  fonctionner. Un combat d'équipe à démarrage automatique est également mis en pause tant que le
+  mode IRL est actif.
+
+En le désactivant, tout est automatiquement rétabli – rien à réactiver manuellement.
+
+Pour l'animation de pack, juste en dessous de la position/taille normale, l'onglet **Animations**
+permet de définir une **position/taille indépendante réservée au mode IRL**, sans écraser le
+réglage normal.
+
+Le mode peut aussi être activé/désactivé via une commande de chat librement renommable (`!irl` par
+défaut, préfixe/mot de commande/messages d'activation et de désactivation personnalisables comme
+toute autre commande dans **Commandes de chat**) – réservée aux modérateurs et au streamer, les
+autres spectateurs sont ignorés silencieusement. Le message de confirmation lors d'un changement
+réussi est volontairement toujours envoyé normalement (une exception à la suppression du chat).
+
+---
+
 <a id="fr-classement"></a>
 ### Classement
 
@@ -2360,6 +2458,7 @@ OBS** o **Meld Studio**. Tus espectadores sacan cartas de sobres mediante **punt
 - [Duelo de cartas (combate)](#es-duelo-de-cartas-combate)
 - [Modo torneo](#es-modo-torneo)
 - [Combate de equipo](#es-combate-de-equipo)
+- [Modo IRL](#es-modo-irl)
 - [Clasificación](#es-clasificación)
 - [Ticker en vivo](#es-ticker-en-vivo)
 - [Meta comunitaria](#es-meta-comunitaria)
@@ -2898,6 +2997,40 @@ inicio automático se omite y se reintenta en el siguiente intervalo.
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="Vista previa del duelo de barras de vida del combate de equipo" width="480"></p>
 
+<a id="es-modo-irl"></a>
+### Modo IRL
+
+Un interruptor global en la pestaña **Resumen** para streams IRL/en persona: reduce la app al
+simple tirado de sobres como mecánica de participación y oculta todo lo demás que no encaje en una
+escena IRL.
+
+Mientras está activo:
+- **Chat**: no se publica nada excepto el mensaje de resultado del comando `!pack` – ese sigue
+  saliendo, pero siempre como **susurro (whisper)** al espectador, sin importar su modo de envío
+  configurado.
+- **Puntos de canal**: se ignoran todas las recompensas excepto la del sobre.
+- **Comandos de chat**: se ignoran todos los comandos excepto `!pack` y el propio comando de
+  activación/desactivación del modo IRL.
+- **Overlays**: todo permanece oculto (ticker en vivo, clasificación, vitrina de colección,
+  intercambio, combate, inscripción a torneo/combate de equipo, barra de progreso de la meta
+  comunitaria, ayuda de comandos) – solo la **animación de apertura de sobre** sigue funcionando.
+  Un combate de equipo con inicio automático también se pausa mientras el modo IRL está activo.
+
+Al desactivarlo, todo se restablece automáticamente – no hace falta reactivar nada manualmente.
+
+Para la animación del sobre, justo debajo de la posición/tamaño normales, la pestaña **Animaciones**
+permite configurar una **posición/tamaño independiente solo para el modo IRL**, sin sobrescribir el
+ajuste normal.
+
+El modo también se puede activar/desactivar mediante un comando de chat libremente renombrable
+(`!irl` por defecto, prefijo/palabra de comando/mensajes de activación y desactivación
+configurables como cualquier otro comando en **Comandos de chat**) – restringido a moderadores y al
+streamer, el resto de espectadores son ignorados en silencio. El mensaje de confirmación al cambiar
+correctamente el modo se envía deliberadamente siempre de forma normal (una excepción a la
+supresión del chat).
+
+---
+
 <a id="es-clasificación"></a>
 ### Clasificación
 
@@ -3138,6 +3271,7 @@ Este proyecto está bajo la **Licencia Pública General de GNU v3.0** – ver [L
 - [ดวลการ์ด (การต่อสู้)](#th-ดวลการ์ด-การต่อสู้)
 - [โหมดทัวร์นาเมนต์](#th-โหมดทัวร์นาเมนต์)
 - [การต่อสู้ทีม](#th-การต่อสู้ทีม)
+- [โหมด IRL](#th-โหมด-irl)
 - [อันดับ](#th-อันดับ)
 - [ตัววิ่งสด](#th-ตัววิ่งสด)
 - [เป้าหมายชุมชน](#th-เป้าหมายชุมชน)
@@ -3610,6 +3744,34 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 จะถูกข้ามไปและลองใหม่ในรอบถัดไป
 
 <p align="center"><img src="docs/media/teamkampf-fight.gif" alt="ตัวอย่างดวลแถบพลังชีวิตของการต่อสู้ทีม" width="480"></p>
+
+<a id="th-โหมด-irl"></a>
+### โหมด IRL
+
+สวิตช์ส่วนกลางในแท็บ **ภาพรวม** สำหรับสตรีมแบบ IRL/นอกสถานที่ ช่วยลดแอปให้เหลือแค่การจับแพ็กเป็นกลไก
+สร้างการมีส่วนร่วม และซ่อนทุกอย่างอื่นที่ไม่เหมาะกับฉาก IRL
+
+ขณะที่เปิดใช้งานอยู่:
+- **แชท**: จะไม่มีการโพสต์อะไรเลย ยกเว้นข้อความผลลัพธ์ของคำสั่ง `!pack` – ข้อความนี้ยังคงส่งออกไป
+  แต่จะส่งเป็น**ข้อความกระซิบ (whisper)**ถึงผู้ชมเสมอ ไม่ว่าจะตั้งค่าวิธีส่งไว้อย่างไร
+- **แชนแนลพอยท์**: รางวัลทั้งหมดจะถูกละเว้น ยกเว้นรางวัลแพ็ก
+- **คำสั่งแชท**: คำสั่งทั้งหมดจะถูกละเว้น ยกเว้น `!pack` และคำสั่งเปิด/ปิดโหมด IRL เอง
+- **โอเวอร์เลย์**: ทุกอย่างยังคงถูกซ่อนไว้ (ตัววิ่งสด อันดับ โชว์เคสคอลเลกชัน แลกเปลี่ยน การต่อสู้
+  การสมัครทัวร์นาเมนต์/การต่อสู้ทีม แถบความคืบหน้าเป้าหมายชุมชน ความช่วยเหลือคำสั่ง) – มีเพียง
+  **แอนิเมชันเปิดแพ็ก**เท่านั้นที่ยังทำงานต่อ การต่อสู้ทีมที่เริ่มอัตโนมัติก็จะหยุดชั่วคราวเช่นกัน
+  ตราบใดที่โหมด IRL ยังเปิดอยู่
+
+เมื่อปิดโหมด ทุกอย่างจะกลับมาเป็นปกติโดยอัตโนมัติ – ไม่ต้องเปิดอะไรกลับคืนด้วยตัวเอง
+
+สำหรับแอนิเมชันแพ็ก แท็บ **แอนิเมชัน** มีตัวเลือก**ตำแหน่ง/ขนาดแยกต่างหากสำหรับโหมด IRL
+โดยเฉพาะ** อยู่ใต้ตำแหน่ง/ขนาดปกติทันที โดยไม่เขียนทับค่าปกติ
+
+โหมดนี้ยังสามารถเปิด/ปิดผ่านคำสั่งแชทที่เปลี่ยนชื่อได้อิสระ (ค่าเริ่มต้น `!irl` ปรับคำนำหน้า/
+คำสั่ง/ข้อความเปิด-ปิดได้เหมือนคำสั่งอื่น ๆ ในแท็บ **คำสั่งแชท**) – จำกัดให้เฉพาะผู้ดูแลและสตรีมเมอร์
+เท่านั้น ผู้ชมคนอื่นจะถูกละเว้นแบบเงียบ ๆ ข้อความยืนยันเมื่อสลับโหมดสำเร็จจะยังคงถูกส่งตามปกติเสมอ
+โดยตั้งใจ (เป็นข้อยกเว้นของการระงับแชท)
+
+---
 
 <a id="th-อันดับ"></a>
 ### อันดับ
