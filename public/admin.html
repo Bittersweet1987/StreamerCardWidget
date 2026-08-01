@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1785562613">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1785597310">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -3120,6 +3120,28 @@
                 <button class="danger-button icon-button" id="remove-battle-sound" type="button" disabled data-i18n-title="btn-remove">🗑</button>
               </div>
             </div>
+            <div class="sound-row" data-sound="tournamentSignup">
+              <div class="sound-row-info">
+                <strong data-i18n="label-sound-tournamentSignup">Turnier-Anmeldung-Sound</strong>
+                <span class="sound-row-status" id="sound-tournamentSignup-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
+              </div>
+              <div class="sound-row-actions">
+                <button class="secondary-button icon-button" id="play-tournamentSignup-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-tournamentSignup" type="file" accept="audio/*"></label>
+                <button class="danger-button icon-button" id="remove-tournamentSignup-sound" type="button" disabled data-i18n-title="btn-remove">🗑</button>
+              </div>
+            </div>
+            <div class="sound-row" data-sound="teamBattleSignup">
+              <div class="sound-row-info">
+                <strong data-i18n="label-sound-teamBattleSignup">Team-Kampf-Anmeldung-Sound</strong>
+                <span class="sound-row-status" id="sound-teamBattleSignup-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
+              </div>
+              <div class="sound-row-actions">
+                <button class="secondary-button icon-button" id="play-teamBattleSignup-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
+                <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-teamBattleSignup" type="file" accept="audio/*"></label>
+                <button class="danger-button icon-button" id="remove-teamBattleSignup-sound" type="button" disabled data-i18n-title="btn-remove">🗑</button>
+              </div>
+            </div>
           </section>
         </section>
 
@@ -3564,7 +3586,7 @@
       </div>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785562613"></script>
-    <script type="module" src="/assets/js/admin.js?v=1785562613"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785597310"></script>
+    <script type="module" src="/assets/js/admin.js?v=1785597310"></script>
   </body>
 </html>

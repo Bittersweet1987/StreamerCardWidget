@@ -91,6 +91,40 @@ function playBattleSound(kind) {
   });
 }
 
+// Plays the uploaded settings.sounds.<kind> file if set, else a short synthesized fallback
+// tone - same "uploaded-or-synthesized" pattern as playBattleSound above, just without its
+// per-hit clone-node caching (these fire at most once per signup window, not every ~220ms).
+function playSignupSound(kind, fallbackFreqs) {
+  const volume = Number(settings?.style?.volume || 0) / 100;
+  if (volume <= 0) return;
+  const uploaded = settings?.sounds?.[kind];
+  if (uploaded) {
+    const audio = new Audio(uploaded);
+    audio.volume = Math.min(1, Math.max(0, volume));
+    audio.play().catch((error) => addLog("battle", "error", `Sound (${kind}) blockiert: ${error.name} ${error.message}`));
+    return;
+  }
+  audioContext ||= new AudioContext();
+  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  const now = audioContext.currentTime;
+  const gain = audioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.13 * volume, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+  gain.connect(audioContext.destination);
+  fallbackFreqs.forEach((freq, index) => {
+    const osc = audioContext.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, now + index * 0.07);
+    osc.connect(gain);
+    osc.start(now + index * 0.07);
+    osc.stop(now + 0.55);
+  });
+}
+
+let lastTournamentSignupDeadline = null;
+let lastTeamBattleSignupDeadline = null;
+
 function enqueueBattle(event = {}) {
   // A Team-Kampf/tournament fight starting is a guaranteed signal the signup window is over -
   // force the countdown/participant box away right now instead of only trusting its own local
@@ -823,8 +857,16 @@ function hideTournamentSignup() {
 function handleTournamentSignupEvent(event = {}) {
   const el = ensureSignupCountdownEl();
   if (!event.active || !event.deadlineUtc) {
+    lastTournamentSignupDeadline = null;
     hideTournamentSignup();
     return;
+  }
+  // This event re-fires on every join with the SAME deadlineUtc (see the comment on the
+  // countdown interval below) - only the first sighting of a given deadline is the signup
+  // actually opening, so the sound doesn't replay on every participant joining.
+  if (event.deadlineUtc !== lastTournamentSignupDeadline) {
+    lastTournamentSignupDeadline = event.deadlineUtc;
+    playSignupSound("tournamentSignup", [392, 523.25, 659.25]);
   }
   const deadline = new Date(event.deadlineUtc).getTime();
   const label = settings?.language === "en" ? "Tournament signup" : "Turnier-Anmeldung";
@@ -893,8 +935,15 @@ function hideTeamKampfSignup() {
 function handleTeamBattleSignupEvent(event = {}) {
   const el = ensureTeamKampfEl();
   if (!event.active || !event.deadlineUtc) {
+    lastTeamBattleSignupDeadline = null;
     hideTeamKampfSignup();
     return;
+  }
+  // Same "only the first sighting of a given deadline is the real signup start" dedup as
+  // the tournament handler above - this event also re-fires on every join.
+  if (event.deadlineUtc !== lastTeamBattleSignupDeadline) {
+    lastTeamBattleSignupDeadline = event.deadlineUtc;
+    playSignupSound("teamBattleSignup", [349.23, 440, 523.25]);
   }
   const deadline = new Date(event.deadlineUtc).getTime();
   const label = settings?.language === "en" ? "Team battle signup" : "Team-Kampf-Anmeldung";

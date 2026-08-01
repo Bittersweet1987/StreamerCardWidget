@@ -886,6 +886,11 @@ export function normalizeSettings(settings) {
   settings.sounds.reveal ||= "";
   settings.sounds.trade ||= "";
   settings.sounds.battle ||= "";
+  settings.sounds.tournamentSignup ||= "";
+  settings.sounds.teamBattleSignup ||= "";
+  // Original uploaded filenames, shown next to each sound row in the admin UI - purely
+  // cosmetic (never read by any overlay), so a missing/stale name just falls back silently.
+  settings.soundNames ||= {};
 
   // Trade animation: shown in its own OBS browser source (trade.html) when a !tradeyes swap
   // succeeds. Style and length are picked here; an optional chat message is separate.

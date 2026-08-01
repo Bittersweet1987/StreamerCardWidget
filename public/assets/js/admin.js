@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1785562613";
+} from "./api.js?v=1785597310";
 import {
   applyTheme,
   autoImagePosition,
@@ -72,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1785562613";
+} from "./render.js?v=1785597310";
 
 let settings;
 let selectedCardId;
@@ -4009,6 +4009,36 @@ const I18N = {
     es: "Sonido de duelo eliminado.",
     th: "ลบเสียงดวลแล้ว"
   },
+  "label-sound-tournamentSignup": { de: "Turnier-Anmeldung-Sound", en: "Tournament signup sound",
+    fr: "Son d'inscription au tournoi",
+    es: "Sonido de inscripción al torneo",
+    th: "เสียงเปิดรับสมัครทัวร์นาเมนต์"
+  },
+  "notice-sound-tournamentSignup-saved": { de: "Turnier-Anmeldung-Sound gespeichert.", en: "Tournament signup sound saved.",
+    fr: "Son d'inscription au tournoi enregistré.",
+    es: "Sonido de inscripción al torneo guardado.",
+    th: "บันทึกเสียงเปิดรับสมัครทัวร์นาเมนต์แล้ว"
+  },
+  "notice-sound-tournamentSignup-removed": { de: "Turnier-Anmeldung-Sound entfernt.", en: "Tournament signup sound removed.",
+    fr: "Son d'inscription au tournoi supprimé.",
+    es: "Sonido de inscripción al torneo eliminado.",
+    th: "ลบเสียงเปิดรับสมัครทัวร์นาเมนต์แล้ว"
+  },
+  "label-sound-teamBattleSignup": { de: "Team-Kampf-Anmeldung-Sound", en: "Team battle signup sound",
+    fr: "Son d'inscription au combat d'équipe",
+    es: "Sonido de inscripción al combate de equipo",
+    th: "เสียงเปิดรับสมัครการต่อสู้ทีม"
+  },
+  "notice-sound-teamBattleSignup-saved": { de: "Team-Kampf-Anmeldung-Sound gespeichert.", en: "Team battle signup sound saved.",
+    fr: "Son d'inscription au combat d'équipe enregistré.",
+    es: "Sonido de inscripción al combate de equipo guardado.",
+    th: "บันทึกเสียงเปิดรับสมัครการต่อสู้ทีมแล้ว"
+  },
+  "notice-sound-teamBattleSignup-removed": { de: "Team-Kampf-Anmeldung-Sound entfernt.", en: "Team battle signup sound removed.",
+    fr: "Son d'inscription au combat d'équipe supprimé.",
+    es: "Sonido de inscripción al combate de equipo eliminado.",
+    th: "ลบเสียงเปิดรับสมัครการต่อสู้ทีมแล้ว"
+  },
   "label-obs-battle-source": { de: "Quellenname Kampf-Animation", en: "Source name battle animation",
     fr: "Nom de source animation de duel",
     es: "Nombre de fuente de animación de duelo",
@@ -7477,6 +7507,8 @@ function hydrateDesign() {
   updateSoundRow("reveal");
   updateSoundRow("trade");
   updateSoundRow("battle");
+  updateSoundRow("tournamentSignup");
+  updateSoundRow("teamBattleSignup");
   $("#show-collection").checked = settings.style.showCollection !== false;
   $("#card-borders").checked = settings.style.cardBorders !== false;
   $("#card-pattern-enabled").checked = settings.style.cardPatternEnabled !== false;
@@ -7601,11 +7633,15 @@ function hydrateDesign() {
 
 function updateSoundRow(kind) {
   const dataUrl = settings.sounds?.[kind] || "";
+  const fileName = settings.soundNames?.[kind] || "";
   const status = $(`#sound-${kind}-status`);
   const playButton = $(`#play-${kind}-sound`);
   const removeButton = $(`#remove-${kind}-sound`);
   if (status) {
-    status.textContent = dataUrl ? t("status-sound-set") : t("status-no-sound");
+    // Show the uploaded file's own name once one is set (falling back to the generic
+    // "Sound gespeichert" label for a sound that predates this filename-tracking field),
+    // otherwise the usual "no sound"/"default sound" placeholders.
+    status.textContent = dataUrl ? (fileName || t("status-sound-set")) : t("status-no-sound");
     status.classList.toggle("is-set", Boolean(dataUrl));
   }
   if (status && !dataUrl) status.textContent = t("status-default-sound");
@@ -7628,7 +7664,9 @@ function playDefaultSoundPreview(kind, volume) {
     open: { freqs: [220, 330], peak: 0.12, dur: 0.44, types: ["sine", "triangle"] },
     reveal: { freqs: [523.25, 659.25, 783.99], peak: 0.12, dur: 0.44, types: ["sine", "triangle"] },
     trade: { freqs: [523.25, 659.25, 880], peak: 0.14, dur: 0.6, types: ["sine", "triangle"] },
-    battle: { freqs: [220, 174.6], peak: 0.1, dur: 0.5, types: ["sawtooth", "sawtooth"] }
+    battle: { freqs: [220, 174.6], peak: 0.1, dur: 0.5, types: ["sawtooth", "sawtooth"] },
+    tournamentSignup: { freqs: [392, 523.25, 659.25], peak: 0.13, dur: 0.55, types: ["triangle", "triangle"] },
+    teamBattleSignup: { freqs: [349.23, 440, 523.25], peak: 0.13, dur: 0.55, types: ["triangle", "triangle"] }
   };
   const preset = presets[kind] || presets.open;
   gain.gain.setValueAtTime(0.0001, now);
@@ -8561,78 +8599,38 @@ function bindDesign() {
     box.hidden = !show;
     toggle.textContent = show ? t("btn-meld-info-hide") : t("btn-meld-info");
   });
-  $("#sound-open").addEventListener("change", async (event) => {
-    if (!event.target.files?.[0]) return;
-    settings.sounds ||= {};
-    settings.sounds.open = await readFileAsDataUrl(event.target.files[0]);
-    event.target.value = "";
-    updateSoundRow("open");
-    scheduleAutoSave();
-    showNotice(t("notice-sound-open-saved"));
-  });
-  $("#sound-reveal").addEventListener("change", async (event) => {
-    if (!event.target.files?.[0]) return;
-    settings.sounds ||= {};
-    settings.sounds.reveal = await readFileAsDataUrl(event.target.files[0]);
-    event.target.value = "";
-    updateSoundRow("reveal");
-    scheduleAutoSave();
-    showNotice(t("notice-sound-reveal-saved"));
-  });
-  $("#remove-open-sound").addEventListener("click", () => {
-    settings.sounds ||= {};
-    settings.sounds.open = "";
-    $("#sound-open").value = "";
-    updateSoundRow("open");
-    scheduleAutoSave();
-    showNotice(t("notice-sound-open-removed"));
-  });
-  $("#remove-reveal-sound").addEventListener("click", () => {
-    settings.sounds ||= {};
-    settings.sounds.reveal = "";
-    $("#sound-reveal").value = "";
-    updateSoundRow("reveal");
-    scheduleAutoSave();
-    showNotice(t("notice-sound-reveal-removed"));
-  });
-  $("#sound-trade").addEventListener("change", async (event) => {
-    if (!event.target.files?.[0]) return;
-    settings.sounds ||= {};
-    settings.sounds.trade = await readFileAsDataUrl(event.target.files[0]);
-    event.target.value = "";
-    updateSoundRow("trade");
-    scheduleAutoSave();
-    showNotice(t("notice-sound-trade-saved"));
-  });
-  $("#remove-trade-sound").addEventListener("click", () => {
-    settings.sounds ||= {};
-    settings.sounds.trade = "";
-    $("#sound-trade").value = "";
-    updateSoundRow("trade");
-    scheduleAutoSave();
-    showNotice(t("notice-sound-trade-removed"));
-  });
-  $("#sound-battle").addEventListener("change", async (event) => {
-    if (!event.target.files?.[0]) return;
-    settings.sounds ||= {};
-    settings.sounds.battle = await readFileAsDataUrl(event.target.files[0]);
-    event.target.value = "";
-    updateSoundRow("battle");
-    scheduleAutoSave();
-    showNotice(t("notice-sound-battle-saved"));
-  });
-  $("#remove-battle-sound").addEventListener("click", () => {
-    settings.sounds ||= {};
-    settings.sounds.battle = "";
-    $("#sound-battle").value = "";
-    updateSoundRow("battle");
-    scheduleAutoSave();
-    showNotice(t("notice-sound-battle-removed"));
-  });
+  // One generic upload/remove pair per sound kind (also captures the uploaded file's own
+  // name into settings.soundNames, shown by updateSoundRow next to the row).
+  for (const kind of ["open", "reveal", "trade", "battle", "tournamentSignup", "teamBattleSignup"]) {
+    $(`#sound-${kind}`).addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      settings.sounds ||= {};
+      settings.soundNames ||= {};
+      settings.sounds[kind] = await readFileAsDataUrl(file);
+      settings.soundNames[kind] = file.name;
+      event.target.value = "";
+      updateSoundRow(kind);
+      scheduleAutoSave();
+      showNotice(t(`notice-sound-${kind}-saved`));
+    });
+    $(`#remove-${kind}-sound`).addEventListener("click", () => {
+      settings.sounds ||= {};
+      settings.soundNames ||= {};
+      settings.sounds[kind] = "";
+      settings.soundNames[kind] = "";
+      $(`#sound-${kind}`).value = "";
+      updateSoundRow(kind);
+      scheduleAutoSave();
+      showNotice(t(`notice-sound-${kind}-removed`));
+    });
+  }
   $("#play-open-sound").addEventListener("click", () => playSoundPreview("open"));
   $("#play-reveal-sound").addEventListener("click", () => playSoundPreview("reveal"));
   $("#play-trade-sound").addEventListener("click", () => playSoundPreview("trade"));
   $("#play-battle-sound").addEventListener("click", () => playSoundPreview("battle"));
+  $("#play-tournamentSignup-sound").addEventListener("click", () => playSoundPreview("tournamentSignup"));
+  $("#play-teamBattleSignup-sound").addEventListener("click", () => playSoundPreview("teamBattleSignup"));
 
   $("#trade-anim-enabled").addEventListener("change", (event) => {
     settings.tradeAnimation ||= {};
