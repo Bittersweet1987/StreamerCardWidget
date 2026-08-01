@@ -124,10 +124,21 @@ private Dictionary<string, object> FindBooster(Dictionary<string, object> settin
         // where the viewer types the pack's name themselves. Only enabled boosters are eligible -
         // a disabled one must behave the same as "not found" (refund/usage message), not silently
         // draw from a pack the streamer turned off.
+        // Collapses runs of whitespace to a single space and trims the ends - protects title/
+        // subtitle matching against stray leading/trailing/double spaces that can sneak into the
+        // admin form fields (e.g. a subtitle saved as " Pack" would otherwise make the combined
+        // "<Titel> <Untertitel>" string contain a double space that never matches what a viewer
+        // naturally types with single spaces).
+        private static string CollapseWhitespace(string value)
+        {
+            if (String.IsNullOrWhiteSpace(value)) return "";
+            return String.Join(" ", value.Split(new char[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
+        }
+
         private Dictionary<string, object> FindBoosterByTitle(Dictionary<string, object> settings, string titleQuery)
         {
             if (String.IsNullOrWhiteSpace(titleQuery)) return null;
-            string needle = titleQuery.Trim();
+            string needle = CollapseWhitespace(titleQuery);
             object boostersObj;
             if (!settings.TryGetValue("boosters", out boostersObj) || !(boostersObj is object[])) return null;
             foreach (object bo in (object[])boostersObj)
@@ -141,15 +152,15 @@ private Dictionary<string, object> FindBooster(Dictionary<string, object> settin
                 // HandleSpecificPackDrawCommand/HandleSpecificPackRedemption) - none of them may
                 // ever resolve to a sub-exclusive pack.
                 if (GetBool(b, "subExclusive", false)) continue;
-                string title = GetString(b, "title", "");
+                string title = CollapseWhitespace(GetString(b, "title", ""));
                 if (String.Equals(title, needle, StringComparison.OrdinalIgnoreCase)) return b;
                 // Also accept "<Titel> <Untertitel>" combined as one string (e.g. "Jeanne, die
                 // Kamikaze Diebin" for a booster titled "Jeanne, die" with subtitle "Kamikaze
                 // Diebin") - viewers naturally read/type the pack's full displayed name as it
                 // appears on the pack graphic, not just its bare title field.
-                string subtitle = GetString(b, "subtitle", "");
-                if (!String.IsNullOrWhiteSpace(subtitle) &&
-                    String.Equals((title + " " + subtitle).Trim(), needle, StringComparison.OrdinalIgnoreCase))
+                string subtitle = CollapseWhitespace(GetString(b, "subtitle", ""));
+                if (subtitle.Length > 0 &&
+                    String.Equals(title + " " + subtitle, needle, StringComparison.OrdinalIgnoreCase))
                 {
                     return b;
                 }
