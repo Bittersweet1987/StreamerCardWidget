@@ -709,6 +709,21 @@ button:disabled {
   color: #1b8f6c;
 }
 
+.sound-row-volume {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: .78rem;
+  font-weight: 700;
+  color: #746f82;
+  flex: 0 0 auto;
+}
+
+.sound-row-volume input[type="range"] {
+  width: 110px;
+}
+
 .sound-row-actions {
   display: flex;
   align-items: center;
@@ -2005,6 +2020,10 @@ body[data-theme="dark"] .log-row {
   border-color: #3a314d;
   color: #f8f5ff;
   background: #211b2d;
+}
+
+body[data-theme="dark"] .sound-row-volume {
+  color: #b8aecb;
 }
 
 body[data-theme="dark"] .assigned-heading,

@@ -34,7 +34,7 @@ function findCard(cardId) {
 }
 
 function playTradeSound() {
-  const volume = Number(settings?.style?.volume || 0) / 100;
+  const volume = Number(settings?.soundVolumes?.trade ?? settings?.style?.volume ?? 0) / 100;
   if (volume <= 0) return;
   const uploaded = settings?.sounds?.trade;
   if (uploaded) {

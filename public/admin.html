@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Streamer Card Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css?v=1785597310">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=1785598263">
     <script>
       // Early diagnostics: runs BEFORE the admin.js module, so it can capture even a
       // module parse/evaluation error (which the in-module reporter cannot see). Posts the
@@ -3073,14 +3073,13 @@
                 <h2>Sounds</h2>
               </div>
             </div>
-            <div class="form-grid">
-              <label data-i18n="label-volume">Lautstärke<input id="volume" type="range" min="0" max="100"></label>
-            </div>
+            <p class="hint" data-i18n="hint-sound-volume-perkind">Jeder Sound hat seine eigene Lautstärke, statt einer gemeinsamen Lautstärke für alle.</p>
             <div class="sound-row" data-sound="open">
               <div class="sound-row-info">
                 <strong data-i18n="label-sound-open">Öffnen-Sound</strong>
                 <span class="sound-row-status" id="sound-open-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
               </div>
+              <label class="sound-row-volume" data-i18n="label-volume">Lautstärke<input id="sound-open-volume" type="range" min="0" max="100"></label>
               <div class="sound-row-actions">
                 <button class="secondary-button icon-button" id="play-open-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
                 <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-open" type="file" accept="audio/*"></label>
@@ -3092,6 +3091,7 @@
                 <strong data-i18n="label-sound-reveal">Reveal-Sound</strong>
                 <span class="sound-row-status" id="sound-reveal-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
               </div>
+              <label class="sound-row-volume" data-i18n="label-volume">Lautstärke<input id="sound-reveal-volume" type="range" min="0" max="100"></label>
               <div class="sound-row-actions">
                 <button class="secondary-button icon-button" id="play-reveal-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
                 <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-reveal" type="file" accept="audio/*"></label>
@@ -3103,6 +3103,7 @@
                 <strong data-i18n="label-sound-trade">Tausch-Sound</strong>
                 <span class="sound-row-status" id="sound-trade-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
               </div>
+              <label class="sound-row-volume" data-i18n="label-volume">Lautstärke<input id="sound-trade-volume" type="range" min="0" max="100"></label>
               <div class="sound-row-actions">
                 <button class="secondary-button icon-button" id="play-trade-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
                 <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-trade" type="file" accept="audio/*"></label>
@@ -3114,6 +3115,7 @@
                 <strong data-i18n="label-sound-battle">Kampf-Sound</strong>
                 <span class="sound-row-status" id="sound-battle-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
               </div>
+              <label class="sound-row-volume" data-i18n="label-volume">Lautstärke<input id="sound-battle-volume" type="range" min="0" max="100"></label>
               <div class="sound-row-actions">
                 <button class="secondary-button icon-button" id="play-battle-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
                 <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-battle" type="file" accept="audio/*"></label>
@@ -3125,6 +3127,7 @@
                 <strong data-i18n="label-sound-tournamentSignup">Turnier-Anmeldung-Sound</strong>
                 <span class="sound-row-status" id="sound-tournamentSignup-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
               </div>
+              <label class="sound-row-volume" data-i18n="label-volume">Lautstärke<input id="sound-tournamentSignup-volume" type="range" min="0" max="100"></label>
               <div class="sound-row-actions">
                 <button class="secondary-button icon-button" id="play-tournamentSignup-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
                 <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-tournamentSignup" type="file" accept="audio/*"></label>
@@ -3136,6 +3139,7 @@
                 <strong data-i18n="label-sound-teamBattleSignup">Team-Kampf-Anmeldung-Sound</strong>
                 <span class="sound-row-status" id="sound-teamBattleSignup-status" data-i18n="status-no-sound">Kein Sound ausgewählt</span>
               </div>
+              <label class="sound-row-volume" data-i18n="label-volume">Lautstärke<input id="sound-teamBattleSignup-volume" type="range" min="0" max="100"></label>
               <div class="sound-row-actions">
                 <button class="secondary-button icon-button" id="play-teamBattleSignup-sound" type="button" disabled data-i18n-title="btn-play">▶</button>
                 <label class="update-button file-label" data-i18n="btn-choose-file">Auswählen<input id="sound-teamBattleSignup" type="file" accept="audio/*"></label>
@@ -3586,7 +3590,7 @@
       </div>
     </div>
 
-    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785597310"></script>
-    <script type="module" src="/assets/js/admin.js?v=1785597310"></script>
+    <script src="/assets/js/vendor/qwebchannel.min.js?v=1785598263"></script>
+    <script type="module" src="/assets/js/admin.js?v=1785598263"></script>
   </body>
 </html>

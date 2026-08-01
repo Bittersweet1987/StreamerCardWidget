@@ -59,7 +59,7 @@ function isDuplicate(key) {
 }
 
 function playSound(kind = "open") {
-  const volume = Number(settings?.style?.volume || 0) / 100;
+  const volume = Number(settings?.soundVolumes?.[kind] ?? settings?.style?.volume ?? 0) / 100;
   if (volume <= 0) return;
   const uploaded = settings?.sounds?.[kind];
   if (uploaded) {

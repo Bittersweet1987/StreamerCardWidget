@@ -28,8 +28,12 @@ function userKey(value) {
 }
 
 function activeBoosters() {
-  return (settings.boosters || []).filter((booster) =>
-    cardsForBooster(settings, booster).some((card) => card.enabled !== false));
+  // Alphabetical (not settings/insertion order) so both showcase modes below (compact
+  // pagination and the full per-booster panels) list boosters the same predictable way
+  // regardless of the order they were created/edited in the admin.
+  return (settings.boosters || [])
+    .filter((booster) => cardsForBooster(settings, booster).some((card) => card.enabled !== false))
+    .sort((a, b) => String(a.title || "").localeCompare(String(b.title || ""), settings.language || "de"));
 }
 
 function countsFor(collection, user, login) {

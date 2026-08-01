@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1785597310";
+} from "./api.js?v=1785598263";
 import {
   applyTheme,
   autoImagePosition,
@@ -72,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1785597310";
+} from "./render.js?v=1785598263";
 
 let settings;
 let selectedCardId;
@@ -3352,6 +3352,13 @@ const I18N = {
     fr: "Volume",
     es: "Volumen",
     th: "ระดับเสียง"
+  },
+  "hint-sound-volume-perkind": {
+    de: "Jeder Sound hat seine eigene Lautstärke, statt einer gemeinsamen Lautstärke für alle.",
+    en: "Each sound has its own volume, instead of one shared volume for all of them.",
+    fr: "Chaque son a son propre volume, au lieu d'un volume commun pour tous.",
+    es: "Cada sonido tiene su propio volumen, en lugar de un volumen compartido para todos.",
+    th: "แต่ละเสียงมีระดับเสียงของตัวเอง แทนที่จะใช้ระดับเสียงร่วมกันทั้งหมด"
   },
   "label-preview-eyebrow": { de: "Vorschau", en: "Preview",
     fr: "Aperçu",
@@ -7502,7 +7509,6 @@ function hydrateDesign() {
   setSegToggle("theme-toggle", settings.style.themeMode || "light");
   $("#language-select").value = currentLang();
   $("#style-accent").value = settings.style.accentColor || "#ff78bb";
-  $("#volume").value = settings.style.volume ?? 65;
   updateSoundRow("open");
   updateSoundRow("reveal");
   updateSoundRow("trade");
@@ -7637,6 +7643,8 @@ function updateSoundRow(kind) {
   const status = $(`#sound-${kind}-status`);
   const playButton = $(`#play-${kind}-sound`);
   const removeButton = $(`#remove-${kind}-sound`);
+  const volumeInput = $(`#sound-${kind}-volume`);
+  if (volumeInput) volumeInput.value = settings.soundVolumes?.[kind] ?? settings.style?.volume ?? 65;
   if (status) {
     // Show the uploaded file's own name once one is set (falling back to the generic
     // "Sound gespeichert" label for a sound that predates this filename-tracking field),
@@ -8088,7 +8096,6 @@ function bindDesign() {
   const styleFields = {
     "#font-family": "fontFamily",
     "#style-accent": "accentColor",
-    "#volume": "volume",
     "#show-collection": "showCollection",
     "#card-borders": "cardBorders",
     "#card-pattern-enabled": "cardPatternEnabled",
@@ -8624,6 +8631,11 @@ function bindDesign() {
       scheduleAutoSave();
       showNotice(t(`notice-sound-${kind}-removed`));
     });
+    $(`#sound-${kind}-volume`).addEventListener("input", (event) => {
+      settings.soundVolumes ||= {};
+      settings.soundVolumes[kind] = Number(event.target.value);
+      scheduleAutoSave();
+    });
   }
   $("#play-open-sound").addEventListener("click", () => playSoundPreview("open"));
   $("#play-reveal-sound").addEventListener("click", () => playSoundPreview("reveal"));
@@ -8877,7 +8889,7 @@ async function handleBattleAnimTest() {
 }
 
 function playSoundPreview(kind) {
-  const volume = Number(settings.style?.volume ?? 65) / 100;
+  const volume = Number(settings.soundVolumes?.[kind] ?? settings.style?.volume ?? 65) / 100;
   const dataUrl = settings.sounds?.[kind];
   if (!dataUrl) {
     playDefaultSoundPreview(kind, volume);

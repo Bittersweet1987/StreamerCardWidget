@@ -891,6 +891,13 @@ export function normalizeSettings(settings) {
   // Original uploaded filenames, shown next to each sound row in the admin UI - purely
   // cosmetic (never read by any overlay), so a missing/stale name just falls back silently.
   settings.soundNames ||= {};
+  // Per-sound volume (replaces the old single shared settings.style.volume, which stays only
+  // as the one-time seed default below for a sound that's never had its own value set - see
+  // the ??= vs ||= note above, 0 must survive as "muted" here too).
+  settings.soundVolumes ||= {};
+  for (const kind of ["open", "reveal", "trade", "battle", "tournamentSignup", "teamBattleSignup"]) {
+    settings.soundVolumes[kind] ??= settings.style.volume;
+  }
 
   // Trade animation: shown in its own OBS browser source (trade.html) when a !tradeyes swap
   // succeeds. Style and length are picked here; an optional chat message is separate.

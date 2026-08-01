@@ -15,7 +15,53 @@
   </head>
   <body>
     <!-- Each module keeps its own stage container; ids match what the individual pages use so
-         the same entry modules run unchanged both here and on the standalone pages. -->
+         the same entry modules run unchanged both here and on the standalone pages. Elements
+         here have no explicit z-index - stacking is purely DOM order (later = on top), so this
+         order IS the stacking order, back to front:
+         1. commands-help  2. live-ticker  3. community-goal  4. tournament/team-battle signup
+         5. everything else (pack draw/collection, showpack, trade, battle incl. tournament
+            bracket + team-battle fight, gift, ranking) - these are the "main" animations and
+            should never be covered by any of the passive background widgets above. -->
+    <main id="commandshelp-overlay" aria-live="polite">
+      <div id="commandshelp-stage" class="commandshelp-stage"></div>
+    </main>
+    <main id="liveticker-overlay" aria-live="polite">
+      <div id="liveticker-stage" class="liveticker-stage">
+        <div id="liveticker-banner" class="liveticker-banner" hidden>
+          <div id="liveticker-viewport" class="liveticker-viewport">
+            <div id="liveticker-track" class="liveticker-track"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <main id="communitygoal-overlay" aria-live="polite">
+      <div id="communitygoal-bar-wrap" class="communitygoal-bar-wrap" hidden>
+        <div class="communitygoal-bar-head">
+          <span class="communitygoal-label" id="communitygoal-label"></span>
+          <span class="communitygoal-count" id="communitygoal-count"></span>
+        </div>
+        <div class="communitygoal-bar-track">
+          <div class="communitygoal-bar-fill" id="communitygoal-bar-fill"></div>
+        </div>
+      </div>
+    </main>
+    <!-- Deliberately OUTSIDE #communitygoal-overlay (see communitygoal.html for the full reasoning)
+         - must always play dead-center on the real viewport, independent of wherever the progress
+         bar widget itself has been positioned. -->
+    <div id="communitygoal-celebration" class="communitygoal-celebration" hidden>
+      <div class="communitygoal-celebration-burst"></div>
+      <p class="communitygoal-celebration-text" id="communitygoal-celebration-text"></p>
+    </div>
+    <!-- Signup rosters (tournament / Team-Kampf countdown + joined list) live in their OWN stages,
+         not inside #battle-stage, so they can be positioned and scaled independently of the
+         Kampf-Animation - see battle.js (ensureSignupCountdownEl/ensureTeamKampfEl) which appends
+         into these when present, and applyOverlayLayout in loadSettings. -->
+    <main id="tournamentsignup-overlay" aria-live="polite">
+      <div id="tournamentsignup-stage" class="signup-stage"></div>
+    </main>
+    <main id="teamkampfsignup-overlay" aria-live="polite">
+      <div id="teamkampfsignup-stage" class="signup-stage"></div>
+    </main>
     <main id="overlay" aria-live="polite">
       <div id="stage" class="stage"></div>
       <div id="showcase-stage" class="showcase-stage"></div>
@@ -36,46 +82,6 @@
     </main>
     <main id="ranking-overlay" aria-live="polite">
       <div id="ranking-stage" class="ranking-stage"></div>
-    </main>
-    <main id="communitygoal-overlay" aria-live="polite">
-      <div id="communitygoal-bar-wrap" class="communitygoal-bar-wrap" hidden>
-        <div class="communitygoal-bar-head">
-          <span class="communitygoal-label" id="communitygoal-label"></span>
-          <span class="communitygoal-count" id="communitygoal-count"></span>
-        </div>
-        <div class="communitygoal-bar-track">
-          <div class="communitygoal-bar-fill" id="communitygoal-bar-fill"></div>
-        </div>
-      </div>
-    </main>
-    <!-- Deliberately OUTSIDE #communitygoal-overlay (see communitygoal.html for the full reasoning)
-         - must always play dead-center on the real viewport, independent of wherever the progress
-         bar widget itself has been positioned. -->
-    <div id="communitygoal-celebration" class="communitygoal-celebration" hidden>
-      <div class="communitygoal-celebration-burst"></div>
-      <p class="communitygoal-celebration-text" id="communitygoal-celebration-text"></p>
-    </div>
-    <main id="liveticker-overlay" aria-live="polite">
-      <div id="liveticker-stage" class="liveticker-stage">
-        <div id="liveticker-banner" class="liveticker-banner" hidden>
-          <div id="liveticker-viewport" class="liveticker-viewport">
-            <div id="liveticker-track" class="liveticker-track"></div>
-          </div>
-        </div>
-      </div>
-    </main>
-    <main id="commandshelp-overlay" aria-live="polite">
-      <div id="commandshelp-stage" class="commandshelp-stage"></div>
-    </main>
-    <!-- Signup rosters (tournament / Team-Kampf countdown + joined list) live in their OWN stages,
-         not inside #battle-stage, so they can be positioned and scaled independently of the
-         Kampf-Animation - see battle.js (ensureSignupCountdownEl/ensureTeamKampfEl) which appends
-         into these when present, and applyOverlayLayout in loadSettings. -->
-    <main id="tournamentsignup-overlay" aria-live="polite">
-      <div id="tournamentsignup-stage" class="signup-stage"></div>
-    </main>
-    <main id="teamkampfsignup-overlay" aria-live="polite">
-      <div id="teamkampfsignup-stage" class="signup-stage"></div>
     </main>
     <script>
       // Bootstrap loader: ask the server which asset version (BootId, changes every app start)

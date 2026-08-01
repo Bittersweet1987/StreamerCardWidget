@@ -47,7 +47,7 @@ let battleAudioTemplate;
 let battleAudioTemplateSrc;
 
 function playBattleSound(kind) {
-  const volume = Number(settings?.style?.volume || 0) / 100;
+  const volume = Number(settings?.soundVolumes?.battle ?? settings?.style?.volume ?? 0) / 100;
   if (volume <= 0) return;
   const uploaded = settings?.sounds?.battle;
   // Every cue (start/hit/win) uses the uploaded sound if one is set - not just "start" as
@@ -95,7 +95,7 @@ function playBattleSound(kind) {
 // tone - same "uploaded-or-synthesized" pattern as playBattleSound above, just without its
 // per-hit clone-node caching (these fire at most once per signup window, not every ~220ms).
 function playSignupSound(kind, fallbackFreqs) {
-  const volume = Number(settings?.style?.volume || 0) / 100;
+  const volume = Number(settings?.soundVolumes?.[kind] ?? settings?.style?.volume ?? 0) / 100;
   if (volume <= 0) return;
   const uploaded = settings?.sounds?.[kind];
   if (uploaded) {
