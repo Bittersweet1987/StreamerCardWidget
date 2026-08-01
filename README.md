@@ -611,6 +611,7 @@ Solange er aktiv ist:
   Turnier-/Team-Kampf-Anmeldung, Community-Ziel-Fortschrittsbalken, Befehlsübersicht) – nur die
   **Pack-Öffnungs-Animation** läuft weiter. Ein automatisch startender Team-Kampf pausiert
   ebenfalls, solange der IRL-Modus aktiv ist.
+- **Sounds**: Alle Overlay-Sounds sind stummgeschaltet.
 
 Beim Ausschalten wird automatisch wieder alles freigegeben – nichts muss manuell zurückgestellt
 werden.
@@ -1399,6 +1400,7 @@ While it's active:
   tournament/team battle signup, community goal progress bar, commands help) - only the **pack-
   opening animation** keeps running. An automatically starting team battle also pauses while IRL
   mode is active.
+- **Sounds**: all overlay sounds are muted.
 
 Turning it off restores everything automatically - nothing needs to be reset manually.
 
@@ -2208,6 +2210,7 @@ Tant qu'il est actif :
   communautaire, aide aux commandes) – seule l'**animation d'ouverture de pack** continue de
   fonctionner. Un combat d'équipe à démarrage automatique est également mis en pause tant que le
   mode IRL est actif.
+- **Sons** : tous les sons des overlays sont coupés.
 
 En le désactivant, tout est automatiquement rétabli – rien à réactiver manuellement.
 
@@ -3033,6 +3036,7 @@ Mientras está activo:
   intercambio, combate, inscripción a torneo/combate de equipo, barra de progreso de la meta
   comunitaria, ayuda de comandos) – solo la **animación de apertura de sobre** sigue funcionando.
   Un combate de equipo con inicio automático también se pausa mientras el modo IRL está activo.
+- **Sonidos**: todos los sonidos de los overlays están silenciados.
 
 Al desactivarlo, todo se restablece automáticamente – no hace falta reactivar nada manualmente.
 
@@ -3782,6 +3786,7 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
   การสมัครทัวร์นาเมนต์/การต่อสู้ทีม แถบความคืบหน้าเป้าหมายชุมชน ความช่วยเหลือคำสั่ง) – มีเพียง
   **แอนิเมชันเปิดแพ็ก**เท่านั้นที่ยังทำงานต่อ การต่อสู้ทีมที่เริ่มอัตโนมัติก็จะหยุดชั่วคราวเช่นกัน
   ตราบใดที่โหมด IRL ยังเปิดอยู่
+- **เสียง**: เสียงโอเวอร์เลย์ทั้งหมดถูกปิดเสียง
 
 เมื่อปิดโหมด ทุกอย่างจะกลับมาเป็นปกติโดยอัตโนมัติ – ไม่ต้องเปิดอะไรกลับคืนด้วยตัวเอง
 
