@@ -41,7 +41,7 @@
   testGiftAnimation,
   testBattleAnimation,
   triggerDraw
-} from "./api.js?v=1785519964";
+} from "./api.js?v=1785562613";
 import {
   applyTheme,
   autoImagePosition,
@@ -72,7 +72,7 @@ import {
   readFileAsDataUrl,
   setRarityColors,
   setRarityWeights
-} from "./render.js?v=1785519964";
+} from "./render.js?v=1785562613";
 
 let settings;
 let selectedCardId;
@@ -7386,6 +7386,17 @@ function bindChatCommands() {
   panel.addEventListener("input", readChatCommandsFromForm);
   panel.addEventListener("change", readChatCommandsFromForm);
   bindJumpNav(panel);
+  // The "Texte" tab (outputMode + message-text fields for every command, e.g. #cc-dustall-
+  // outputmode) is a SIBLING tab-panel, not a descendant of #chatcommands - its input/change
+  // events never bubbled up to the listener above, so editing a message or "Versandart" only in
+  // that tab was silently lost on save (readChatCommandsFromForm, which reads every field by id
+  // regardless of which tab it lives in, was simply never triggered). Bind the same listeners to
+  // the "texts" panel too so a change made there is captured just as reliably.
+  const textsPanel = document.querySelector('[data-panel="texts"]');
+  if (textsPanel) {
+    textsPanel.addEventListener("input", readChatCommandsFromForm);
+    textsPanel.addEventListener("change", readChatCommandsFromForm);
+  }
   $("#reset-message-defaults").addEventListener("click", () => {
     if (!window.confirm(t("confirm-reset-message-defaults"))) return;
     resetAllMessageDefaults();
