@@ -154,7 +154,10 @@ deren Browser-URL und wechselt zur passenden Szene.
 > **Hinweis:** In den folgenden Abschnitten ist der Kürze halber meist nur von „OBS-Quelle"/
 > „OBS Szene aktualisieren" die Rede – gemeint ist damit immer **OBS oder Meld Studio**
 > gleichermaßen (je nachdem, was du eingerichtet hast). Beide laufen über dieselbe Szenen-/
-> Quellenkonfiguration und werden von der App parallel aktuell gehalten.
+> Quellenkonfiguration und werden von der App parallel aktuell gehalten. Die Overlay-Ebenen sind
+> außerdem in einer festen Reihenfolge gestapelt, damit passive Anzeigen (Befehls-Hilfe-Ticker,
+> Live-Ticker, Community-Ziel-Balken, Turnier-/Team-Kampf-Anmeldung) die Pack-/Tausch-/Kampf-
+> Animationen nie verdecken.
 
 ---
 
@@ -309,7 +312,8 @@ Beim Einlösen sliden nacheinander alle aktiven Booster mit den Karten dieses Zu
 **gezogene Karten sichtbar, noch nicht gezogene bleiben unbekannt**. Zwei **Anzeigestile** stehen
 zur Wahl (Einstellungen → Sammlung-Animation → Anzeigestil): **Detailliert** zeigt jede einzelne
 Karte, **Kompakt** zeigt pro Booster nur die Anzahl je Seltenheit – dadurch geht das Umblättern
-bei großen Sammlungen deutlich schneller.
+bei großen Sammlungen deutlich schneller. In beiden Stilen werden die Booster selbst in
+**alphabetischer Reihenfolge** angezeigt.
 
 <p align="center">
   <img src="docs/media/collection-showcase.gif" alt="Sammlungs-Showcase: Detailliert" width="260">
@@ -749,7 +753,8 @@ Im Tab **Einstellungen**:
 - **Vorschau** mit Karten-Auswahl.
 - **Sammlungsleiste** und **Kartenrahmen** ein-/ausblenden.
 - **Position Einlöser-Name** im Overlay: Unten / Oben.
-- **Sounds** für Öffnen, Reveal, Tausch und Kampf + **Lautstärke**.
+- **Sounds** für Öffnen, Reveal, Tausch, Kampf, Turnier-Anmeldung und Team-Kampf-Anmeldung – jeder
+  Sound hat seinen **eigenen Lautstärke-Regler**.
 - **Timing**: Karte sichtbar (Sek.), Cooldown, verdeckte Karten vor dem Reveal.
 - **Karten pro Pack** (Bereich Pack-Animation) – globaler Standardwert, wie viele Karten ein Pack
   aufdeckt (Standard: **1**, bisheriges Verhalten bleibt also unverändert, solange du hier nichts
@@ -973,7 +978,10 @@ switches to the right scene.
 
 > **Note:** For brevity, the sections below mostly just say "OBS source"/"update OBS scene" -
 > this always means **either OBS or Meld Studio**, whichever you've set up. Both use the same
-> scene/source configuration and are kept in sync by the app in parallel.
+> scene/source configuration and are kept in sync by the app in parallel. The overlay layers are
+> also stacked in a fixed order, so passive displays (commands-help ticker, live ticker,
+> community goal bar, tournament/team battle sign-up) never cover the pack/trade/battle
+> animations.
 
 <a id="en-create-boosters"></a>
 ### Create boosters
@@ -1118,7 +1126,7 @@ On redemption, every active booster slides through one after another with that v
 **drawn cards visible, undrawn ones stay unknown**. Two **display styles** are available
 (Settings → Collection animation → Display style): **Detailed** shows every single card,
 **Compact** shows only the count per rarity per booster - much faster to page through for large
-collections.
+collections. Both styles list the boosters themselves in **alphabetical order**.
 
 <p align="center">
   <img src="docs/media/collection-showcase.gif" alt="Collection showcase: detailed" width="260">
@@ -1518,7 +1526,8 @@ In the **Settings** tab:
 - **Preview** with card selection.
 - Toggle **collection bar** and **card border** on/off.
 - **Redeemer name position** in the overlay: bottom/top.
-- **Sounds** for open, reveal, trade and battle + **volume**.
+- **Sounds** for open, reveal, trade, battle, tournament sign-up and team battle sign-up – each
+  sound has its **own volume slider**.
 - **Timing**: card visible (sec.), cooldown, face-down cards before the reveal.
 - **Cards per pack** (Pack animation section) - global default for how many cards a pack reveals
   (default: **1**, so existing behavior stays unchanged unless you opt in). Individual boosters can
@@ -1736,7 +1745,10 @@ contente de mettre à jour leur URL de navigateur et de basculer sur la bonne sc
 > **Remarque :** par souci de concision, les sections suivantes parlent le plus souvent de
 > « source OBS »/« mettre à jour la scène OBS » – cela désigne toujours **OBS ou Meld Studio**,
 > selon ce que vous avez configuré. Les deux utilisent la même configuration de scène/sources et
-> sont maintenus à jour en parallèle par l'app.
+> sont maintenus à jour en parallèle par l'app. Les calques d'overlay sont en outre empilés dans
+> un ordre fixe, afin que les affichages passifs (bandeau d'aide aux commandes, bandeau défilant,
+> barre d'objectif communautaire, inscription tournoi/combat d'équipe) ne recouvrent jamais les
+> animations de pack/échange/combat.
 
 <a id="fr-créer-des-boosters"></a>
 ### Créer des boosters
@@ -1893,6 +1905,7 @@ spectateur : **cartes tirées visibles, celles non encore tirées restent inconn
 **styles d'affichage** sont proposés (Paramètres → Animation de collection → Style d'affichage) :
 **Détaillé** montre chaque carte individuellement, **Compact** montre uniquement le nombre par
 rareté et par booster – ce qui rend le défilement bien plus rapide pour les grandes collections.
+Dans les deux styles, les boosters eux-mêmes sont affichés par **ordre alphabétique**.
 
 <p align="center">
   <img src="docs/media/collection-showcase.gif" alt="Vitrine de collection : détaillé" width="260">
@@ -2339,7 +2352,8 @@ Dans l'onglet **Paramètres** :
 - **Aperçu** avec sélection de carte.
 - Afficher/masquer la **barre de collection** et le **cadre de carte**.
 - **Position du nom du bénéficiaire** dans l'overlay : bas/haut.
-- **Sons** pour l'ouverture, la révélation, l'échange et le combat + **volume**.
+- **Sons** pour l'ouverture, la révélation, l'échange, le combat, l'inscription au tournoi et
+  l'inscription au combat d'équipe – chaque son a son **propre curseur de volume**.
 - **Timing** : carte visible (sec.), temps de recharge, cartes face cachée avant la révélation.
 - **Cartes par pack** (section Animation de pack) – valeur par défaut globale du nombre de cartes
   révélées par un pack (par défaut : **1**, donc le comportement existant reste inchangé tant que
@@ -2563,7 +2577,10 @@ actualiza su URL de navegador y cambia a la escena correspondiente.
 > **Nota:** por brevedad, las siguientes secciones suelen hablar solo de "fuente OBS"/"actualizar
 > escena OBS" – esto siempre se refiere a **OBS o Meld Studio** por igual (según lo que hayas
 > configurado). Ambos usan la misma configuración de escena/fuentes y la app los mantiene
-> actualizados en paralelo.
+> actualizados en paralelo. Además, las capas de overlay están apiladas en un orden fijo, de modo
+> que las pantallas pasivas (ticker de ayuda de comandos, ticker en vivo, barra de meta
+> comunitaria, inscripción a torneo/combate de equipo) nunca cubren las animaciones de
+> sobre/intercambio/combate.
 
 <a id="es-crear-sobres"></a>
 ### Crear sobres
@@ -2716,7 +2733,8 @@ Al canjear, todos los sobres activos se deslizan uno tras otro con las cartas de
 **cartas obtenidas visibles, las aún no obtenidas permanecen desconocidas**. Hay dos **estilos de
 visualización** disponibles (Ajustes → Animación de colección → Estilo de visualización):
 **Detallado** muestra cada carta individualmente, **Compacto** muestra solo el número por rareza y
-por sobre – lo que hace que pasar de página sea mucho más rápido en colecciones grandes.
+por sobre – lo que hace que pasar de página sea mucho más rápido en colecciones grandes. En ambos
+estilos, los propios sobres se muestran en **orden alfabético**.
 
 <p align="center">
   <img src="docs/media/collection-showcase.gif" alt="Vitrina de colección: detallado" width="260">
@@ -3154,7 +3172,8 @@ En la pestaña **Ajustes**:
 - **Vista previa** con selección de carta.
 - Mostrar/ocultar **barra de colección** y **borde de carta**.
 - **Posición del nombre del canjeador** en el overlay: abajo/arriba.
-- **Sonidos** para abrir, revelar, intercambiar y combatir + **volumen**.
+- **Sonidos** para abrir, revelar, intercambiar, combatir, inscripción a torneo e inscripción a
+  combate de equipo – cada sonido tiene su **propio control de volumen**.
 - **Tiempos**: carta visible (seg.), tiempo de espera, cartas boca abajo antes de la revelación.
 - **Cartas por sobre** (sección Animación de sobre) – valor por defecto global de cuántas cartas
   revela un sobre (por defecto: **1**, así que el comportamiento existente no cambia salvo que lo
@@ -3363,7 +3382,9 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 
 > **หมายเหตุ:** เพื่อความกระชับ ในส่วนต่อไปนี้จะพูดถึงแค่ "แหล่ง OBS"/"อัปเดตฉาก OBS" เป็นส่วนใหญ่
 > – ซึ่งหมายถึง **OBS หรือ Meld Studio** เหมือนกันเสมอ (แล้วแต่ว่าคุณตั้งค่าอะไรไว้) ทั้งสองใช้
-> การกำหนดค่าฉาก/แหล่งที่มาเดียวกัน และแอปจะอัปเดตให้ทันสมัยคู่ขนานกันไป
+> การกำหนดค่าฉาก/แหล่งที่มาเดียวกัน และแอปจะอัปเดตให้ทันสมัยคู่ขนานกันไป นอกจากนี้เลเยอร์โอเวอร์เลย์
+> ยังถูกจัดเรียงในลำดับคงที่ เพื่อไม่ให้จอแสดงผลแบบพาสซีฟ (ตัววิ่งช่วยเหลือคำสั่ง ตัววิ่งสด แถบ
+> เป้าหมายชุมชน การสมัครทัวร์นาเมนต์/การต่อสู้ทีม) บดบังแอนิเมชันเปิดแพ็ก/แลกเปลี่ยน/ต่อสู้
 
 <a id="th-สร้างบูสเตอร์"></a>
 ### สร้างบูสเตอร์
@@ -3502,6 +3523,7 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 **การ์ดที่จับแล้วมองเห็นได้ ที่ยังไม่จับจะไม่ทราบ** มี**สไตล์การแสดงผล**ให้เลือก 2 แบบ
 (การตั้งค่า → แอนิเมชันคอลเลกชัน → สไตล์การแสดงผล): **แบบละเอียด** แสดงการ์ดทีละใบ **แบบกะทัดรัด**
 แสดงเฉพาะจำนวนต่อความหายากต่อบูสเตอร์ – ทำให้เลื่อนหน้าได้เร็วกว่ามากสำหรับคอลเลกชันขนาดใหญ่
+ทั้งสองสไตล์จะเรียงบูสเตอร์เองตาม**ลำดับตัวอักษร**
 
 <p align="center">
   <img src="docs/media/collection-showcase.gif" alt="โชว์เคสคอลเลกชัน: แบบละเอียด" width="260">
@@ -3880,7 +3902,8 @@ Meld Studio ต่างจาก OBS ตรงที่ **ไม่สามา
 - **ตัวอย่าง**พร้อมเลือกการ์ด
 - เปิด/ปิด**แถบคอลเลกชัน**และ**กรอบการ์ด**
 - **ตำแหน่งชื่อผู้แลกรางวัล**ในโอเวอร์เลย์: ล่าง/บน
-- **เสียง**สำหรับเปิด เผย แลกเปลี่ยน และต่อสู้ + **ระดับเสียง**
+- **เสียง**สำหรับเปิด เผย แลกเปลี่ยน ต่อสู้ สมัครทัวร์นาเมนต์ และสมัครการต่อสู้ทีม – แต่ละเสียงมี
+  **ตัวเลื่อนระดับเสียงของตัวเอง**
 - **จังหวะเวลา**: การ์ดมองเห็น (วินาที) คูลดาวน์ การ์ดคว่ำก่อนเปิดเผย
 - **จำนวนการ์ดต่อแพ็ก** (ส่วนแอนิเมชันแพ็ก) – ค่าเริ่มต้นส่วนกลางว่าแพ็กจะเปิดการ์ดกี่ใบ
   (ค่าเริ่มต้น: **1** พฤติกรรมเดิมจึงไม่เปลี่ยนแปลงตราบใดที่คุณไม่ปรับค่านี้) แต่ละบูสเตอร์
