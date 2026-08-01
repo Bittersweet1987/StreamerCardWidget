@@ -205,6 +205,20 @@ const DEFAULT_MESSAGES = {
     es: "@userName, lamentablemente has alcanzado el máximo de sobres por ahora. Espera hasta las [Uhrzeit]. Entonces tendrás sobres nuevos disponibles.",
     th: "@userName ขออภัย คุณได้รับแพ็กครบจำนวนสูงสุดแล้ว กรุณารอจนถึงเวลา [Uhrzeit] แล้วจะมีแพ็กใหม่ให้คุณ"
   },
+  irlModeOn: {
+    de: "📵 IRL-Modus aktiviert - bis auf das Pack-Öffnen sind alle Befehle, Kanalpunkte und Overlays pausiert.",
+    en: "📵 IRL mode enabled - besides opening packs, all commands, channel points and overlays are paused.",
+    fr: "📵 Mode IRL activé - à part l'ouverture de packs, toutes les commandes, points de chaîne et overlays sont en pause.",
+    es: "📵 Modo IRL activado - salvo abrir sobres, todos los comandos, puntos de canal y overlays están en pausa.",
+    th: "📵 เปิดโหมด IRL แล้ว - ยกเว้นการเปิดแพ็ก คำสั่ง แต้มช่อง และโอเวอร์เลย์ทั้งหมดถูกหยุดชั่วคราว"
+  },
+  irlModeOff: {
+    de: "✅ IRL-Modus deaktiviert - alle Funktionen sind wieder aktiv.",
+    en: "✅ IRL mode disabled - everything is active again.",
+    fr: "✅ Mode IRL désactivé - tout est de nouveau actif.",
+    es: "✅ Modo IRL desactivado - todo vuelve a estar activo.",
+    th: "✅ ปิดโหมด IRL แล้ว - ทุกอย่างกลับมาทำงานตามปกติ"
+  },
   packCooldown: {
     de: "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.",
     en: "@userName, unfortunately you still need to wait [Restzeit] seconds before you can use this command again.",
@@ -1458,9 +1472,9 @@ export function normalizeSettings(settings) {
   // applyOverlayLayout below. Default = centered at 100%, i.e. pixel-identical to before this
   // setting existed.
   settings.overlayLayout ||= {};
-  for (const key of ["draw", "collection", "showPack", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
+  for (const key of ["draw", "drawIrl", "collection", "showPack", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
     const layout = settings.overlayLayout[key] || {};
-    const scale = Number(layout.scale) > 0 ? Math.min(100, Math.max(10, Number(layout.scale))) : 100;
+    const scale = Number(layout.scale) > 0 ? Math.min(500, Math.max(10, Number(layout.scale))) : 100;
     const { w: boxW, h: boxH } = overlayLayoutBoxSize(key, scale);
     // On first run (no stored margin yet) default to centered, matching how every animation
     // rendered before this setting existed - not the top-left corner marginLeft:0 would imply.
@@ -1500,6 +1514,19 @@ export function normalizeSettings(settings) {
   settings.commandsHelp ||= {};
   settings.commandsHelp.enabled = settings.commandsHelp.enabled === true;
   settings.commandsHelp.secondsPerItem = Number(settings.commandsHelp.secondsPerItem) > 0 ? Math.min(60, Math.max(2, Math.round(Number(settings.commandsHelp.secondsPerItem)))) : 6;
+
+  // IRL mode: while enabled, chat output, all channel-point rewards/commands except the pack
+  // draw, and every overlay except the pack-opening one are suppressed server-side (see
+  // IsIrlModeActive in Bridge.Connection.cs). Off by default - purely opt-in for going live IRL.
+  settings.irlMode ||= {};
+  settings.irlMode.enabled = settings.irlMode.enabled === true;
+
+  settings.chatCommands.irlToggle ||= {};
+  settings.chatCommands.irlToggle.enabled = settings.chatCommands.irlToggle.enabled !== false;
+  settings.chatCommands.irlToggle.prefix ||= "!";
+  settings.chatCommands.irlToggle.command ||= "irl";
+  settings.chatCommands.irlToggle.onMessage ||= pickDefault(settings.language, "irlModeOn");
+  settings.chatCommands.irlToggle.offMessage ||= pickDefault(settings.language, "irlModeOff");
 
   settings.chatCommands.tournamentJoin ||= {};
   settings.chatCommands.tournamentJoin.enabled = settings.chatCommands.tournamentJoin.enabled !== false;
@@ -1838,6 +1865,10 @@ export const OVERLAY_LAYOUT_NATURAL_SIZES = {
   // the gap between them - not just the bare card, otherwise the editor's box looked far too
   // narrow next to what actually renders.
   draw: { w: 660, h: 460 },
+  // Separate IRL-mode position/scale for the pack-opening overlay only (see settings.irlMode) -
+  // same natural footprint as "draw" since it's the exact same animation, just placed/scaled
+  // independently while IRL mode is active, without touching the normal "draw" layout at all.
+  drawIrl: { w: 660, h: 460 },
   trade: { w: 720, h: 460 },
   battle: { w: 760, h: 520 },
   gift: { w: 620, h: 440 },

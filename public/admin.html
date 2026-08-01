@@ -158,6 +158,19 @@
               </div>
             </div>
           </section>
+          <section class="tool-panel" id="irl-mode-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="ov-irl-eyebrow">Live vor Ort</p>
+                <h2 data-i18n="ov-irl-title">IRL-Modus</h2>
+              </div>
+              <label class="switch-row compact-switch">
+                <input id="irl-mode-enabled" type="checkbox">
+                <span data-i18n="label-irl-mode-enabled">Aktiviert</span>
+              </label>
+            </div>
+            <p class="hint" data-i18n="ov-irl-hint">Solange aktiv: alle Chat-Ausgaben, Kanalpunkte-Belohnungen, Befehle und Overlays sind pausiert - außer dem Pack-Öffnen (Befehl und Kanalpunkte-Belohnung bleiben aktiv). Kann zusätzlich per Chat-Befehl umgeschaltet werden, siehe Chat-Befehle → IRL-Modus umschalten.</p>
+          </section>
           <div class="overview-grid">
             <section class="tool-panel">
               <div class="section-heading">
@@ -1179,7 +1192,33 @@
                 <p class="hint" data-i18n="cc-tournamentjoin-hint">Mit diesem Befehl treten Zuschauer während einer laufenden Anmeldephase dem Turnier bei. Wer nicht genug verschiedene Karten besitzt (siehe Einstellungen → Turnier-Modus), bekommt eine Hinweis-Nachricht statt beizutreten.</p>
               </div>
 
-              
+
+            </article>
+
+            <article class="reward-entry command-card" id="jn-cc-irltoggle">
+              <header class="command-card-head">
+                <div>
+                  <p class="eyebrow" data-i18n="cc-irltoggle-eyebrow">IRL-Modus</p>
+                  <h3 data-i18n="cc-irltoggle-title">IRL-Modus umschalten</h3>
+                </div>
+                <label class="switch-row compact-switch">
+                  <input id="cc-irltoggle-enabled" type="checkbox">
+                  <span data-i18n="label-cc-command-enabled">Aktiviert</span>
+                </label>
+              </header>
+
+              <div class="field-group">
+                <p class="field-group-title" data-i18n="cc-group-command">Befehl</p>
+                <div class="form-grid">
+                  <label data-i18n="label-cc-prefix">Präfix<input id="cc-irltoggle-prefix" type="text" maxlength="1"></label>
+                  <label data-i18n="label-cc-command">Befehlswort<input id="cc-irltoggle-command" type="text"></label>
+                </div>
+                <div class="form-grid">
+                  <label class="full-row" data-i18n="label-cc-irltoggle-onmessage">Nachricht bei Aktivierung<input id="cc-irltoggle-onmessage" type="text"></label>
+                  <label class="full-row" data-i18n="label-cc-irltoggle-offmessage">Nachricht bei Deaktivierung<input id="cc-irltoggle-offmessage" type="text"></label>
+                </div>
+                <p class="hint" data-i18n="cc-irltoggle-hint">Schaltet den IRL-Modus per Chat um (nur für Moderatoren/den Streamer selbst - andere Zuschauer werden ignoriert). Kann zusätzlich in der Übersicht per Schalter umgestellt werden. Solange der IRL-Modus aktiv ist, bleiben dieser Befehl und "!pack" die einzigen aktiven Befehle/Kanalpunkte - alle anderen Chat-Ausgaben, Befehle, Kanalpunkte-Belohnungen und Overlays (außer dem Pack-Öffnen) sind pausiert.</p>
+              </div>
             </article>
 
             <article class="reward-entry command-card" id="jn-cc-teamkampfjoin">
@@ -2644,6 +2683,8 @@
             </label>
             <p class="hint" data-i18n="show-collection-hint">Zeigt neben der gezogenen Karte die Seltenheiten-Übersicht (Besitz-Fortschritt je Seltenheitsstufe) an.</p>
             <div id="overlay-layout-draw"></div>
+            <p class="hint" data-i18n="hint-overlay-layout-draw-irl">Eigene Position/Skalierung nur für den IRL-Modus - überschreibt die Einstellung oben nicht, sondern wird zusätzlich gespeichert und nur verwendet, solange der IRL-Modus aktiv ist.</p>
+            <div id="overlay-layout-draw-irl"></div>
           </section>
 
           <section class="tool-panel" id="jn-sammlung-animation-design">

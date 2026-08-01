@@ -273,7 +273,7 @@ function renderItem(scene, item) {
 async function runCycle(token) {
   const items = buildItems();
   stage.innerHTML = "";
-  if (!settings?.commandsHelp?.enabled || items.length === 0) return;
+  if (!settings?.commandsHelp?.enabled || settings?.irlMode?.enabled || items.length === 0) return;
 
   const seconds = Math.max(2, Number(settings.commandsHelp.secondsPerItem) || 6);
   const scene = document.createElement("div");

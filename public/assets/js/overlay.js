@@ -571,7 +571,10 @@ function escapeForOverlay(value) {
 async function loadSettings() {
   settings = normalizeSettings(await getSettings());
   applyTheme(settings);
-  applyOverlayLayout(stage, settings.overlayLayout?.draw, "draw");
+  // IRL mode uses its own, separately configurable position/scale for this overlay (same
+  // animation, different placement) without ever touching the normal "draw" layout values.
+  const irlActive = settings.irlMode?.enabled === true;
+  applyOverlayLayout(stage, irlActive ? settings.overlayLayout?.drawIrl : settings.overlayLayout?.draw, irlActive ? "drawIrl" : "draw");
   document.body.classList.toggle("hide-borders", settings.style?.cardBorders === false);
 }
 

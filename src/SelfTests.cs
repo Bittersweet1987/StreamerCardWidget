@@ -60,6 +60,15 @@ namespace CardPackWidgetApp
             Check("MatchesCommand('!packs') doesn't match !pack (word boundary)", TwitchBridge.MatchesCommand("!packs", packsCmd) == false);
             Check("MatchesCommand('!other')==false", TwitchBridge.MatchesCommand("!other", packsCmd) == false);
 
+            // TwitchBridge.IsIrlModeActive / IsModeratorOrBroadcaster (Bridge.Connection.cs)
+            Check("IsIrlModeActive(missing)==false", TwitchBridge.IsIrlModeActive(new Dictionary<string, object>()) == false);
+            Dictionary<string, object> irlOnSettings = new Dictionary<string, object> { { "irlMode", new Dictionary<string, object> { { "enabled", true } } } };
+            Check("IsIrlModeActive(enabled)==true", TwitchBridge.IsIrlModeActive(irlOnSettings) == true);
+            Dictionary<string, object> modEvent = new Dictionary<string, object> { { "badges", new object[] { new Dictionary<string, object> { { "set_id", "moderator" } } } } };
+            Check("IsModeratorOrBroadcaster(moderator badge)==true", TwitchBridge.IsModeratorOrBroadcaster(modEvent) == true);
+            Dictionary<string, object> viewerEvent = new Dictionary<string, object> { { "badges", new object[] { new Dictionary<string, object> { { "set_id", "subscriber" } } } } };
+            Check("IsModeratorOrBroadcaster(subscriber badge)==false", TwitchBridge.IsModeratorOrBroadcaster(viewerEvent) == false);
+
             // TwitchBridge.ComputeNextResetAt (Bridge.PackCommands.cs)
             DateTime nowUtc = new DateTime(2026, 7, 27, 10, 0, 0, DateTimeKind.Utc);
             Dictionary<string, object> hoursCfg = new Dictionary<string, object> { { "resetUnit", "hours" }, { "resetValue", 24 } };

@@ -433,6 +433,7 @@ public object[] GetLiveTickerHistory()
         private void PushLiveTickerEntry(string kind, string text, string avatarUrl)
         {
             if (String.IsNullOrEmpty(text)) return;
+            if (IsIrlModeActive(server.ReadSettingsObject())) return;
             var tickerEntry = new Dictionary<string, object>
             {
                 { "kind", kind },
@@ -892,14 +893,19 @@ private void ProcessQueueItem(Dictionary<string, object> item)
                 string celebrationMessage = GetString(item, "celebrationMessage", DefaultCommunityGoalMessage);
                 SendChatMessageSafe(celebrationMessage);
 
-                var celebrationEvent = new Dictionary<string, object>
+                // IRL mode: the bonus draws below still happen (they're pack draws, exempt like
+                // any other), just the community-goal overlay itself stays hidden.
+                if (!IsIrlModeActive(server.ReadSettingsObject()))
                 {
-                    { "eventId", GetString(item, "id", DateTime.UtcNow.Ticks.ToString()) },
-                    { "target", target },
-                    { "bonusCards", bonusCards },
-                    { "message", celebrationMessage }
-                };
-                server.Broadcast("communitygoalreached", server.Serializer.Serialize(celebrationEvent));
+                    var celebrationEvent = new Dictionary<string, object>
+                    {
+                        { "eventId", GetString(item, "id", DateTime.UtcNow.Ticks.ToString()) },
+                        { "target", target },
+                        { "bonusCards", bonusCards },
+                        { "message", celebrationMessage }
+                    };
+                    server.Broadcast("communitygoalreached", server.Serializer.Serialize(celebrationEvent));
+                }
 
                 object participantsObj;
                 if (item.TryGetValue("participants", out participantsObj) && participantsObj is object[])

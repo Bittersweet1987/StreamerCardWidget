@@ -2454,6 +2454,17 @@ const I18N = {
   },
   "cc-tournamentjoin-eyebrow": { de: "Turnier", en: "Tournament", fr: "Tournoi", es: "Torneo", th: "ทัวร์นาเมนต์" },
   "cc-tournamentjoin-title": { de: "Turnier-Beitritt", en: "Tournament join", fr: "Inscription au tournoi", es: "Unirse al torneo", th: "เข้าร่วมทัวร์นาเมนต์" },
+  "cc-irltoggle-eyebrow": { de: "IRL-Modus", en: "IRL mode", fr: "Mode IRL", es: "Modo IRL", th: "โหมด IRL" },
+  "cc-irltoggle-title": { de: "IRL-Modus umschalten", en: "Toggle IRL mode", fr: "Basculer le mode IRL", es: "Alternar modo IRL", th: "สลับโหมด IRL" },
+  "label-cc-irltoggle-onmessage": { de: "Nachricht bei Aktivierung", en: "Message when enabled", fr: "Message à l'activation", es: "Mensaje al activar", th: "ข้อความเมื่อเปิดใช้งาน" },
+  "label-cc-irltoggle-offmessage": { de: "Nachricht bei Deaktivierung", en: "Message when disabled", fr: "Message à la désactivation", es: "Mensaje al desactivar", th: "ข้อความเมื่อปิดใช้งาน" },
+  "cc-irltoggle-hint": {
+    de: "Schaltet den IRL-Modus per Chat um (nur für Moderatoren/den Streamer selbst - andere Zuschauer werden ignoriert). Kann zusätzlich in der Übersicht per Schalter umgestellt werden. Solange der IRL-Modus aktiv ist, bleiben dieser Befehl und \"!pack\" die einzigen aktiven Befehle/Kanalpunkte - alle anderen Chat-Ausgaben, Befehle, Kanalpunkte-Belohnungen und Overlays (außer dem Pack-Öffnen) sind pausiert.",
+    en: "Toggles IRL mode via chat (moderators/the streamer only - other viewers are ignored). Can also be switched in the Overview tab. While IRL mode is active, this command and \"!pack\" remain the only active commands/channel points - every other chat output, command, channel-point reward and overlay (besides the pack opening) is paused.",
+    fr: "Bascule le mode IRL via le chat (modérateurs/le streameur uniquement - les autres spectateurs sont ignorés). Peut aussi être basculé dans l'onglet Aperçu. Tant que le mode IRL est actif, cette commande et « !pack » restent les seules commandes/points de chaîne actifs - toute autre sortie de chat, commande, récompense en points de chaîne et overlay (à part l'ouverture de pack) est en pause.",
+    es: "Alterna el modo IRL por chat (solo moderadores/el streamer - se ignora a los demás espectadores). También se puede alternar en la pestaña Resumen. Mientras el modo IRL esté activo, este comando y \"!pack\" son los únicos comandos/puntos de canal activos - toda otra salida de chat, comando, recompensa de puntos de canal y overlay (salvo abrir el sobre) está en pausa.",
+    th: "สลับโหมด IRL ผ่านแชท (เฉพาะผู้ดูแลหรือสตรีมเมอร์เท่านั้น - ผู้ชมคนอื่นจะถูกละเว้น) สามารถสลับเพิ่มเติมได้ในแท็บภาพรวม ตราบใดที่โหมด IRL ทำงานอยู่ คำสั่งนี้และ \"!pack\" จะเป็นคำสั่ง/แต้มช่องที่ใช้งานได้เพียงอย่างเดียว - การส่งข้อความแชท คำสั่ง รางวัลแต้มช่อง และโอเวอร์เลย์อื่นๆ ทั้งหมด (ยกเว้นการเปิดแพ็ก) จะถูกหยุดชั่วคราว"
+  },
   "cc-tournamentjoin-hint": {
     de: "Mit diesem Befehl treten Zuschauer während einer laufenden Anmeldephase dem Turnier bei. Wer nicht genug verschiedene Karten besitzt (siehe Einstellungen → Turnier-Modus), bekommt eine Hinweis-Nachricht statt beizutreten.",
     en: "Viewers use this command to join the tournament during an active signup phase. Anyone without enough different cards (see Settings → Tournament mode) gets a notice message instead of joining.",
@@ -3487,6 +3498,23 @@ const I18N = {
     fr: "Cartes par booster",
     es: "Cartas por sobre",
     th: "จำนวนการ์ดต่อแพ็ก"
+  },
+  "ov-irl-eyebrow": { de: "Live vor Ort", en: "Live on location", fr: "En direct sur place", es: "En vivo en el lugar", th: "ถ่ายทอดสดนอกสถานที่" },
+  "ov-irl-title": { de: "IRL-Modus", en: "IRL mode", fr: "Mode IRL", es: "Modo IRL", th: "โหมด IRL" },
+  "label-irl-mode-enabled": { de: "Aktiviert", en: "Enabled", fr: "Activé", es: "Activado", th: "เปิดใช้งาน" },
+  "ov-irl-hint": {
+    de: "Solange aktiv: alle Chat-Ausgaben, Kanalpunkte-Belohnungen, Befehle und Overlays sind pausiert - außer dem Pack-Öffnen (Befehl und Kanalpunkte-Belohnung bleiben aktiv). Kann zusätzlich per Chat-Befehl umgeschaltet werden, siehe Chat-Befehle → IRL-Modus umschalten.",
+    en: "While active: all chat output, channel-point rewards, commands and overlays are paused - except opening packs (command and channel-point reward stay active). Can also be toggled via chat command, see Chat commands → Toggle IRL mode.",
+    fr: "Tant qu'actif : toute sortie de chat, récompense en points de chaîne, commande et overlay est en pause - sauf l'ouverture de packs (commande et récompense en points de chaîne restent actives). Peut aussi être basculé via une commande de chat, voir Commandes de chat → Basculer le mode IRL.",
+    es: "Mientras esté activo: toda salida de chat, recompensa de puntos de canal, comando y overlay está en pausa - salvo abrir sobres (comando y recompensa de puntos de canal siguen activos). También se puede alternar mediante un comando de chat, ver Comandos de chat → Alternar modo IRL.",
+    th: "ขณะเปิดใช้งาน: การส่งข้อความแชท รางวัลแต้มช่อง คำสั่ง และโอเวอร์เลย์ทั้งหมดจะถูกหยุดชั่วคราว - ยกเว้นการเปิดแพ็ก (คำสั่งและรางวัลแต้มช่องยังทำงานอยู่) สามารถสลับเพิ่มเติมผ่านคำสั่งแชทได้ ดูที่ คำสั่งแชท → สลับโหมด IRL"
+  },
+  "hint-overlay-layout-draw-irl": {
+    de: "Eigene Position/Skalierung nur für den IRL-Modus - überschreibt die Einstellung oben nicht, sondern wird zusätzlich gespeichert und nur verwendet, solange der IRL-Modus aktiv ist.",
+    en: "Separate position/scale for IRL mode only - doesn't overwrite the setting above, it's saved additionally and only used while IRL mode is active.",
+    fr: "Position/échelle distincte pour le mode IRL uniquement - n'écrase pas le réglage ci-dessus, elle est enregistrée en plus et utilisée uniquement quand le mode IRL est actif.",
+    es: "Posición/escala independiente solo para el modo IRL - no sobrescribe el ajuste de arriba, se guarda adicionalmente y solo se usa mientras el modo IRL está activo.",
+    th: "ตำแหน่ง/ขนาดแยกต่างหากสำหรับโหมด IRL เท่านั้น - ไม่เขียนทับการตั้งค่าด้านบน แต่จะบันทึกเพิ่มเติมและใช้เฉพาะตอนที่โหมด IRL เปิดใช้งานอยู่"
   },
   "hint-cards-per-draw": {
     de: "Wie viele Karten ein Pack standardmäßig enthält (Standard: 1) - gilt für den normalen \"!pack\"-Zufallspool genauso wie für ein gezielt geöffnetes Pack. Jeder Booster kann diesen Wert in seinen eigenen Einstellungen individuell überschreiben.",
@@ -5756,6 +5784,7 @@ function bindSpecificPackReward() {
 }
 
 function renderOverview() {
+  if ($("#irl-mode-enabled")) $("#irl-mode-enabled").checked = settings.irlMode?.enabled === true;
   const booster = selectedBooster();
   const cards = booster ? cardsForBooster(settings, booster) : [];
   if ($("#overview-preview")) $("#overview-preview").innerHTML = (selectedCard() || cards[0]) ? cardMarkup(selectedCard() || cards[0]) : "";
@@ -6943,6 +6972,13 @@ function hydrateChatCommands() {
   $("#cc-tournamentjoin-helptext").value = tournamentJoin.helpText || "";
   $("#cc-tournamentjoin-outputmode").value = tournamentJoin.outputMode === "whisper" ? "whisper" : "chat";
 
+  const irlToggle = cc.irlToggle || {};
+  $("#cc-irltoggle-enabled").checked = irlToggle.enabled !== false;
+  $("#cc-irltoggle-prefix").value = irlToggle.prefix || "!";
+  $("#cc-irltoggle-command").value = irlToggle.command || "irl";
+  $("#cc-irltoggle-onmessage").value = irlToggle.onMessage || "";
+  $("#cc-irltoggle-offmessage").value = irlToggle.offMessage || "";
+
   const teamBattleJoin = cc.teamBattleJoin || {};
   $("#cc-teamkampfjoin-enabled").checked = teamBattleJoin.enabled !== false;
   $("#cc-teamkampfjoin-prefix").value = teamBattleJoin.prefix || "!";
@@ -7162,6 +7198,13 @@ function readChatCommandsFromForm() {
   cc.ranking.cardNotFoundMessage = $("#cc-ranking-notfound-message").value;
   cc.ranking.noOwnersMessage = $("#cc-ranking-noowners-message").value;
   cc.ranking.outputMode = $("#cc-ranking-outputmode").value === "whisper" ? "whisper" : "chat";
+
+  cc.irlToggle ||= {};
+  cc.irlToggle.enabled = $("#cc-irltoggle-enabled").checked;
+  cc.irlToggle.prefix = $("#cc-irltoggle-prefix").value || "!";
+  cc.irlToggle.command = $("#cc-irltoggle-command").value.trim() || "irl";
+  cc.irlToggle.onMessage = $("#cc-irltoggle-onmessage").value;
+  cc.irlToggle.offMessage = $("#cc-irltoggle-offmessage").value;
 
   cc.tournamentJoin ||= {};
   cc.tournamentJoin.enabled = $("#cc-tournamentjoin-enabled").checked;
@@ -7984,6 +8027,7 @@ function initOverlayLayoutEditors() {
   for (const key of ["draw", "collection", "showPack", "trade", "battle", "gift", "ranking", "communityGoal", "liveTicker", "commandsHelp", "tournamentSignup", "teamBattleSignup"]) {
     buildOverlayLayoutEditor($(`#overlay-layout-${key}`), key);
   }
+  buildOverlayLayoutEditor($("#overlay-layout-draw-irl"), "drawIrl");
   // The tournament bracket renders inside the same OBS source as Kampf-Animation, so it shares
   // that "battle" layout rather than having its own key.
   buildOverlayLayoutEditor($("#overlay-layout-tournament"), "battle");
@@ -8887,6 +8931,11 @@ function bindGlobalActions() {
       setSaveIndicator("error");
       showNotice(error.message, "error");
     }
+  });
+  $("#irl-mode-enabled").addEventListener("change", (event) => {
+    settings.irlMode ||= {};
+    settings.irlMode.enabled = event.target.checked;
+    scheduleAutoSave();
   });
   $("#test-random").addEventListener("click", () => {
     const user = randomUsername();

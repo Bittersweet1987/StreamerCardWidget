@@ -163,14 +163,17 @@ private void SaveCommunityGoalState()
             }
 
             int nextTarget = GetInt(stages[allDone ? stages.Count - 1 : reachedCount], "target", current);
-            server.Broadcast("communitygoalprogress", server.Serializer.Serialize(new Dictionary<string, object>
+            if (!IsIrlModeActive(server.ReadSettingsObject()))
             {
-                { "current", current },
-                { "target", nextTarget },
-                { "reached", allDone },
-                { "stageNumber", reachedCount },
-                { "stageCount", stages.Count }
-            }));
+                server.Broadcast("communitygoalprogress", server.Serializer.Serialize(new Dictionary<string, object>
+                {
+                    { "current", current },
+                    { "target", nextTarget },
+                    { "reached", allDone },
+                    { "stageNumber", reachedCount },
+                    { "stageCount", stages.Count }
+                }));
+            }
 
             if (newlyReached.Count == 0) return;
 

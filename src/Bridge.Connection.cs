@@ -352,6 +352,10 @@ private const string DefaultPacksEmpty = "@userName, aktuell ist kein Booster ve
 
 private const string DefaultPacksSubOnlyLabel = "Sub Only";
 
+private const string DefaultIrlModeOnMessage = "📵 IRL-Modus aktiviert - bis auf das Pack-Öffnen sind alle Befehle, Kanalpunkte und Overlays pausiert.";
+
+private const string DefaultIrlModeOffMessage = "✅ IRL-Modus deaktiviert - alle Funktionen sind wieder aktiv.";
+
 private const double DefaultBattleVariance = 0.6;
 
 public TwitchBridge(CardPackServer server)
@@ -879,6 +883,13 @@ private void HandleEventSubMessage(string text)
             // draw was even logged/enqueued - exactly why redemptions showed up in the log several
             // seconds after actually being redeemed.
             Dictionary<string, object> settings = server.ReadSettingsObject();
+
+            // IRL mode: only the pack/draw reward may still trigger anything - every other
+            // redemption (showcase, tournament, team battle, specific-pack) is ignored outright.
+            if (IsIrlModeActive(settings) && !StringArrayContains(Obj(settings, "draw"), "rewardIds", rewardId))
+            {
+                return;
+            }
 
             // Collection showcase reward: not a pack opening - tell the collection overlay to
             // slide through every active booster for this viewer. Routed through the action
@@ -1494,7 +1505,25 @@ private void HandleChatEventSubMessage(string text)
             string displayName = GetString(ev, "chatter_user_name", login);
             string chatText = GetString(Obj(ev, "message"), "text", "");
             if (String.IsNullOrWhiteSpace(login) || String.IsNullOrWhiteSpace(chatText)) return;
-            ProcessChatMessage(login, displayName, chatText);
+            ProcessChatMessage(login, displayName, chatText, IsModeratorOrBroadcaster(ev));
+        }
+
+// Twitch's channel.chat.message payload carries the chatter's badges as
+        // event.badges[].set_id ("moderator"/"broadcaster"/...) rather than a plain boolean -
+        // used to gate mod-only commands (currently just the IRL-mode toggle).
+        internal static bool IsModeratorOrBroadcaster(Dictionary<string, object> ev)
+        {
+            object badgesObj;
+            if (!ev.TryGetValue("badges", out badgesObj) || !(badgesObj is object[])) return false;
+            foreach (object entry in (object[])badgesObj)
+            {
+                var badge = entry as Dictionary<string, object>;
+                if (badge == null) continue;
+                string setId = GetString(badge, "set_id", "");
+                if (String.Equals(setId, "moderator", StringComparison.OrdinalIgnoreCase) ||
+                    String.Equals(setId, "broadcaster", StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
         }
 
 private void CreateChatEventSubSubscription(string sessionId)
@@ -2192,6 +2221,15 @@ private static Dictionary<string, object> Obj(Dictionary<string, object> parent,
             return parent.ContainsKey(key) && parent[key] is Dictionary<string, object>
                 ? (Dictionary<string, object>)parent[key]
                 : new Dictionary<string, object>();
+        }
+
+// IRL mode: while active, only the pack/draw reward+command may do anything - every other
+        // channel-point redemption, chat command, chat/whisper output and overlay animation is
+        // suppressed (see the call sites in HandleChannelPointRedemption, ProcessChatMessage,
+        // SendChatMessageSafe/SendWhisperMessageSafe and the non-"draw" Broadcast calls).
+        internal static bool IsIrlModeActive(Dictionary<string, object> settings)
+        {
+            return GetBool(Obj(settings, "irlMode"), "enabled", false);
         }
 
 private Dictionary<string, object> ParseObject(string text)

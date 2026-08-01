@@ -87,6 +87,7 @@ private static bool IsBracketSource(string source)
         private void CheckTeamBattleAutoStart()
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
+            if (IsIrlModeActive(settings)) return;
             Dictionary<string, object> tbCfg = Obj(settings, "teamBattle");
             if (!GetBool(tbCfg, "autoStartEnabled", false)) return;
             int intervalMinutes = Math.Max(1, GetInt(tbCfg, "autoStartIntervalMinutes", 30));

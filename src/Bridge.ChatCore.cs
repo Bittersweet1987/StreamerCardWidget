@@ -181,6 +181,17 @@ private void OutboundLoop()
 
 private void SendChatMessageSafe(string message)
         {
+            // IRL mode suppresses every chat post except the toggle command's own confirmation
+            // (which goes through SendChatMessageSafeForced instead, bypassing this check).
+            if (IsIrlModeActive(server.ReadSettingsObject())) return;
+            SendChatMessageSafeForced(message);
+        }
+
+// Bypasses the IRL-mode chat gate above - used only for the IRL toggle command's own
+        // confirmation reply, which must still go out even while (or especially when) IRL mode
+        // just turned on.
+        private void SendChatMessageSafeForced(string message)
+        {
             DispatchOutboundWork(delegate
             {
                 try { SendChatMessage(message); }
@@ -221,6 +232,7 @@ private void SendChatMessage(string message)
 
 private void SendWhisperMessageSafe(string login, string message)
         {
+            if (IsIrlModeActive(server.ReadSettingsObject())) return;
             DispatchOutboundWork(delegate
             {
                 try { SendWhisperMessage(login, message); }
@@ -393,13 +405,21 @@ private void StartAutoHelpTimerOnce()
 
 // ---- Command parsing + per-user usage/cooldown tracking ----
 
-        private void ProcessChatMessage(string login, string displayName, string text)
+        private void ProcessChatMessage(string login, string displayName, string text, bool isModerator)
         {
             Dictionary<string, object> settings = server.ReadSettingsObject();
             Dictionary<string, object> cc = Obj(settings, "chatCommands");
-            CheckAutoHelp(settings, cc);
+            bool irlActive = IsIrlModeActive(settings);
+            if (!irlActive) CheckAutoHelp(settings, cc);
             text = text.Trim();
             if (text.Length == 0) return;
+
+            Dictionary<string, object> irlToggle = Obj(cc, "irlToggle");
+            if (MatchesCommand(text, irlToggle))
+            {
+                if (GetBool(irlToggle, "enabled", true)) HandleIrlToggleCommand(login, displayName, isModerator, irlToggle, settings);
+                return;
+            }
 
             Dictionary<string, object> pack = Obj(cc, "pack");
             Dictionary<string, object> packs = Obj(cc, "packs");
@@ -428,6 +448,9 @@ private void StartAutoHelpTimerOnce()
                 if (GetBool(pack, "enabled", true)) HandlePackCommand(login, displayName, pack);
                 return;
             }
+            // IRL mode: nothing beyond "!pack" and the IRL toggle itself (both handled above)
+            // may run - every other command is silently ignored while it's active.
+            if (irlActive) return;
             if (MatchesCommand(text, specificPackDraw))
             {
                 if (GetBool(specificPackDraw, "enabled", false)) HandleSpecificPackDrawCommand(login, displayName, ArgsAfterCommand(text, specificPackDraw), specificPackDraw, settings);
@@ -557,6 +580,27 @@ private void StartAutoHelpTimerOnce()
                 if (GetBool(teamBattleJoin, "enabled", true)) JoinTeamBattle(login, displayName, settings);
                 return;
             }
+        }
+
+// Toggles settings.irlMode.enabled - mod/broadcaster only (see IsModeratorOrBroadcaster),
+        // since anyone in chat being able to shut off every overlay/reward/command except the pack
+        // draw would be an easy way to grief a stream. Non-mods are ignored without any reply,
+        // same as any other command a viewer isn't allowed to use. The confirmation reply bypasses
+        // the IRL chat-suppression gate itself (see SendChatMessageSafe) - otherwise turning IRL
+        // mode ON would swallow the very message confirming it turned on.
+        private void HandleIrlToggleCommand(string login, string displayName, bool isModerator, Dictionary<string, object> cmdCfg, Dictionary<string, object> settings)
+        {
+            if (!isModerator) return;
+            Dictionary<string, object> irlMode = EnsureObject(settings, "irlMode");
+            bool nowEnabled = !GetBool(irlMode, "enabled", false);
+            irlMode["enabled"] = nowEnabled;
+            // WriteSettingsObject already broadcasts a "settings" SSE event on every save, which
+            // every overlay page listens for to reload its settings - no separate event needed to
+            // tell overlays IRL mode just changed.
+            server.WriteSettingsObject(settings);
+            string message = GetString(cmdCfg, nowEnabled ? "onMessage" : "offMessage", nowEnabled ? DefaultIrlModeOnMessage : DefaultIrlModeOffMessage)
+                .Replace("@userName", "@" + displayName);
+            SendChatMessageSafeForced(message);
         }
 
 internal static bool MatchesCommand(string text, Dictionary<string, object> cmd)
