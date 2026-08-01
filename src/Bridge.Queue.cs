@@ -483,11 +483,16 @@ private void SendDrawPostMessage(Dictionary<string, object> item, string cardTit
             string user = GetString(item, "user", "Viewer");
             Dictionary<string, object> settings = server.ReadSettingsObject();
             string template = null;
-            Dictionary<string, object> packCfg = null;
+            // The !pack chat command's own config - its "Versandart" (chat/whisper) is reused
+            // below for EVERY draw announcement, not just "!pack" itself, so a streamer who set
+            // "!pack" to whisper gets the same privacy for channel-points/bits/community-goal/
+            // tournament/Team-Kampf/sub draws too, instead of those always posting publicly
+            // regardless of that setting (the previous behaviour, which surprised streamers who
+            // only ever configured the one "!pack" Versandart and expected it to apply globally).
+            Dictionary<string, object> packCfg = Obj(Obj(settings, "chatCommands"), "pack");
             if (source == "chat")
             {
                 // The !pack "Nachricht bei Einloesung" - always sent (no separate toggle).
-                packCfg = Obj(Obj(settings, "chatCommands"), "pack");
                 template = GetString(packCfg, "successMessage", "");
             }
             else
@@ -573,8 +578,7 @@ private void SendDrawPostMessage(Dictionary<string, object> item, string cardTit
             {
                 if (!String.IsNullOrEmpty(login)) SendWhisperMessageSafeForced(login, msg);
             }
-            else if (source == "chat") SendCommandOutput(login, packCfg, msg);
-            else SendChatMessageSafe(msg);
+            else SendCommandOutput(login, packCfg, msg);
         }
 
 public void SetQueuePaused(bool paused)
