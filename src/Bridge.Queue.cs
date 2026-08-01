@@ -307,31 +307,6 @@ private static double GetDouble(Dictionary<string, object> data, string key, dou
             SavePendingState();
         }
 
-// Auto-starts a Team-Kampf that got queued (see StartTeamBattleSignup) because a tournament
-        // was still busy at the time. Deliberately checked independently of
-        // FlushDeferredQueueIfIdle's own early return - that one bails out while bracket PLAYBACK
-        // is busy, which is exactly the state a tournament sits in for most of its lifetime, so
-        // nesting this inside it would mean the pending request never gets a chance to fire until
-        // some unrelated later event happened to find playback idle. IsBracketEventBusy() is the
-        // single source of truth for "is it actually safe to start now" - only once neither a
-        // tournament's signup NOR its bracket playback is active does this fire, at which point the
-        // Team-Kampf hasn't been "lost" at all - it starts for real, same as if it had been
-        // triggered fresh right now.
-        private void ResolvePendingTeamBattleIfIdle()
-        {
-            Dictionary<string, object> pending = null;
-            lock (pendingTeamBattleLock)
-            {
-                if (pendingTeamBattleRequest != null && !IsBracketEventBusy())
-                {
-                    pending = pendingTeamBattleRequest;
-                    pendingTeamBattleRequest = null;
-                }
-            }
-            if (pending == null) return;
-            StartTeamBattleSignup(GetString(pending, "login", ""), GetString(pending, "displayName", ""), GetString(pending, "source", ""));
-        }
-
 private static Dictionary<string, object> BuildQueueItem(string kind, string login, string displayName, string source, Dictionary<string, object> extra)
         {
             var item = new Dictionary<string, object>
@@ -795,7 +770,6 @@ private void QueueLoop()
                 // catches the moment a bracket event finishes regardless of which code path cleared
                 // it, without needing an explicit call at every one of those paths.
                 FlushDeferredQueueIfIdle();
-                ResolvePendingTeamBattleIfIdle();
                 // While paused, keep collecting incoming events but don't process any.
                 if (queuePaused) continue;
                 Dictionary<string, object> item = null;

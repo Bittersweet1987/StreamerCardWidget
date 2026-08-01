@@ -448,36 +448,20 @@ public Dictionary<string, object> GetTournamentState()
             // channel-points-started Team-Kampf has no outputMode concept of its own.
             Dictionary<string, object> teamBattleStartCfg = source == "chat" ? Obj(Obj(settings, "chatCommands"), "teamBattleStart") : null;
 
-            // Only one bracket event (tournament OR Team-Kampf) may run at a time - a tournament
-            // still playing out its bracket would otherwise get this Team-Kampf injected into the
-            // middle of its animations (and vice versa). See IsBracketEventBusy.
-            if (IsBracketEventBusy())
-            {
-                bool teamBattleAlreadyActive;
-                lock (teamBattleLock) { teamBattleAlreadyActive = activeTeamBattle != null; }
-                if (teamBattleAlreadyActive)
-                {
-                    SendCommandOutput(login, teamBattleStartCfg, GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
-                        .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
-                    return "already_running";
-                }
-                // Blocked only by a TOURNAMENT (signup or still playing back its bracket), not by
-                // another Team-Kampf - rather than rejecting the redemption/command outright, queue
-                // it to auto-start for real the instant the tournament is completely done (see
-                // ResolvePendingTeamBattleIfIdle, polled from QueueLoop) instead of silently
-                // swallowing it.
-                lock (pendingTeamBattleLock)
-                {
-                    pendingTeamBattleRequest = new Dictionary<string, object>
-                    {
-                        { "login", login }, { "displayName", displayName }, { "source", source }
-                    };
-                }
-                SendCommandOutput(login, teamBattleStartCfg, GetString(tbCfg, "queuedMessage", DefaultTeamBattleQueued)
-                    .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
-                return "queued";
-            }
-
+            // Team-Kampf SIGNUP no longer waits for a tournament to finish - only another already-
+            // running Team-Kampf blocks a new one (checked just below, under the lock). Mirrors
+            // StartTournamentSignup's own busy check (see its comment for the full reasoning):
+            // signup never touches the shared action queue, so a tournament's and a Team-Kampf's
+            // signup windows can run side by side with no risk of interleaved animations - only
+            // RESOLVING a bracket needs exclusive queue access, which is why ResolveTeamBattleSignup
+            // (not here) defers itself via IsBracketPlaybackBusy if the other bracket type is still
+            // actually playing out its matches when this signup window closes.
+            //
+            // This used to instead block on IsBracketEventBusy() (any tournament activity at all)
+            // and queue the request to auto-start later via a single pendingTeamBattleRequest slot -
+            // removed because a viewer's redemption during a running tournament got silently stuck
+            // there indefinitely in some cases instead of ever actually starting once the tournament
+            // ended, with no way to retry short of restarting the app.
             bool alreadyRunning = false;
             bool noCards = false;
             string startMessage = null;

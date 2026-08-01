@@ -178,16 +178,6 @@ private Dictionary<string, object> activeTeamBattle;
 
 private System.Threading.Timer teamBattleSignupTimer;
 
-// A Team-Kampf trigger (channel points or chat) that arrived while a TOURNAMENT was busy
-        // (signup or still playing back its bracket) - rather than rejecting it outright, it's
-        // remembered here and auto-started for real the moment the tournament is completely done
-        // (see ResolvePendingTeamBattleIfIdle, polled from QueueLoop). Only ever holds the single
-        // most recent such request - a second one arriving while the first is still queued simply
-        // replaces it, same "one bracket event at a time" rule as everything else here.
-        private readonly object pendingTeamBattleLock = new object();
-
-private Dictionary<string, object> pendingTeamBattleRequest;
-
 private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
 
 private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
@@ -297,8 +287,6 @@ private const string DefaultTournamentNotEligible = "@userName, für die Turnier
 private const string DefaultTournamentAlreadyRunning = "@userName, es läuft bereits ein Turnier oder eine Anmeldephase.";
 
 private const string DefaultTeamBattleBusy = "@userName, es läuft bereits ein Team-Kampf.";
-
-private const string DefaultTeamBattleQueued = "@userName, es läuft gerade ein Turnier - der Team-Kampf startet automatisch direkt danach.";
 
 private const string DefaultTeamBattleSignupStart = "Team-Kampf gestartet! Der Streamer stellt [Anzahl] Karten - tritt mit [Befehl] bei, [Sekunden] Sekunden Zeit!";
 
