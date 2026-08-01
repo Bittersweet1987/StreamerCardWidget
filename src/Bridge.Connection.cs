@@ -178,6 +178,17 @@ private Dictionary<string, object> activeTeamBattle;
 
 private System.Threading.Timer teamBattleSignupTimer;
 
+// A tournament/Team-Kampf signup request that arrived while the OTHER kind's signup window
+        // (tournament OR Team-Kampf, not playback) was already open - see StartTournamentSignup/
+        // StartTeamBattleSignup. Auto-started for real by ResolvePendingSignupsIfIdle the instant
+        // that blocking signup closes. Only ever holds the single most recent such request per
+        // kind - a second one arriving while the first is still parked simply replaces it.
+        private readonly object pendingSignupLock = new object();
+
+private Dictionary<string, object> pendingTournamentRequest;
+
+private Dictionary<string, object> pendingTeamBattleRequest;
+
 private const string DefaultLimitMessage = "@userName, Leider hast du das maximum an Packs aktuell erreicht. Bitte warte bis [Uhrzeit] Uhr. Dann stehen dir neue Packs zur Verfügung.";
 
 private const string DefaultCooldownMessage = "@userName, leider musst du noch [Restzeit] Sekunden warten, bis du diesen Befehl erneut ausführen darfst.";
@@ -284,9 +295,9 @@ private const string DefaultTournamentJoinAck = "@userName ist dem Turnier beige
 
 private const string DefaultTournamentNotEligible = "@userName, für die Turnier-Teilnahme brauchst du mindestens [Anzahl] verschiedene Karten.";
 
-private const string DefaultTournamentAlreadyRunning = "@userName, es läuft bereits ein Turnier oder eine Anmeldephase.";
+private const string DefaultTournamentQueued = "@userName, es läuft bereits eine Anmeldephase - das Turnier startet automatisch, sobald diese vorbei ist.";
 
-private const string DefaultTeamBattleBusy = "@userName, es läuft bereits ein Team-Kampf.";
+private const string DefaultTeamBattleQueued = "@userName, es läuft bereits eine Anmeldephase - der Team-Kampf startet automatisch, sobald diese vorbei ist.";
 
 private const string DefaultTeamBattleSignupStart = "Team-Kampf gestartet! Der Streamer stellt [Anzahl] Karten - tritt mit [Befehl] bei, [Sekunden] Sekunden Zeit!";
 

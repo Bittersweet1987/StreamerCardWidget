@@ -2442,6 +2442,7 @@ const I18N = {
   "label-tournament-participants": { de: "Teilnehmer", en: "participants", fr: "participants", es: "participantes", th: "ผู้เข้าร่วม" },
   "notice-tournament-started": { de: "Turnier-Anmeldung gestartet.", en: "Tournament signup started.", fr: "Inscription au tournoi démarrée.", es: "Inscripción al torneo iniciada.", th: "เริ่มการสมัครทัวร์นาเมนต์แล้ว" },
   "notice-tournament-already-running": { de: "Es läuft bereits ein Turnier oder eine Anmeldephase.", en: "A tournament or signup phase is already running.", fr: "Un tournoi ou une phase d'inscription est déjà en cours.", es: "Ya hay un torneo o una fase de inscripción en curso.", th: "มีทัวร์นาเมนต์หรือช่วงสมัครที่กำลังดำเนินอยู่แล้ว" },
+  "notice-tournament-queued": { de: "Es läuft bereits eine Anmeldephase - das Turnier startet automatisch, sobald diese vorbei ist.", en: "A signup phase is already running - the tournament will start automatically once it ends.", fr: "Une phase d'inscription est déjà en cours - le tournoi démarrera automatiquement une fois celle-ci terminée.", es: "Ya hay una fase de inscripción en curso - el torneo comenzará automáticamente en cuanto termine.", th: "มีช่วงสมัครที่กำลังดำเนินอยู่แล้ว - ทัวร์นาเมนต์จะเริ่มอัตโนมัติเมื่อช่วงนั้นจบลง" },
   "notice-tournament-disabled": { de: "Turnier-Modus ist nicht aktiviert.", en: "Tournament mode is not enabled.", fr: "Le mode tournoi n'est pas activé.", es: "El modo torneo no está activado.", th: "โหมดทัวร์นาเมนต์ไม่ได้เปิดใช้งาน" },
   "tournament-reward-eyebrow": { de: "Turnier", en: "Tournament", fr: "Tournoi", es: "Torneo", th: "ทัวร์นาเมนต์" },
   "tournament-reward-title": { de: "Turnier-Belohnung", en: "Tournament reward", fr: "Récompense de tournoi", es: "Recompensa de torneo", th: "รางวัลทัวร์นาเมนต์" },
@@ -2598,6 +2599,7 @@ const I18N = {
   "notice-teamkampf-reward-saved": { de: "Team-Kampf-Belohnung gespeichert.", en: "Team battle reward saved.", fr: "Récompense de combat d'équipe enregistrée.", es: "Recompensa de combate de equipo guardada.", th: "บันทึกรางวัลการต่อสู้ทีมแล้ว" },
   "notice-teamkampf-started": { de: "Team-Kampf-Anmeldung gestartet.", en: "Team battle signup started.", fr: "Inscription au combat d'équipe démarrée.", es: "Inscripción al combate de equipo iniciada.", th: "เริ่มการสมัครการต่อสู้ทีมแล้ว" },
   "notice-teamkampf-already-running": { de: "Es läuft bereits ein Team-Kampf.", en: "A team battle is already running.", fr: "Un combat d'équipe est déjà en cours.", es: "Ya hay un combate de equipo en curso.", th: "มีการต่อสู้ทีมที่กำลังดำเนินอยู่แล้ว" },
+  "notice-teamkampf-queued": { de: "Es läuft bereits eine Anmeldephase - der Team-Kampf startet automatisch, sobald diese vorbei ist.", en: "A signup phase is already running - the team battle will start automatically once it ends.", fr: "Une phase d'inscription est déjà en cours - le combat d'équipe démarrera automatiquement une fois celle-ci terminée.", es: "Ya hay una fase de inscripción en curso - el combate de equipo comenzará automáticamente en cuanto termine.", th: "มีช่วงสมัครที่กำลังดำเนินอยู่แล้ว - การต่อสู้ทีมจะเริ่มอัตโนมัติเมื่อช่วงนั้นจบลง" },
   "notice-teamkampf-disabled": { de: "Team-Kampf ist nicht aktiviert.", en: "Team battle is not enabled.", fr: "Le combat d'équipe n'est pas activé.", es: "El combate de equipo no está activado.", th: "การต่อสู้ทีมไม่ได้เปิดใช้งาน" },
   "notice-teamkampf-no-cards": { de: "Team-Kampf konnte nicht gestartet werden: keine Karten verfügbar.", en: "Team battle couldn't start: no cards available.", fr: "Le combat d'équipe n'a pas pu démarrer : aucune carte disponible.", es: "No se pudo iniciar el combate de equipo: no hay cartas disponibles.", th: "ไม่สามารถเริ่มการต่อสู้ทีมได้: ไม่มีการ์ดที่ใช้งานได้" },
   "specificpack-reward-eyebrow": { de: "Kartenpacks", en: "Card packs", fr: "Boosters de cartes", es: "Sobres de cartas", th: "แพ็กการ์ด" },
@@ -8341,7 +8343,7 @@ function bindDesign() {
   $("#tournament-start-now").addEventListener("click", async () => {
     try {
       const result = await startTournament();
-      if (result.result === "already_running") showNotice(t("notice-tournament-already-running"), "error");
+      if (result.result === "queued") showNotice(t("notice-tournament-queued"));
       else if (result.result === "disabled") showNotice(t("notice-tournament-disabled"), "error");
       else showNotice(t("notice-tournament-started"));
       await refreshTournamentStatus();
@@ -8467,7 +8469,7 @@ function bindDesign() {
   $("#teamkampf-start-now").addEventListener("click", async () => {
     try {
       const result = await startTeamBattle();
-      if (result.result === "already_running") showNotice(t("notice-teamkampf-already-running"), "error");
+      if (result.result === "queued") showNotice(t("notice-teamkampf-queued"));
       else if (result.result === "disabled") showNotice(t("notice-teamkampf-disabled"), "error");
       else if (result.result === "no_cards") showNotice(t("notice-teamkampf-no-cards"), "error");
       else showNotice(t("notice-teamkampf-started"));

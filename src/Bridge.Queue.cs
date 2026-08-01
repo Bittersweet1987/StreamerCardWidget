@@ -770,6 +770,7 @@ private void QueueLoop()
                 // catches the moment a bracket event finishes regardless of which code path cleared
                 // it, without needing an explicit call at every one of those paths.
                 FlushDeferredQueueIfIdle();
+                ResolvePendingSignupsIfIdle();
                 // While paused, keep collecting incoming events but don't process any.
                 if (queuePaused) continue;
                 Dictionary<string, object> item = null;

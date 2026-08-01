@@ -37,6 +37,78 @@ namespace CardPackWidgetApp
             return IsBracketPlaybackBusy();
         }
 
+// True only while a SIGNUP window (tournament or Team-Kampf) is open - unlike
+        // IsBracketEventBusy, deliberately excludes bracket PLAYBACK. A new signup request is only
+        // ever blocked by the OTHER type's signup phase; once that phase closes (activeTournament/
+        // activeTeamBattle goes null - which happens the instant the deadline is reached and the
+        // bracket is resolved into the queue, well before those matches finish animating), a new
+        // signup window may open right away even while the first event's matches are still playing
+        // out. Only actually STARTING the fight itself (ResolveTournamentSignup/
+        // ResolveTeamBattleSignup) has to wait for the other one's playback to finish, via
+        // IsBracketPlaybackBusy - see the deferral logic there.
+        private bool IsAnySignupOpen()
+        {
+            lock (tournamentLock) { if (activeTournament != null) return true; }
+            lock (teamBattleLock) { if (activeTeamBattle != null) return true; }
+            return false;
+        }
+
+// Lock-acquisition order is always tournamentLock THEN teamBattleLock (never the reverse) to
+        // avoid a deadlock between StartTournamentSignup and StartTeamBattleSignup, both of which
+        // need to check/mutate both events' state - these two small helpers only ever get called
+        // from inside an already-held tournamentLock, acquiring just teamBattleLock themselves.
+        private bool IsTeamBattleSignupOpen()
+        {
+            lock (teamBattleLock) return activeTeamBattle != null;
+        }
+
+// Auto-starts a signup that got parked (see StartTournamentSignup/StartTeamBattleSignup)
+        // because a signup window (of either kind) was still open at the time. Polled every second
+        // from QueueLoop (cheap - a couple of lock-protected null checks), so a parked request fires
+        // within ~1s of the blocking signup actually closing, without needing an explicit call
+        // wired into every single code path that can close a signup.
+        //
+        // Deliberately releases AT MOST ONE pending request per call, even if both slots happen to
+        // be filled at once: starting one immediately makes activeTournament/activeTeamBattle
+        // non-null again, so releasing both in the same pass would just have the second one's
+        // StartXSignup call re-park itself right back into its own slot - a real bug an earlier
+        // version of this method had (both were snapshotted from the SAME "both idle" instant,
+        // before either start call could change that). Whichever pending slot exists gets its turn
+        // first; the other one simply waits for the next idle window once this one's signup closes
+        // too, which is exactly the intended "one signup at a time" behavior anyway.
+        private void ResolvePendingSignupsIfIdle()
+        {
+            Dictionary<string, object> pending = null;
+            bool isTournament = false;
+            lock (tournamentLock)
+            {
+                lock (teamBattleLock)
+                {
+                    if (activeTournament != null || activeTeamBattle != null) return;
+                    lock (pendingSignupLock)
+                    {
+                        if (pendingTournamentRequest != null)
+                        {
+                            pending = pendingTournamentRequest;
+                            pendingTournamentRequest = null;
+                            isTournament = true;
+                        }
+                        else if (pendingTeamBattleRequest != null)
+                        {
+                            pending = pendingTeamBattleRequest;
+                            pendingTeamBattleRequest = null;
+                        }
+                    }
+                }
+            }
+            if (pending == null) return;
+            string login = GetString(pending, "login", "");
+            string displayName = GetString(pending, "displayName", "");
+            string source = GetString(pending, "source", "");
+            if (isTournament) StartTournamentSignup(login, displayName, source);
+            else StartTeamBattleSignup(login, displayName, source);
+        }
+
 // Narrower than IsBracketEventBusy: true ONLY while a bracket's matches are actually being
         // played back in the queue (front-loaded there the instant signup closes - see
         // ResolveTournamentSignup/EnqueueBatchAtFront) - NOT during the signup window itself. Other
@@ -130,15 +202,18 @@ private static bool IsBracketSource(string source)
             // StripDeckForRewardSave's rationale: Kanalpunkte only covers reward creation).
             Dictionary<string, object> tournamentStartCfg = source == "chat" ? Obj(Obj(settings, "chatCommands"), "tournamentStart") : null;
 
-            // Tournament SIGNUP no longer waits for a Team-Kampf to finish - only another already-
-            // running tournament blocks a new one (checked just below, under the lock). Signup
-            // itself never touches the shared action queue, so two signup windows (a tournament's
-            // and a Team-Kampf's) can run side by side with no risk of interleaved animations -
-            // only RESOLVING a bracket needs exclusive queue access, which is why
-            // ResolveTournamentSignup (not here) defers itself via IsBracketPlaybackBusy if the
-            // other bracket type is still actually playing out its matches when this one's signup
-            // window closes.
-            bool alreadyRunning = false;
+            // Only one SIGNUP window may be open at a time, full stop - a second tournament signup
+            // while one is already running, a Team-Kampf signup while a tournament's is running, or
+            // either of those the other way round, are all treated identically: rather than being
+            // rejected, the request is parked (pendingTournamentRequest) and auto-started the
+            // instant the currently-open signup closes (see ResolvePendingSignupsIfIdle, polled from
+            // QueueLoop). A signup window closing does NOT mean that event's fight has finished
+            // playing though - the instant a signup closes its bracket is resolved into the queue,
+            // and a parked signup is free to open right away, running alongside those still-
+            // animating matches. Only actually STARTING the fight (ResolveTournamentSignup) has to
+            // wait its turn if another type's matches are still mid-playback then - see the
+            // deferral logic there.
+            bool parkedAsPending = false;
             string startMessage = null;
             string deadlineUtc = null;
             int minParticipantsForBroadcast = 0;
@@ -146,9 +221,16 @@ private static bool IsBracketSource(string source)
 
             lock (tournamentLock)
             {
-                if (activeTournament != null)
+                if (activeTournament != null || IsTeamBattleSignupOpen())
                 {
-                    alreadyRunning = true;
+                    lock (pendingSignupLock)
+                    {
+                        pendingTournamentRequest = new Dictionary<string, object>
+                        {
+                            { "login", login }, { "displayName", displayName }, { "source", source }
+                        };
+                    }
+                    parkedAsPending = true;
                 }
                 else
                 {
@@ -182,11 +264,11 @@ private static bool IsBracketSource(string source)
                 }
             }
 
-            if (alreadyRunning)
+            if (parkedAsPending)
             {
-                SendCommandOutput(login, tournamentStartCfg, GetString(tCfg, "alreadyRunningMessage", DefaultTournamentAlreadyRunning)
+                SendCommandOutput(login, tournamentStartCfg, GetString(tCfg, "queuedMessage", DefaultTournamentQueued)
                     .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
-                return "already_running";
+                return "queued";
             }
 
             SendCommandOutput(login, tournamentStartCfg, startMessage);
@@ -448,32 +530,39 @@ public Dictionary<string, object> GetTournamentState()
             // channel-points-started Team-Kampf has no outputMode concept of its own.
             Dictionary<string, object> teamBattleStartCfg = source == "chat" ? Obj(Obj(settings, "chatCommands"), "teamBattleStart") : null;
 
-            // Team-Kampf SIGNUP no longer waits for a tournament to finish - only another already-
-            // running Team-Kampf blocks a new one (checked just below, under the lock). Mirrors
-            // StartTournamentSignup's own busy check (see its comment for the full reasoning):
-            // signup never touches the shared action queue, so a tournament's and a Team-Kampf's
-            // signup windows can run side by side with no risk of interleaved animations - only
-            // RESOLVING a bracket needs exclusive queue access, which is why ResolveTeamBattleSignup
-            // (not here) defers itself via IsBracketPlaybackBusy if the other bracket type is still
-            // actually playing out its matches when this signup window closes.
+            // Only one SIGNUP window (tournament OR Team-Kampf) may be open at a time - but rather
+            // than rejecting a request that arrives while the OTHER type's signup is open, it's
+            // parked (pendingTeamBattleRequest) and auto-started the instant that signup closes
+            // (see ResolvePendingSignupsIfIdle, polled from QueueLoop). Mirrors
+            // StartTournamentSignup's own logic (see its comment for the full reasoning) - a signup
+            // window closing does NOT mean that event's fight has finished playing, so a new Team-
+            // Kampf signup opens right away once the tournament's own signup closes, running
+            // alongside its still-animating matches. Only actually STARTING the fight
+            // (ResolveTeamBattleSignup) has to wait its turn if the other type's matches are still
+            // mid-playback - see the deferral logic there.
             //
-            // This used to instead block on IsBracketEventBusy() (any tournament activity at all)
-            // and queue the request to auto-start later via a single pendingTeamBattleRequest slot -
-            // removed because a viewer's redemption during a running tournament got silently stuck
-            // there indefinitely in some cases instead of ever actually starting once the tournament
-            // ended, with no way to retry short of restarting the app.
-            bool alreadyRunning = false;
+            // Always acquires tournamentLock BEFORE teamBattleLock (same order as
+            // StartTournamentSignup) to avoid a deadlock between the two.
+            bool parkedAsPending = false;
             bool noCards = false;
             string startMessage = null;
             List<Dictionary<string, string>> streamerLineupForBroadcast = null;
             string deadlineUtc = null;
             string joinCommandText = null;
 
+            lock (tournamentLock)
             lock (teamBattleLock)
             {
-                if (activeTeamBattle != null)
+                if (activeTeamBattle != null || activeTournament != null)
                 {
-                    alreadyRunning = true;
+                    lock (pendingSignupLock)
+                    {
+                        pendingTeamBattleRequest = new Dictionary<string, object>
+                        {
+                            { "login", login }, { "displayName", displayName }, { "source", source }
+                        };
+                    }
+                    parkedAsPending = true;
                 }
                 else
                 {
@@ -542,11 +631,11 @@ public Dictionary<string, object> GetTournamentState()
                 }
             }
 
-            if (alreadyRunning)
+            if (parkedAsPending)
             {
-                SendCommandOutput(login, teamBattleStartCfg, GetString(tbCfg, "busyMessage", DefaultTeamBattleBusy)
+                SendCommandOutput(login, teamBattleStartCfg, GetString(tbCfg, "queuedMessage", DefaultTeamBattleQueued)
                     .Replace("@userName", "@" + (String.IsNullOrEmpty(displayName) ? "Streamer" : displayName)));
-                return "already_running";
+                return "queued";
             }
             if (noCards)
             {
