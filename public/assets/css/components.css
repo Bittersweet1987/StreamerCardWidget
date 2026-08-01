@@ -213,35 +213,32 @@ select {
 
 .card-footer {
   position: absolute;
-  right: 7%;
+  right: 4%;
   bottom: 6%;
-  left: 7%;
+  left: 4%;
   z-index: 2;
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   min-width: 0;
 }
 
 .card-title {
   --title-len: 10;
-  /* Auto-width pill, centered as a group with the star badge so the title always reads
-     centered under the image (the star count never shifts it off-center). Font-size still
-     auto-shrinks with title length. */
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 72%;
+  /* Own row now (see .card-footer's column layout), spanning the full available width
+     instead of being capped to leave room for the stars badge next to it - longer names
+     get noticeably more space before the font-size auto-shrink below has to kick in. The
+     stars badge sits on its own row underneath, right-aligned (see .stars). */
+  width: 100%;
+  box-sizing: border-box;
   padding: 7px 13px;
   border-radius: 999px;
   color: var(--card-accent, var(--accent));
   background: rgba(255, 255, 255, .92);
   box-shadow: 0 8px 20px rgba(84, 49, 121, .13);
   /* Shrink as the title gets longer so the full text always fits on a single
-     line in the pill instead of wrapping or being clipped. The footer wraps
-     the stars badge onto its own line first if space is tight (see above),
-     so the title itself almost always has the full card width to work with. */
+     line in the pill instead of wrapping or being clipped. */
   font-size: clamp(.4rem, calc(1.05rem - max(var(--title-len) - 4, 0) * .055rem), 1.05rem);
   font-weight: 800;
   line-height: 1.15;
@@ -263,6 +260,9 @@ select {
 }
 
 .stars {
+  /* Own row below the title (see .card-footer), kept right-aligned like it always was
+     when it sat next to the title on one row. */
+  align-self: flex-end;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -297,14 +297,17 @@ select {
       rgba(215, 140, 255, .95) 86%,
       rgba(255, 255, 255, .9)
     );
-  /* Crisp lavender rim around the star shape. drop-shadow follows the clip-path outline
-     (box-shadow would be clipped away), stacked in several directions to form a solid edge. */
+  /* Crisp, dark-purple rim around the star shape so it stays visible even on a near-white
+     badge background (the gradient itself is dominated by pale/white tones). drop-shadow
+     follows the clip-path outline (box-shadow would be clipped away), stacked in several
+     directions at a larger offset than a normal star's rim to form a solid, clearly visible
+     edge instead of the previous barely-there light lavender line. */
   filter:
     saturate(1.5) brightness(1.04)
-    drop-shadow(0.9px 0 0 #9a7fd0) drop-shadow(-0.9px 0 0 #9a7fd0)
-    drop-shadow(0 0.9px 0 #9a7fd0) drop-shadow(0 -0.9px 0 #9a7fd0)
-    drop-shadow(0.7px 0.7px 0 #9a7fd0) drop-shadow(-0.7px 0.7px 0 #9a7fd0)
-    drop-shadow(0.7px -0.7px 0 #9a7fd0) drop-shadow(-0.7px -0.7px 0 #9a7fd0);
+    drop-shadow(1.3px 0 0 #4a2a8a) drop-shadow(-1.3px 0 0 #4a2a8a)
+    drop-shadow(0 1.3px 0 #4a2a8a) drop-shadow(0 -1.3px 0 #4a2a8a)
+    drop-shadow(1px 1px 0 #4a2a8a) drop-shadow(-1px 1px 0 #4a2a8a)
+    drop-shadow(1px -1px 0 #4a2a8a) drop-shadow(-1px -1px 0 #4a2a8a);
 }
 
 .is-compact-card .stars {
