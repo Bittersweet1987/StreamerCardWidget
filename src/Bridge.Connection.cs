@@ -479,12 +479,20 @@ public void Stop()
                     (dict, remainingMs) => { battleTimeoutTimer = new System.Threading.Timer(delegate { BattleTimedOut(); }, null, remainingMs, Timeout.Infinite); },
                     () => BattleTimedOut());
                 bool restoredTournament = RestoreExpiringState(snapshot, "activeTournament", "deadlineUtc",
-                    dict => { activeTournament = dict; },
-                    (dict, remainingMs) => { if (GetString(dict, "state", "") == "signup") tournamentSignupTimer = new System.Threading.Timer(delegate { ResolveTournamentSignup(); }, null, remainingMs, System.Threading.Timeout.Infinite); },
+                    dict => { NormalizeRestoredParticipants(dict); activeTournament = dict; },
+                    (dict, remainingMs) => { if (GetString(dict, "state", "") == "signup") tournamentSignupTimer = new System.Threading.Timer(delegate
+                        {
+                            try { ResolveTournamentSignup(); }
+                            catch (Exception ex) { server.Log("battle", "error", "Turnier-Aufloesung nach Wiederherstellung fehlgeschlagen: " + ex.Message); }
+                        }, null, remainingMs, System.Threading.Timeout.Infinite); },
                     () => ResolveTournamentSignup());
                 bool restoredTeamBattle = RestoreExpiringState(snapshot, "activeTeamBattle", "deadlineUtc",
-                    dict => { activeTeamBattle = dict; },
-                    (dict, remainingMs) => { teamBattleSignupTimer = new System.Threading.Timer(delegate { ResolveTeamBattleSignup(); }, null, remainingMs, System.Threading.Timeout.Infinite); },
+                    dict => { NormalizeRestoredParticipants(dict); NormalizeRestoredStreamerLineup(dict); activeTeamBattle = dict; },
+                    (dict, remainingMs) => { teamBattleSignupTimer = new System.Threading.Timer(delegate
+                        {
+                            try { ResolveTeamBattleSignup(); }
+                            catch (Exception ex) { server.Log("battle", "error", "Team-Kampf-Aufloesung nach Wiederherstellung fehlgeschlagen: " + ex.Message); }
+                        }, null, remainingMs, System.Threading.Timeout.Infinite); },
                     () => ResolveTeamBattleSignup());
 
                 if (restoredQueueItems > 0 || restoredTrade || restoredBattle || restoredTournament || restoredTeamBattle)
@@ -528,6 +536,48 @@ public void Stop()
                 resolveNow();
             }
             return true;
+        }
+
+// A freshly-created activeTournament/activeTeamBattle holds its "participants" (and, for
+// Team-Kampf, "streamerLineup") as a real List<object>/List<Dictionary<string,string>> - but
+// JavaScriptSerializer.DeserializeObject (see ParseObject) always turns a JSON array back into
+// a plain object[], never a List<T>. Every access site throughout Bridge.Tournament.cs
+// (ResolveTournamentSignup/ResolveTeamBattleSignup, Join*, the auto-start check, ...) hard-casts
+// straight to List<object>/List<Dictionary<string,string>>, so without this conversion right
+// after restoring from pending-state.json, the very next access after an app restart throws an
+// InvalidCastException - which, depending on which code path hits it first, either silently
+// aborts the restore (caught by LoadPendingState's outer try/catch) or crashes the timer thread
+// (the initial signup-deadline timer had no try/catch of its own). Either way activeTournament/
+// activeTeamBattle never gets nulled out again, permanently parking every future signup attempt
+// ("es laeuft bereits eine Anmeldephase") - and since the same corrupted-shape data gets restored
+// identically on every subsequent restart, the app never recovers on its own.
+private static void NormalizeRestoredParticipants(Dictionary<string, object> state)
+        {
+            if (state == null) return;
+            object participantsObj;
+            if (state.TryGetValue("participants", out participantsObj) && participantsObj is object[])
+            {
+                state["participants"] = new List<object>((object[])participantsObj);
+            }
+        }
+
+private static void NormalizeRestoredStreamerLineup(Dictionary<string, object> state)
+        {
+            if (state == null) return;
+            object lineupObj;
+            if (state.TryGetValue("streamerLineup", out lineupObj) && lineupObj is object[])
+            {
+                var converted = new List<Dictionary<string, string>>();
+                foreach (object entry in (object[])lineupObj)
+                {
+                    Dictionary<string, object> src = entry as Dictionary<string, object>;
+                    if (src == null) continue;
+                    var dst = new Dictionary<string, string>();
+                    foreach (KeyValuePair<string, object> kv in src) dst[kv.Key] = Convert.ToString(kv.Value);
+                    converted.Add(dst);
+                }
+                state["streamerLineup"] = converted;
+            }
         }
 
 public Dictionary<string, object> Status()
